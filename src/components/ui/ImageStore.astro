@@ -1,0 +1,289 @@
+---
+// Simple Image Store component for DTL/DGS pages
+// Provides a button to search and store images from Pexels/Unsplash
+export interface Props {
+  division?: 'dtl' | 'dgs';
+}
+const { division = 'dtl' } = Astro.props;
+---
+<div class="fixed bottom-6 right-6 z-50">
+  <button 
+    id="imageStoreBtn"
+    type="button"
+    class="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors shadow-lg"
+    aria-label="Open Image Store">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+    </svg>
+    <span>Image Store</span>
+  </button>
+  
+  <!-- Image Store Modal -->
+  <div id="imageStoreModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black/50" data-division={division}>
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 h-full max-h-[90vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center px-6 py-4 border-b">
+        <h2 class="text-xl font-bold text-gray-900">Image Store</h2>
+        <button id="closeImageStore" type="button" class="text-gray-500 hover:text-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Modal Body -->
+      <div class="flex-1 overflow-hidden">
+        <div class="p-6">
+          <!-- Search Controls -->
+          <div class="mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Section</label>
+                <select id="imageSectionSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <option value="hero">Hero Banner</option>
+                  <option value="discover_by_rooms">Discover by Rooms</option>
+                  <option value="featured_products">Featured Products</option>
+                  <option value="projects">Projects</option>
+                  <option value="instagram">Instagram Feed</option>
+                </select>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Search Term</label>
+                <input
+                  type="text"
+                  id="imageSearchInput"
+                  placeholder="e.g., lighting, plants, modern..."
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              
+              <div class="flex items-end">
+                <button
+                  id="imageSearchBtn"
+                  type="button"
+                  class="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium">
+                  Search Images
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Search Results -->
+          <div id="imageSearchResults" class="hidden">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Search Results</h3>
+            <div id="imageResultsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <!-- Results will be populated here -->
+            </div>
+            <div id="results-sentinel" class="h-6"></div>
+            <div class="mt-4 text-center"><button id="load-more-btn" type="button" class="px-4 py-2 bg-gray-100 rounded">Load more</button></div>
+          </div>
+          
+          <div id="imageSearchLoading" class="hidden text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <p class="text-gray-600 mt-2">Searching...</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t">
+        <button id="closeImageStoreFooter" type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Image Store functionality
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('imageStoreBtn');
+    const modal = document.getElementById('imageStoreModal');
+    const closeBtns = [document.getElementById('closeImageStore'), document.getElementById('closeImageStoreFooter')];
+    const searchBtn = document.getElementById('imageSearchBtn');
+    const searchInput = document.getElementById('imageSearchInput');
+    const sectionSelect = document.getElementById('imageSectionSelect');
+    const resultsList = document.getElementById('imageResultsList');
+    const searchResults = document.getElementById('imageSearchResults');
+    const searchLoading = document.getElementById('imageSearchLoading');
+    
+    // Open modal
+    btn?.addEventListener('click', () => {
+      modal.classList.remove('hidden');
+      // Focus search input when modal opens
+      setTimeout(() => searchInput?.focus(), 100);
+    });
+    
+    // Close modal
+    closeBtns.forEach(closeBtn => {
+      closeBtn?.addEventListener('click', () => {
+        modal.classList.add('hidden');
+      });
+    });
+    
+    // Close on escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+      }
+    });
+    
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+      }
+    });
+    
+    // Pagination / infinite scroll setup
+    let currentPage = 1;
+    let lastQuery = '';
+    const perPage = 12;
+    let isLoading = false;
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const sentinel = document.getElementById('results-sentinel');
+
+    const fetchPage = async (page, append = false) => {
+      const q = lastQuery;
+      if (!q) return;
+      isLoading = true;
+      searchLoading.classList.remove('hidden');
+      try {
+        const resp = await fetch(`/api/images/search?query=${encodeURIComponent(q)}&per_page=${perPage}&page=${page}`);
+        const data = await resp.json();
+        searchLoading.classList.add('hidden');
+        if (data.images && data.images.length > 0) {
+          displayResults(data.images, append);
+          searchResults.classList.remove('hidden');
+          loadMoreBtn.style.display = (data.images.length >= perPage) ? 'inline-block' : 'none';
+        } else if (!append) {
+          resultsList.innerHTML = '<div class="col-span-full text-center text-sm text-slate-500">No images found</div>';
+          loadMoreBtn.style.display = 'none';
+        }
+      } catch (err) {
+        console.error('Search error:', err);
+        alert('Error searching images');
+      } finally {
+        isLoading = false;
+      }
+    };
+
+    // Search functionality
+    searchBtn?.addEventListener('click', async () => {
+      const section = sectionSelect.value;
+      const searchTerm = searchInput.value.trim();
+      if (!searchTerm) return alert('Please enter a search term');
+      lastQuery = searchTerm;
+      currentPage = 1;
+      await fetchPage(currentPage, false);
+    });
+
+    // Enter key to search (prevent form submit)
+    searchInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchBtn.click();
+      }
+    });
+
+    function displayResults(images, append = false) {
+      const html = images.map(img => `
+        <div class="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+          <img src="${img.thumbUrl}" alt="${img.altText}" class="w-full h-48 object-cover" />
+          <div class="p-4">
+            <p class="text-xs text-gray-600 line-clamp-2 mb-2">${img.altText}</p>
+            <p class="text-xs text-gray-500 mb-2">
+              <a href="${img.photographerUrl}" target="_blank" class="text-blue-500 hover:underline">
+                by ${img.photographer}
+              </a>
+            </p>
+            <button
+              type="button"
+              class="select-image-btn w-full px-3 py-2 bg-green-500 text-white rounded text-sm font-medium hover:bg-green-600"
+              data-image-url="${img.url}"
+              data-alt-text="${img.altText}"
+              data-photographer="${img.photographer}"
+              data-source-id="${img.sourceId}"
+              data-source="${img.source}"
+              data-section="${sectionSelect.value}">
+              Add to ${sectionSelect.options[sectionSelect.selectedIndex].text}
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      if (append) {
+        resultsList.insertAdjacentHTML('beforeend', html);
+      } else {
+        resultsList.innerHTML = html;
+      }
+
+      // Add click handlers to select buttons
+      resultsList.querySelectorAll('.select-image-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const url = btn.dataset.imageUrl;
+          const altText = btn.dataset.altText;
+          const photographer = btn.dataset.photographer;
+          const sourceId = btn.dataset.sourceId;
+          const source = btn.dataset.source || 'unsplash';
+          const section = btn.dataset.section;
+          const division = modal.dataset.division || 'dtl';
+
+          try {
+            const response = await fetch('/api/images', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                division: division,
+                section: section,
+                imageUrl: url,
+                altText: `${altText} - ${photographer}`,
+                source: source,
+                sourceId: sourceId,
+                displayOrder: 0
+              })
+            });
+
+            if (response.ok) {
+              alert('Image added successfully!');
+              // Close modal after successful addition
+              modal.classList.add('hidden');
+            } else {
+              const errorData = await response.json();
+              alert('Error adding image: ' + (errorData.error || 'Unknown error'));
+            }
+          } catch (error) {
+            console.error('Add image error:', error);
+            alert('Error adding image');
+          }
+        });
+      });
+    }
+
+    // Load more handler
+    loadMoreBtn?.addEventListener('click', async () => {
+      if (isLoading) return;
+      currentPage++;
+      await fetchPage(currentPage, true);
+    });
+
+    // Infinite scroll via intersection observer
+    if (sentinel && 'IntersectionObserver' in window) {
+      const io = new IntersectionObserver(async (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && !isLoading && loadMoreBtn && loadMoreBtn.style.display !== 'none') {
+            currentPage++;
+            await fetchPage(currentPage, true);
+          }
+        }
+      }, { root: null, rootMargin: '200px', threshold: 0.1 });
+      io.observe(sentinel);
+    }
+  });
+</script>
+
+<style>
+  /* Add any additional styling if needed */
+</style>

@@ -1,0 +1,70 @@
+---
+interface Props {
+  items: { question: string; answer: string }[];
+}
+
+const { items } = Astro.props;
+---
+
+<div class="space-y-4 accordion-container">
+  {items.map((item, index) => (
+    <div class="border border-slate-200 bg-white rounded-lg overflow-hidden transition-all duration-300">
+      <button 
+        class="flex w-full items-center justify-between px-6 py-5 text-left focus:outline-none accordion-trigger"
+        aria-expanded="false"
+      >
+        <span class="font-bold text-slate-800 text-sm">{item.question}</span>
+        <svg class="h-5 w-5 text-slate-400 transform transition-transform duration-300 accordion-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div class="accordion-content hidden px-6 pb-5">
+        <p class="text-sm text-slate-500 leading-relaxed">{item.answer}</p>
+      </div>
+    </div>
+  ))}
+</div>
+
+<script>
+  function setupAccordions() {
+    const containers = document.querySelectorAll('.accordion-container');
+    
+    containers.forEach(container => {
+      const triggers = container.querySelectorAll('.accordion-trigger');
+      
+      triggers.forEach(trigger => {
+        // Remove existing listener to prevent duplicates on view transitions
+        const clone = trigger.cloneNode(true);
+        trigger.parentNode?.replaceChild(clone, trigger);
+        
+        clone.addEventListener('click', () => {
+          const content = clone.nextElementSibling;
+          const icon = clone.querySelector('.accordion-icon');
+          const isExpanded = clone.getAttribute('aria-expanded') === 'true';
+          
+          // Close all others
+          triggers.forEach(t => {
+            const btn = container.querySelector(`button:nth-child(${Array.from(triggers).indexOf(t) + 1})`);
+            // Actually it's better to just query the wrapper
+            // But we just use DOM relative
+          });
+          
+          // For a simple accordion, we just toggle current
+          if (isExpanded) {
+            clone.setAttribute('aria-expanded', 'false');
+            content?.classList.add('hidden');
+            icon?.classList.remove('rotate-180');
+          } else {
+            clone.setAttribute('aria-expanded', 'true');
+            content?.classList.remove('hidden');
+            icon?.classList.add('rotate-180');
+          }
+        });
+      });
+    });
+  }
+
+  // Setup on initial load and view transitions
+  setupAccordions();
+  document.addEventListener('astro:page-load', setupAccordions);
+</script>

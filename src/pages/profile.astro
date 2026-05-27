@@ -1,0 +1,13 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { UserProfile } from '@clerk/astro/components';
+---
+
+<Layout title="B2B User Profile" description="Customize B2B client credentials and dynamic security sessions.">
+  <section class="min-h-screen flex items-center justify-center py-20 px-4 bg-slate-950">
+    <div class="w-full max-w-4xl flex justify-center relative">
+      <!-- Embedded Clerk UserProfile -->
+      <UserProfile />
+    </div>
+  </section>
+</Layout>

@@ -1,0 +1,70 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { query } from '../lib/db';
+
+let policy: any = null;
+try {
+  const res = await query(
+    `SELECT title, content, updated_at FROM legal_artifacts WHERE identifier = 'terms-of-use' LIMIT 1`
+  );
+  if (res.rows.length > 0) policy = res.rows[0];
+} catch (e) {}
+
+const fallbackContent = `
+<h2>1. The Acceptance of Terms</h2>
+<p>By accessing or using our services, you agree to be bound by these Terms and Conditions.</p>
+<h2>2. Use of Services</h2>
+<p>You agree to use our services only for lawful purposes and in accordance with these Terms. You agree not to use our services:</p>
+<ul>
+<li>To harass, abuse, or harm another person</li>
+<li>To impersonate or misrepresent yourself</li>
+<li>To interfere with the proper functioning of our services</li>
+<li>To collect or track personal information without consent</li>
+</ul>
+<h2>3. Intellectual Property</h2>
+<p>All content and materials available through our services are the property of Delight Group LLC or its licensors, including but not limited to text, graphics, logos, images, audio clips, and software.</p>
+<h2>4. User Content</h2>
+<p>You retain all rights to any content you submit, post or display on or through the services. By submitting content, you grant us a worldwide, non-exclusive, royalty-free license to use, reproduce, modify, and distribute such content.</p>
+<h2>5. Limitation of Liability</h2>
+<p>To the fullest extent permitted by law, Delight Group LLC shall not be liable for any indirect, incidental, special, consequential or punitive damages.</p>
+<h2>6. Modification of Terms</h2>
+<p>We reserve the right to modify these terms at any time. Your continued use of our services following the posting of revised Terms means that you accept and agree to the changes.</p>
+<h2>7. Governing Law</h2>
+<p>These Terms and Conditions are governed by and construed in accordance with the laws of the United Arab Emirates.</p>
+`;
+
+const title = policy?.title || 'Terms of Service';
+const content = policy?.content || fallbackContent;
+const updatedAt = policy?.updated_at ? new Date(policy.updated_at).toLocaleDateString('en-AE', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
+---
+
+<Layout title="Terms of Service" description="Terms of Service for Delight Group LLC — our policies and conditions of use.">
+  <div class="min-h-screen bg-white">
+    <!-- Hero -->
+    <section class="pt-32 pb-16 border-b border-slate-100 bg-slate-50">
+      <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <span class="text-xs font-bold text-amber-500 uppercase tracking-widest mb-4 block">Legal</span>
+        <h1 class="text-4xl sm:text-5xl font-extrabold font-display text-slate-900 tracking-tight">{title}</h1>
+        {updatedAt && (
+          <p class="mt-4 text-sm text-slate-400">Last updated: {updatedAt}</p>
+        )}
+      </div>
+    </section>
+
+    <!-- Content -->
+    <section class="py-16">
+      <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <div class="prose prose-slate prose-sm sm:prose max-w-none
+          prose-headings:font-display prose-headings:font-bold prose-headings:text-slate-900
+          prose-p:text-slate-600 prose-p:leading-relaxed
+          prose-h2:text-xl prose-h2:mt-10 prose-h2:mb-4
+          prose-li:text-slate-600"
+          set:html={content}
+        />
+        <div class="mt-16 pt-8 border-t border-slate-100">
+          <a href="/" class="text-sm font-semibold text-amber-600 hover:text-amber-700 transition-colors">&larr; Back to Home</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</Layout>

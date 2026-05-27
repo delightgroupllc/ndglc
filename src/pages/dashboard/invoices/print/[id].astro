@@ -1,0 +1,1140 @@
+---
+import DashboardLayout from '../../../../layouts/DashboardLayout.astro';
+import { query } from '../../../../lib/db';
+import { Printer, Settings2, HelpCircle } from 'lucide-astro';
+
+const { id } = Astro.params;
+
+let inv: any = null;
+let settings: Record<string, string> = {};
+let legalArtifacts: any[] = [];
+let products: any[] = [];
+
+try {
+  const invRes = await query(`
+    SELECT i.*, 
+       (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+    FROM invoices i WHERE id = $1
+  `, [id]);
+  inv = invRes.rows[0];
+
+  const settingsRes = await query('SELECT key, value FROM settings');
+  settings = settingsRes.rows.reduce((acc: any, row: any) => { acc[row.key] = row.value; return acc; }, {});
+
+  const legalRes = await query('SELECT * FROM legal_artifacts ORDER BY type DESC, identifier ASC');
+  legalArtifacts = legalRes.rows;
+
+  const prodRes = await query(`
+    SELECT p.id, pi.url as image_url
+    FROM products p
+    LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
+  `);
+  products = prodRes.rows;
+} catch (err: any) {
+  console.warn('DB error in print engine:', err.message);
+}
+
+if (!inv) {
+  // If we can't find it (or DB offline), render a dummy for preview
+  inv = {
+    id: id || 'inv-mock-1',
+    invoice_number: 'INV-2026-8094',
+    customer_name: 'Vance Metallurgy LLC',
+    customer_email: 'alex.vance@steelgroup.com',
+    customer_phone: '+1 (555) 0189',
+    issue_date: '2026-05-10',
+    due_date: '2026-06-10',
+    payment_status: 'paid',
+    order_type: 'tax_invoice',
+    subtotal: 10500,
+    gst_amount: 1890,
+    total_amount: 12390,
+    items_list: [
+      { description: 'HP-100 Stainless Ball Valve (Duplex option)', quantity: 2, unit_price: 5250, total_price: 10500 }
+    ]
+  };
+}
+
+let items: any[] = [];
+try {
+  items = typeof inv.items_list === 'string' ? JSON.parse(inv.items_list) : (inv.items_list || []);
+} catch {
+  items = [];
+}
+
+const subtotal = Number(inv.subtotal) || 0;
+const gst = Number(inv.gst_amount) || 0;
+const discount = Number(inv.discount_amount) || 0;
+const grandTotal = Number(inv.total_amount) || 0;
+
+let offerPd = 0;
+if (inv.payment_status === 'paid') offerPd = grandTotal;
+else if (inv.order_type === 'proforma') offerPd = grandTotal * 0.5;
+
+const balanceDue = grandTotal - offerPd;
+---
+
+<DashboardLayout title={`Print ${inv.invoice_number}`} activeItem="invoices">
+
+  <style is:global>
+    /* Print Engine Specific Styles */
+    body { background-color: #f8fafc; }
+
+    /* Screen preview footer styles */
+    .print-page-footer {
+      position: absolute;
+      bottom: 24px;
+      left: 48px;
+      right: 48px;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      font-size: 8px;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      pointer-events: none;
+    }
+    
+    @media print {
+      @page { size: A4; margin: 15mm; }
+      body { counter-reset: page; background-color: white; }
+      /* Hide dashboard layout and sidebar */
+      #sidebar, header, .print-hidden { display: none !important; }
+      main { padding: 0 !important; margin: 0 !important; background: white !important; }
+      
+      .a4-sheet {
+        box-shadow: none !important;
+        margin: 0 !important;
+        border: none !important;
+        page-break-after: always;
+        height: auto !important;
+        min-height: 0 !important;
+      }
+      
+      .print-page-footer {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        display: flex; justify-content: space-between;
+        border-top: 1px solid #e2e8f0; padding-top: 8px;
+        font-size: 8px; font-weight: bold; color: #64748b;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        pointer-events: auto;
+      }
+      .print-page-footer-num::after {
+        counter-increment: page;
+        content: "Page " counter(page) " of 2";
+      }
+    }
+  </style>
+
+  <div id="print-root-container" data-grand-total={grandTotal} data-division={inv.source_division || 'DTL'} class="flex h-[calc(100vh-80px)] -m-4 sm:-m-6 lg:-m-8 overflow-hidden print:h-auto print:overflow-visible print:block">
+    
+    <!-- LEFT: Document Canvas (Simulated A4 Pages) -->
+    <div class="flex-1 overflow-y-auto bg-slate-200/50 p-8 flex flex-col items-center gap-8 custom-scrollbar print:p-0 print:bg-white print:block">
+      
+      <!-- Print Canvas Top Action Bar (Visible on screen, hidden when printing) -->
+      <div class="w-[210mm] bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between print:hidden shrink-0">
+        <a href="/dashboard/invoices" class="inline-flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Orders
+        </a>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="window.print()" class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Send to Printer
+          </button>
+        </div>
+      </div>
+
+      <!-- PAGE 1: The Invoice Form -->
+      <div class="a4-sheet w-[210mm] min-h-[297mm] bg-white shadow-xl rounded border border-slate-200 p-12 relative overflow-hidden shrink-0 print:rounded-none">
+        <!-- Watermark -->
+        <div id="print-watermark" class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] transition-opacity z-0">
+          <img src="/dgllclogolarge.png" class="w-[500px] h-auto max-w-full" id="watermark-img" />
+        </div>
+
+        <div class="relative z-10 space-y-8 pb-24">
+          <!-- Header -->
+          <div class="flex justify-between items-start gap-4">
+            <div id="print-logo-container" class="h-24 flex items-center">
+              <img src="/dgllclogosmall.png" class="h-24 w-auto" id="print-company-logo" />
+            </div>
+            <div class="text-right">
+              <h3 class="text-3xl font-black text-slate-900 tracking-tight uppercase" id="print-doc-header-title" style="font-family: 'Outfit', sans-serif;">
+                {inv.order_type === 'quotation' ? 'ESTIMATION' : (inv.order_type === 'lpo' ? 'PRO FORMA INVOICE' : (inv.order_type === 'delivery_note' ? 'DELIVERY NOTE' : 'TAX INVOICE'))}
+              </h3>
+              <p class="text-xs text-slate-500 font-extrabold tracking-widest mt-1 font-mono uppercase">{inv.invoice_number}</p>
+            </div>
+          </div>
+
+          <!-- 3-Column Info -->
+          <div class="grid grid-cols-3 gap-6 text-[10px] leading-relaxed">
+            <!-- From -->
+            <div class="border border-slate-200 rounded-xl p-5 bg-white space-y-2">
+              <div class="border-b border-slate-100 pb-2 mb-2"><h4 class="font-extrabold text-slate-400 uppercase tracking-widest text-[9px]">FROM (SENDER)</h4></div>
+              <p class="font-black text-slate-900 text-xs uppercase tracking-wide">Delight Group LLC</p>
+              <p class="text-slate-600 font-bold" id="print-from-division-desc">{inv.source_division === 'DGS' ? 'Delight Greenscapes' : 'Delight Technical Lighting'}</p>
+              <p class="text-slate-500 text-[9px] leading-relaxed">{settings.business_address || 'Dubai, United Arab Emirates'}</p>
+              <p class="text-slate-500 font-mono mt-1">TRN: {settings.trn_number || '10003862800003'}</p>
+            </div>
+
+            <!-- To -->
+            <div class="border border-slate-200 rounded-xl p-5 bg-white space-y-2">
+              <div class="border-b border-slate-100 pb-2 mb-2"><h4 class="font-extrabold text-slate-400 uppercase tracking-widest text-[9px]">BILLING TO</h4></div>
+              <p class="font-black text-slate-900 text-xs uppercase tracking-wide">{inv.customer_name}</p>
+              <p class="text-slate-600 font-bold" id="print-cust-company">{inv.company_name || ''}</p>
+              <p class="text-slate-500 text-[9px] leading-relaxed" id="print-cust-address">{inv.billing_address || ''}</p>
+              <p class="text-slate-500 font-semibold" id="print-cust-contact">{inv.customer_email || ''}{inv.customer_phone ? ` • ${inv.customer_phone}` : ''}</p>
+              {inv.company_vat && <p class="text-slate-500 font-mono mt-1" id="print-cust-trn">TRN: {inv.company_vat}</p>}
+            </div>
+
+            <!-- Details -->
+            <div class="border border-slate-200 rounded-xl p-5 bg-slate-50 space-y-2">
+              <div class="border-b border-slate-200 pb-2 mb-2"><h4 class="font-extrabold text-slate-400 uppercase tracking-widest text-[9px]">DOCUMENT INFO</h4></div>
+              <div class="space-y-1.5 text-slate-700 font-semibold text-[10px]">
+                <div class="flex justify-between items-center" id="print-info-status">
+                  <span class="text-slate-400 uppercase">STATUS:</span>
+                  <span class={`font-black uppercase px-1.5 py-0.5 rounded ${inv.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {inv.payment_status === 'paid' ? 'CONFIRMED' : inv.payment_status}
+                  </span>
+                </div>
+                <div class="flex justify-between items-center" id="print-info-date"><span class="text-slate-400 uppercase">DATE:</span><span class="font-mono">{new Date(inv.issue_date).toLocaleDateString('en-AE')}</span></div>
+                <div class="flex justify-between items-center" id="print-info-due"><span class="text-slate-400 uppercase">DUE/DELIVERY:</span><span class="font-mono">{inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-AE') : 'N/A'}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Items Table -->
+          <table class="w-full text-left border-collapse text-[10px]">
+            <thead>
+              <tr class="border-b-2 border-slate-800 text-slate-800 uppercase text-[9px] tracking-widest font-black">
+                <th class="py-3 pr-2">Item Description</th>
+                <th class="py-3 text-center">Qty</th>
+                <th class="py-3 text-right pr-2 print-col-price-header">Price</th>
+                <th class="py-3 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody id="print-items-list" class="divide-y divide-slate-100">
+              {items.map(item => {
+                const matchingProd = products.find(p => p.id === item.product_id);
+                const imageUrl = item.item_image || matchingProd?.image_url;
+                return (
+                  <tr class="align-top">
+                    <td class="py-4 pr-4">
+                      <div class="flex items-start gap-3">
+                        {imageUrl && (
+                          <img src={imageUrl} class="w-10 h-10 rounded object-cover border border-slate-200 shrink-0 mt-0.5 shadow-sm product-thumbnail-img hidden animate-fade-in" />
+                        )}
+                        <div class="flex-1">
+                          <div class="font-extrabold text-slate-900 text-[11px]">{item.description}</div>
+                          {item.catalogue_ref && <div class="text-[9px] text-slate-400 font-mono mt-1 print-item-cat-ref">REF: {item.catalogue_ref}</div>}
+                          {item.tech_spec && <div class="text-[9px] text-slate-500 mt-1 max-w-sm leading-relaxed print-item-tech-spec">{item.tech_spec}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td class="py-4 text-center font-bold text-slate-700">{item.quantity}</td>
+                    <td class="py-4 text-right font-semibold text-slate-550 pr-2 font-mono print-col-price-cell">AED {Number(item.unit_price).toLocaleString('en-AE', { minimumFractionDigits: 2 })}</td>
+                    <td class="py-4 text-right font-black text-slate-900 font-mono">AED {(item.quantity * item.unit_price).toLocaleString('en-AE', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <!-- Totals -->
+          <div class="flex justify-end pt-4 border-t border-slate-200">
+            <div class="w-72 text-xs space-y-2">
+              <div class="flex justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]" id="print-total-subtotal"><span>Subtotal</span><span class="text-slate-800 font-mono">AED {subtotal.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</span></div>
+              <div class="flex justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]" id="print-total-vat"><span>VAT (5%)</span><span class="text-slate-800 font-mono">AED {gst.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</span></div>
+              {discount > 0 && <div class="flex justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]" id="print-total-discount"><span>Discount</span><span class="text-slate-800 font-mono">- AED {discount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</span></div>}
+              
+              <div class="flex justify-between border-t border-slate-800 pt-3 mt-3 text-slate-900 font-black uppercase tracking-wider text-sm">
+                <span>Grand Total</span><span class="font-mono">AED {grandTotal.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</span>
+              </div>
+              
+              <div class="flex justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px] mt-2" id="print-total-settled">
+                <span>Amount Settled</span><span class="font-mono text-slate-800">AED {offerPd.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div class="flex justify-between border-t border-slate-200 pt-2 font-black uppercase tracking-wider text-[11px] text-rose-600" id="print-total-due">
+                <span>Balance Due</span><span class="font-mono">AED {balanceDue.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Finance Settlement Injection -->
+          <div id="finance-settlement-block" class="hidden mt-8 p-5 bg-blue-50/50 border border-blue-100 rounded-xl">
+            <h4 class="font-extrabold text-blue-800 uppercase tracking-widest text-[9px] mb-3">Finance Settlement Schedule</h4>
+            <table class="w-full text-left border-collapse text-[10px]">
+              <thead>
+                <tr class="border-b border-blue-200 text-blue-600 uppercase text-[8px] tracking-widest">
+                  <th class="pb-2">Installment</th>
+                  <th class="pb-2">Date</th>
+                  <th class="pb-2 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-blue-100/50">
+                <tr>
+                  <td id="print-finance-p1-label-cell" class="py-2 text-blue-900 font-bold">Advance Payment (50%)</td>
+                  <td id="print-finance-p1-date-cell" class="py-2 text-blue-700">{new Date().toLocaleDateString('en-AE')}</td>
+                  <td id="print-finance-p1-amount-cell" class="py-2 text-right font-mono text-blue-900">AED {(grandTotal * 0.5).toLocaleString('en-AE', { minimumFractionDigits: 2 })}</td>
+                </tr>
+                <tr>
+                  <td id="print-finance-p2-label-cell" class="py-2 text-blue-900 font-bold">Final Settlement (50%)</td>
+                  <td id="print-finance-p2-date-cell" class="py-2 text-blue-700">Before Delivery</td>
+                  <td id="print-finance-p2-amount-cell" class="py-2 text-right font-mono text-blue-900">AED {(grandTotal * 0.5).toLocaleString('en-AE', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Bank Transfer / Remittance Details -->
+          <div id="bank-details-block" class="hidden mt-8 p-5 bg-slate-50 border border-slate-200 rounded-xl">
+            <h4 class="font-extrabold text-slate-800 uppercase tracking-widest text-[9px] mb-3">Bank Transfer & Remittance Details</h4>
+            <div class="grid grid-cols-2 gap-4 text-[10px]">
+              <div>
+                <span class="text-slate-400 uppercase font-black text-[8px] block tracking-wider">Beneficiary Bank</span>
+                <span id="print-bank-name" class="text-slate-900 font-black uppercase text-[10px]">Delight Bank International</span>
+              </div>
+              <div>
+                <span class="text-slate-400 uppercase font-black text-[8px] block tracking-wider">Account Number</span>
+                <span id="print-bank-acc" class="text-slate-900 font-mono font-bold">120938491829</span>
+              </div>
+              <div class="col-span-2 sm:col-span-1">
+                <span class="text-slate-400 uppercase font-black text-[8px] block tracking-wider">IBAN Number</span>
+                <span id="print-bank-iban" class="text-slate-900 font-mono font-bold">AE2100092810000120938491829</span>
+              </div>
+              <div class="col-span-2 sm:col-span-1">
+                <span class="text-slate-400 uppercase font-black text-[8px] block tracking-wider">Swift / BIC Code</span>
+                <span id="print-bank-swift" class="text-slate-900 font-mono font-bold uppercase">DBIUAE2DXXX</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Page 1 Footer (Screen preview only, hidden in print as fixed print footer takes over) -->
+        <div class="print-page-footer print:hidden">
+          <div>
+            <span class="text-slate-900">DELIGHT GROUP LLC</span>
+            <span class="mx-1 text-slate-300">|</span>
+            <span class="text-slate-500">TECHNICAL LIGHTING & GREENSCAPES</span>
+          </div>
+          <div id="screen-page-1-num" class="font-mono text-slate-400">Page 1 of 2</div>
+        </div>
+      </div>
+
+      <!-- PAGE 2: Terms & Signatures -->
+      <div id="print-page-2-container" class="a4-sheet w-[210mm] min-h-[297mm] bg-white shadow-xl rounded border border-slate-200 p-12 relative overflow-hidden shrink-0 print:rounded-none">
+        
+        <div class="flex justify-between items-start gap-4 mb-8">
+          <div class="h-16 flex items-center"><img src="/dgllclogosmall.png" class="h-16 w-auto" id="print-company-logo-p2" /></div>
+          <div class="text-right">
+            <h3 class="text-xl font-black text-slate-900 tracking-tight uppercase" style="font-family: 'Outfit', sans-serif;">TERMS & CONDITIONS</h3>
+            <p class="text-[10px] text-slate-500 font-extrabold tracking-widest mt-1 font-mono uppercase">{inv.invoice_number}</p>
+          </div>
+        </div>
+        <div class="border-b-2 border-slate-800 mb-8"></div>
+
+        <div class="space-y-5 text-[10px] leading-relaxed text-slate-700 min-h-[180mm]">
+          <div id="print-legal-clauses-area" class="space-y-5">
+            {legalArtifacts.map(artifact => (
+              <div class="clause-block" data-identifier={artifact.identifier}>
+                <h5 class="font-extrabold text-slate-900 uppercase tracking-wider text-[10px]">{artifact.title}</h5>
+                <p class="text-slate-600 mt-1 uppercase text-[9px]">{artifact.content}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div id="corporate-auth-standard-block" class="grid grid-cols-3 gap-12 mt-auto pt-12 text-[10px] font-black uppercase tracking-wider text-slate-800">
+          <div id="print-sig-client-col"><div class="border-t border-slate-900 pt-2"><p>CLIENT ACKNOWLEDGEMENT</p></div></div>
+          <div id="print-sig-company-col"><div class="border-t border-slate-900 pt-2"><p>AUTHORIZED SIGNATORY</p></div></div>
+          <div id="print-sig-it-col" class="hidden"><div class="border-t border-slate-900 pt-2"><p>IT VERIFIED AUTH</p><span class="text-[8px] font-bold text-emerald-600 mt-1 block tracking-normal normal-case">✓ SECURE RECORD</span></div></div>
+        </div>
+
+        <div id="print-electronic-badge" class="mt-8 p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-[9px] font-bold text-slate-500 uppercase tracking-widest space-y-1">
+          <div class="text-slate-800 flex items-center justify-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>ELECTRONIC DOCUMENT</span>
+          </div>
+          <p class="text-[8px] font-semibold text-slate-400 normal-case">This invoice is electronically generated & requires no physical signature or company stamp.</p>
+        </div>
+
+        <!-- Print Footer (Visible in print and screen) -->
+        <div class="print-page-footer">
+          <div>
+            <span class="text-slate-900">DELIGHT GROUP LLC</span>
+            <span class="mx-1 text-slate-300">|</span>
+            <span class="text-slate-500">TECHNICAL LIGHTING & GREENSCAPES</span>
+          </div>
+          <div class="print-page-footer-num font-mono print:block hidden"></div>
+          <div id="screen-page-2-num" class="font-mono text-slate-400 print:hidden">Page 2 of 2</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backdrop for mobile floating sidebar (hidden on large screens) -->
+    <div id="print-sidebar-backdrop" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-30 hidden lg:hidden print:hidden transition-opacity duration-300 opacity-0"></div>
+
+    <!-- Floating Sidebar Toggle Button (Visible only on mobile/tablet screen) -->
+    <button type="button" id="print-sidebar-toggle" class="fixed bottom-6 right-6 z-50 p-4 bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded-full shadow-2xl transition-all active:scale-95 lg:hidden print:hidden flex items-center justify-center border border-cyan-400/30">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    </button>
+
+    <!-- RIGHT: Configuration Sidebar -->
+    <div id="print-sidebar-config" class="w-80 bg-slate-900 text-slate-300 p-6 flex flex-col justify-between overflow-y-auto print-hidden border-l border-slate-800 shrink-0 custom-scrollbar fixed lg:static right-0 top-[80px] h-[calc(100vh-80px)] z-40 transition-transform duration-300 translate-x-full lg:translate-x-0 shadow-2xl lg:shadow-none">
+      <div class="space-y-6">
+        <!-- 0. Prominent Back to Orders Button & Header -->
+        <div class="flex flex-col gap-2.5 pb-4 border-b border-slate-800">
+          <a href="/dashboard/invoices" class="inline-flex items-center justify-center gap-1.5 w-full bg-slate-800 hover:bg-slate-750 text-slate-100 hover:text-white font-extrabold py-2.5 rounded-xl text-xs transition-all border border-slate-700/60 uppercase tracking-wider shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            Back to Orders
+          </a>
+          <div class="flex items-center gap-2.5 mt-2">
+            <Settings2 class="h-4 w-4 text-cyan-500" />
+            <h3 class="text-xs font-black text-white uppercase tracking-wider">Print Engine Settings</h3>
+          </div>
+        </div>
+
+        <!-- 1. Document Title Override -->
+        <div class="space-y-2">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Document Header Title</label>
+          <select id="config-doc-type" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-cyan-500/50">
+            <option value="TAX INVOICE" selected={inv.order_type !== 'quotation' && inv.order_type !== 'lpo' && inv.order_type !== 'delivery_note'}>TAX INVOICE</option>
+            <option value="ESTIMATION" selected={inv.order_type === 'quotation'}>ESTIMATION / QUOTE</option>
+            <option value="PRO FORMA INVOICE" selected={inv.order_type === 'lpo'}>PRO FORMA INVOICE</option>
+            <option value="DELIVERY NOTE" selected={inv.order_type === 'delivery_note'}>DELIVERY NOTE</option>
+            <option value="COMMERCIAL BILL">COMMERCIAL BILL</option>
+            <option value="PURCHASE ORDER">PURCHASE ORDER</option>
+          </select>
+        </div>
+
+        <!-- 2. Branding & Watermark Settings -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Branding & Watermark</label>
+          <div class="space-y-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800/50">
+            <div>
+              <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Company Logo</label>
+              <select id="config-branding-logo" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                <option value="auto">Auto-detect Logo</option>
+                <option value="dtl">DTL Logo Only</option>
+                <option value="dgs">DGS Logo Only</option>
+                <option value="dgllc">DGLLC Master Logo</option>
+              </select>
+            </div>
+            
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+              <input type="checkbox" id="config-show-logo" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Header Primary Logo</span>
+            </label>
+
+            <div class="border-t border-slate-800 pt-2 space-y-2">
+              <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="config-show-watermark" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Background Watermark</span>
+              </label>
+              <div class="space-y-1">
+                <div class="flex justify-between text-[9px] font-bold text-slate-500"><span>Watermark Opacity</span><span id="wm-op-val">3%</span></div>
+                <input type="range" id="config-watermark-opacity" min="1" max="15" value="3" class="w-full h-1 bg-slate-700 rounded-lg appearance-none accent-cyan-500" />
+              </div>
+              <div class="space-y-1">
+                <div class="flex justify-between text-[9px] font-bold text-slate-500"><span>Watermark Width</span><span id="wm-sz-val">500px</span></div>
+                <input type="range" id="config-watermark-size" min="200" max="800" step="50" value="500" class="w-full h-1 bg-slate-700 rounded-lg appearance-none accent-cyan-500" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Billing Info Visibility -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Billing Details Visibility</label>
+          <div class="space-y-2 bg-slate-950/40 p-4 rounded-xl border border-slate-800/50 text-xs font-semibold text-slate-300">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-cust-company" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Company Name</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-cust-address" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Billing Address</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-cust-contact" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Email & Phone Info</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-cust-trn" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Customer TRN</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 4. Document Info Visibility -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Document Info Visibility</label>
+          <div class="space-y-2 bg-slate-950/40 p-4 rounded-xl border border-slate-800/50 text-xs font-semibold text-slate-300">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-info-status" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Order Status Badge</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-info-date" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Issue Date</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-info-due" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Due/Delivery Date</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 5. Content Layout & Table Columns Customizer -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Content Layout Options</label>
+          <div class="space-y-2.5 bg-slate-950/40 p-4 rounded-xl border border-slate-800/50 text-xs font-semibold text-slate-300">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-prod-images" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Product Thumbnail Images</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-col-ref" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Catalogue REF Number</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-col-spec" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Product Technical Specs</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-col-price" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Unit Price Column</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 6. Pricing Breakdown Visibility -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Financial Valuations</label>
+          <div class="space-y-2 bg-slate-950/40 p-4 rounded-xl border border-slate-800/50 text-xs font-semibold text-slate-300">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-subtotal" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Subtotal Valuation</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-vat" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show VAT (5%) Calculation</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-discount" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Applied Discount Row</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-settled" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Amount Settled</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-due" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Final Balance Due</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 7. Signatures Matrix -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Signature Fields & Compliances</label>
+          <div class="space-y-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800/50">
+            <div>
+              <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Signature Area Layout</label>
+              <select id="config-sig-placement" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                <option value="bottom-fixed">Show Standard Bottom Signatures</option>
+                <option value="none">Hide Signature Area Completely</option>
+              </select>
+            </div>
+            
+            <div class="border-t border-slate-800 pt-2 space-y-2 font-semibold text-slate-300 text-xs">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="sig-client" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Client Acknowledgement</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="sig-company" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Authorized Signatory</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="sig-it" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>IT Secure Verification Badge</span>
+              </label>
+            </div>
+
+            <div class="border-t border-slate-800 pt-2">
+              <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="config-show-electronic-notice" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Compliant Electronic Stamp</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. Finance Integration & Banking -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Finance & Payment Customizer</label>
+          
+          <!-- Finance Schedule Settings -->
+          <div class="space-y-3 bg-blue-950/20 p-4 rounded-xl border border-blue-900/30">
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+              <input type="checkbox" id="config-show-finance" class="rounded border-slate-700 bg-slate-800 text-blue-500 focus:ring-0" />
+              <span class="font-bold text-blue-400">Show Finance Schedule</span>
+            </label>
+            <p class="text-[9px] text-slate-500 leading-tight">Injects the customizable multi-phase payment schedule collected from Finance operations.</p>
+            
+            <!-- Hidden by default, toggled via JS -->
+            <div id="finance-customization-inputs" class="hidden space-y-3 pt-2 border-t border-blue-900/40 text-xs text-slate-300">
+              <div class="space-y-1.5 p-2 bg-slate-900/60 rounded border border-slate-800">
+                <span class="text-[9px] text-cyan-400 font-bold uppercase tracking-wider block">Installment 1</span>
+                <div>
+                  <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">Label</label>
+                  <input type="text" id="config-finance-p1-label" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2 py-0.5 text-xs focus:ring-0" value="Advance Payment" />
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">Pct (%)</label>
+                    <input type="number" id="config-finance-p1-pct" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2 py-0.5 text-xs focus:ring-0" value="50" min="0" max="100" />
+                  </div>
+                  <div>
+                    <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">Date / Term</label>
+                    <input type="text" id="config-finance-p1-date" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2 py-0.5 text-xs" value={new Date().toLocaleDateString('en-AE')} />
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-1.5 p-2 bg-slate-900/60 rounded border border-slate-800">
+                <span class="text-[9px] text-cyan-400 font-bold uppercase tracking-wider block">Installment 2</span>
+                <div>
+                  <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">Label</label>
+                  <input type="text" id="config-finance-p2-label" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2 py-0.5 text-xs focus:ring-0" value="Final Settlement" />
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">Pct (%)</label>
+                    <input type="number" id="config-finance-p2-pct" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2 py-0.5 text-xs focus:ring-0" value="50" min="0" max="100" />
+                  </div>
+                  <div>
+                    <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">Date / Term</label>
+                    <input type="text" id="config-finance-p2-date" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2 py-0.5 text-xs focus:ring-0" value="Before Delivery" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bank Details Settings -->
+          <div class="space-y-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800/50">
+            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+              <input type="checkbox" id="config-show-bank" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span class="font-bold text-slate-300">Show Banking Details</span>
+            </label>
+            <p class="text-[9px] text-slate-500 leading-tight">Injects corporate bank transfer information for client remittances.</p>
+            
+            <!-- Hidden by default, toggled via JS -->
+            <div id="bank-customization-inputs" class="hidden space-y-2.5 pt-2 border-t border-slate-800 text-xs text-slate-300">
+              <div>
+                <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">Bank Name</label>
+                <input type="text" id="config-bank-name" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" value="Delight Bank International" />
+              </div>
+              <div>
+                <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">Account Number</label>
+                <input type="text" id="config-bank-acc" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" value="120938491829" />
+              </div>
+              <div>
+                <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">IBAN Number</label>
+                <input type="text" id="config-bank-iban" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" value="AE2100092810000120938491829" />
+              </div>
+              <div>
+                <label class="text-[8px] text-slate-500 uppercase tracking-widest block mb-0.5">SWIFT / BIC Code</label>
+                <input type="text" id="config-bank-swift" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" value="DBIUAE2DXXX" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 9. Page Toggles & Footer Settings -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Page 2 & Printing Settings</label>
+          <div class="space-y-2 bg-slate-950/40 p-4 rounded-xl border border-slate-800/50 text-xs font-semibold text-slate-300">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-page-2" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Terms & Conditions Page</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="config-show-page-numbers" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+              <span>Show Footer Page Numbers</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 10. Legal Clauses Override -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Legal Clauses Override</label>
+          <div class="space-y-2.5 max-h-48 overflow-y-auto pr-2 custom-scrollbar border border-slate-800/80 rounded-xl p-3 bg-slate-950/40">
+            {legalArtifacts.map(artifact => (
+              <label class="flex items-start gap-2.5 text-xs text-slate-400 hover:text-white cursor-pointer">
+                <input type="checkbox" checked class="config-clause-toggle-cb mt-0.5 rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" data-clause-ident={artifact.identifier} />
+                <span class="leading-normal">{artifact.title}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- 11. Custom Appendix Clause Generator -->
+        <div class="space-y-3">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Add Dynamic Clause</label>
+          <div class="space-y-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800/50 text-xs">
+            <div>
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Clause Title</label>
+              <input type="text" id="custom-clause-title" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:outline-none focus:border-cyan-500" placeholder="e.g. Warranty Clause" />
+            </div>
+            <div>
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Clause Content</label>
+              <textarea id="custom-clause-content" rows="3" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:outline-none focus:border-cyan-500" placeholder="Type customized terms..."></textarea>
+            </div>
+            
+            <!-- Clause Shortcuts -->
+            <div class="space-y-1">
+              <label class="text-[8px] font-black text-slate-500 uppercase tracking-widest block">Autofill Shortcuts</label>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" id="shortcut-bank" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[9px] font-semibold">Bank</button>
+                <button type="button" id="shortcut-remit" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[9px] font-semibold">Remit</button>
+                <button type="button" id="shortcut-trn" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[9px] font-semibold">TRN</button>
+                <button type="button" id="shortcut-tax" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[9px] font-semibold">Tax</button>
+                <button type="button" id="shortcut-disc" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[9px] font-semibold">Discount</button>
+                <button type="button" id="shortcut-note" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[9px] font-semibold">Remarks</button>
+              </div>
+            </div>
+
+            <button type="button" id="append-clause-btn" class="w-full py-1.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded font-black uppercase text-[10px] tracking-wider transition-colors mt-2">
+              + Append to Clauses
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="pt-6 border-t border-slate-800 shrink-0">
+        <button type="button" onclick="window.print()" class="w-full inline-flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs py-3 rounded-xl transition-all shadow-lg uppercase tracking-wider">
+          <Printer class="h-4 w-4" />
+          Send to Printer (PDF)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const rootContainer = document.getElementById('print-root-container');
+    const invDiv = rootContainer?.getAttribute('data-division') || 'DTL';
+
+    // Helper to toggle visibility by ID
+    const toggleById = (id: string, visible: boolean) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = visible ? '' : 'none';
+    };
+
+    // Helper to toggle visibility by Selector
+    const toggleBySelector = (selector: string, visible: boolean) => {
+      document.querySelectorAll(selector).forEach(el => {
+        if (visible) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+    };
+
+    // Helper to dynamically update screen page numbers
+    const updatePageNumbersOnScreen = () => {
+      const page2Checked = (document.getElementById('config-show-page-2') as HTMLInputElement)?.checked;
+      const screenPage1 = document.getElementById('screen-page-1-num');
+      const screenPage2 = document.getElementById('screen-page-2-num');
+      
+      if (page2Checked) {
+        if (screenPage1) screenPage1.textContent = 'Page 1 of 2';
+        if (screenPage2) screenPage2.textContent = 'Page 2 of 2';
+      } else {
+        if (screenPage1) screenPage1.textContent = 'Page 1 of 1';
+      }
+    };
+
+    // Document Header Title manager
+    document.getElementById('config-doc-type')?.addEventListener('change', (e) => {
+      const title = (e.target as HTMLSelectElement).value;
+      const headerTitle = document.getElementById('print-doc-header-title');
+      if (headerTitle) headerTitle.textContent = title;
+    });
+
+    // Logo Manager
+    document.getElementById('config-branding-logo')?.addEventListener('change', (e) => {
+      const mode = (e.target as HTMLSelectElement).value;
+      const logo1 = document.getElementById('print-company-logo') as HTMLImageElement;
+      const logo2 = document.getElementById('print-company-logo-p2') as HTMLImageElement;
+      const desc = document.getElementById('print-from-division-desc');
+      
+      let src = '/dgllclogosmall.png';
+      if (mode === 'dtl' || (mode === 'auto' && invDiv !== 'DGS')) { src = '/dtllogo.jpg'; if(desc) desc.textContent = 'Delight Technical Lighting'; }
+      else if (mode === 'dgs' || (mode === 'auto' && invDiv === 'DGS')) { src = '/dgslogo.jpg'; if(desc) desc.textContent = 'Delight Greenscapes'; }
+      else { if(desc) desc.textContent = 'Delight Group LLC'; }
+      
+      if (logo1) logo1.src = src;
+      if (logo2) logo2.src = src;
+    });
+
+    // Show/Hide Primary Logo
+    document.getElementById('config-show-logo')?.addEventListener('change', (e) => {
+      const visible = (e.target as HTMLInputElement).checked;
+      const logoContainer = document.getElementById('print-logo-container');
+      if (logoContainer) logoContainer.style.display = visible ? 'flex' : 'none';
+    });
+
+    // Watermark
+    document.getElementById('config-show-watermark')?.addEventListener('change', (e) => {
+      document.getElementById('print-watermark')!.style.display = (e.target as HTMLInputElement).checked ? 'flex' : 'none';
+    });
+    document.getElementById('config-watermark-opacity')?.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      document.getElementById('print-watermark')!.style.opacity = (parseFloat(val) / 100).toString();
+      document.getElementById('wm-op-val')!.textContent = val + '%';
+    });
+    document.getElementById('config-watermark-size')?.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      const wmImg = document.getElementById('watermark-img');
+      if (wmImg) wmImg.style.width = val + 'px';
+      document.getElementById('wm-sz-val')!.textContent = val + 'px';
+    });
+
+    // Billing Details Visibility
+    document.getElementById('config-show-cust-company')?.addEventListener('change', (e) => {
+      toggleById('print-cust-company', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-cust-address')?.addEventListener('change', (e) => {
+      toggleById('print-cust-address', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-cust-contact')?.addEventListener('change', (e) => {
+      toggleById('print-cust-contact', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-cust-trn')?.addEventListener('change', (e) => {
+      toggleById('print-cust-trn', (e.target as HTMLInputElement).checked);
+    });
+
+    // Document Info Visibility
+    document.getElementById('config-show-info-status')?.addEventListener('change', (e) => {
+      toggleById('print-info-status', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-info-date')?.addEventListener('change', (e) => {
+      toggleById('print-info-date', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-info-due')?.addEventListener('change', (e) => {
+      toggleById('print-info-due', (e.target as HTMLInputElement).checked);
+    });
+
+    // Table Columns Visibility
+    document.getElementById('config-show-col-ref')?.addEventListener('change', (e) => {
+      toggleBySelector('.print-item-cat-ref', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-col-spec')?.addEventListener('change', (e) => {
+      toggleBySelector('.print-item-tech-spec', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-col-price')?.addEventListener('change', (e) => {
+      const show = (e.target as HTMLInputElement).checked;
+      toggleBySelector('.print-col-price-header', show);
+      toggleBySelector('.print-col-price-cell', show);
+    });
+
+    // Pricing breakdowns
+    document.getElementById('config-show-subtotal')?.addEventListener('change', (e) => {
+      toggleById('print-total-subtotal', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-vat')?.addEventListener('change', (e) => {
+      toggleById('print-total-vat', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-discount')?.addEventListener('change', (e) => {
+      toggleById('print-total-discount', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-settled')?.addEventListener('change', (e) => {
+      toggleById('print-total-settled', (e.target as HTMLInputElement).checked);
+    });
+    document.getElementById('config-show-due')?.addEventListener('change', (e) => {
+      toggleById('print-total-due', (e.target as HTMLInputElement).checked);
+    });
+
+    // Page 2 & footer settings
+    document.getElementById('config-show-page-2')?.addEventListener('change', (e) => {
+      toggleById('print-page-2-container', (e.target as HTMLInputElement).checked);
+      updatePageNumbersOnScreen();
+    });
+    document.getElementById('config-show-page-numbers')?.addEventListener('change', (e) => {
+      toggleBySelector('.print-page-footer', (e.target as HTMLInputElement).checked);
+    });
+
+    // Product Images Toggle
+    document.getElementById('config-show-prod-images')?.addEventListener('change', (e) => {
+      const show = (e.target as HTMLInputElement).checked;
+      document.querySelectorAll('.product-thumbnail-img').forEach(img => {
+        if (show) {
+          img.classList.remove('hidden');
+        } else {
+          img.classList.add('hidden');
+        }
+      });
+    });
+
+    // Signature Area placement
+    document.getElementById('config-sig-placement')?.addEventListener('change', (e) => {
+      const placement = (e.target as HTMLSelectElement).value;
+      const sigBlock = document.getElementById('corporate-auth-standard-block');
+      if (sigBlock) {
+        if (placement === 'none') {
+          sigBlock.style.display = 'none';
+        } else {
+          sigBlock.style.display = 'grid';
+        }
+      }
+    });
+
+    // Individual signature toggles
+    document.getElementById('sig-client')?.addEventListener('change', (e) => {
+      const col = document.getElementById('print-sig-client-col');
+      if (col) col.style.display = (e.target as HTMLInputElement).checked ? 'block' : 'none';
+    });
+    document.getElementById('sig-company')?.addEventListener('change', (e) => {
+      const col = document.getElementById('print-sig-company-col');
+      if (col) col.style.display = (e.target as HTMLInputElement).checked ? 'block' : 'none';
+    });
+    document.getElementById('sig-it')?.addEventListener('change', (e) => {
+      const col = document.getElementById('print-sig-it-col');
+      if (col) {
+        if ((e.target as HTMLInputElement).checked) {
+          col.classList.remove('hidden');
+          col.style.display = 'block';
+        } else {
+          col.classList.add('hidden');
+          col.style.display = 'none';
+        }
+      }
+    });
+
+    // Electronic notice compliant stamp
+    document.getElementById('config-show-electronic-notice')?.addEventListener('change', (e) => {
+      const notice = document.getElementById('print-electronic-badge');
+      if (notice) notice.style.display = (e.target as HTMLInputElement).checked ? 'block' : 'none';
+    });
+
+    // Finance Block & Customization Real-time Recalculations
+    const grandTotal = Number(rootContainer?.getAttribute('data-grand-total')) || 0;
+
+    const updateFinanceSettlement = () => {
+      const p1Label = (document.getElementById('config-finance-p1-label') as HTMLInputElement)?.value || 'Advance Payment';
+      const p1Pct = parseFloat((document.getElementById('config-finance-p1-pct') as HTMLInputElement)?.value) || 0;
+      const p1Date = (document.getElementById('config-finance-p1-date') as HTMLInputElement)?.value || '';
+      
+      const p2Label = (document.getElementById('config-finance-p2-label') as HTMLInputElement)?.value || 'Final Settlement';
+      const p2Pct = parseFloat((document.getElementById('config-finance-p2-pct') as HTMLInputElement)?.value) || 0;
+      const p2Date = (document.getElementById('config-finance-p2-date') as HTMLInputElement)?.value || '';
+      
+      const p1Amount = grandTotal * (p1Pct / 100);
+      const p2Amount = grandTotal * (p2Pct / 100);
+      
+      const p1LabelCell = document.getElementById('print-finance-p1-label-cell');
+      const p1DateCell = document.getElementById('print-finance-p1-date-cell');
+      const p1AmountCell = document.getElementById('print-finance-p1-amount-cell');
+      
+      const p2LabelCell = document.getElementById('print-finance-p2-label-cell');
+      const p2DateCell = document.getElementById('print-finance-p2-date-cell');
+      const p2AmountCell = document.getElementById('print-finance-p2-amount-cell');
+      
+      if (p1LabelCell) p1LabelCell.textContent = `${p1Label} (${p1Pct}%)`;
+      if (p1DateCell) p1DateCell.textContent = p1Date;
+      if (p1AmountCell) p1AmountCell.textContent = `AED ${p1Amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}`;
+      
+      if (p2LabelCell) p2LabelCell.textContent = `${p2Label} (${p2Pct}%)`;
+      if (p2DateCell) p2DateCell.textContent = p2Date;
+      if (p2AmountCell) p2AmountCell.textContent = `AED ${p2Amount.toLocaleString('en-AE', { minimumFractionDigits: 2 })}`;
+    };
+
+    // Bank Details Real-time Sync
+    const updateBankDetails = () => {
+      const bankName = (document.getElementById('config-bank-name') as HTMLInputElement)?.value || '';
+      const bankAcc = (document.getElementById('config-bank-acc') as HTMLInputElement)?.value || '';
+      const bankIban = (document.getElementById('config-bank-iban') as HTMLInputElement)?.value || '';
+      const bankSwift = (document.getElementById('config-bank-swift') as HTMLInputElement)?.value || '';
+      
+      const printBankName = document.getElementById('print-bank-name');
+      const printBankAcc = document.getElementById('print-bank-acc');
+      const printBankIban = document.getElementById('print-bank-iban');
+      const printBankSwift = document.getElementById('print-bank-swift');
+      
+      if (printBankName) printBankName.textContent = bankName;
+      if (printBankAcc) printBankAcc.textContent = bankAcc;
+      if (printBankIban) printBankIban.textContent = bankIban;
+      if (printBankSwift) printBankSwift.textContent = bankSwift;
+    };
+
+    // Listeners for Finance customizer inputs
+    ['config-finance-p1-label', 'config-finance-p1-pct', 'config-finance-p1-date',
+     'config-finance-p2-label', 'config-finance-p2-pct', 'config-finance-p2-date'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', updateFinanceSettlement);
+    });
+
+    // Listeners for Bank details customizer inputs
+    ['config-bank-name', 'config-bank-acc', 'config-bank-iban', 'config-bank-swift'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', updateBankDetails);
+    });
+
+    // Toggle Finance block & its configuration settings
+    document.getElementById('config-show-finance')?.addEventListener('change', (e) => {
+      const checked = (e.target as HTMLInputElement).checked;
+      const block = document.getElementById('finance-settlement-block');
+      const inputs = document.getElementById('finance-customization-inputs');
+      
+      if (checked) {
+        block?.classList.remove('hidden');
+        inputs?.classList.remove('hidden');
+      } else {
+        block?.classList.add('hidden');
+        inputs?.classList.add('hidden');
+      }
+    });
+
+    // Toggle Bank details card & its configuration settings
+    document.getElementById('config-show-bank')?.addEventListener('change', (e) => {
+      const checked = (e.target as HTMLInputElement).checked;
+      const block = document.getElementById('bank-details-block');
+      const inputs = document.getElementById('bank-customization-inputs');
+      
+      if (checked) {
+        block?.classList.remove('hidden');
+        inputs?.classList.remove('hidden');
+      } else {
+        block?.classList.add('hidden');
+        inputs?.classList.add('hidden');
+      }
+    });
+
+    // Clauses Checkbox Toggles
+    document.querySelectorAll('.config-clause-toggle-cb').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const ident = (e.target as HTMLInputElement).getAttribute('data-clause-ident');
+        const block = document.querySelector(`.clause-block[data-identifier="${ident}"]`);
+        if (block) {
+          if ((e.target as HTMLInputElement).checked) block.classList.remove('hidden');
+          else block.classList.add('hidden');
+        }
+      });
+    });
+
+    // Custom Clause Shortcuts
+    const shortcutMapping: Record<string, {title: string, content: string}> = {
+      'shortcut-bank': { title: 'Bank Remittance Details', content: 'Delight Group bank deposits go to Account: 120938491829. IBAN: AE210009281.' },
+      'shortcut-remit': { title: 'Swift confirmation note', content: 'Kindly submit bank deposit / swift transfer slips to invoice@delightgroup.com.' },
+      'shortcut-trn': { title: 'Taxes Reference registration', content: 'Corporate verified TRN identifier: 10003862800003.' },
+      'shortcut-tax': { title: 'Tax standard compliance', content: 'Prices specified include a standard 5% VAT rate unless specified otherwise.' },
+      'shortcut-disc': { title: 'Settlement Terms conditions', content: 'Discount provisions are applicable strictly under prompt due-date clearing.' },
+      'shortcut-note': { title: 'General delivery remarks', content: 'Report inventory / shipping discrepancies within 24 hours of delivery receipt.' }
+    };
+
+    Object.keys(shortcutMapping).forEach(id => {
+      document.getElementById(id)?.addEventListener('click', () => {
+        const details = shortcutMapping[id];
+        (document.getElementById('custom-clause-title') as HTMLInputElement).value = details.title;
+        (document.getElementById('custom-clause-content') as HTMLTextAreaElement).value = details.content;
+      });
+    });
+
+    // Append Custom Clause Handler
+    document.getElementById('append-clause-btn')?.addEventListener('click', () => {
+      const titleInput = document.getElementById('custom-clause-title') as HTMLInputElement;
+      const contentText = document.getElementById('custom-clause-content') as HTMLTextAreaElement;
+      const title = titleInput.value.trim();
+      const content = contentText.value.trim();
+      if (!title || !content) return;
+      
+      const parent = document.getElementById('print-legal-clauses-area')!;
+      const div = document.createElement('div');
+      div.className = 'clause-block mt-3';
+      div.innerHTML = `
+        <h5 class="font-bold text-slate-800">${title}</h5>
+        <p class="text-slate-500 mt-0.5 leading-relaxed text-[9px]">${content}</p>
+      `;
+      parent.appendChild(div);
+      
+      titleInput.value = '';
+      contentText.value = '';
+    });
+
+    // Sidebar Mobile/Tablet Toggle
+    const sidebar = document.getElementById('print-sidebar-config');
+    const backdrop = document.getElementById('print-sidebar-backdrop');
+    const toggleBtn = document.getElementById('print-sidebar-toggle');
+
+    const openSidebar = () => {
+      if (sidebar && backdrop) {
+        sidebar.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+        setTimeout(() => backdrop.classList.add('opacity-100'), 10);
+      }
+    };
+
+    const closeSidebar = () => {
+      if (sidebar && backdrop) {
+        sidebar.classList.add('translate-x-full');
+        backdrop.classList.remove('opacity-100');
+        setTimeout(() => backdrop.classList.add('hidden'), 300);
+      }
+    };
+
+    toggleBtn?.addEventListener('click', () => {
+      if (sidebar?.classList.contains('translate-x-full')) {
+        openSidebar();
+      } else {
+        closeSidebar();
+      }
+    });
+
+    backdrop?.addEventListener('click', closeSidebar);
+
+    // Initial Trigger for page numbers and Auto mode logo
+    const syncCheckboxes = () => {
+      const selectors = [
+        '#config-show-logo', '#config-show-watermark', '#config-show-cust-company',
+        '#config-show-cust-address', '#config-show-cust-contact', '#config-show-cust-trn',
+        '#config-show-info-status', '#config-show-info-date', '#config-show-info-due',
+        '#config-show-col-ref', '#config-show-col-spec', '#config-show-col-price',
+        '#config-show-subtotal', '#config-show-vat', '#config-show-discount',
+        '#config-show-settled', '#config-show-due', '#config-show-page-2',
+        '#config-show-page-numbers', '#config-show-prod-images', '#sig-client',
+        '#sig-company', '#sig-it', '#config-show-electronic-notice',
+        '#config-show-finance', '#config-show-bank'
+      ];
+      selectors.forEach(sel => {
+        const el = document.querySelector(sel);
+        if (el) el.dispatchEvent(new Event('change'));
+      });
+      
+      // Also dispatch change on select menus
+      document.getElementById('config-doc-type')?.dispatchEvent(new Event('change'));
+      document.getElementById('config-branding-logo')?.dispatchEvent(new Event('change'));
+      document.getElementById('config-sig-placement')?.dispatchEvent(new Event('change'));
+      
+      // Clause checkboxes
+      document.querySelectorAll('.config-clause-toggle-cb').forEach(cb => {
+        cb.dispatchEvent(new Event('change'));
+      });
+    };
+
+    syncCheckboxes();
+    updateFinanceSettlement();
+    updateBankDetails();
+  </script>
+</DashboardLayout>

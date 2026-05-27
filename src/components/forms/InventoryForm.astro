@@ -1,0 +1,141 @@
+---
+---
+
+<div id="inventory-modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all">
+    <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+      <h3 class="text-lg font-bold text-slate-900">Adjust Inventory Stock</h3>
+      <button id="close-inventory-modal" class="text-slate-400 hover:text-slate-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    
+    <div class="p-6">
+      <form id="inventory-form" class="space-y-4">
+        <input type="hidden" id="inventory-id" name="inventory_id" />
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Adjustment Amount</label>
+          <input 
+            type="number" 
+            name="change_amount" 
+            required
+            placeholder="e.g. 5 or -2"
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" 
+          />
+          <p class="text-2xs text-slate-500">Use negative numbers to reduce stock.</p>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Reason for Adjustment</label>
+          <select name="reason" required class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+            <option value="restock">Restock Delivery</option>
+            <option value="fulfillment">Order Fulfillment</option>
+            <option value="correction">Inventory Correction</option>
+            <option value="damage">Damaged Goods</option>
+          </select>
+        </div>
+
+        <div id="inventory-form-msg" class="hidden p-3 rounded-lg text-sm font-semibold mt-4"></div>
+
+        <div class="pt-4 flex gap-3">
+          <button 
+            type="button"
+            id="cancel-inventory-btn"
+            class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-lg text-sm font-bold transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit"
+            id="inventory-submit-btn"
+            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm"
+          >
+            Save Adjustment
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const setupInventoryForm = () => {
+    const modal = document.getElementById('inventory-modal-backdrop');
+    const form = document.getElementById('inventory-form') as HTMLFormElement;
+    const closeBtn = document.getElementById('close-inventory-modal');
+    const cancelBtn = document.getElementById('cancel-inventory-btn');
+    
+    if (!modal || !form) return;
+
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      form.reset();
+      const msg = document.getElementById('inventory-form-msg');
+      if (msg) msg.classList.add('hidden');
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    
+    // Listen for custom event to open modal
+    document.addEventListener('open-inventory-modal', ((e: CustomEvent) => {
+      const invId = e.detail?.inventoryId;
+      if (invId) {
+        (document.getElementById('inventory-id') as HTMLInputElement).value = invId;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }) as EventListener);
+
+    // Form submission logic
+    const newForm = form.cloneNode(true) as HTMLFormElement;
+    form.parentNode?.replaceChild(newForm, form);
+
+    // Cancel must attach to the cloned node — original is now detached
+    newForm.querySelector('#cancel-inventory-btn')?.addEventListener('click', closeModal);
+
+    newForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('inventory-form-msg');
+      const btn = document.getElementById('inventory-submit-btn');
+      if (!msg || !btn) return;
+
+      btn.setAttribute('disabled', 'true');
+      const originalText = btn.textContent;
+      btn.textContent = 'Saving...';
+
+      const formData = new FormData(newForm);
+      const data = Object.fromEntries(formData.entries());
+      data.change_amount = parseInt(data.change_amount as string) || 0;
+
+      try {
+        const res = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        
+        if (res.ok) {
+          msg.className = 'p-3 rounded-lg text-sm font-semibold bg-green-50 text-green-700 border border-green-200 block mt-4';
+          msg.textContent = 'Inventory updated successfully!';
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          throw new Error(result.error || 'Failed to update inventory');
+        }
+      } catch (err: any) {
+        msg.className = 'p-3 rounded-lg text-sm font-semibold bg-red-50 text-red-700 border border-red-200 block mt-4';
+        msg.textContent = err.message || 'Error saving inventory';
+      } finally {
+        btn.removeAttribute('disabled');
+        btn.textContent = originalText;
+      }
+    });
+  };
+
+  setupInventoryForm();
+  document.addEventListener('astro:page-load', setupInventoryForm);
+</script>

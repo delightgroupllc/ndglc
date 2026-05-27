@@ -1,0 +1,116 @@
+---
+import Layout from '../layouts/Layout.astro';
+import DownloadCard from '../components/ui/DownloadCard.astro';
+import { query } from '../lib/db';
+
+let dtlDownloads: any[] = [];
+let dgsDownloads: any[] = [];
+
+try {
+  // Fetch active downloads — division column added via migration, visibility_rules is the JSONB fallback
+  const res = await query(`
+    SELECT *
+    FROM downloads
+    WHERE status = 'active'
+       OR status IS NULL
+    ORDER BY created_at DESC
+  `);
+  
+  // Distribute into arrays based on division column (with JSONB fallback)
+  res.rows.forEach((d: any) => {
+    const item = {
+      title: d.title,
+      category: (d.type || 'catalog').toUpperCase(),
+      size: d.file_size || 'Unknown',
+      url: d.url
+    };
+
+    // Determine division: prefer explicit column, fall back to visibility_rules JSONB
+    let division = d.division;
+    if (!division && d.visibility_rules) {
+      try {
+        const vr = typeof d.visibility_rules === 'string' ? JSON.parse(d.visibility_rules) : d.visibility_rules;
+        division = vr.division;
+      } catch {}
+    }
+
+    // Skip items with hidden/archived status (handles null status = pre-migration rows)
+    if (d.status === 'hidden' || d.status === 'archived') return;
+
+    if (division === 'dtl' || !division) {
+      dtlDownloads.push(item);
+    } else if (division === 'dgs') {
+      dgsDownloads.push(item);
+    }
+  });
+} catch (err: any) {
+  console.warn('Database offline, running mock downloads catalog:', err.message);
+  dtlDownloads = [
+    { title: 'DELIGHT TECHNICAL LIGHTING INDOOR CATALOG', category: 'LIGHTING', size: '19 MB', url: '/downloads/dtl-indoor-catalog.pdf' },
+    { title: 'DELIGHT TECHNICAL LIGHTING OUTDOOR CATALOG', category: 'LIGHTING', size: '13 MB', url: '/downloads/dtl-outdoor-catalog.pdf' },
+    { title: 'DELIGHT TECHNICAL LIGHTING COMPANY PROFILE', category: 'LIGHTING', size: '13 MB', url: '/downloads/dtl-company-profile.pdf' },
+  ];
+
+  dgsDownloads = [
+    { title: 'DELIGHT GREENSCAPES CATALOG', category: 'LANDSCAPING', size: '42 MB', url: '/downloads/dgs-catalog.pdf' },
+  ];
+}
+---
+
+<Layout title="Download Center" description="Direct access to our technical documentation and product catalogs.">
+  <!-- CSS Dot Pattern & Cooler Calm Background -->
+  <div class="min-h-screen bg-[#fcfdfd] relative overflow-hidden">
+    <!-- Ambient subtle calm background blobs -->
+    <div class="absolute top-20 left-10 w-[450px] h-[450px] rounded-full bg-slate-100/50 blur-[130px] pointer-events-none select-none z-0"></div>
+    <div class="absolute bottom-20 right-10 w-[500px] h-[500px] rounded-full bg-slate-100/40 blur-[150px] pointer-events-none select-none z-0"></div>
+
+    <div class="absolute inset-0 z-0 opacity-[0.12]" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 32px 32px;"></div>
+    
+    <div class="relative z-10 pt-10 pb-32">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        
+        <!-- Hero Section -->
+        <div class="text-center max-w-2xl mx-auto mb-12 space-y-4">
+          <h1 class="text-4xl sm:text-6xl font-extrabold font-display text-slate-900 tracking-tight leading-none">
+            Download <span class="text-[#0f2d1d]">Center</span>
+          </h1>
+          <p class="mt-4 text-sm sm:text-base text-slate-500 leading-relaxed font-semibold max-w-lg mx-auto">
+            Access our comprehensive technical documentation, product catalogs, and corporate specifications across all divisions.
+          </p>
+        </div>
+ 
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8">
+          
+          <div class="space-y-8 relative">
+            <div class="absolute -left-4 top-0 bottom-0 w-px bg-slate-200 hidden lg:block"></div>
+            <div class="pl-0 lg:pl-6">
+              <DownloadCard 
+                badge="DTL Division"
+                badgeColor="blue"
+                titleStart="Technical Lighting"
+                titleAccent="Solutions"
+                description="Comprehensive indoor, outdoor, and facade lighting specifications and component blueprints."
+                items={dtlDownloads}
+              />
+            </div>
+          </div>
+ 
+          <div class="space-y-8 relative">
+            <div class="absolute -left-4 top-0 bottom-0 w-px bg-slate-200 hidden lg:block"></div>
+            <div class="pl-0 lg:pl-6">
+              <DownloadCard 
+                badge="DGS Division"
+                badgeColor="green"
+                titleStart="Greenscapes &"
+                titleAccent="Landscaping"
+                description="System architectures and operational guidelines for urban landscaping and irrigation technologies."
+                items={dgsDownloads}
+              />
+            </div>
+          </div>
+ 
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>

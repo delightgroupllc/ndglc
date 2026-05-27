@@ -1,0 +1,208 @@
+---
+import { Search, Image, X, Globe } from 'lucide-astro';
+---
+
+<div id="global-resource-picker-modal" class="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-4" data-target-input-id="" data-preview-img-id="">
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl text-slate-100">
+    
+    <!-- Modal Header -->
+    <div class="p-5 border-b border-slate-800 bg-slate-950 flex justify-between items-center shrink-0">
+      <h3 class="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+        <Image class="text-emerald-500 w-4 h-4" />
+        Browse Media Resources
+      </h3>
+      <button type="button" id="close-resource-picker-btn" class="text-slate-400 hover:text-white rounded-lg p-1.5 hover:bg-slate-800 transition-all cursor-pointer">
+        <X class="w-4 h-4" />
+      </button>
+    </div>
+
+    <!-- Toolbar Filters -->
+    <div class="p-4 border-b border-slate-800 bg-slate-900/50 flex flex-col sm:flex-row gap-3 items-center justify-between shrink-0">
+      <div class="relative w-full sm:max-w-xs">
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+        <input 
+          type="text" 
+          id="picker-search-input" 
+          placeholder="Filter stored media..." 
+          class="w-full rounded-lg border border-slate-700 bg-slate-950 text-slate-200 placeholder-slate-500 px-9 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-semibold"
+        />
+      </div>
+      
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <select id="picker-division-select" class="flex-1 sm:flex-none bg-slate-950 border border-slate-700 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none text-slate-300 font-semibold cursor-pointer">
+          <option value="all">All Divisions</option>
+          <option value="dtl">DTL (Technical Lighting)</option>
+          <option value="dgs">DGS (Greenscapes)</option>
+        </select>
+        <select id="picker-section-select" class="flex-1 sm:flex-none bg-slate-950 border border-slate-700 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none text-slate-300 font-semibold cursor-pointer">
+          <option value="all">All Sections</option>
+          <option value="hero">Hero Banner</option>
+          <option value="discover_by_rooms">Discover by Rooms</option>
+          <option value="featured_products">Featured Products</option>
+          <option value="projects">Projects</option>
+          <option value="instagram">Instagram Feed</option>
+        </select>
+        
+        <a href="/dashboard/resources" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-black text-emerald-500 hover:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition-all uppercase shrink-0">
+          <Globe class="w-3 h-3" /> Upload Stock
+        </a>
+      </div>
+    </div>
+
+    <!-- Media Grid Grid -->
+    <div class="flex-1 overflow-y-auto p-5 bg-slate-950/40">
+      <div id="picker-loading" class="text-center py-16 hidden">
+        <div class="inline-block animate-spin rounded-full h-7 w-7 border-b-2 border-emerald-500"></div>
+        <p class="text-slate-500 text-xs mt-3 font-semibold">Fetching active media resources...</p>
+      </div>
+
+      <div id="picker-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <!-- populated dynamically -->
+      </div>
+      
+      <div id="picker-empty" class="text-center py-12 text-slate-500 bg-slate-900/30 rounded-xl border border-dashed border-slate-800 text-xs hidden">
+        No matching saved images found. Try searching or upload new images in the Resources Hub.
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="p-4 bg-slate-950 border-t border-slate-800 flex justify-end shrink-0">
+      <button type="button" id="close-picker-footer-btn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer uppercase tracking-wider">
+        Close Selector
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let allPickerImages: any[] = [];
+  const modal = document.getElementById('global-resource-picker-modal')!;
+  const grid = document.getElementById('picker-grid')!;
+  const loading = document.getElementById('picker-loading')!;
+  const emptyMsg = document.getElementById('picker-empty')!;
+  const searchInp = document.getElementById('picker-search-input') as HTMLInputElement;
+  const divSel = document.getElementById('picker-division-select') as HTMLSelectElement;
+  const secSel = document.getElementById('picker-section-select') as HTMLSelectElement;
+
+  const fetchPickerImages = async () => {
+    loading.classList.remove('hidden');
+    grid.innerHTML = '';
+    emptyMsg.classList.add('hidden');
+    
+    try {
+      const res = await fetch('/api/images');
+      if (res.ok) {
+        const data = await res.json();
+        allPickerImages = data.images || [];
+        renderPickerGrid();
+      } else {
+        grid.innerHTML = '<p class="col-span-full text-center text-xs text-rose-500 py-6">Failed to retrieve database media library.</p>';
+      }
+    } catch(err) {
+      grid.innerHTML = '<p class="col-span-full text-center text-xs text-rose-500 py-6">Error contacting database API.</p>';
+    } finally {
+      loading.classList.add('hidden');
+    }
+  };
+
+  const renderPickerGrid = () => {
+    const q = searchInp.value.toLowerCase().trim();
+    const division = divSel.value;
+    const section = secSel.value;
+
+    const filtered = allPickerImages.filter(img => {
+      const matchesQ = !q || (img.alt_text && img.alt_text.toLowerCase().includes(q));
+      const matchesDiv = division === 'all' || img.division === division;
+      const matchesSec = section === 'all' || img.section === section;
+      return matchesQ && matchesDiv && matchesSec;
+    });
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '';
+      emptyMsg.classList.remove('hidden');
+      return;
+    }
+
+    emptyMsg.classList.add('hidden');
+    grid.innerHTML = filtered.map(img => `
+      <div 
+        class="picker-image-card group relative bg-slate-900 border border-slate-800 rounded-xl overflow-hidden cursor-pointer hover:border-emerald-500/80 transition-all flex flex-col"
+        data-url="${img.image_url}"
+      >
+        <div class="h-28 bg-slate-950 relative overflow-hidden flex items-center justify-center">
+          <img src="${img.image_url}" alt="${img.alt_text}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='/noimage.jpg'" />
+          <span class="absolute top-1 left-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-600/90 text-white">
+            ${img.division.toUpperCase()}
+          </span>
+        </div>
+        <div class="p-2.5 flex-1 flex flex-col justify-between text-left">
+          <p class="text-[10px] font-bold text-slate-350 line-clamp-2 leading-tight">${img.alt_text || 'Resource Asset'}</p>
+        </div>
+        <div class="absolute inset-0 bg-emerald-950/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <span class="bg-emerald-600 text-slate-950 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg shadow">
+            Select Asset
+          </span>
+        </div>
+      </div>
+    `).join('');
+
+    // Attach click listeners to cards
+    grid.querySelectorAll('.picker-image-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        const targetCard = e.currentTarget as HTMLElement;
+        const url = targetCard.dataset.url;
+        if (!url) return;
+
+        const targetInputId = modal.getAttribute('data-target-input-id');
+        const previewImgId = modal.getAttribute('data-preview-img-id');
+
+        if (targetInputId) {
+          const targetInput = document.getElementById(targetInputId) as HTMLInputElement;
+          if (targetInput) {
+            targetInput.value = url;
+            // Dispatch input and change events to trigger preview hooks or form listeners
+            targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+            targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+
+        if (previewImgId) {
+          const previewImg = document.getElementById(previewImgId) as HTMLImageElement;
+          if (previewImg) {
+            previewImg.src = url;
+          }
+        }
+
+        closePicker();
+      });
+    });
+  };
+
+  const closePicker = () => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  };
+
+  document.getElementById('close-resource-picker-btn')?.addEventListener('click', closePicker);
+  document.getElementById('close-picker-footer-btn')?.addEventListener('click', closePicker);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closePicker(); });
+
+  searchInp.addEventListener('input', renderPickerGrid);
+  divSel.addEventListener('change', renderPickerGrid);
+  secSel.addEventListener('change', renderPickerGrid);
+
+  // Expose function globally
+  (window as any).openResourcePicker = (targetInputId: string, previewImgId?: string) => {
+    modal.setAttribute('data-target-input-id', targetInputId);
+    if (previewImgId) {
+      modal.setAttribute('data-preview-img-id', previewImgId);
+    } else {
+      modal.removeAttribute('data-preview-img-id');
+    }
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    fetchPickerImages();
+  };
+</script>

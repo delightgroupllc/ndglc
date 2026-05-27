@@ -1,0 +1,320 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { query } from '../../lib/db';
+import { Calendar, Tag, ArrowLeft, Lightbulb, Flower, Newspaper } from 'lucide-astro';
+
+const { slug } = Astro.params;
+let article: any = null;
+let dbConnected = true;
+
+try {
+  const res = await query("SELECT * FROM articles WHERE slug = $1 AND status = 'published'", [slug]);
+  article = res.rows[0];
+} catch (err: any) {
+  dbConnected = false;
+  console.error("Database lookup failed for article slug:", slug, err?.message || err);
+}
+
+// Redirect back home if article not found
+if (!article) {
+  return Astro.redirect('/');
+}
+
+// Determine division branding contexts
+const isDtl = article.division === 'dtl';
+const isDgs = article.division === 'dgs';
+const isBoth = article.division === 'both';
+
+// Theme variables
+let themeColor = 'from-[#082a17] to-[#011705] border-[#BE854C]'; // default rich green
+let accentText = 'text-[#BE854C]';
+let badgeBg = 'bg-[#BE854C]/25 text-[#BE854C] border-[#BE854C]/30';
+let divisionName = 'Delight Group Global';
+let divisionLogo = '/dgllclogosmall.png';
+let backLink = '/';
+
+if (isDtl) {
+  themeColor = 'from-slate-950 to-slate-900 border-amber-500';
+  accentText = 'text-amber-500';
+  badgeBg = 'bg-amber-500/25 text-amber-400 border-amber-500/30';
+  divisionName = 'Delight Technical Lighting';
+  divisionLogo = '/dtllogo.jpg';
+  backLink = '/delighttechnicallighting';
+} else if (isDgs) {
+  themeColor = 'from-[#002208] to-[#001705] border-[#BE854C]';
+  accentText = 'text-[#BE854C]';
+  badgeBg = 'bg-[#BE854C]/25 text-white border-[#BE854C]/45';
+  divisionName = 'Delight Greenscapes';
+  divisionLogo = '/dgslogo.jpg';
+  backLink = '/delightgreenscapes';
+} else if (isBoth) {
+  // Use a beautifully unified green-gold aesthetic for global articles
+  themeColor = 'from-[#082a17] to-[#011705] border-emerald-500';
+  accentText = 'text-emerald-400';
+  badgeBg = 'bg-emerald-500/25 text-emerald-300 border-emerald-500/30';
+  divisionName = 'Delight Group Corporate';
+  divisionLogo = '/dgllclogolarge.png';
+  backLink = '/';
+}
+
+const formattedDate = article.published_at 
+  ? new Date(article.published_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  : new Date(article.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+---
+
+<Layout title={article.title} description={article.summary || `Read full article: ${article.title}`}>
+  
+  <!-- Global Article CSS overrides for rich inner HTML support -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@400;600;800&family=Outfit:wght@400;700;900&family=Fira+Code:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <style is:global>
+    /* Custom fonts inside Quill and Preview */
+    .ql-font-inter, .article-body-content .ql-font-inter { font-family: 'Inter', sans-serif !important; }
+    .ql-font-outfit, .article-body-content .ql-font-outfit { font-family: 'Outfit', sans-serif !important; }
+    .ql-font-playfair, .article-body-content .ql-font-playfair { font-family: 'Playfair Display', serif !important; }
+    .ql-font-fira, .article-body-content .ql-font-fira { font-family: 'Fira Code', monospace !important; }
+    .ql-font-roboto, .article-body-content .ql-font-roboto { font-family: 'Roboto', sans-serif !important; }
+
+    /* Custom Responsive Grid and Box Layouts */
+    .ql-grid-2, .article-body-content .ql-grid-2 {
+      display: grid !important;
+      grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+      gap: 1.5rem !important;
+      margin: 1.25rem 0 !important;
+    }
+    @media (min-width: 768px) {
+      .ql-grid-2, .article-body-content .ql-grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+    }
+    .ql-grid-3, .article-body-content .ql-grid-3 {
+      display: grid !important;
+      grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+      gap: 1.25rem !important;
+      margin: 1.25rem 0 !important;
+    }
+    @media (min-width: 768px) {
+      .ql-grid-3, .article-body-content .ql-grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      }
+    }
+
+    /* Callout Boxes Styles */
+    .ql-callout-gold, .article-body-content .ql-callout-gold {
+      background: linear-gradient(135deg, #fdfbf7, #fcf8f2) !important;
+      border-left: 4px solid #BE854C !important;
+      border-radius: 8px !important;
+      padding: 1rem 1.25rem !important;
+      margin: 1.25rem 0 !important;
+      box-shadow: 0 4px 12px rgba(190, 133, 76, 0.04) !important;
+    }
+    .ql-callout-green, .article-body-content .ql-callout-green {
+      background: linear-gradient(135deg, #f6fcf8, #f0faf2) !important;
+      border-left: 4px solid #10b981 !important;
+      border-radius: 8px !important;
+      padding: 1rem 1.25rem !important;
+      margin: 1.25rem 0 !important;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.04) !important;
+    }
+
+    /* Table Styles for public pages */
+    .article-body-content table {
+      border-collapse: collapse !important;
+      width: 100% !important;
+      margin: 1.25rem 0 !important;
+    }
+    .article-body-content td, .article-body-content th {
+      border: 1px solid #cbd5e1 !important;
+      padding: 10px !important;
+      min-width: 40px !important;
+    }
+    .article-body-content th {
+      background-color: #f1f5f9;
+      font-weight: bold;
+    }
+
+    /* Image alignments for Quill output in front-end */
+    .article-body-content img.ql-img-left { float: left !important; margin-right: 1.5rem !important; margin-bottom: 0.75rem !important; display: inline !important; }
+    .article-body-content img.ql-img-right { float: right !important; margin-left: 1.5rem !important; margin-bottom: 0.75rem !important; display: inline !important; }
+    .article-body-content img.ql-img-center { display: block !important; float: none !important; margin: 1.5rem auto !important; }
+
+    /* Styling QuillJS HTML inside dynamic layout pages */
+    .article-body-content h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem !important;
+      font-weight: 800 !important;
+      color: #0f172a !important;
+      margin-top: 2rem !important;
+      margin-bottom: 0.75rem !important;
+      line-height: 1.25 !important;
+      letter-spacing: -0.025em !important;
+    }
+    .article-body-content h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem !important;
+      font-weight: 700 !important;
+      color: #0f172a !important;
+      margin-top: 1.5rem !important;
+      margin-bottom: 0.5rem !important;
+      line-height: 1.3 !important;
+    }
+    .article-body-content p {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem !important;
+      line-height: 1.7 !important;
+      color: #334155 !important;
+      margin-bottom: 1.25rem !important;
+    }
+    .article-body-content img {
+      max-width: 100% !important;
+      height: auto !important;
+      border-radius: 0.75rem !important;
+      margin: 1.5rem auto !important;
+      display: block !important;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025) !important;
+      border: 1px solid #f1f5f9 !important;
+    }
+    .article-body-content ul {
+      list-style-type: none !important;
+      padding-left: 0 !important;
+      margin-bottom: 1.25rem !important;
+      space-y: 0.5rem !important;
+    }
+    .article-body-content li {
+      position: relative !important;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem !important;
+      line-height: 1.6 !important;
+      color: #475569 !important;
+      margin-bottom: 0.5rem !important;
+    }
+    
+    /* Support checklist with custom checkmarks */
+    .article-body-content li.checked-item,
+    .article-body-content .checklist li {
+      padding-left: 1.75rem !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23BE854C' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7' /%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: left 3px !important;
+      background-size: 14px 14px !important;
+    }
+
+    /* Support custom checklist color overrides if DTL */
+    .dtl-active .article-body-content li.checked-item,
+    .dtl-active .article-body-content .checklist li {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23f59e0b' stroke-width='3'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7' /%3E%3C/svg%3E") !important;
+    }
+
+    /* Style blockquotes */
+    .article-body-content blockquote {
+      border-left: 3px solid #BE854C !important;
+      padding-left: 1rem !important;
+      font-style: italic !important;
+      color: #475569 !important;
+      margin: 1.5rem 0 !important;
+    }
+  </style>
+
+  <div class={`min-h-screen bg-[#fcfdfd] ${isDtl ? 'dtl-active' : ''}`}>
+    <!-- Header Hero Banner (Mockup Styled) -->
+    <section class={`relative overflow-hidden bg-gradient-to-br ${themeColor} py-20 md:py-24 border-b-4`}>
+      <!-- Accent background patterns -->
+      <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30"></div>
+      <div class="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-white/5 blur-3xl"></div>
+      
+      <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-6">
+        <!-- Back Navigation Button -->
+        <div class="flex justify-start">
+          <a 
+            href={backLink}
+            class="inline-flex items-center gap-2 text-xs font-bold text-white/80 hover:text-white transition-all bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-lg backdrop-blur-sm"
+          >
+            <ArrowLeft class="h-3.5 w-3.5" />
+            Back to {isDtl ? 'Technical Lighting' : (isDgs ? 'Greenscapes Portal' : 'Home')}
+          </a>
+        </div>
+
+        <!-- Meta Details Row -->
+        <div class="flex flex-wrap items-center justify-center gap-4 text-xs font-bold tracking-wider">
+          <span class={`px-2.5 py-0.5 rounded border ${badgeBg}`}>
+            {article.type.replace('_', ' ').toUpperCase()}
+          </span>
+          <span class="text-white/40">&bull;</span>
+          <span class={`flex items-center gap-1.5 ${accentText}`}>
+            <Calendar class="h-3.5 w-3.5" />
+            {formattedDate.toUpperCase()}
+          </span>
+          <span class="text-white/40">&bull;</span>
+          <span class="text-slate-200 flex items-center gap-1.5">
+            {isDtl ? (
+              <Lightbulb class="h-3.5 w-3.5 text-amber-400" />
+            ) : (
+              <Flower class="h-3.5 w-3.5 text-emerald-400" />
+            )}
+            {divisionName.toUpperCase()}
+          </span>
+        </div>
+
+        <!-- Title -->
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight text-white max-w-4xl mx-auto drop-shadow-md">
+          {article.title}
+        </h1>
+
+        <!-- Synopsis summary block -->
+        {article.summary && (
+          <p class="text-slate-350 text-sm max-w-2xl mx-auto leading-relaxed border-l-2 border-slate-500/50 pl-4 italic">
+            {article.summary}
+          </p>
+        )}
+      </div>
+    </section>
+
+    <!-- Main Content Reader Container (Mockup styled alternating elements) -->
+    <main class="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
+      
+      {/* Featured Banner Image (If defined, displayed centered with drop-shadow) */}
+      {article.featured_image && (
+        <div class="mb-12 rounded-2xl overflow-hidden shadow-2xl border border-slate-100 max-h-[480px]">
+          <img 
+            src={article.featured_image} 
+            alt={article.title} 
+            class="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      <!-- Raw HTML Dynamic Render Content -->
+      <article class="article-body-content prose prose-slate max-w-none text-left">
+        <Fragment set:html={article.content} />
+      </article>
+
+      <!-- Signature / Footer Corporate Endnote -->
+      {(article.show_footer !== false) && (
+        <div class="mt-16 pt-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div class="flex items-center gap-4">
+            <img src={divisionLogo} alt={article.footer_brand || divisionName} class="h-12 w-auto object-contain" />
+            <div class="text-left leading-tight">
+              <span class="text-xs font-black uppercase text-slate-400 block tracking-wider">Published By</span>
+              <span class="text-sm font-bold text-slate-800 block">{article.footer_brand || divisionName}</span>
+              <span class="text-[10px] text-slate-500 block">
+                {article.footer_address || (isDtl ? "Delight Technical Lighting · Dubai, UAE" : (isDgs ? "Delight Greenscapes · Dubai, UAE" : "Delight Group LLC · Dubai, UAE"))}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <a 
+              href="/contact" 
+              class={`inline-flex items-center gap-2 text-xs font-bold text-white px-5 py-3 rounded-lg transition-all shadow-md ${
+                isDtl ? 'bg-slate-900 hover:bg-slate-800' : 'bg-[#004712] hover:bg-[#00360d]'
+              }`}
+            >
+              {article.footer_cta || "Get in Touch / Inquiry"}
+              <ArrowLeft class="h-3.5 w-3.5 rotate-180" />
+            </a>
+          </div>
+        </div>
+      )}
+    </main>
+  </div>
+
+</Layout>

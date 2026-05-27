@@ -1,0 +1,194 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { Shield, Check, X, ShieldAlert, Award, AlertTriangle } from 'lucide-astro';
+
+let permissions: any[] = [];
+let rolePermissions: any[] = [];
+let userOverrides: any[] = [];
+let dbConnected = true;
+
+try {
+  // Load permissions
+  const permRes = await query('SELECT * FROM permissions ORDER BY name ASC');
+  permissions = permRes.rows;
+
+  // Load mapped role permissions
+  const rolePermRes = await query(
+    `SELECT rp.role_id, rp.permission_id, r.name as role_name, p.name as permission_name
+     FROM role_permissions rp
+     JOIN roles r ON r.id = rp.role_id
+     JOIN permissions p ON p.id = rp.permission_id`
+  );
+  rolePermissions = rolePermRes.rows;
+
+  // Load user overrides
+  const overridesRes = await query(
+    `SELECT up.*, u.name as user_name, u.email as user_email, p.name as permission_name
+     FROM user_permissions up
+     JOIN users u ON u.id = up.user_id
+     JOIN permissions p ON p.id = up.permission_id
+     ORDER BY u.name ASC`
+  );
+  userOverrides = overridesRes.rows;
+} catch (err: any) {
+  console.warn('Database offline, running mock permissions matrix:', err.message);
+  dbConnected = false;
+
+  permissions = [
+    { id: 'p1', name: 'products.create', description: 'Create new catalog products' },
+    { id: 'p2', name: 'products.update', description: 'Update catalog products and specifications' },
+    { id: 'p3', name: 'products.delete', description: 'Remove catalog products' },
+    { id: 'p4', name: 'users.manage', description: 'Manage user roles, tags, and suspension states' },
+    { id: 'p5', name: 'inventory.manage', description: 'Manage stock levels, locations, and low thresholds' },
+    { id: 'p6', name: 'invoices.manage', description: 'Generate, edit, and pay corporate invoices' },
+    { id: 'p7', name: 'downloads.manage', description: 'Create and edit secure download attachments' },
+    { id: 'p8', name: 'contacts.manage', description: 'Manage CRM customer enquiries and resolve statuses' },
+    { id: 'p9', name: 'logs.view', description: 'View system audit logs' }
+  ];
+
+  // Mock mapped role permissions
+  rolePermissions = [
+    // Admin gets everything
+    ...permissions.map(p => ({ role_name: 'admin', permission_name: p.name })),
+    // Moderator
+    { role_name: 'moderator', permission_name: 'products.create' },
+    { role_name: 'moderator', permission_name: 'products.update' },
+    { role_name: 'moderator', permission_name: 'inventory.manage' },
+    { role_name: 'moderator', permission_name: 'downloads.manage' },
+    { role_name: 'moderator', permission_name: 'contacts.manage' }
+  ];
+
+  // Mock overrides
+  userOverrides = [
+    { user_name: 'Standard Portal Guest', user_email: 'client@company.com', permission_name: 'downloads.manage', type: 'allow' }
+  ];
+}
+
+// Check matrix map helper
+const hasMapping = (roleName: string, permName: string) => {
+  return rolePermissions.some(rp => rp.role_name === roleName && rp.permission_name === permName);
+};
+---
+
+<DashboardLayout title="Permissions Matrix" activeItem="permissions">
+
+  <!-- Offline Database Warning -->
+  {!dbConnected && (
+    <div class="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-600 font-medium">
+      <AlertTriangle class="h-4.5 w-4.5 shrink-0" />
+      <div>
+        <span class="font-bold">PostgreSQL is Offline</span>: Telemetry displays simulated security matrices.
+      </div>
+    </div>
+  )}
+
+  <div class="space-y-8">
+    
+    <!-- Matrix Grid -->
+    <div class="space-y-4">
+      <h3 class="text-sm font-bold font-display text-slate-900 flex items-center gap-2">
+        <Shield class="h-5 w-5 text-cyan-500" />
+        Corporate Role Capability Matrix
+      </h3>
+      <p class="text-xs text-slate-500 leading-relaxed">Displays capabilities mapped to standard operational roles.</p>
+      
+      <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
+              <th class="px-6 py-4 font-semibold">Capability Namespace</th>
+              <th class="px-6 py-4 font-semibold text-center w-32">Admin</th>
+              <th class="px-6 py-4 font-semibold text-center w-32">Moderator</th>
+              <th class="px-6 py-4 font-semibold text-center w-32">User</th>
+            </tr>
+          </thead>
+          <tbody>
+            {permissions.map(p => (
+              <tr class="border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors">
+                <td class="px-6 py-4">
+                  <div class="font-bold text-slate-900">{p.name}</div>
+                  <div class="text-2xs text-slate-500 mt-0.5">{p.description}</div>
+                </td>
+                
+                <!-- Admin -->
+                <td class="px-6 py-4 text-center">
+                  {hasMapping('admin', p.name) ? (
+                    <Check class="h-5 w-5 text-emerald-500 mx-auto" />
+                  ) : (
+                    <X class="h-5 w-5 text-rose-300 mx-auto" />
+                  )}
+                </td>
+
+                <!-- Moderator -->
+                <td class="px-6 py-4 text-center">
+                  {hasMapping('moderator', p.name) ? (
+                    <Check class="h-5 w-5 text-emerald-500 mx-auto" />
+                  ) : (
+                    <X class="h-5 w-5 text-rose-300 mx-auto" />
+                  )}
+                </td>
+
+                <!-- User -->
+                <td class="px-6 py-4 text-center">
+                  {hasMapping('user', p.name) ? (
+                    <Check class="h-5 w-5 text-emerald-500 mx-auto" />
+                  ) : (
+                    <X class="h-5 w-5 text-rose-300 mx-auto" />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Overrides checklist -->
+    <div class="space-y-4 pt-6 border-t border-slate-200">
+      <h3 class="text-sm font-bold font-display text-slate-900 flex items-center gap-2">
+        <ShieldAlert class="h-5 w-5 text-rose-500" />
+        Individual User Permission Overrides
+      </h3>
+      <p class="text-xs text-slate-500 leading-relaxed">Direct checklist override parameters that bypass standard role capabilities.</p>
+
+      <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        {userOverrides.length === 0 ? (
+          <p class="text-xs text-slate-500 p-6 text-center">No individual overrides are registered in standard registry.</p>
+        ) : (
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
+                <th class="px-6 py-4 font-semibold">User Operator</th>
+                <th class="px-6 py-4 font-semibold">Overridden Capability</th>
+                <th class="px-6 py-4 font-semibold text-center">Override Behavior</th>
+              </tr>
+            </thead>
+            <tbody>
+              {userOverrides.map(up => (
+                <tr class="border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors">
+                  <td class="px-6 py-4">
+                    <div class="font-bold text-slate-900">{up.user_name}</div>
+                    <div class="text-2xs text-slate-500 mt-0.5">{up.user_email}</div>
+                  </td>
+                  <td class="px-6 py-4 text-slate-600 font-mono font-semibold">{up.permission_name}</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class={`rounded px-1.5 py-0.5 text-2xs font-semibold uppercase ${
+                      up.type === 'allow' 
+                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' 
+                        : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                    }`}>
+                      {up.type} override
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+
+  </div>
+
+</DashboardLayout>

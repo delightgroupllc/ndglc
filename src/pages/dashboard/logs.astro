@@ -1,0 +1,113 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { ScrollText, Search, AlertTriangle, ShieldCheck } from 'lucide-astro';
+
+let auditLogs: any[] = [];
+let dbConnected = true;
+
+try {
+  const res = await query(
+    `SELECT al.*, u.name as user_name, u.email as user_email
+     FROM audit_logs al
+     LEFT JOIN users u ON u.id = al.user_id
+     ORDER BY al.timestamp DESC
+     LIMIT 50`
+  );
+  auditLogs = res.rows;
+} catch (err: any) {
+  console.warn('Database offline, running mock audit logs dashboard:', err.message);
+  dbConnected = false;
+
+  auditLogs = [
+    { id: '1', action: 'ROLE_UPDATE', entity_type: 'users', details: 'Granted admin role to Alexander Vance', user_name: 'Alexander Vance', user_email: 'alex.vance@steelgroup.com', ip_address: '192.168.1.45', timestamp: new Date(Date.now() - 3600000).toISOString() },
+    { id: '2', action: 'INVENTORY_ADJUST', entity_type: 'inventory', details: 'Stock adjustment of +15 for HP-100 Stainless Ball Valve', user_name: 'Jane Stark', user_email: 'finance@starkcorp.com', ip_address: '192.168.1.112', timestamp: new Date(Date.now() - 7200000).toISOString() },
+    { id: '3', action: 'USER_SYNC', entity_type: 'users', details: 'Synchronized profile credentials for alex.vance@steelgroup.com', user_name: 'Clerk Auth Sync', user_email: 'sync@clerk.com', ip_address: '::1', timestamp: new Date(Date.now() - 14400000).toISOString() }
+  ];
+}
+---
+
+<DashboardLayout title="Audit Tracker Logs" activeItem="logs">
+
+  <!-- Offline Database Warning -->
+  {!dbConnected && (
+    <div class="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-600 font-medium">
+      <AlertTriangle class="h-4.5 w-4.5 shrink-0" />
+      <div>
+        <span class="font-bold">PostgreSQL is Offline</span>: Telemetry displays simulated change logs.
+      </div>
+    </div>
+  )}
+
+  <div class="space-y-6">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div class="relative flex-grow max-w-md">
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <input 
+          type="text" 
+          id="admin-search-logs"
+          placeholder="Search global audit tracker logs..." 
+          class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+        />
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
+              <th class="px-6 py-4 font-semibold">Action Type</th>
+              <th class="px-6 py-4 font-semibold">Details / Entity</th>
+              <th class="px-6 py-4 font-semibold">Triggered By</th>
+              <th class="px-6 py-4 font-semibold">IP Address</th>
+              <th class="px-6 py-4 font-semibold text-right">Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="admin-logs-table">
+            {auditLogs.map(log => (
+              <tr class="admin-log-row border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors" data-action={log.action.toLowerCase()} data-details={log.details.toLowerCase()} data-user={log.user_name?.toLowerCase() || ''}>
+                <td class="px-6 py-4">
+                  <span class="rounded bg-slate-100 border border-slate-200 px-2 py-0.5 text-2xs font-mono font-bold text-cyan-600 uppercase">
+                    {log.action}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="font-semibold text-slate-900 max-w-[280px] truncate" title={log.details}>{log.details}</div>
+                  <div class="text-3xs text-slate-500 mt-0.5 uppercase tracking-wide">Target: {log.entity_type} {log.entity_id ? `(${log.entity_id})` : ''}</div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="font-semibold text-slate-700">{log.user_name || 'System Auto'}</div>
+                  <div class="text-3xs text-slate-500 mt-0.5">{log.user_email || ''}</div>
+                </td>
+                <td class="px-6 py-4 text-slate-500 font-mono text-2xs">{log.ip_address || '::1'}</td>
+                <td class="px-6 py-4 text-right text-slate-500 font-mono text-2xs">{new Date(log.timestamp).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('admin-search-logs') as HTMLInputElement | null;
+    const rows = document.querySelectorAll('.admin-log-row');
+
+    searchInput?.addEventListener('input', (e) => {
+      const query = (e.target as HTMLInputElement).value.toLowerCase();
+      rows.forEach(row => {
+        const action = row.getAttribute('data-action') || '';
+        const details = row.getAttribute('data-details') || '';
+        const user = row.getAttribute('data-user') || '';
+        
+        if (action.includes(query) || details.includes(query) || user.includes(query)) {
+          (row as HTMLElement).classList.remove('hidden');
+        } else {
+          (row as HTMLElement).classList.add('hidden');
+        }
+      });
+    });
+  </script>
+</DashboardLayout>

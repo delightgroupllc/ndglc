@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Block dashboard and API from crawlers
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /sign-in
+Disallow: /sign-up
+
+# Sitemap location
+Sitemap: https://www.delightgroupllc.com/sitemap.xml

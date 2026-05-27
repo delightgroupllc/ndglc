@@ -1,0 +1,135 @@
+---
+interface Props {
+  category?: any;
+  divisions: any[];
+}
+const { category, divisions = [] } = Astro.props;
+const isEdit = !!category;
+---
+
+<form id="category-form" class="space-y-4">
+  <input type="hidden" id="category-id" name="id" value={category?.id || ''} />
+
+  <div class="space-y-1.5">
+    <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Category Name</label>
+    <input type="text" name="name" required value={category?.name || ''} placeholder="e.g. Indoor Technical Lighting" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+  </div>
+
+  <div class="space-y-1.5">
+    <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">URL Slug</label>
+    <input type="text" name="slug" required value={category?.slug || ''} placeholder="e.g. indoor-technical" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+  </div>
+
+  <div class="space-y-1.5">
+    <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Parent Division</label>
+    <select name="division_id" required class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+      <option value="" disabled selected={!isEdit}>-- Select Division --</option>
+      {divisions.map(d => (
+        <option value={d.id} selected={category?.division_id === d.id}>{d.name}</option>
+      ))}
+    </select>
+  </div>
+
+  <div class="space-y-1.5">
+    <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Display Order (0 is first)</label>
+    <input type="number" name="display_order" value={category?.display_order ?? 0} class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+  </div>
+
+  <div class="space-y-1.5">
+    <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Category Image URL</label>
+    <input type="text" name="image_url" id="category-image-url" value={category?.image_url || ''} placeholder="https://images.unsplash.com/photo-..." class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+    <div class="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 flex items-center justify-center h-24 overflow-hidden shadow-inner">
+      <img id="category-image-preview" src={category?.image_url || '/noimage.jpg'} class="h-full object-contain" alt="Category Preview" onerror="this.src='/noimage.jpg'" />
+    </div>
+  </div>
+
+  <div class="space-y-1.5">
+    <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">SEO Title</label>
+    <input type="text" name="seo_title" value={category?.seo_title || ''} placeholder="Optional" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+  </div>
+
+  <div class="space-y-1.5">
+    <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">SEO Description</label>
+    <textarea name="seo_description" rows="3" placeholder="Optional" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">{category?.seo_description || ''}</textarea>
+  </div>
+
+  <div id="category-form-msg" class="hidden p-3 rounded-lg text-sm font-semibold"></div>
+
+  <button 
+    type="submit"
+    id="category-submit-btn"
+    class="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-lg text-sm font-bold transition-colors shadow-sm"
+  >
+    {isEdit ? 'Update Category' : 'Create Category'}
+  </button>
+</form>
+
+<script>
+  const setupCategoryForm = () => {
+    const form = document.getElementById('category-form') as HTMLFormElement;
+    if (!form) return;
+
+    // Clone to remove old listeners in case of Astro view transitions
+    const newForm = form.cloneNode(true) as HTMLFormElement;
+    form.parentNode?.replaceChild(newForm, form);
+
+    const imgUrlInput = newForm.querySelector('#category-image-url') as HTMLInputElement | null;
+    const imgPreview = newForm.querySelector('#category-image-preview') as HTMLImageElement | null;
+    if (imgUrlInput && imgPreview) {
+      imgUrlInput.addEventListener('input', () => {
+        imgPreview.src = imgUrlInput.value.trim() || '/noimage.jpg';
+      });
+    }
+
+    newForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('category-form-msg');
+      const btn = document.getElementById('category-submit-btn');
+      if (!msg || !btn) return;
+
+      btn.setAttribute('disabled', 'true');
+      const originalText = btn.textContent;
+      btn.textContent = 'Saving...';
+
+      const formData = new FormData(newForm);
+      const data = Object.fromEntries(formData.entries());
+      data.display_order = parseInt(data.display_order as string) || 0;
+
+      const isEdit = !!data.id;
+      const url = isEdit ? `/api/categories/${data.id}` : '/api/categories';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        
+        if (res.ok) {
+          if (msg) {
+            msg.className = 'p-3 rounded-lg text-sm font-semibold bg-green-50 text-green-700 border border-green-200 block';
+            msg.textContent = 'Category saved successfully!';
+          }
+          if (!isEdit) newForm.reset();
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          throw new Error(result.error || 'Failed to save category');
+        }
+      } catch (err: any) {
+        if (msg) {
+          msg.className = 'p-3 rounded-lg text-sm font-semibold bg-red-50 text-red-700 border border-red-200 block';
+          msg.textContent = err.message || 'Error saving category';
+        }
+      } finally {
+        btn.removeAttribute('disabled');
+        btn.textContent = originalText;
+      }
+    });
+  };
+
+  setupCategoryForm();
+  document.addEventListener('astro:page-load', setupCategoryForm);
+</script>

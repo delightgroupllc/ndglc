@@ -1,0 +1,225 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "NDGLC Platform API",
+    "description": "API documentation for the NDGLC B2B platform",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4321",
+      "description": "Local development server"
+    }
+  ],
+  "paths": {
+    "/api/products": {
+      "get": {
+        "summary": "Get all products",
+        "responses": {
+          "200": {
+            "description": "A list of products"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new product",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created successfully"
+          }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "summary": "Update an existing product",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a product",
+        "responses": {
+          "200": {
+            "description": "Product deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/invoices": {
+      "get": {
+        "summary": "Get all invoices",
+        "responses": {
+          "200": {
+            "description": "A list of invoices"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new invoice",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invoice created successfully"
+          }
+        }
+      }
+    },
+    "/api/invoices/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "summary": "Update an existing invoice",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Invoice updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an invoice",
+        "responses": {
+          "200": {
+            "description": "Invoice deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/contacts": {
+      "post": {
+        "summary": "Submit a contact form inquiry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string" },
+                  "phone": { "type": "string" },
+                  "message": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inquiry submitted successfully"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ProductInput": {
+        "type": "object",
+        "required": ["name", "sku", "slug", "division_id", "category_id"],
+        "properties": {
+          "name": { "type": "string" },
+          "sku": { "type": "string" },
+          "slug": { "type": "string" },
+          "division_id": { "type": "string" },
+          "category_id": { "type": "string" },
+          "description": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "draft", "inactive"] },
+          "featured": { "type": "boolean" },
+          "specifications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "value": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "InvoiceInput": {
+        "type": "object",
+        "required": ["customer_name", "issue_date", "items"],
+        "properties": {
+          "customer_name": { "type": "string" },
+          "customer_email": { "type": "string" },
+          "customer_phone": { "type": "string" },
+          "issue_date": { "type": "string" },
+          "due_date": { "type": "string" },
+          "payment_status": { "type": "string", "enum": ["paid", "unpaid", "overdue", "cancelled"] },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": { "type": "string" },
+                "quantity": { "type": "number" },
+                "unit_price": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

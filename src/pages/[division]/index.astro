@@ -1,0 +1,1125 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { query } from '../../lib/db';
+import { ArrowRight, Activity, Cpu, Shield, Database, LayoutGrid, ChevronRight, AlertTriangle, Zap, Sparkles, Users, Trophy, Calendar } from 'lucide-astro';
+
+const { division } = Astro.params;
+
+// Validate division parameter
+const isDtl = division?.toLowerCase() === 'delighttechnicallighting';
+const isDgs = division?.toLowerCase() === 'delightgreenscapes' || division?.toLowerCase() === 'delightscreenscape';
+
+if (!isDtl && !isDgs) {
+  return Astro.redirect('/');
+}
+
+const divSlug = division!.toLowerCase();
+const divName = isDtl ? 'Delight Technical Lighting' : 'Delight Greenscapes';
+const divLogo = isDtl ? '/dtllogo.jpg' : '/dgslogo.jpg';
+const divSubTitle = isDtl 
+  ? 'Indoor & Outdoor Technical Lighting 💡' 
+  : 'Curated Landscape & Indoor Greenscapes 🌿';
+const divDescription = isDtl
+  ? 'Indoor and outdoor technical architectural lighting fixtures sourced from premium brands, supplied UAE-wide.'
+  : 'Indoor and outdoor premium plants, designer pots, and custom planters supplied across the UAE.';
+
+let categories: any[] = [];
+let featuredProducts: any[] = [];
+let projects: any[] = [];
+let rooms: any[] = [];
+let discoverSectionImages: any[] = [];
+let partners: any[] = [];
+let articles: any[] = [];
+let dbConnected = true;
+
+// Fetch active trusted partners (clients/partners) for the division
+try {
+  const partnersRes = await query(
+    `SELECT * FROM trusted_partners
+     WHERE status = 'active' AND (division = $1 OR division = 'both')
+     ORDER BY created_at DESC`,
+    [isDtl ? 'dtl' : 'dgs']
+  );
+  partners = partnersRes.rows;
+} catch (err: any) {
+  console.warn('Unable to load trusted partners:', err.message);
+}
+
+// Fetch 3 most recent published articles (press releases, events) for the division
+try {
+  const articlesRes = await query(
+    `SELECT * FROM articles
+     WHERE status = 'published' AND (division = $1 OR division = 'both') AND (type = 'press_release' OR type = 'event')
+     ORDER BY published_at DESC LIMIT 3`,
+    [isDtl ? 'dtl' : 'dgs']
+  );
+  articles = articlesRes.rows;
+} catch (err: any) {
+  console.warn('Unable to load articles:', err.message);
+}
+
+// Fetch categories
+try {
+  const res = await query(
+    `SELECT c.*, COUNT(p.id) as product_count
+     FROM categories c
+     JOIN divisions d ON d.id = c.division_id
+     LEFT JOIN products p ON p.category_id = c.id
+     WHERE d.slug = $1
+     GROUP BY c.id
+     ORDER BY c.display_order ASC`,
+    [divSlug]
+  );
+  categories = res.rows;
+} catch (err: any) {
+  console.warn(`Database offline for categories:`, err.message);
+  dbConnected = false;
+  
+  if (isDtl) {
+    categories = [
+      { id: 'c1', name: 'Indoor Technical Lighting', slug: 'indoor-lighting', seo_description: 'Spotlight tracks, magnetic spots, warm dimming downlights.', product_count: '12' },
+      { id: 'c2', name: 'Outdoor & Facade Lighting', slug: 'outdoor-lighting', seo_description: 'Pathway uplights, IP67 garden spikes, façade structures.', product_count: '8' },
+      { id: 'c3', name: 'Commercial Solutions', slug: 'commercial-lighting', seo_description: 'High-end commercial installations for retail & hospitality.', product_count: '15' }
+    ];
+  } else {
+    categories = [
+      { id: 'c3', name: 'Curated Indoor Plants', slug: 'indoor-plants', seo_description: 'Fiddle leaf figs, air-purifying monsteras, desktop office foliage.', product_count: '24' },
+      { id: 'c4', name: 'Architectural Planters & Pots', slug: 'planters-pots', seo_description: 'Fiberglass planters, designer ceramic pots, self-watering systems.', product_count: '18' },
+      { id: 'c5', name: 'Outdoor Landscaping', slug: 'outdoor-landscaping', seo_description: 'Garden trees, shrubs, maintenance services.', product_count: '30' }
+    ];
+  }
+}
+
+// Fetch featured products (for Trending section — products marked Featured in Products dashboard)
+try {
+  const prodRes = await query(
+    `SELECT p.id, p.name, p.sku, p.description, pi.url as image_url
+     FROM products p
+     JOIN divisions d ON d.id = p.division_id
+     LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
+     WHERE d.slug = $1 AND p.featured = TRUE
+     ORDER BY p.created_at DESC
+     LIMIT 6`,
+    [divSlug]
+  );
+  featuredProducts = prodRes.rows;
+} catch (err: any) {
+  console.warn(`Database offline for featured products:`, err.message);
+}
+
+// ─── Load ALL settings in one query ──────────────────────────────────────────
+let dtlSetup: any = null;
+let dgsSetup: any = null;
+let homepageProjectIds: string[] = [];
+
+if (isDtl) {
+  try {
+    const settingsRes = await query(
+      `SELECT key, value FROM settings WHERE key IN ('dtl_setup', 'dtl_homepage_projects', 'rooms')`
+    );
+    for (const row of settingsRes.rows) {
+      if (row.key === 'dtl_setup') {
+        try { dtlSetup = JSON.parse(row.value); } catch {}
+      }
+      if (row.key === 'dtl_homepage_projects') {
+        try { homepageProjectIds = JSON.parse(row.value); } catch {}
+      }
+      if (row.key === 'rooms') {
+        try { rooms = JSON.parse(row.value); } catch {}
+      }
+    }
+  } catch (e) {
+    console.warn('Unable to load DTL settings:', e?.message || e);
+  }
+
+  // Fetch room section images (from section_images table)
+  try {
+    const imgRes = await query(
+      `SELECT image_url, alt_text, display_order FROM section_images
+       WHERE division = 'dtl' AND section = 'discover_by_rooms' AND is_active = TRUE
+       ORDER BY display_order ASC`
+    );
+    discoverSectionImages = imgRes.rows;
+  } catch (e) {
+    console.warn('Unable to load discover section images:', e?.message || e);
+  }
+
+  // ─── Fetch Homepage Projects (by IDs from DTL Setup picker) ───
+  if (homepageProjectIds.length > 0) {
+    try {
+      const placeholders = homepageProjectIds.map((_: any, i: number) => `$${i + 1}`).join(',');
+      const projRes = await query(
+        `SELECT id, title, description, featured_image, client_name FROM projects WHERE id IN (${placeholders})`,
+        homepageProjectIds
+      );
+      // Preserve admin-defined order from DTL Setup
+      const projMap = new Map(projRes.rows.map((p: any) => [p.id, p]));
+      projects = homepageProjectIds.map((id: string) => projMap.get(id)).filter(Boolean);
+    } catch (e) {
+      console.warn('Unable to load homepage projects by ID:', e?.message || e);
+    }
+  }
+
+  // Fallback: if no projects selected, show 3 most recent active DTL projects
+  if (projects.length === 0) {
+    try {
+      const fallback = await query(
+        `SELECT id, title, description, featured_image, client_name
+         FROM projects WHERE division = 'dtl' AND status = 'active'
+         ORDER BY created_at DESC LIMIT 3`
+      );
+      projects = fallback.rows;
+    } catch (e) {
+      console.warn('Unable to load fallback projects:', e?.message || e);
+    }
+  }
+} else if (isDgs) {
+  try {
+    const settingsRes = await query(
+      `SELECT key, value FROM settings WHERE key IN ('dgs_setup', 'dgs_homepage_projects')`
+    );
+    for (const row of settingsRes.rows) {
+      if (row.key === 'dgs_setup') {
+        try { dgsSetup = JSON.parse(row.value); } catch {}
+      }
+      if (row.key === 'dgs_homepage_projects') {
+        try { homepageProjectIds = JSON.parse(row.value); } catch {}
+      }
+    }
+  } catch (e: any) {
+    console.warn('Unable to load DGS settings:', e?.message || e);
+  }
+
+  // Fetch DGS Homepage Projects
+  if (homepageProjectIds.length > 0) {
+    try {
+      const placeholders = homepageProjectIds.map((_: any, i: number) => `$${i + 1}`).join(',');
+      const projRes = await query(
+        `SELECT id, title, description, featured_image, client_name FROM projects WHERE id IN (${placeholders})`,
+        homepageProjectIds
+      );
+      const projMap = new Map(projRes.rows.map((p: any) => [p.id, p]));
+      projects = homepageProjectIds.map((id: string) => projMap.get(id)).filter(Boolean);
+    } catch (e: any) {
+      console.warn('Unable to load DGS homepage projects by ID:', e?.message || e);
+    }
+  }
+
+  // Fallback: if no projects selected, show 3 most recent active DGS projects
+  if (projects.length === 0) {
+    try {
+      const fallback = await query(
+        `SELECT id, title, description, featured_image, client_name
+         FROM projects WHERE division = 'dgs' AND status = 'active'
+         ORDER BY created_at DESC LIMIT 3`
+      );
+      projects = fallback.rows;
+    } catch (e: any) {
+      console.warn('Unable to load fallback DGS projects:', e?.message || e);
+    }
+  }
+}
+
+// ─── Derive all layout values ────────────────────────────────────────────────
+const heroObj = isDtl
+  ? ((dtlSetup && dtlSetup.hero)
+      ? dtlSetup.hero
+      : { imageUrl: '/hero-dtl.jpg', title: 'Every corner deserves\nPERFECT LIGHTING.', subtitle: '', showCta: false, ctaText: '', ctaUrl: '' })
+  : ((dgsSetup && dgsSetup.hero)
+      ? dgsSetup.hero
+      : { imageUrl: 'https://images.unsplash.com/photo-1558904541-efa8c1a68fb6?auto=format&fit=crop&q=80&w=1600', title: 'Building Breathtaking Green Spaces', subtitle: 'Pioneering sustainable landscape architecture since 1988', showCta: true, ctaText: 'Explore Projects', ctaUrl: '#projects' });
+
+const discoverObj = (isDtl && dtlSetup?.discover)
+  ? dtlSetup.discover
+  : { enabled: true, display: 'grid', title: 'Discover by Rooms', max_items: 6 };
+
+const trendingObj = (isDtl && dtlSetup?.trending)
+  ? dtlSetup.trending
+  : { enabled: true, title: 'Discover New Arrivals and Trendings', promoImageUrl: '', promoTitle: 'Complimentary Lighting Design', promoSubtitle: 'T&C Applied', max_items: 4 };
+
+const trendingItems = featuredProducts.slice(0, trendingObj.max_items || 4);
+
+const factsArr = isDtl
+  ? ((dtlSetup && Array.isArray(dtlSetup.facts) && dtlSetup.facts.length > 0)
+      ? dtlSetup.facts
+      : [
+          { label: 'Projects Completed', value: '800+' },
+          { label: 'High-End Products', value: '3K+' },
+          { label: 'Installations', value: '11K+' },
+          { label: 'Production Line', value: '50+' }
+        ])
+  : ((dgsSetup && Array.isArray(dgsSetup.facts) && dgsSetup.facts.length > 0)
+      ? dgsSetup.facts
+      : [
+          { label: 'Years of UAE Heritage', value: '35+' },
+          { label: 'Championship Golf Courses', value: '12' },
+          { label: 'Nursery Acres Active', value: '400+' },
+          { label: 'Premium Projects Completed', value: '5,000+' }
+        ]);
+
+const instagramObj = isDtl ? (dtlSetup?.instagram || null) : (dgsSetup?.instagram || null);
+
+const accredObj = (isDgs && dgsSetup?.accreditation) ? dgsSetup.accreditation : { enabled: true, title: "An Accredited Member of UK's leading landscaping Trade Association", subtitle: "We uphold the highest standard of international landscaping, sports turf management, and horticulture design." };
+
+const servicesArr = (isDgs && dgsSetup?.services) ? dgsSetup.services : [
+  { title: 'Landscape Design', desc: 'Crafting sustainable, artistic master plans blending nature, architecture, and lifestyle.', imageUrl: 'https://images.unsplash.com/photo-1558904541-efa8c1a68fb6?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Landscape Construction', desc: 'Bringing designs to life with top-grade civil works, softscaping, and smart drainage.', imageUrl: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Golf Course Construction & Maintenance', desc: 'Pioneering world-class golf links across the UAE with championship-grade specifications.', imageUrl: 'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Landscape Maintenance', desc: 'Expert biological and technical upkeep keeping architectural gardens lush year-round.', imageUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Sports Turf Construction & Maintenance', desc: 'Professional turf care for soccer stadiums, race tracks, and public arenas.', imageUrl: 'https://images.unsplash.com/photo-1524646349956-1590eacfa324?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Plant Nursery (Wahat Al Sahraa)', desc: 'Cultivating acclimated arid-zone trees, desert shrubs, and exotic ornamental blooms.', imageUrl: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Pools & Waterscape', desc: 'Stunning luxury pools, bio-ponds, custom fountains and architectural water features.', imageUrl: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Indoor Plants', desc: 'Premium living office arrangements, green walls, and custom design planters.', imageUrl: 'https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Soils, Fertilizers & Pest Control', desc: 'Eco-friendly custom organic substrates and botanical crop nutrition.', imageUrl: 'https://images.unsplash.com/photo-1592417817098-8f3d6eb19675?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Tools, Machinery & Supplies', desc: 'Importing leading European landscape tools and smart computerized turf systems.', imageUrl: 'https://images.unsplash.com/photo-1530124560072-aab71eb1483a?auto=format&fit=crop&q=80&w=600' },
+  { title: 'Trading', desc: 'Global wholesale supply of premium commercial landscaping raw materials.', imageUrl: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&q=80&w=600' }
+];
+
+const panelsObj = (isDgs && dgsSetup?.panels) ? dgsSetup.panels : {
+  golf: { title: 'Building Breathtaking', subtitle: 'DESERT GOLF', description: 'Over 30 years of experience delivering champion-grade golf courses across the GCC with pristine greens, smart irrigation and state-of-the-art turf management.', imageUrl: 'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?auto=format&fit=crop&q=80&w=600', buttonText: 'Read More', buttonUrl: '/portfolio' },
+  nursery: { title: 'Native & Adaptive', subtitle: 'PLANT NURSERY', description: 'Acres of locally acclimated shrubs, flowers, and mature trees curated for the arid Middle Eastern climate.', imageUrl: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800', buttonText: 'Explore Nursery', buttonUrl: '/portfolio' },
+  sustainable: { title: 'Sustainable Landscape', subtitle: 'Green Heritage', description: 'Leveraging smart water conservation, indigenous flora, and organic soil enhancement to craft landscapes that thrive naturally and responsibly.', imageUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&q=80&w=600', highlight1: 'Smart Graywater Recycling Integration', highlight2: 'Arid-Adaptive Flora Selection', highlight3: 'Zero Chemical Runoff Philosophy' }
+};
+
+// ─── Build Discover by Rooms items ────────────────────────────────────────────
+const discoverRoomItems = isDtl && rooms.length > 0
+  ? rooms.slice(0, discoverObj.max_items || 6).map((r: any, idx: number) => {
+      const name = typeof r === 'string' ? r : (r?.name || '');
+      const icon = typeof r === 'string' ? '' : (r?.iconUrl || '');
+      const sectionImg = discoverSectionImages[idx];
+      const imageUrl = icon || (sectionImg?.image_url || '');
+      const matchingCat = categories.find((c: any) =>
+        c.name.toLowerCase().includes(name.toLowerCase()) ||
+        name.toLowerCase().includes(c.name.toLowerCase())
+      );
+      return { name, imageUrl, slug: matchingCat?.slug || null };
+    })
+  : categories.slice(0, discoverObj.max_items || 6).map((cat: any) => ({
+      name: cat.name,
+      imageUrl: cat.image_url || '',
+      slug: cat.slug,
+    }));
+---
+
+<Layout title={divName} description={`${divName} - ${divSubTitle}`}>
+
+  {/* ==========================================
+      DELIGHT TECHNICAL LIGHTING (DTL) HOMEPAGE
+      ========================================== */}
+  {isDtl && (
+    <>
+      <!-- Hero Section with Image Overlay -->
+      <section class="relative h-96 md:h-screen bg-slate-900 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-black/70 to-black/30"></div>
+        <div class="absolute inset-0" style={`background-image: url('${heroObj.imageUrl}'); background-size: cover; background-position: center;`}></div>
+        <div class="relative h-full flex flex-col items-center justify-center px-4">
+          <div class="text-center space-y-6 max-w-3xl">
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-black font-display text-white tracking-tight leading-tight">
+              {heroObj.title}
+            </h1>
+            {heroObj.subtitle ? <p class="text-lg text-white/90">{heroObj.subtitle}</p> : null}
+            {heroObj.showCta && heroObj.ctaUrl ? (
+              <a href={heroObj.ctaUrl} class="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full transition-colors">{heroObj.ctaText || 'Learn More'}</a>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <!-- Discover by Rooms/Categories - Category Grid with Images -->
+      <section class="py-16 bg-white border-b border-slate-100">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h2 class="text-3xl font-black font-display text-slate-900 mb-10">
+            {discoverObj.title || 'Discover by Rooms'}
+          </h2>
+          
+          {discoverObj.enabled !== false ? (
+            discoverRoomItems.length === 0 ? (
+              <div class="text-sm text-slate-500">No rooms or categories configured yet. Add rooms in the dashboard Categories → Rooms section.</div>
+            ) : discoverObj.display === 'list' ? (
+              <div class="space-y-3">
+                {discoverRoomItems.map(item => (
+                  <a href={item.slug ? `/${divSlug}/${item.slug}` : '#'} class="flex items-center gap-4 p-4 rounded-lg border hover:bg-slate-50 transition-colors">
+                    {item.imageUrl && (
+                      <div class="h-14 w-14 rounded-lg overflow-hidden shrink-0 bg-slate-100">
+                        <img src={item.imageUrl} alt={item.name} class="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                    )}
+                    <div class="text-sm font-semibold">{item.name}</div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {discoverRoomItems.map((item) => (
+                  <a
+                    href={item.slug ? `/${divSlug}/${item.slug}` : '#'}
+                    class="group relative rounded-2xl overflow-hidden bg-slate-100"
+                    style="aspect-ratio: 4/3;"
+                  >
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div class="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+                        <span class="text-4xl opacity-30">💡</span>
+                      </div>
+                    )}
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+                    <div class="absolute bottom-0 left-0 right-0 p-4">
+                      <h3 class="text-white font-bold text-sm md:text-base drop-shadow">{item.name}</h3>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )
+          ) : (
+            <div class="text-sm text-slate-500">Discover by Rooms is disabled.</div>
+          )}
+        </div>
+      </section>
+
+      <!-- Featured Products Section (New Arrivals & Trending) -->
+      {trendingObj.enabled !== false ? (
+        trendingItems && trendingItems.length > 0 ? (
+          <section class="py-16 bg-white border-b border-slate-100">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <h2 class="text-3xl font-black font-display text-slate-900 mb-10">{trendingObj.title || 'Discover New Arrivals and Trendings'}</h2>
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Left: Promo / Featured image panel */}
+                <div class="relative rounded-2xl overflow-hidden bg-slate-900 min-h-80 flex flex-col justify-end">
+                  {trendingObj.promoImageUrl ? (
+                    <img
+                      src={trendingObj.promoImageUrl}
+                      alt={trendingObj.promoTitle || 'Promo'}
+                      class="absolute inset-0 w-full h-full object-cover opacity-80"
+                    />
+                  ) : (
+                    <div class="absolute inset-0 bg-gradient-to-br from-amber-900 to-slate-900"></div>
+                  )}
+                  <div class="relative p-8 z-10">
+                    {trendingObj.promoTitle && (
+                      <p class="text-white/80 text-lg font-light italic mb-1">{trendingObj.promoTitle}</p>
+                    )}
+                    {trendingObj.promoSubtitle && (
+                      <p class="text-white/60 text-xs">{trendingObj.promoSubtitle}</p>
+                    )}
+                  </div>
+                </div>
+                {/* Right: Product grid 2×2 */}
+                <div class="grid grid-cols-2 gap-4">
+                  {trendingItems.slice(0, 4).map((prod) => (
+                    <a href={`/${divSlug}/${prod.sku}`} class="group rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex flex-col hover:shadow-md transition-shadow">
+                      <div class="relative aspect-square overflow-hidden bg-slate-100">
+                        {prod.image_url ? (
+                          <img src={prod.image_url} alt={prod.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400" loading="lazy" />
+                        ) : (
+                          <div class="w-full h-full flex items-center justify-center">
+                            <LayoutGrid class="h-8 w-8 text-slate-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div class="p-3">
+                        <h3 class="text-sm font-semibold text-slate-800 line-clamp-2 group-hover:text-amber-700 transition-colors">{prod.name}</h3>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section class="py-12 bg-white border-b border-slate-100">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+              <h3 class="text-xl font-semibold text-slate-900 mb-2">No trending items configured</h3>
+              <p class="text-sm text-slate-600">Mark products as Featured in Products dashboard to display them here, or configure in DTL Setup.</p>
+            </div>
+          </section>
+        )
+      ) : null}
+
+      <!-- Stats Section (Facts) -->
+      <section class="py-16 bg-slate-50 border-b border-slate-100">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h2 class="text-3xl font-black font-display text-slate-900 mb-10">Facts</h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {factsArr.map(f => (
+              <div class="text-center">
+                <div class="text-4xl md:text-5xl font-black text-slate-900 mb-2">{f.value}</div>
+                <p class="text-slate-700 font-semibold text-sm">{f.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- Category List (browse all categories) -->
+      <section class="py-16 bg-white border-b border-slate-100">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h2 class="text-3xl font-black font-display text-slate-900 mb-10">Browse Categories</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {categories.map((c) => (
+              <a href={`/${divSlug}/${c.slug}`} class="group relative rounded-xl border p-6 md:p-8 hover:shadow-lg transition-all flex flex-col justify-between min-h-64 bg-gradient-to-br from-amber-50 to-amber-50/50 border-amber-200 hover:border-amber-400">
+                <div class="space-y-4">
+                  <div class="flex items-center justify-between">
+                    <span class="rounded-full px-3 py-1 text-xs font-bold bg-amber-500/10 text-amber-700">
+                      {c.product_count} Items
+                    </span>
+                  </div>
+                  
+                  <h3 class="text-xl font-bold font-display group-hover:text-amber-700 transition-colors">
+                    {c.name}
+                  </h3>
+                  
+                  <p class="text-sm text-slate-600 leading-relaxed line-clamp-3">
+                    {c.seo_description || 'Browse our premium collection in this category.'}
+                  </p>
+                </div>
+                
+                <div class="pt-6 flex items-center gap-2">
+                  <span class="text-sm font-bold text-amber-600">
+                    Browse
+                  </span>
+                  <ArrowRight class="h-4 w-4 group-hover:translate-x-1 transition-transform text-amber-600" />
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- Projects Section (Discover Projects) — Arrco-style 3-card layout -->
+      {projects.length > 0 && (
+        <section class="py-16 bg-white border-b border-slate-100">
+          <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-black font-display text-slate-900 mb-10">Discover Projects</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* First card — large with text overlay */}
+              {projects[0] && (
+                <div class="group relative rounded-2xl overflow-hidden bg-slate-900 min-h-80 flex flex-col justify-end cursor-pointer">
+                  {projects[0].featured_image ? (
+                    <img
+                      src={projects[0].featured_image}
+                      alt={projects[0].title}
+                      class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div class="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900"></div>
+                  )}
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
+                  <div class="relative p-6 z-10 space-y-2">
+                    <h3 class="text-lg font-bold text-white leading-snug uppercase tracking-wide">
+                      {projects[0].client_name?.toUpperCase() || projects[0].title}
+                    </h3>
+                    <p class="text-white/75 text-xs leading-relaxed line-clamp-3">
+                      {projects[0].description}
+                    </p>
+                    <a
+                      href={`/projects?division=dtl`}
+                      class="inline-block mt-2 text-xs font-semibold text-white/90 hover:text-white underline underline-offset-2 transition-colors"
+                    >
+                      Read More
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Cards 2 & 3 — plain image cards */}
+              {projects.slice(1, 3).map((proj) => (
+                <div class="group relative rounded-2xl overflow-hidden bg-slate-200 min-h-80 cursor-pointer">
+                  {proj.featured_image ? (
+                    <img
+                      src={proj.featured_image}
+                      alt={proj.title}
+                      class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      style="min-height: 320px;"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div class="w-full h-full min-h-80 flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300">
+                      <LayoutGrid class="h-16 w-16 text-slate-400" />
+                    </div>
+                  )}
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div class="absolute bottom-0 left-0 right-0 p-4 translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <p class="text-white font-bold text-sm drop-shadow">{proj.title}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div class="text-right mt-6">
+              <a
+                href="/projects?division=dtl"
+                class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                View all Projects
+                <ArrowRight class="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <!-- Dynamic Press Releases & News Section -->
+      {articles.length > 0 && (
+        <section class="py-16 bg-white border-b border-slate-100">
+          <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+              <span class="text-xs uppercase tracking-widest text-amber-600 font-bold">Latest News</span>
+              <h2 class="text-3xl font-black font-display text-slate-900">
+                Press Releases & Events
+              </h2>
+              <div class="w-16 h-1 bg-amber-500 mx-auto mt-2"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {articles.map((art) => (
+                <div class="bg-slate-50 rounded-2xl border border-slate-200/50 overflow-hidden flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+                  <div>
+                    <div class="h-48 bg-slate-100 overflow-hidden relative">
+                      {art.featured_image ? (
+                        <img src={art.featured_image} alt={art.title} class="w-full h-full object-cover hover:scale-103 transition-transform duration-500" />
+                      ) : (
+                        <div class="w-full h-full bg-gradient-to-br from-amber-600 to-slate-900 flex items-center justify-center text-white/30 text-lg">Announcements</div>
+                      )}
+                      <span class="absolute top-3 left-3 bg-amber-500 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded shadow-sm">
+                        {art.type.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div class="p-6 space-y-3 text-left">
+                      <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <Calendar class="h-3.5 w-3.5 text-amber-500" />
+                        {art.published_at ? new Date(art.published_at).toLocaleDateString(undefined, {month: 'long', day: 'numeric', year: 'numeric'}) : 'Press'}
+                      </div>
+                      <h3 class="text-lg font-bold text-slate-900 line-clamp-2 leading-snug font-display">
+                        {art.title}
+                      </h3>
+                      <p class="text-xs text-slate-600 leading-relaxed line-clamp-3">
+                        {art.summary || art.content}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="p-6 pt-0 text-left">
+                    <a 
+                      href={`/news/${art.slug}`} 
+                      class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors"
+                    >
+                      Read Full Article
+                      <ArrowRight class="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <!-- Dynamic Clients & Partners scrolling logos -->
+      {partners.length > 0 && (
+        <section class="py-16 bg-slate-50 border-b border-slate-100">
+          <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10">
+              <span class="text-xs uppercase tracking-widest text-amber-600 font-bold">Trusted Partners</span>
+              <h2 class="text-3xl font-black font-display text-slate-900 mt-1">Our Clients & Partners</h2>
+              <div class="w-12 h-1 bg-amber-500 mx-auto mt-3"></div>
+            </div>
+            
+            <div class="flex flex-wrap items-center justify-center gap-12 opacity-75 hover:opacity-100 transition-opacity duration-300">
+              {partners.map((p) => (
+                <a 
+                  href={p.website_url || '#'} 
+                  target={p.website_url ? "_blank" : undefined}
+                  class="flex items-center justify-center max-h-12 max-w-[150px] grayscale hover:grayscale-0 transition-all duration-300"
+                  title={p.name}
+                >
+                  {p.logo_url ? (
+                    <img src={p.logo_url} alt={p.name} class="max-h-10 object-contain" />
+                  ) : (
+                    <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-600 uppercase">{p.name}</span>
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <!-- Instagram Block -->
+      {instagramObj && instagramObj.enabled ? (
+        <section class="py-16 bg-white border-b border-slate-100">
+          <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h3 class="text-xl font-bold">{instagramObj.title}</h3>
+                <p class="text-sm text-slate-500">{instagramObj.subtitle}</p>
+              </div>
+              <a href={instagramObj.ctaUrl} class="text-sm font-bold text-amber-600">{instagramObj.ctaText || 'Follow'}</a>
+            </div>
+
+            {(!Array.isArray(instagramObj.posts) || instagramObj.posts.length === 0) ? (
+              <div class="rounded-lg p-6 bg-slate-50 text-center">
+                <p class="text-sm text-slate-600">No Instagram posts configured. Add posts in the DTL Setup to display them here.</p>
+              </div>
+            ) : (
+              <div class="grid grid-cols-3 md:grid-cols-6 gap-4">
+                {instagramObj.posts.map((p) => (
+                  <div class="h-28 bg-slate-100 rounded-lg flex items-center justify-center text-sm text-slate-700">{p}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
+    </>
+  )}
+
+  {/* ==========================================
+      DELIGHT GREENSCAPES (DGS) PREMIUM HOMEPAGE
+      ========================================== */}
+  {isDgs && (
+    <div class="bg-[#fcfdfd]">
+      
+      <!-- Premium Hero Section -->
+      <section class="relative h-screen bg-[#002208] overflow-hidden flex items-center justify-center">
+        <!-- Forest Green Subtle Vignette -->
+        <div class="absolute inset-0 bg-gradient-to-b from-[#001705]/80 via-transparent to-[#002208]/90 z-10"></div>
+        
+        {/* Dynamic Slide Background */}
+        <div 
+          class="absolute inset-0 bg-cover bg-center opacity-70 scale-102 transform transition-all duration-[8000ms] hover:scale-100"
+          style={`background-image: url('${heroObj.imageUrl}');`}
+        ></div>
+        
+        <div class="relative max-w-5xl mx-auto px-4 z-20 text-center space-y-6">
+          <h1 class="text-4xl md:text-7xl font-extrabold text-white tracking-tight leading-none drop-shadow font-display">
+            {heroObj.title}
+          </h1>
+          {heroObj.subtitle && (
+            <p class="text-base md:text-xl text-slate-100 max-w-2xl mx-auto font-light leading-relaxed drop-shadow-sm font-sans">
+              {heroObj.subtitle}
+            </p>
+          )}
+          {heroObj.showCta !== false && (
+            <div class="pt-4">
+              <a 
+                href={heroObj.ctaUrl || '#services'} 
+                class="inline-flex items-center gap-2.5 px-8 py-4 bg-[#BE854C] hover:bg-[#a97541] text-white font-bold rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-emerald-950/20"
+              >
+                {heroObj.ctaText || 'Our Solutions'}
+                <ArrowRight class="h-4.5 w-4.5" />
+              </a>
+            </div>
+          )}
+        </div>
+
+        <!-- Decorative Bottom Wave / Arch Shape -->
+        <div class="absolute bottom-0 left-0 w-full overflow-hidden leading-none z-10">
+          <svg class="relative block w-full h-[60px]" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M0,0V120H1200V0C924,96,276,96,0,0Z" class="fill-[#fcfdfd]"></path>
+          </svg>
+        </div>
+      </section>
+
+      <!-- 2. Accreditation & UAE Heritage Banner -->
+      {accredObj.enabled && (
+        <section class="py-10 bg-white border-b border-slate-100 text-center">
+          <div class="max-w-4xl mx-auto px-4 space-y-4">
+            <div class="inline-flex items-center justify-center gap-3 mb-1">
+              <div class="w-12 h-0.5 bg-[#BE854C]"></div>
+              <span class="text-xs uppercase tracking-widest text-[#BE854C] font-extrabold">Accreditation</span>
+              <div class="w-12 h-0.5 bg-[#BE854C]"></div>
+            </div>
+            
+            <h2 class="text-2xl md:text-3xl font-bold text-[#004712] font-display">
+              {accredObj.title}
+            </h2>
+            <p class="text-sm text-slate-500 max-w-2xl mx-auto leading-relaxed">
+              {accredObj.subtitle}
+            </p>
+            
+            {/* Accreditation Logos Badge Container */}
+            <div class="flex items-center justify-center gap-8 pt-4 opacity-75">
+              <div class="flex items-center gap-2 text-slate-400">
+                <Trophy class="h-8 w-8 text-[#BE854C]" />
+                <div class="text-left leading-none">
+                  <span class="text-xs font-bold text-slate-700 block">BALI MEMBER</span>
+                  <span class="text-[9px] text-slate-450 block">Registered Landscaper UK</span>
+                </div>
+              </div>
+              <div class="w-px h-8 bg-slate-200"></div>
+              <div class="flex items-center gap-2 text-slate-400">
+                <Users class="h-8 w-8 text-[#BE854C]" />
+                <div class="text-left leading-none">
+                  <span class="text-xs font-bold text-slate-700 block">ESTABLISHED</span>
+                  <span class="text-[9px] text-slate-450 block">Pioneering in UAE Since 1988</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <!-- 3. Desert Group Services Grid -->
+      <section id="services" class="py-20 bg-[#F8F9F8]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+            <span class="text-xs uppercase tracking-widest text-[#BE854C] font-black">Our Expertise</span>
+            <h2 class="text-3xl md:text-5xl font-extrabold text-[#004712] font-display">
+              Desert Group Landscape Services
+            </h2>
+            <div class="w-16 h-1 bg-[#BE854C] mx-auto mt-2"></div>
+            <p class="text-sm text-slate-600 pt-2 leading-relaxed">
+              Providing holistic commercial exterior architecture, sports science turf, plant science nurseries, and advanced structural solutions across the GCC.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {servicesArr.map((svc) => (
+              <div class="group relative rounded-xl overflow-hidden bg-[#001705] min-h-[300px] flex flex-col justify-end p-6 border border-emerald-950/10 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                <!-- Background Image -->
+                {svc.imageUrl ? (
+                  <img 
+                    src={svc.imageUrl} 
+                    alt={svc.title}
+                    class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-70 group-hover:scale-105 transition-all duration-500" 
+                    loading="lazy"
+                  />
+                ) : (
+                  <div class="absolute inset-0 bg-gradient-to-br from-[#00360d] to-[#001705] opacity-80"></div>
+                )}
+                
+                <!-- Overlay Gradient -->
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+                
+                <!-- Text Container -->
+                <div class="relative z-10 space-y-2 text-left">
+                  <h3 class="text-lg font-bold text-white font-display group-hover:text-[#BE854C] transition-colors leading-snug">
+                    {svc.title}
+                  </h3>
+                  <p class="text-xs text-slate-300 font-light leading-relaxed line-clamp-3">
+                    {svc.desc}
+                  </p>
+                  <div class="pt-2 flex items-center gap-1.5 text-xs font-bold text-[#BE854C] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <span>Learn More</span>
+                    <ArrowRight class="h-3 w-3 translate-x-0 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Highlight Banner A: Desert Golf -->
+      <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div class="space-y-6 text-left">
+              <div class="inline-flex flex-col">
+                <span class="text-xs uppercase tracking-widest text-[#BE854C] font-black">{panelsObj.golf.subtitle}</span>
+                <h2 class="text-3xl md:text-5xl font-black text-[#004712] font-display mt-1">{panelsObj.golf.title}</h2>
+              </div>
+              <p class="text-slate-600 text-sm leading-relaxed">
+                {panelsObj.golf.description}
+              </p>
+              <div>
+                <a 
+                  href={panelsObj.golf.buttonUrl || '/portfolio'} 
+                  class="inline-flex items-center gap-2 border-2 border-[#BE854C] text-[#004712] hover:bg-[#BE854C] hover:text-white px-6 py-3 font-bold text-xs uppercase tracking-wider rounded transition-all duration-300"
+                >
+                  {panelsObj.golf.buttonText || 'Discover Courses'}
+                </a>
+              </div>
+            </div>
+            
+            <div class="relative rounded-2xl overflow-hidden shadow-2xl min-h-[380px] bg-slate-100">
+              {panelsObj.golf.imageUrl ? (
+                <img 
+                  src={panelsObj.golf.imageUrl} 
+                  alt="Desert Golf"
+                  class="absolute inset-0 w-full h-full object-cover hover:scale-103 transition-transform duration-500" 
+                />
+              ) : (
+                <div class="absolute inset-0 bg-gradient-to-br from-emerald-800 to-emerald-950 flex items-center justify-center text-white text-3xl font-bold">Showcase</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. Highlight Banner B: Wide Plant Nursery -->
+      <section class="relative py-28 bg-[#001705] overflow-hidden flex items-center justify-end">
+        <div class="absolute inset-0 bg-cover bg-center opacity-50" style={`background-image: url('${panelsObj.nursery.imageUrl}');`}></div>
+        <!-- Forest green left-to-right fade gradient -->
+        <div class="absolute inset-0 bg-gradient-to-r from-[#001705] via-[#001705]/60 to-transparent"></div>
+        
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 flex justify-start">
+          <div class="max-w-xl text-left bg-[#004712]/95 border-l-4 border-[#BE854C] p-8 md:p-10 rounded-r-xl shadow-2xl backdrop-blur-sm space-y-5">
+            <span class="text-xs uppercase tracking-widest text-[#BE854C] font-black">{panelsObj.nursery.subtitle}</span>
+            <h2 class="text-2xl md:text-4xl font-extrabold text-white leading-tight font-display">{panelsObj.nursery.title}</h2>
+            <p class="text-xs md:text-sm text-slate-100 leading-relaxed font-light">
+              {panelsObj.nursery.description}
+            </p>
+            <div class="pt-2">
+              <a 
+                href={panelsObj.nursery.buttonUrl || '/portfolio'} 
+                class="inline-flex items-center justify-center bg-[#BE854C] hover:bg-[#a97541] text-white px-5 py-3 text-xs font-bold uppercase tracking-wider rounded transition-colors"
+              >
+                {panelsObj.nursery.buttonText || 'Explore Native Flora'}
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. Highlight Banner C: Sustainable Landscape Section -->
+      <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            
+            <div class="relative rounded-2xl overflow-hidden shadow-2xl min-h-[380px] bg-slate-100 lg:order-last">
+              {panelsObj.sustainable.imageUrl ? (
+                <img 
+                  src={panelsObj.sustainable.imageUrl} 
+                  alt="Sustainable Landscaping"
+                  class="absolute inset-0 w-full h-full object-cover hover:scale-103 transition-transform duration-500" 
+                />
+              ) : (
+                <div class="absolute inset-0 bg-gradient-to-br from-teal-800 to-emerald-950 flex items-center justify-center text-white text-3xl font-bold">Ecological Science</div>
+              )}
+            </div>
+
+            <div class="space-y-6 text-left">
+              <div class="inline-flex flex-col">
+                <span class="text-xs uppercase tracking-widest text-[#BE854C] font-black">{panelsObj.sustainable.subtitle}</span>
+                <h2 class="text-3xl md:text-5xl font-black text-[#004712] font-display mt-1">{panelsObj.sustainable.title}</h2>
+              </div>
+              <p class="text-slate-600 text-sm leading-relaxed">
+                {panelsObj.sustainable.description}
+              </p>
+              
+              <!-- Checklist of custom points -->
+              <div class="space-y-3 pt-2">
+                {panelsObj.sustainable.highlight1 && (
+                  <div class="flex items-start gap-3">
+                    <div class="h-5 w-5 rounded-full bg-[#004712]/10 text-[#004712] flex items-center justify-center mt-0.5 shrink-0">✓</div>
+                    <span class="text-slate-700 text-sm font-semibold">{panelsObj.sustainable.highlight1}</span>
+                  </div>
+                )}
+                {panelsObj.sustainable.highlight2 && (
+                  <div class="flex items-start gap-3">
+                    <div class="h-5 w-5 rounded-full bg-[#004712]/10 text-[#004712] flex items-center justify-center mt-0.5 shrink-0">✓</div>
+                    <span class="text-slate-700 text-sm font-semibold">{panelsObj.sustainable.highlight2}</span>
+                  </div>
+                )}
+                {panelsObj.sustainable.highlight3 && (
+                  <div class="flex items-start gap-3">
+                    <div class="h-5 w-5 rounded-full bg-[#004712]/10 text-[#004712] flex items-center justify-center mt-0.5 shrink-0">✓</div>
+                    <span class="text-slate-700 text-sm font-semibold">{panelsObj.sustainable.highlight3}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. Arrco-style 3-card Featured Projects Selector -->
+      {projects.length > 0 && (
+        <section id="projects" class="py-20 bg-[#F8F9F8]">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+              <span class="text-xs uppercase tracking-widest text-[#BE854C] font-black">Greenscapes Portfolio</span>
+              <h2 class="text-3xl md:text-5xl font-extrabold text-[#004712] font-display">
+                Featured Landscape Projects
+              </h2>
+              <div class="w-16 h-1 bg-[#BE854C] mx-auto mt-2"></div>
+              <p class="text-sm text-slate-600 pt-2 leading-relaxed">
+                Explore a showcase of our landmark garden constructions, championship golf greens, and premium resort softscapes across the GCC.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Card 1: overlay with text */}
+              {projects[0] && (
+                <div class="group relative rounded-2xl overflow-hidden bg-slate-900 min-h-[380px] flex flex-col justify-end cursor-pointer shadow-md">
+                  {projects[0].featured_image ? (
+                    <img
+                      src={projects[0].featured_image}
+                      alt={projects[0].title}
+                      class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div class="absolute inset-0 bg-gradient-to-br from-[#00360d] to-[#001705]"></div>
+                  )}
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                  <div class="relative p-6 z-10 space-y-2 text-left">
+                    <span class="text-[10px] uppercase font-bold tracking-widest text-[#BE854C]">Featured Landmark</span>
+                    <h3 class="text-lg font-bold text-white leading-snug uppercase tracking-wide">
+                      {projects[0].client_name?.toUpperCase() || projects[0].title}
+                    </h3>
+                    <p class="text-white/75 text-xs leading-relaxed line-clamp-3">
+                      {projects[0].description}
+                    </p>
+                    <a
+                      href={`/projects?division=dgs`}
+                      class="inline-block mt-2 text-xs font-semibold text-white hover:text-[#BE854C] underline underline-offset-2 transition-colors"
+                    >
+                      Read More
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Cards 2 & 3: hover image cards */}
+              {projects.slice(1, 3).map((proj) => (
+                <div class="group relative rounded-2xl overflow-hidden bg-slate-200 min-h-[380px] cursor-pointer shadow-md">
+                  {proj.featured_image ? (
+                    <img
+                      src={proj.featured_image}
+                      alt={proj.title}
+                      class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      style="min-height: 380px;"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div class="w-full h-full min-h-[380px] flex items-center justify-center bg-gradient-to-br from-[#00360d] to-[#001705]">
+                      <LayoutGrid class="h-16 w-16 text-emerald-800" />
+                    </div>
+                  )}
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div class="absolute bottom-0 left-0 right-0 p-6 translate-y-3 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300 text-left">
+                    <p class="text-[10px] uppercase font-bold tracking-widest text-[#BE854C] mb-1">{proj.client_name || 'Landscape construction'}</p>
+                    <p class="text-white font-bold text-base drop-shadow">{proj.title}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div class="text-right mt-6">
+              <a
+                href="/projects?division=dgs"
+                class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-[#004712] transition-colors"
+              >
+                View DGS Project Archive
+                <ArrowRight class="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <!-- 8. Stats Fact Banner -->
+      <section class="py-16 bg-[#004712] text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {factsArr.map(f => (
+              <div class="text-center space-y-2">
+                <div class="text-4xl md:text-5xl font-black text-[#BE854C]">{f.value}</div>
+                <div class="h-0.5 w-8 bg-white/20 mx-auto"></div>
+                <p class="text-slate-200 font-medium text-xs uppercase tracking-wider">{f.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- 9. Dynamic Clients & Partners scrolling logos -->
+      {partners.length > 0 && (
+        <section class="py-16 bg-white border-b border-slate-100">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10">
+              <span class="text-xs uppercase tracking-widest text-[#BE854C] font-black">Trusted Partners</span>
+              <h2 class="text-xl font-bold text-slate-800 font-display mt-1">Our Clients & Master Builders</h2>
+            </div>
+            
+            <div class="flex flex-wrap items-center justify-center gap-12 opacity-75 hover:opacity-100 transition-opacity duration-300">
+              {partners.map(p => (
+                <a 
+                  href={p.website_url || '#'} 
+                  target={p.website_url ? "_blank" : undefined}
+                  class="flex items-center justify-center max-h-12 max-w-[150px] grayscale hover:grayscale-0 transition-all duration-300"
+                  title={p.name}
+                >
+                  {p.logo_url ? (
+                    <img src={p.logo_url} alt={p.name} class="max-h-10 object-contain" />
+                  ) : (
+                    <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-600 uppercase">{p.name}</span>
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <!-- 10. Dynamic Press Releases & Events -->
+      {articles.length > 0 && (
+        <section class="py-20 bg-white border-b border-slate-100">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+              <span class="text-xs uppercase tracking-widest text-[#BE854C] font-black">Latest News</span>
+              <h2 class="text-3xl md:text-5xl font-extrabold text-[#004712] font-display">
+                Press Releases & Events
+              </h2>
+              <div class="w-16 h-1 bg-[#BE854C] mx-auto mt-2"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {articles.map((art) => (
+                <div class="bg-[#F8F9F8] rounded-2xl border border-slate-200/50 overflow-hidden flex flex-col justify-between hover:shadow-lg transition-all duration-300">
+                  <div>
+                    <div class="h-48 bg-slate-100 overflow-hidden relative">
+                      {art.featured_image ? (
+                        <img src={art.featured_image} alt={art.title} class="w-full h-full object-cover hover:scale-103 transition-transform duration-500" />
+                      ) : (
+                        <div class="w-full h-full bg-gradient-to-br from-emerald-800 to-emerald-950 flex items-center justify-center text-white/30 text-lg">Announcements</div>
+                      )}
+                      <span class="absolute top-3 left-3 bg-[#BE854C] text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded shadow-sm">
+                        {art.type.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div class="p-6 space-y-3 text-left">
+                      <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <Calendar class="h-3.5 w-3.5 text-[#BE854C]" />
+                        {art.published_at ? new Date(art.published_at).toLocaleDateString(undefined, {month: 'long', day: 'numeric', year: 'numeric'}) : 'Press'}
+                      </div>
+                      <h3 class="text-lg font-bold text-[#004712] line-clamp-2 leading-snug font-display">
+                        {art.title}
+                      </h3>
+                      <p class="text-xs text-slate-600 leading-relaxed line-clamp-3">
+                        {art.summary || art.content}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="p-6 pt-0 text-left">
+                    <a 
+                      href={`/news/${art.slug}`} 
+                      class="inline-flex items-center gap-1.5 text-xs font-bold text-[#BE854C] hover:text-[#004712] transition-colors"
+                    >
+                      Read Full Article
+                      <ArrowRight class="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+    </div>
+  )}
+
+</Layout>
+

@@ -1,0 +1,264 @@
+---
+---
+<div id="project-modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-all">
+    <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50 sticky top-0 z-10">
+      <h3 id="project-modal-title" class="text-lg font-bold text-slate-900">Add Portfolio Project</h3>
+      <button id="close-project-modal" class="text-slate-400 hover:text-slate-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    
+    <div class="p-6">
+      <form id="project-form" class="space-y-5">
+        <input type="hidden" id="project-id" name="id" />
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Project Title</label>
+            <input type="text" id="project-title" name="title" required placeholder="e.g. Grand Hotel Lighting Setup" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50" />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Client Name</label>
+            <input type="text" id="project-client" name="client_name" required placeholder="e.g. Hilton Group" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50" />
+          </div>
+        </div>
+        
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Description</label>
+          <textarea id="project-desc" name="description" required rows="3" placeholder="Brief overview of the deployment..." class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"></textarea>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Featured Cover Image URL</label>
+          <input type="url" id="project-image" name="featured_image" placeholder="https://..." class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50" />
+        </div>
+
+        <!-- Gallery Images -->
+        <div class="space-y-3 pt-3 border-t border-slate-200">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Gallery Images</label>
+            <button type="button" id="add-gallery-img-btn" class="text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-600 px-3 py-1.5 rounded-lg transition-colors">+ Add Image</button>
+          </div>
+          
+          <div id="gallery-images-container" class="space-y-2 max-h-40 overflow-y-auto pr-2">
+            <div class="flex gap-2 gallery-img-row items-center">
+              <input type="url" name="gallery_img" placeholder="https://..." class="flex-grow rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-cyan-500 focus:outline-none" />
+              <button type="button" class="remove-gallery-btn text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2 font-bold transition-colors">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 pt-3 border-t border-slate-200">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Date</label>
+            <input type="date" id="project-date" name="completion_date" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Division</label>
+            <select id="project-division" name="division" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+              <option value="dtl">DTL</option>
+              <option value="dgs">DGS</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Status</label>
+            <select id="project-status" name="status" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Featured on Homepage -->
+        <div class="flex items-center gap-3 pt-3 border-t border-slate-200">
+          <input
+            type="checkbox"
+            id="project-featured"
+            name="featured"
+            class="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+          />
+          <div>
+            <label for="project-featured" class="text-sm font-bold text-slate-800 cursor-pointer">Featured on Homepage</label>
+            <p class="text-xs text-slate-500">Show in the "Discover Projects" section (max 3 shown)</p>
+          </div>
+        </div>
+
+        <div id="project-form-msg" class="hidden p-3 rounded-lg text-sm font-semibold mt-4"></div>
+
+        <div class="pt-6 flex gap-3">
+          <button type="button" id="cancel-project-btn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-sm font-bold transition-colors">
+            Cancel
+          </button>
+          <button type="submit" id="project-submit-btn" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-sm">
+            Save Project
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const setupProjectForm = () => {
+    const modal = document.getElementById('project-modal-backdrop');
+    const form = document.getElementById('project-form') as HTMLFormElement;
+    const closeBtn = document.getElementById('close-project-modal');
+    
+    if (!modal || !form) return;
+
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      form.reset();
+      (document.getElementById('project-id') as HTMLInputElement).value = '';
+      document.getElementById('project-modal-title')!.textContent = 'Add Portfolio Project';
+      const msg = document.getElementById('project-form-msg');
+      if (msg) msg.classList.add('hidden');
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    // Note: cancelBtn attached after clone below
+    
+    document.addEventListener('open-project-modal', ((e: CustomEvent) => {
+      const p = e.detail?.project;
+      const galleryContainer = document.getElementById('gallery-images-container');
+      
+      if (p) {
+        document.getElementById('project-modal-title')!.textContent = 'Edit Project';
+        (document.getElementById('project-id') as HTMLInputElement).value = p.id;
+        (document.getElementById('project-title') as HTMLInputElement).value = p.title;
+        (document.getElementById('project-client') as HTMLInputElement).value = p.client_name;
+        (document.getElementById('project-desc') as HTMLInputElement).value = p.description;
+        (document.getElementById('project-image') as HTMLInputElement).value = p.featured_image || '';
+        if (p.completion_date) {
+            (document.getElementById('project-date') as HTMLInputElement).value = new Date(p.completion_date).toISOString().split('T')[0];
+        }
+        (document.getElementById('project-division') as HTMLSelectElement).value = p.division || 'dtl';
+        (document.getElementById('project-status') as HTMLSelectElement).value = p.status || 'active';
+        (document.getElementById('project-featured') as HTMLInputElement).checked = !!p.featured;
+
+        // Rebuild gallery images list
+        if (galleryContainer) {
+          galleryContainer.innerHTML = '';
+          const images = typeof p.gallery_images === 'string' ? JSON.parse(p.gallery_images) : (p.gallery_images || []);
+          if (images.length === 0) {
+            galleryContainer.innerHTML = `
+              <div class="flex gap-2 gallery-img-row items-center">
+                <input type="url" name="gallery_img" placeholder="https://..." class="flex-grow rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-cyan-500 focus:outline-none" />
+                <button type="button" class="remove-gallery-btn text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2 font-bold transition-colors">&times;</button>
+              </div>
+            `;
+          } else {
+            images.forEach((url: string) => {
+              const row = document.createElement('div');
+              row.className = 'flex gap-2 gallery-img-row items-center mt-2';
+              row.innerHTML = `
+                <input type="url" name="gallery_img" value="${url}" placeholder="https://..." class="flex-grow rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-cyan-500 focus:outline-none" />
+                <button type="button" class="remove-gallery-btn text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2 font-bold transition-colors">&times;</button>
+              `;
+              galleryContainer.appendChild(row);
+            });
+          }
+        }
+      } else {
+        if (galleryContainer) {
+          galleryContainer.innerHTML = `
+            <div class="flex gap-2 gallery-img-row items-center">
+              <input type="url" name="gallery_img" placeholder="https://..." class="flex-grow rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-cyan-500 focus:outline-none" />
+              <button type="button" class="remove-gallery-btn text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2 font-bold transition-colors">&times;</button>
+            </div>
+          `;
+        }
+      }
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }) as EventListener);
+
+    const newForm = form.cloneNode(true) as HTMLFormElement;
+    form.parentNode?.replaceChild(newForm, form);
+
+    // Cancel must attach to the cloned node — original is now detached
+    newForm.querySelector('#cancel-project-btn')?.addEventListener('click', closeModal);
+
+    const galleryContainer = document.getElementById('gallery-images-container');
+    const addGalleryBtn = document.getElementById('add-gallery-img-btn');
+
+    galleryContainer?.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('remove-gallery-btn')) {
+        target.closest('.gallery-img-row')?.remove();
+      }
+    });
+
+    addGalleryBtn?.addEventListener('click', () => {
+      if (!galleryContainer) return;
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 gallery-img-row items-center mt-2';
+      row.innerHTML = `
+        <input type="url" name="gallery_img" placeholder="https://..." class="flex-grow rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-cyan-500 focus:outline-none" />
+        <button type="button" class="remove-gallery-btn text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2 font-bold transition-colors">&times;</button>
+      `;
+      galleryContainer.appendChild(row);
+    });
+
+    newForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('project-form-msg');
+      const btn = document.getElementById('project-submit-btn');
+      if (!msg || !btn) return;
+
+      btn.setAttribute('disabled', 'true');
+      btn.textContent = 'Saving...';
+
+      const formData = new FormData(newForm);
+      const galleryImages = formData.getAll('gallery_img').filter(url => typeof url === 'string' && url.trim().length > 0);
+
+      const data: any = {
+        title: formData.get('title'),
+        client_name: formData.get('client_name'),
+        description: formData.get('description'),
+        completion_date: formData.get('completion_date') || undefined,
+        featured_image: formData.get('featured_image') || undefined,
+        division: formData.get('division'),
+        status: formData.get('status'),
+        featured: (document.getElementById('project-featured') as HTMLInputElement)?.checked ?? false,
+        gallery_images: galleryImages
+      };
+
+      const id = formData.get('id');
+      const method = id ? 'PUT' : 'POST';
+      const endpoint = id ? `/api/projects/${id}` : '/api/projects';
+
+      try {
+        const res = await fetch(endpoint, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        
+        if (res.ok) {
+          msg.className = 'p-3 rounded-lg text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 block mt-4';
+          msg.textContent = 'Project saved successfully!';
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          throw new Error(result.error || 'Failed to save project');
+        }
+      } catch (err: any) {
+        msg.className = 'p-3 rounded-lg text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200 block mt-4';
+        msg.textContent = err.message || 'Error saving project';
+      } finally {
+        btn.removeAttribute('disabled');
+        btn.textContent = 'Save Project';
+      }
+    });
+  };
+
+  setupProjectForm();
+  document.addEventListener('astro:page-load', setupProjectForm);
+</script>

@@ -1,0 +1,360 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight, Lightbulb } from 'lucide-astro';
+---
+
+<Layout title="About Us" description="We supply light & nature to the UAE.">
+  <div class="bg-white">
+    
+    <!-- Hero Section (Perfect Replication of Mockup) -->
+    <section class="relative pt-24 pb-20 overflow-hidden bg-[#fcfdfd]">
+      <!-- Soft ambient glows -->
+      <div class="absolute top-0 right-0 -mr-32 -mt-32 w-[500px] h-[500px] rounded-full bg-amber-50/60 opacity-60 blur-3xl pointer-events-none select-none z-0"></div>
+      <div class="absolute bottom-0 left-0 -ml-32 -mb-32 w-[500px] h-[500px] rounded-full bg-green-50/60 opacity-60 blur-3xl pointer-events-none select-none z-0"></div>
+
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+          
+          <!-- Left Column (Text & Buttons) -->
+          <div class="lg:col-span-7 text-left space-y-6">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] block">
+              DELIGHT GROUP LLC &bull; SHARJAH, UAE
+            </span>
+            
+            <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold font-display tracking-tight text-slate-900 leading-tight">
+              We supply <br />
+              <span class="text-[#b45309] font-serif italic font-medium">light</span> & 
+              <span class="text-[#166534] font-serif italic font-medium">nature</span> <br />
+              to the UAE.
+            </h1>
+            
+            <p class="text-sm sm:text-base text-slate-500 font-semibold leading-relaxed max-w-xl">
+              Two specialist divisions. One trusted supplier. Premium products for homes, businesses, and developers — available to all.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row items-center gap-4 pt-4">
+              <a 
+                href="/delighttechnicallighting" 
+                class="w-full sm:w-auto px-6 py-4 bg-[#082a17] hover:bg-[#051a0e] text-white font-extrabold rounded-lg text-xs uppercase tracking-wider inline-flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/10 hover:shadow-lg hover:-translate-y-0.5"
+              >
+                <span>Explore Our Divisions</span>
+                <ArrowRight class="w-4 h-4" />
+              </a>
+              <a 
+                href="/contact" 
+                class="w-full sm:w-auto px-6 py-4 bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 text-slate-800 font-extrabold rounded-lg text-xs uppercase tracking-wider inline-flex items-center justify-center transition-all shadow-2xs"
+              >
+                Get a Quote
+              </a>
+            </div>
+          </div>
+
+          <!-- Right Column (Premium Hero Image with Curved Frame) -->
+          <div class="lg:col-span-5">
+            <div class="relative w-full h-[380px] sm:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-slate-100 bg-slate-50 group">
+              <img 
+                src="/about-hero.png" 
+                alt="Delight Group Upscale Lighting & Greenscapes Entryway" 
+                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-103"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/5 via-transparent to-transparent"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Dark Forest Green Bar Banners -->
+    <div class="bg-[#082a17] py-5 shadow-lg relative z-20">
+      <div class="mx-auto max-w-7xl px-4">
+        <div class="flex flex-wrap md:flex-nowrap justify-between items-center gap-6 md:gap-4 text-white text-[10px] font-black uppercase tracking-[0.2em]">
+          
+          <!-- Tech Lighting -->
+          <div class="flex items-center gap-2 mx-auto md:mx-0">
+            <Cpu class="w-4 h-4 text-emerald-450 shrink-0" />
+            <span>Technical Lighting</span>
+          </div>
+
+          <!-- Vertical Dots / Dividers on desktop -->
+          <span class="hidden md:inline text-emerald-800 opacity-60">&bull;</span>
+
+          <!-- Greenscapes -->
+          <div class="flex items-center gap-2 mx-auto md:mx-0">
+            <Leaf class="w-4 h-4 text-emerald-450 shrink-0" />
+            <span>Greenscapes</span>
+          </div>
+
+          <span class="hidden md:inline text-emerald-800 opacity-60">&bull;</span>
+
+          <!-- B2B & B2C -->
+          <div class="flex items-center gap-2 mx-auto md:mx-0">
+            <Users class="w-4 h-4 text-emerald-450 shrink-0" />
+            <span>B2B & B2C</span>
+          </div>
+
+          <span class="hidden md:inline text-emerald-800 opacity-60">&bull;</span>
+
+          <!-- UAE-Wide Delivery -->
+          <div class="flex items-center gap-2 mx-auto md:mx-0">
+            <Truck class="w-4 h-4 text-emerald-450 shrink-0" />
+            <span>UAE-Wide Delivery</span>
+          </div>
+
+          <span class="hidden md:inline text-emerald-800 opacity-60">&bull;</span>
+
+          <!-- Sharjah Based -->
+          <div class="flex items-center gap-2 mx-auto md:mx-0">
+            <MapPin class="w-4 h-4 text-emerald-450 shrink-0" />
+            <span>Sharjah Based</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Greetings / Our Story Section -->
+    <section class="py-24 bg-[#fcfdfd] relative border-b border-slate-100">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-12 items-start">
+          
+          <!-- Left Column (Heading + Architectural Sketch) -->
+          <div class="lg:col-span-5 space-y-6">
+            <span class="text-xs font-bold text-amber-500 uppercase tracking-widest block">Our Story</span>
+            <h2 class="text-4xl font-extrabold font-display text-slate-900 leading-tight">Greetings from <br />Delight Group LLC</h2>
+            
+            <!-- Fine Architectural Building Sketch (High Fidelity SVG Replication) -->
+            <div class="pt-6 relative max-w-[280px] sm:max-w-xs select-none opacity-45 pointer-events-none">
+              <svg viewBox="0 0 200 120" class="w-full h-auto text-slate-350" fill="none" stroke="currentColor">
+                <!-- Outer structural frames -->
+                <path d="M 10,110 L 10,20 L 70,20 L 70,110 Z" stroke-width="0.5" />
+                <path d="M 70,110 L 70,40 L 130,40 L 130,110 Z" stroke-width="0.5" stroke-dasharray="2,2" />
+                <path d="M 130,110 L 130,10 L 190,10 L 190,110 Z" stroke-width="0.5" />
+                <!-- Ground line -->
+                <line x1="0" y1="110" x2="200" y2="110" stroke-width="0.75" />
+                <!-- Dynamic architectural diagonals -->
+                <line x1="10" y1="20" x2="190" y2="10" stroke-width="0.25" stroke-dasharray="3,3" />
+                <line x1="70" y1="40" x2="130" y2="110" stroke-width="0.25" />
+                <!-- Grid panels -->
+                <line x1="30" y1="20" x2="30" y2="110" stroke-width="0.25" />
+                <line x1="50" y1="20" x2="50" y2="110" stroke-width="0.25" />
+                <line x1="150" y1="10" x2="150" y2="110" stroke-width="0.25" />
+                <line x1="170" y1="10" x2="170" y2="110" stroke-width="0.25" />
+                <!-- Horizontal floor levels -->
+                <line x1="10" y1="50" x2="70" y2="50" stroke-width="0.25" />
+                <line x1="10" y1="80" x2="70" y2="80" stroke-width="0.25" />
+                <line x1="130" y1="45" x2="190" y2="45" stroke-width="0.25" />
+                <line x1="130" y1="75" x2="190" y2="75" stroke-width="0.25" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Right Column (Text Description) -->
+          <div class="lg:col-span-7 space-y-6 text-sm text-slate-500 font-semibold leading-relaxed text-left">
+            <p>
+              Delight Group LLC is a UAE-based trading company headquartered in Sharjah. We are the parent organization of two specialist supply divisions — <strong class="text-slate-800 font-bold">Delight Technical Lighting</strong> and <strong class="text-slate-800 font-bold">Delight Greenscapes</strong>.
+            </p>
+            <p>
+              We are not engineers or contractors. We are passionate resellers who believe great products — beautiful lighting and thriving plants — should be straightforward to source. We work with homeowners, interior designers, fitout contractors, hotel developers, and facility managers who want a dependable supply partner they can count on.
+            </p>
+            <p>
+              As a new company entering the UAE market, our commitment is simple: honest pricing, genuine products, and service that makes you want to come back.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Premium Redesigned Division Panels (Replicating exact card features) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mt-24">
+          
+          <!-- Card 1: DTL Division -->
+          <div class="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/5 rounded-3xl p-8 sm:p-10 text-left transition-all duration-300 hover:shadow-2xl hover:border-slate-350/80 hover:-translate-y-1 relative overflow-hidden group">
+            <div class="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-amber-500/5 opacity-50 blur-2xl group-hover:bg-amber-500/10 transition-all duration-500"></div>
+            
+            <div class="w-12 h-12 bg-amber-50 text-[#b45309] rounded-2xl flex items-center justify-center mb-8 border border-amber-100 shadow-sm shrink-0">
+              <Lightbulb class="w-5.5 h-5.5" />
+            </div>
+
+            <h3 class="text-xl sm:text-2xl font-extrabold tracking-tight mb-4 font-display">
+              <span class="text-slate-400 font-bold uppercase tracking-wider text-sm sm:text-base mr-1">DELIGHT</span>
+              <span class="text-[#b45309] uppercase tracking-wide">TECHNICAL LIGHTING</span>
+            </h3>
+            
+            <p class="text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold mb-8">
+              We supply premium indoor and outdoor lighting fixtures from trusted global brands to homes, offices, hotels, retail spaces, and development projects across the UAE. From pendant lights and downlights to architectural outdoor fixtures — if it illuminates a space, we carry it.
+            </p>
+
+            <ul class="space-y-3.5 mb-10">
+              {['INDOOR LIGHTING FIXTURES', 'OUTDOOR & FACADE LIGHTING', 'DECORATIVE & STATEMENT PIECES', 'BULK B2B TRADE SUPPLY'].map(item => (
+                <li class="flex items-center gap-3 text-[11px] font-black text-slate-700 tracking-wider">
+                  <span class="w-5 h-5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[#b45309] flex items-center justify-center shrink-0">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <a 
+              href="/delighttechnicallighting" 
+              class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#b45309] hover:text-amber-800 transition-colors border-b-2 border-amber-500/20 hover:border-amber-600 pb-0.5"
+            >
+              <span>View Division</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          <!-- Card 2: DGS Division -->
+          <div class="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/5 rounded-3xl p-8 sm:p-10 text-left transition-all duration-300 hover:shadow-2xl hover:border-slate-350/80 hover:-translate-y-1 relative overflow-hidden group">
+            <div class="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-emerald-500/5 opacity-50 blur-2xl group-hover:bg-emerald-500/10 transition-all duration-500"></div>
+
+            <div class="w-12 h-12 bg-emerald-50 text-[#166534] rounded-2xl flex items-center justify-center mb-8 border border-emerald-100 shadow-sm shrink-0">
+              <Leaf class="w-5.5 h-5.5" />
+            </div>
+
+            <h3 class="text-xl sm:text-2xl font-extrabold tracking-tight mb-4 font-display">
+              <span class="text-slate-400 font-bold uppercase tracking-wider text-sm sm:text-base mr-1">DELIGHT</span>
+              <span class="text-[#166534] uppercase tracking-wide">GREENSCAPES</span>
+            </h3>
+
+            <p class="text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold mb-8">
+              We supply curated indoor and outdoor plants, decorative pots, and planters to residences, offices, hotels, and commercial developments. Whether you need a single statement palm for your living room or bulk greenery for a hotel lobby fitout, Greenscapes is your UAE source.
+            </p>
+
+            <ul class="space-y-3.5 mb-10">
+              {['INDOOR PLANTS & COLLECTIONS', 'OUTDOOR & GARDEN PLANTS', 'COMMERCIAL B2B PLANT SUPPLY', 'DECORATIVE POTS & PLANTERS'].map(item => (
+                <li class="flex items-center gap-3 text-[11px] font-black text-slate-700 tracking-wider">
+                  <span class="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[#166534] flex items-center justify-center shrink-0">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <a 
+              href="/delightgreenscapes" 
+              class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#166534] hover:text-emerald-800 transition-colors border-b-2 border-emerald-500/20 hover:border-emerald-700 pb-0.5"
+            >
+              <span>View Division</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Circular Vision, Mission, Values (Precise Outline Rows) -->
+    <section class="py-24 bg-white border-b border-slate-100">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16">
+          
+          <!-- Vision -->
+          <div class="flex flex-col text-left space-y-4">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full border border-slate-200/80 flex items-center justify-center text-[#b45309] bg-slate-50/50 shadow-2xs shrink-0">
+                <Target class="w-5 h-5" />
+              </div>
+              <h4 class="text-xs font-black uppercase tracking-widest text-slate-800">
+                Vision
+              </h4>
+            </div>
+            <p class="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed pl-1">
+              To become the UAE's most trusted specialist supplier of premium lighting and plants — valued for quality, transparency, and dependable service.
+            </p>
+          </div>
+
+          <!-- Mission -->
+          <div class="flex flex-col text-left space-y-4">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full border border-slate-200/80 flex items-center justify-center text-[#b45309] bg-slate-50/50 shadow-2xs shrink-0">
+                <Heart class="w-5 h-5" />
+              </div>
+              <h4 class="text-xs font-black uppercase tracking-widest text-slate-800">
+                Mission
+              </h4>
+            </div>
+            <p class="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed pl-1">
+              Make beautiful, high-quality products accessible to every client — from a homeowner redecorating a room to a developer fitting out an entire building.
+            </p>
+          </div>
+
+          <!-- Values -->
+          <div class="flex flex-col text-left space-y-4">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full border border-slate-200/80 flex items-center justify-center text-[#b45309] bg-slate-50/50 shadow-2xs shrink-0">
+                <ShieldCheck class="w-5 h-5" />
+              </div>
+              <h4 class="text-xs font-black uppercase tracking-widest text-slate-800">
+                Values
+              </h4>
+            </div>
+            <ul class="space-y-2.5 text-xs font-semibold text-slate-550 pl-1">
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 rounded-full bg-slate-400"></span>
+                Honest about what we are — resellers, not engineers
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 rounded-full bg-slate-400"></span>
+                Quality products, no compromise
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 rounded-full bg-slate-400"></span>
+                Straightforward pricing, B2B & B2C
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="w-1 h-1 rounded-full bg-slate-400"></span>
+                UAE-wide delivery commitment
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Work With Us CTA (Leaf Overlay Integration) -->
+    <section class="py-24 bg-[#f8fafc] text-center relative overflow-hidden border-t border-slate-200/40">
+      
+      <!-- Faint Palm Leaves peaking from bottom corners (Mockup Replication) -->
+      <div class="absolute bottom-0 left-0 z-0 pointer-events-none select-none opacity-85 translate-y-6">
+        <img 
+          src="/leaf-left.svg" 
+          alt="" 
+          class="w-44 sm:w-60 h-auto"
+        />
+      </div>
+      <div class="absolute bottom-0 right-0 z-0 pointer-events-none select-none opacity-85 translate-y-6">
+        <img 
+          src="/leaf-right.svg" 
+          alt="" 
+          class="w-44 sm:w-60 h-auto"
+        />
+      </div>
+
+      <div class="mx-auto max-w-3xl px-4 relative z-10 space-y-6">
+        <span class="text-xs font-bold text-[#b45309] uppercase tracking-widest block">Work With Us</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold font-display text-slate-900 leading-tight max-w-xl mx-auto">
+          Whether you need lighting or plants &mdash; we've got you.
+        </h2>
+        
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <a 
+            href="/contact" 
+            class="w-full sm:w-auto px-8 py-4 bg-[#082a17] hover:bg-[#051a0e] text-white font-extrabold rounded-lg text-xs uppercase tracking-wider transition-colors shadow-md shadow-emerald-950/10 hover:-translate-y-0.5"
+          >
+            Get a Quote
+          </a>
+          <a 
+            href="/projects" 
+            class="w-full sm:w-auto px-8 py-4 bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-50 text-slate-800 font-extrabold rounded-lg text-xs uppercase tracking-wider transition-colors shadow-2xs"
+          >
+            See Our Work
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</Layout>

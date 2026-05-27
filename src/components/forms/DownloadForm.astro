@@ -1,0 +1,179 @@
+---
+interface Props {
+  categories: any[];
+}
+const { categories = [] } = Astro.props;
+---
+
+<div id="download-modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden transform transition-all">
+    <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+      <h3 id="download-modal-title" class="text-lg font-bold text-slate-900">Add Resource</h3>
+      <button id="close-download-modal" class="text-slate-400 hover:text-slate-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    
+    <div class="p-6">
+      <form id="download-form" class="space-y-4">
+        <input type="hidden" id="download-id" name="id" />
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Document Title</label>
+          <input type="text" id="download-title" name="title" required placeholder="e.g. DTL Catalog 2026" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50" />
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">URL / File Path</label>
+          <input type="url" id="download-url" name="url" required placeholder="https://..." class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Type</label>
+            <select id="download-type" name="type" required class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+              <option value="pdf">General PDF</option>
+              <option value="catalog">Full Catalog</option>
+              <option value="datasheet">Datasheet</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Division</label>
+            <select id="download-division" name="division" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+              <option value="dtl">DTL (Technical Lighting)</option>
+              <option value="dgs">DGS (Greenscapes)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">File Size</label>
+            <input type="text" id="download-file-size" name="file_size" placeholder="e.g. 19 MB" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50" />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Status</label>
+            <select id="download-status" name="status" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+              <option value="active">Active (Visible)</option>
+              <option value="hidden">Hidden</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+        </div>
+
+
+
+        <div id="download-form-msg" class="hidden p-3 rounded-lg text-sm font-semibold mt-4"></div>
+
+        <div class="pt-4 flex gap-3">
+          <button type="button" id="cancel-download-btn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-lg text-sm font-bold transition-colors">
+            Cancel
+          </button>
+          <button type="submit" id="download-submit-btn" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm">
+            Save Resource
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const setupDownloadForm = () => {
+    const modal = document.getElementById('download-modal-backdrop');
+    const form = document.getElementById('download-form') as HTMLFormElement;
+    const closeBtn = document.getElementById('close-download-modal');
+    
+    if (!modal || !form) return;
+
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      // reset whichever form is live
+      document.getElementById('download-form')?.dispatchEvent(new Event('reset'));
+      const liveId = document.getElementById('download-id') as HTMLInputElement | null;
+      if (liveId) liveId.value = '';
+      const titleEl = document.getElementById('download-modal-title');
+      if (titleEl) titleEl.textContent = 'Add Resource';
+      const msg = document.getElementById('download-form-msg');
+      if (msg) msg.classList.add('hidden');
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    
+    document.addEventListener('open-download-modal', ((e: CustomEvent) => {
+      const d = e.detail?.download;
+      if (d) {
+        document.getElementById('download-modal-title')!.textContent = 'Edit Resource';
+        (document.getElementById('download-id') as HTMLInputElement).value = d.id;
+        (document.getElementById('download-title') as HTMLInputElement).value = d.title;
+        (document.getElementById('download-url') as HTMLInputElement).value = d.url;
+        (document.getElementById('download-type') as HTMLSelectElement).value = d.type;
+        (document.getElementById('download-division') as HTMLSelectElement).value = d.division || 'dtl';
+        (document.getElementById('download-file-size') as HTMLInputElement).value = d.file_size || '';
+        (document.getElementById('download-status') as HTMLSelectElement).value = d.status || 'active';
+      }
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }) as EventListener);
+
+    const newForm = form.cloneNode(true) as HTMLFormElement;
+    form.parentNode?.replaceChild(newForm, form);
+
+    // Grab cancel from the LIVE cloned form (original is now detached)
+    newForm.querySelector('#cancel-download-btn')?.addEventListener('click', closeModal);
+
+    newForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('download-form-msg');
+      const btn = document.getElementById('download-submit-btn');
+      if (!msg || !btn) return;
+
+      btn.setAttribute('disabled', 'true');
+      btn.textContent = 'Saving...';
+
+      const formData = new FormData(newForm);
+      const data: any = {
+        title: formData.get('title'),
+        url: formData.get('url'),
+        type: formData.get('type'),
+        division: formData.get('division'),
+        file_size: formData.get('file_size') || 'Unknown',
+        status: formData.get('status') || 'active'
+      };
+
+      const id = formData.get('id');
+      const method = id ? 'PUT' : 'POST';
+      const endpoint = id ? `/api/downloads/${id}` : '/api/downloads';
+
+      try {
+        const res = await fetch(endpoint, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        
+        if (res.ok) {
+          msg.className = 'p-3 rounded-lg text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 block mt-4';
+          msg.textContent = 'Resource saved successfully!';
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          throw new Error(result.error || 'Failed to save resource');
+        }
+      } catch (err: any) {
+        msg.className = 'p-3 rounded-lg text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200 block mt-4';
+        msg.textContent = err.message || 'Error saving resource';
+      } finally {
+        btn.removeAttribute('disabled');
+        btn.textContent = 'Save Resource';
+      }
+    });
+  };
+
+  setupDownloadForm();
+  document.addEventListener('astro:page-load', setupDownloadForm);
+</script>

@@ -1,0 +1,373 @@
+---
+import { UserButton } from '@clerk/astro/components';
+import { 
+  LayoutDashboard, Package, FolderGit2, FileSpreadsheet, FileClock, 
+  DownloadCloud, Inbox, Users2, ShieldAlert, ScrollText, 
+  Menu, X, ChevronLeft, LogOut, ExternalLink, Activity, Handshake, Image, Settings2
+} from 'lucide-astro';
+import ResourcePicker from '../components/ui/ResourcePicker.astro';
+
+
+interface Props {
+  title: string;
+  activeItem: string;
+}
+
+const { title, activeItem } = Astro.props;
+
+// Access Astro.locals variables populated in the middleware
+const user = Astro.locals.user;
+const roles = Astro.locals.roles || [];
+const permissions = Astro.locals.permissions || [];
+
+const isAdmin = roles.includes('admin');
+const isModerator = roles.includes('moderator');
+
+// Build Sidebar Navigation items dynamically based on roles/permissions
+const hasDashboardAccess = roles.includes('admin') || roles.includes('moderator') || roles.includes('user');
+
+const navGroups = [
+  {
+    label: null,
+    items: [
+      { id: 'dashboard', name: 'Overview', href: '/dashboard', icon: LayoutDashboard, show: true },
+    ]
+  },
+  {
+    label: 'Operations',
+    items: [
+      { id: 'messages', name: 'Messages', href: '/dashboard/communications', icon: Inbox, show: isAdmin },
+      { id: 'portfolio', name: 'Portfolio', href: '/dashboard/projects', icon: FolderGit2, show: isAdmin },
+      { id: 'articles', name: 'Articles / Press', href: '/dashboard/articles', icon: ScrollText, show: isAdmin || isModerator },
+      { id: 'resources', name: 'Resources', href: '/dashboard/resources', icon: Image, show: isAdmin || isModerator },
+      { id: 'library', name: 'Downloads', href: '/dashboard/downloads', icon: DownloadCloud, show: hasDashboardAccess },
+      { id: 'partners', name: 'Trusted Partners', href: '/dashboard/partners', icon: Handshake, show: isAdmin || isModerator },
+    ]
+  },
+  {
+    label: 'Catalog',
+    items: [
+      { id: 'categories', name: 'Categories', href: '/dashboard/categories', icon: FolderGit2, show: isAdmin || isModerator },
+      { id: 'products', name: 'Products', href: '/dashboard/products', icon: Package, show: isAdmin || isModerator },
+      { id: 'inventory', name: 'Inventory', href: '/dashboard/inventory', icon: Activity, show: isAdmin || isModerator },
+      { id: 'invoices', name: 'Orders', href: '/dashboard/invoices', icon: FileSpreadsheet, show: isAdmin },
+    ]
+  },
+  {
+    label: 'Administration',
+    items: [
+      { id: 'site-disclaimers', name: 'Site Disclaimers', href: '/dashboard/site-disclaimers', icon: ScrollText, show: isAdmin },
+      { id: 'dtl-setup', name: 'DTL Setup', href: '/dashboard/dtl-setup', icon: Image, show: isAdmin },
+      { id: 'dgs-setup', name: 'DGS Setup', href: '/dashboard/dgs-setup', icon: Image, show: isAdmin },
+      { id: 'finance-legal', name: 'Finance & Legal', href: '/dashboard/finance-legal', icon: FileSpreadsheet, show: isAdmin },
+      { id: 'identity', name: 'Identity', href: '/dashboard/users', icon: Users2, show: isAdmin },
+      { id: 'permissions', name: 'Permission Matrix', href: '/dashboard/permissions', icon: ShieldAlert, show: isAdmin },
+    ]
+  },
+];
+// Flat list for backward compat
+const navItems = navGroups.flatMap(g => g.items);
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png" />
+    <link rel="manifest" href="/favicons/site.webmanifest" />
+    <title>{title} | Delight Group LLC</title>
+
+
+
+    <!-- Google Fonts: Outfit and Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- NProgress for page loading -->
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css" />
+    <style is:global>
+      :root {
+        --font-sans: 'Inter', sans-serif;
+        --font-display: 'Outfit', sans-serif;
+      }
+      body {
+        font-family: var(--font-sans);
+      }
+      /* Customize NProgress */
+      #nprogress .bar {
+        background: #06b6d4 !important; /* cyan-500 */
+        height: 3px !important;
+      }
+      #nprogress .peg {
+        box-shadow: 0 0 10px #06b6d4, 0 0 5px #06b6d4 !important;
+      }
+      #nprogress .spinner-icon {
+        border-top-color: #06b6d4 !important;
+        border-left-color: #06b6d4 !important;
+      }
+
+      /* Custom Scrollbar for premium feel */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #0f172a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #334155;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      .dark ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-800 min-h-screen flex antialiased selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden transition-colors duration-250">
+    
+    <!-- Sidebar Backdrop (Mobile only) -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-slate-950/45 backdrop-blur-xs z-30 hidden transition-opacity duration-300 opacity-0 print:hidden select-none"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white/90 backdrop-blur-xl flex flex-col transition-all duration-300 md:translate-x-0 -translate-x-full">
+      <!-- Sidebar Header -->
+      <div class="h-20 border-b border-slate-200 flex items-center justify-between px-5 bg-slate-50/50">
+        <a href="/" class="flex items-center gap-3 group">
+          <img src="/dgllclogosmall.png" alt="Delight Group Logo" class="h-12 w-auto object-contain transition-transform duration-350 group-hover:scale-105" />
+          <span class="text-base font-black font-display tracking-tight text-slate-900 leading-tight">
+            Delight <span class="text-cyan-550 font-bold block text-xs tracking-wider uppercase -mt-0.5">Group LLC</span>
+          </span>
+        </a>
+        <button id="close-sidebar-btn" class="md:hidden text-slate-500 hover:text-slate-900">
+          <X class="h-5 w-5" />
+        </button>
+      </div>
+
+      <!-- Sidebar Navigation Menu -->
+      <nav class="flex-grow px-2.5 overflow-y-auto py-2 space-y-0.5">
+        {navGroups.map(group => {
+          const visibleItems = group.items.filter(item => item.show);
+          if (visibleItems.length === 0) return null;
+          return (
+            <div class="mb-2">
+              {group.label && (
+                <div class="px-2.5 pt-2 pb-0.5">
+                  <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">{group.label}</span>
+                </div>
+              )}
+              {visibleItems.map(item => {
+                const isActive = activeItem === item.id;
+                return (
+                  <a
+                    href={item.href}
+                    class={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all duration-150 ${
+                      isActive
+                        ? 'bg-cyan-50/80 text-cyan-700 font-bold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    {item.icon && <item.icon class={`h-4 w-4 shrink-0 ${isActive ? 'text-cyan-600' : 'text-slate-400'}`} />}
+                    <span class="truncate">{item.name}</span>
+                    {isActive && <span class="ml-auto w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0"></span>}
+                  </a>
+                );
+              })}
+            </div>
+          );
+        })}
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="border-t border-slate-200 shrink-0 p-3 bg-slate-50/50">
+        <!-- Home & Profile side-by-side grid -->
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <!-- Home -->
+          <a 
+            href="/" 
+            class="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-650 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-all group"
+            title="Go to Corporate Home"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 21V12h6v9" />
+            </svg>
+            <span>Home</span>
+          </a>
+
+          <!-- Profile -->
+          <a 
+            href="/dashboard/profile" 
+            class="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-650 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-all group"
+            title="Manage Profile"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span class="truncate max-w-[80px]">{user ? (user.name || user.firstName || 'Profile') : 'Profile'}</span>
+          </a>
+        </div>
+
+        <!-- Sign Out -->
+        <button
+          id="sidebar-signout-btn"
+          class="w-full flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-100 bg-rose-50/30 transition-all group"
+        >
+          <LogOut class="h-3.5 w-3.5 shrink-0 text-rose-400 group-hover:text-rose-600" />
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Container -->
+    <div class="md:pl-64 flex flex-col flex-1 min-h-screen w-full transition-all duration-300">
+      <!-- Top Bar -->
+      <header class="h-16 border-b border-slate-200 bg-white/60 backdrop-blur-md flex items-center justify-between px-6 md:px-8 transition-colors duration-250">
+        <div class="flex items-center gap-4">
+          <button id="open-sidebar-btn" class="md:hidden text-slate-500 hover:text-slate-900" aria-label="Open navigation">
+            <Menu class="h-6 w-6" />
+          </button>
+          <div>
+            <h1 class="text-base font-extrabold font-display tracking-tight text-slate-900 leading-tight">{title}</h1>
+            <p class="text-[10px] text-slate-500 mt-0.5 font-semibold">Control Panel Telemetry & Corporate System Console</p>
+          </div>
+        </div>
+        
+        <!-- User button & system status -->
+        <div class="flex items-center gap-4">
+        </div>
+      </header>
+
+      <!-- Panel Dynamic Content Body -->
+      <main class="flex-grow p-6 md:p-8 bg-slate-50 transition-colors duration-250">
+        <slot />
+      </main>
+    </div>
+
+    <!-- Client-Side Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full"></div>
+
+    <!-- Collapsible Sidebar & Global Controls Script -->
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js" is:inline></script>
+    <script>
+      // Initialize NProgress for Astro View Transitions (if used) or standard navigation
+      document.addEventListener('astro:before-preparation', () => { NProgress.start(); });
+      document.addEventListener('astro:page-load', () => { NProgress.done(); });
+      // Fallback for standard links
+      document.addEventListener('DOMContentLoaded', () => {
+        NProgress.configure({ showSpinner: true });
+        const links = document.querySelectorAll('a[href]:not([target="_blank"])');
+        links.forEach(link => {
+          link.addEventListener('click', (e) => {
+            if (e.defaultPrevented || link.getAttribute('href')?.startsWith('#')) return;
+            NProgress.start();
+          });
+        });
+      });
+
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      const openBtn = document.getElementById('open-sidebar-btn');
+      const closeBtn = document.getElementById('close-sidebar-btn');
+
+      const openSidebar = () => {
+        if (sidebar) sidebar.classList.remove('-translate-x-full');
+        if (backdrop) {
+          backdrop.classList.remove('hidden');
+          backdrop.offsetHeight; // force reflow
+          backdrop.classList.remove('opacity-0');
+          backdrop.classList.add('opacity-100');
+        }
+      };
+
+      const closeSidebar = () => {
+        if (sidebar) sidebar.classList.add('-translate-x-full');
+        if (backdrop) {
+          backdrop.classList.remove('opacity-100');
+          backdrop.classList.add('opacity-0');
+          setTimeout(() => {
+            if (backdrop.classList.contains('opacity-0')) {
+              backdrop.classList.add('hidden');
+            }
+          }, 300);
+        }
+      };
+
+      openBtn?.addEventListener('click', openSidebar);
+      closeBtn?.addEventListener('click', closeSidebar);
+      backdrop?.addEventListener('click', closeSidebar);
+
+      // Sidebar Sign Out button — triggers Clerk sign-out
+      document.getElementById('sidebar-signout-btn')?.addEventListener('click', async () => {
+        try {
+          // Clerk exposes window.Clerk from the loaded script
+          if ((window as any).Clerk) {
+            await (window as any).Clerk.signOut();
+            window.location.href = '/';
+          } else {
+            // Fallback: navigate to Clerk sign-out endpoint
+            window.location.href = '/sign-out';
+          }
+        } catch (err) {
+          window.location.href = '/';
+        }
+      });
+
+      // Global Toast Notification Helper
+      window.showToast = function(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `p-4 rounded-xl border shadow-xl flex items-center justify-between gap-3 text-sm font-medium transition-all duration-300 opacity-0 translate-y-2 select-none`;
+        
+        if (type === 'success') {
+          toast.className += ` bg-slate-900 border-emerald-500/20 text-emerald-400`;
+        } else if (type === 'error') {
+          toast.className += ` bg-slate-900 border-rose-500/20 text-rose-400`;
+        } else {
+          toast.className += ` bg-slate-900 border-amber-500/20 text-amber-400`;
+        }
+
+        toast.innerHTML = `
+          <span>${message}</span>
+          <button class="text-slate-400 hover:text-white focus:outline-none" onclick="this.parentElement.remove()">
+            &times;
+          </button>
+        `;
+
+        container.appendChild(toast);
+        
+        // Trigger reflow
+        toast.offsetHeight;
+        
+        // Animate in
+        toast.classList.remove('opacity-0', 'translate-y-2');
+        toast.classList.add('opacity-100', 'translate-y-0');
+
+        // Auto remove after 4 seconds
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 4000);
+      };
+    </script>
+    <!-- FAQ Widget for Site Knowledge / Local LLM -->
+
+    <ResourcePicker />
+  </body>
+</html>

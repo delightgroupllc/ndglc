@@ -1,0 +1,307 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { 
+  DollarSign, FolderGit2, Inbox, ShieldCheck, 
+  TrendingUp, Activity, History, AlertTriangle 
+} from 'lucide-astro';
+
+const user = Astro.locals.user;
+const roles = Astro.locals.roles || [];
+const isAdmin = roles.includes('admin') || roles.includes('moderator');
+
+let metrics = {
+  totalValuation: 185200.00, // Stock valuation
+  pendingSettlements: 0.00,
+  totalRevenue: 0.00,
+  projectCount: 0,
+  accountStanding: 'NOMINAL',
+  activeInquiries: 0
+};
+
+let recentActivities: any[] = [];
+let dbConnected = true;
+
+try {
+  // 1. Get Project/Categories count
+  const catRes = await query('SELECT COUNT(*) FROM categories');
+  metrics.projectCount = parseInt(catRes.rows[0].count);
+
+  // 2. Get Revenue (Paid invoices)
+  const revRes = await query("SELECT COALESCE(SUM(total_amount), 0) as total FROM invoices WHERE payment_status = 'paid'");
+  metrics.totalRevenue = parseFloat(revRes.rows[0].total);
+
+  // 3. Get Pending Settlements (Unpaid invoices)
+  const pendQuery = isAdmin
+    ? "SELECT COALESCE(SUM(total_amount), 0) as total FROM invoices WHERE payment_status = 'unpaid'"
+    : "SELECT COALESCE(SUM(total_amount), 0) as total FROM invoices WHERE customer_email = $1 AND payment_status = 'unpaid'";
+  
+  const pendParams = isAdmin ? [] : [user?.email || ''];
+  const pendRes = await query(pendQuery, pendParams);
+  metrics.pendingSettlements = parseFloat(pendRes.rows[0].total);
+
+  // 4. Get active CRM enquiries
+  const enqRes = await query('SELECT COUNT(*) FROM contacts WHERE is_resolved = false');
+  metrics.activeInquiries = parseInt(enqRes.rows[0].count);
+
+  // 5. User Account Standing
+  if (user) {
+    metrics.accountStanding = user.is_suspended ? 'SUSPENDED' : 'EXCELLENT';
+  }
+
+  // 6. Get Dynamic Valuation (based on stock levels)
+  const valRes = await query("SELECT COALESCE(SUM(stock_level * 180), 0) as total FROM inventory");
+  const dbVal = parseFloat(valRes.rows[0].total);
+  if (dbVal > 0) {
+    metrics.totalValuation = dbVal;
+  }
+
+  // 7. Load activity logs / transaction events
+  const logsRes = await query(
+    `SELECT al.*, u.name as user_name
+     FROM audit_logs al
+     LEFT JOIN users u ON u.id = al.user_id
+     ORDER BY al.timestamp DESC
+     LIMIT 6`
+  );
+  recentActivities = logsRes.rows.map(log => ({
+    id: log.id,
+    type: log.action,
+    details: log.details,
+    timestamp: log.timestamp,
+    user: log.user_name || 'System automated'
+  }));
+
+} catch (err: any) {
+  console.warn('Database offline, running mock dashboard overview:', err.message);
+  dbConnected = false;
+
+  // Set mock dashboard statistics
+  metrics = {
+    totalValuation: 245900.00,
+    pendingSettlements: 17700.00,
+    totalRevenue: 12390.00,
+    projectCount: 4,
+    accountStanding: 'EXCELLENT',
+    activeInquiries: 2
+  };
+
+  recentActivities = [
+    { id: '1', type: 'order_update', details: 'Order INV-2026-8094 marked as COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(), user: 'Alexander Vance' },
+    { id: '2', type: 'transaction_event', details: 'B2B payment of $12,390 received', timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(), user: 'System checkout' },
+    { id: '3', type: 'status_change', details: 'New catalog category "Indoor Lighting" added', timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(), user: 'Jane Stark' }
+  ];
+}
+---
+
+<DashboardLayout title="Overview" activeItem="dashboard">
+
+  <!-- Real-Time Command Center Header -->
+  <div class="rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-white p-6 md:p-8 mb-8 backdrop-blur-xl relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm">
+    <div class="space-y-2">
+      <span class="text-xs font-semibold text-cyan-600 uppercase tracking-widest flex items-center gap-1.5">
+        <span class="h-2 w-2 rounded-full bg-cyan-500 animate-pulse"></span>
+        Command Center
+      </span>
+      <h2 class="text-2xl font-bold font-display text-slate-900">Delight Group LLC</h2>
+      <p class="text-xs text-slate-500">Corporate portal and live B2B supply logistics console</p>
+    </div>
+
+    <!-- GST Time & Date widget -->
+    <div class="flex gap-6 text-xs text-slate-500 self-stretch sm:self-auto border-t border-slate-200 md:border-t-0 pt-4 md:pt-0">
+      <div>
+        <p class="text-3xs font-semibold uppercase tracking-wider text-slate-500">System Time (GST)</p>
+        <p id="live-gst-clock" class="text-lg font-bold text-slate-800 font-mono mt-1">12:00:00 GST</p>
+      </div>
+      <div class="h-10 w-px bg-slate-200"></div>
+      <div>
+        <p class="text-3xs font-semibold uppercase tracking-wider text-slate-500">System Date</p>
+        <p id="live-gst-date" class="text-lg font-bold text-slate-800 font-mono mt-1">YYYY-MM-DD</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Offline Database Warning -->
+  {!dbConnected && (
+    <div class="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-500 font-medium">
+      <AlertTriangle class="h-4.5 w-4.5 shrink-0" />
+      <div>
+        <span class="font-bold">PostgreSQL is Offline</span>: Telemetry displays simulated change logs.
+      </div>
+    </div>
+  )}
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <!-- Metrics Grid (lg:col-span-8) -->
+    <div class="lg:col-span-8 space-y-6">
+      <h3 class="text-sm font-bold font-display text-slate-900 uppercase tracking-wider">Metrics Grid</h3>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {isAdmin ? (
+          <!-- Admin View: 6 Metrics -->
+          <>
+            <!-- Total Valuation -->
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Valuation</p>
+              <p class="text-2xl font-bold font-display text-slate-900">${metrics.totalValuation.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            </div>
+
+            <!-- Pending Settlements -->
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Pending Settlements</p>
+              <p class="text-2xl font-bold font-display text-amber-600">${metrics.pendingSettlements.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            </div>
+
+            <!-- Total Revenue -->
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Revenue</p>
+              <p class="text-2xl font-bold font-display text-emerald-600">${metrics.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            </div>
+
+            <!-- Project Count -->
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Project Count</p>
+              <p class="text-2xl font-bold font-display text-cyan-600">{metrics.projectCount} Collections</p>
+            </div>
+
+            <!-- Account Standing -->
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Account Standing</p>
+              <p class="text-2xl font-bold font-display text-emerald-600">{metrics.accountStanding}</p>
+            </div>
+
+            <!-- Active Enquiries -->
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Active Inquiries</p>
+              <p class="text-2xl font-bold font-display text-blue-600">{metrics.activeInquiries} CRM Dispatches</p>
+            </div>
+          </>
+        ) : (
+          <!-- Regular User View: 3 Metrics -->
+          <>
+            <!-- Project Count -->
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Project Mapped Count</p>
+              <p class="text-2xl font-bold font-display text-cyan-600">{metrics.projectCount} Collections</p>
+            </div>
+
+            <!-- Awaiting Settlement -->
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Awaiting Settlement</p>
+              <p class="text-2xl font-bold font-display text-amber-600">${metrics.pendingSettlements.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            </div>
+
+            <!-- Account Standing -->
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Account Standing</p>
+              <p class="text-2xl font-bold font-display text-emerald-600">{metrics.accountStanding}</p>
+            </div>
+          </>
+        )}
+      </div>
+
+      <!-- Quick Shortcuts -->
+      <div class="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+        <h3 class="text-sm font-bold font-display text-slate-900">Operations Command Console</h3>
+        <p class="text-xs text-slate-650 leading-relaxed">Select an administrative quick link below to update ledger invoice sheets or configure product categories.</p>
+        <div class="flex flex-wrap gap-4">
+          {isAdmin && (
+            <>
+              <a href="/dashboard/transactions" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 rounded-lg text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
+                Financial Ledger
+              </a>
+              <a href="/dashboard/projects" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 rounded-lg text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
+                Portfolio CRUD
+              </a>
+              <a href="/dashboard/communications" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 rounded-lg text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
+                CRM Messages
+              </a>
+            </>
+          )}
+          <a href="/dashboard/downloads" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 rounded-lg text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
+            Library Downloads
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Operational Feed Right Panel (lg:col-span-4) -->
+    <div class="lg:col-span-4 space-y-6">
+      <h3 class="text-sm font-bold font-display text-slate-900 uppercase tracking-wider">Operational Feed</h3>
+
+      <div class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h4 class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-cyan-500 animate-pulse"></span>
+            Real-time Activity Stream
+          </h4>
+          <span class="text-3xs text-slate-500 font-semibold tracking-wider uppercase">Online</span>
+        </div>
+
+        {recentActivities.length === 0 ? (
+          <div class="text-center py-12 text-slate-400 italic text-xs leading-relaxed space-y-2">
+            <div>No Pulse Detected</div>
+            <div class="text-2xs text-slate-400">Systems are currently nominal.</div>
+          </div>
+        ) : (
+          <div class="space-y-4">
+            {recentActivities.map(activity => (
+              <div class="flex gap-3 text-xs leading-relaxed">
+                <div class="h-5 w-1 bg-cyan-500 rounded mt-0.5 shrink-0"></div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="rounded bg-slate-100 border border-slate-200 px-1.5 py-0.2 text-3xs font-mono font-bold text-slate-600 uppercase">
+                      {activity.type.replace('_', ' ')}
+                    </span>
+                    <span class="text-3xs text-slate-500">{new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <p class="text-slate-600 mt-1 text-2xs truncate" title={activity.details}>{activity.details}</p>
+                  <p class="text-3xs text-slate-400 mt-0.5">By: {activity.user}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div class="pt-4 border-t border-slate-100 flex justify-end">
+          <a href="/dashboard/logs" class="text-3xs font-bold text-cyan-600 hover:text-cyan-500 tracking-wider uppercase">
+            View Ledger History &rarr;
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-time Clock and Date Script -->
+  <script>
+    function updateGSTClock() {
+      const clockEl = document.getElementById('live-gst-clock');
+      const dateEl = document.getElementById('live-gst-date');
+      
+      if (!clockEl || !dateEl) return;
+
+      const now = new Date();
+      
+      // Calculate GST timezone (+4:00)
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const gstTime = new Date(utc + (3600000 * 4));
+
+      // Clock
+      const hours = String(gstTime.getHours()).padStart(2, '0');
+      const minutes = String(gstTime.getMinutes()).padStart(2, '0');
+      const seconds = String(gstTime.getSeconds()).padStart(2, '0');
+      clockEl.textContent = `${hours}:${minutes}:${seconds} GST`;
+
+      // Date
+      const year = gstTime.getFullYear();
+      const month = String(gstTime.getMonth() + 1).padStart(2, '0');
+      const day = String(gstTime.getDate()).padStart(2, '0');
+      dateEl.textContent = `${year}-${month}-${day}`;
+    }
+
+    // Run immediately and start intervals
+    updateGSTClock();
+    setInterval(updateGSTClock, 1000);
+  </script>
+
+</DashboardLayout>

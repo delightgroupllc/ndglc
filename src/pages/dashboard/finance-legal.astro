@@ -1,0 +1,175 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { Settings, Save, Building2, Receipt, PenTool } from 'lucide-astro';
+
+let settings: Record<string, string> = {};
+try {
+  const res = await query('SELECT key, value FROM settings');
+  settings = res.rows.reduce((acc: any, row: any) => {
+    acc[row.key] = row.value;
+    return acc;
+  }, {});
+} catch (e) {
+  console.error("DB Offline", e);
+}
+---
+
+<DashboardLayout title="Finance & Legal | Delight Group LLC">
+  <div class="max-w-4xl mx-auto space-y-8">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-black font-display text-slate-900 tracking-tight uppercase">Finance & Legal</h1>
+        <p class="text-slate-500 mt-1">Manage global corporate settings and remittance information.</p>
+      </div>
+      <button 
+        type="button"
+        id="save-settings-btn"
+        class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm"
+      >
+        <Save class="w-4 h-4" />
+        Save Configuration
+      </button>
+    </div>
+
+    <form id="settings-form" class="space-y-8">
+      
+      <!-- REMITTANCE DETAILS -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
+          <div class="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+          <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <Receipt class="w-4 h-4 text-slate-400" />
+            Remittance Details
+          </h2>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Bank Name</label>
+              <input type="text" name="bank_name" value={settings.bank_name || ''} placeholder="e.g. RAK BANK" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Account Name</label>
+              <input type="text" name="account_name" value={settings.account_name || ''} placeholder="e.g. DELIGHT GROUP LLC" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Account Number</label>
+              <input type="text" name="account_number" value={settings.account_number || ''} class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Swift Code</label>
+              <input type="text" name="swift_code" value={settings.swift_code || ''} class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
+            </div>
+            <div class="space-y-1.5 md:col-span-2">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">IBAN Number</label>
+              <input type="text" name="iban_number" value={settings.iban_number || ''} class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AUTHORIZED SIGNATURES -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
+          <div class="w-1.5 h-6 bg-purple-600 rounded-full"></div>
+          <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <PenTool class="w-4 h-4 text-slate-400" />
+            Authorized Signatures (Company)
+          </h2>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Signatory Name</label>
+              <input type="text" name="signatory_name" value={settings.signatory_name || ''} class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Signatory Title</label>
+              <input type="text" name="signatory_title" value={settings.signatory_title || ''} class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEGAL & REGULATORY -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
+          <div class="w-1.5 h-6 bg-orange-500 rounded-full"></div>
+          <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <Building2 class="w-4 h-4 text-slate-400" />
+            Legal & Regulatory
+          </h2>
+        </div>
+        <div class="p-6 space-y-6">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Official Business Address (UAE Format)</label>
+            <textarea name="business_address" rows="3" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors">{settings.business_address || ''}</textarea>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">TRN (Tax Number)</label>
+              <input type="text" name="trn_number" value={settings.trn_number || ''} class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Business Registration</label>
+              <input type="text" name="business_registration" value={settings.business_registration || ''} class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
+            </div>
+          </div>
+          
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Permits & Other Information</label>
+            <textarea name="permits_info" rows="2" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors">{settings.permits_info || ''}</textarea>
+          </div>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <div id="toast-msg" class="fixed bottom-4 right-4 bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl transform transition-transform translate-y-20 opacity-0 font-semibold text-sm flex items-center gap-2 z-50">
+    <div class="w-2 h-2 rounded-full bg-green-500"></div>
+    <span id="toast-text">Settings saved successfully</span>
+  </div>
+</DashboardLayout>
+
+<script>
+  const form = document.getElementById('settings-form') as HTMLFormElement;
+  const saveBtn = document.getElementById('save-settings-btn');
+  const toast = document.getElementById('toast-msg');
+  const toastText = document.getElementById('toast-text');
+
+  const showToast = (msg: string, isError = false) => {
+    if (!toast || !toastText) return;
+    toastText.textContent = msg;
+    toast.querySelector('.w-2')?.classList.toggle('bg-green-500', !isError);
+    toast.querySelector('.w-2')?.classList.toggle('bg-red-500', isError);
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+  };
+
+  saveBtn?.addEventListener('click', async () => {
+    if (!form) return;
+    saveBtn.setAttribute('disabled', 'true');
+    saveBtn.innerHTML = '<span class="animate-pulse">Saving...</span>';
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Failed to save settings');
+      showToast('Settings saved successfully');
+    } catch (err: any) {
+      showToast(err.message || 'Error saving settings', true);
+    } finally {
+      saveBtn.removeAttribute('disabled');
+      saveBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg> Save Configuration';
+    }
+  });
+</script>

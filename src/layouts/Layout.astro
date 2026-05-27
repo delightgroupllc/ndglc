@@ -1,0 +1,662 @@
+---
+import { UserButton, SignInButton } from '@clerk/astro/components';
+import { Menu, X, ChevronDown, Cpu, Shield, Database, Activity, PhoneCall, ArrowRight, Package, Briefcase, DownloadCloud, LayoutGrid, Search, User, Building2 } from 'lucide-astro';
+import { query } from '../lib/db';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Enterprise industrial supplies and digital solutions platform." } = Astro.props;
+
+// Determine if user has dashboard access
+const roles = Astro.locals.roles || [];
+const hasDashboardAccess = roles.includes('admin') || roles.includes('moderator') || roles.includes('user');
+
+const auth = Astro.locals.auth ? Astro.locals.auth() : null;
+const userId = auth?.userId || null;
+
+// Get current page path
+const currentPath = Astro.url.pathname;
+const isHome = currentPath === '/';
+const isDTL = currentPath.startsWith('/delighttechnicallighting');
+const isDGS = currentPath.startsWith('/delightgreenscapes');
+
+// Determine logo to show
+let logoSrc = '/dgllclogosmall.png';
+let logoAlt = 'Delight Group Logo';
+if (isDTL) {
+  logoSrc = '/dtllogo.jpg';
+  logoAlt = 'DTL Logo';
+} else if (isDGS) {
+  logoSrc = '/dgslogo.jpg';
+  logoAlt = 'DGS Logo';
+}
+
+// Fetch divisions and categories for secondary nav when on DTL/DGS
+let secondaryNavCategories: any[] = [];
+try {
+  const divRes = await query(
+    'SELECT id, slug, name FROM divisions WHERE slug IN ($1, $2)',
+    ['delighttechnicallighting', 'delightgreenscapes']
+  );
+
+  if (divRes.rows.length > 0) {
+    for (const div of divRes.rows) {
+      // 1) Try to fetch explicit categories configured for the division
+      const catRes = await query(
+        'SELECT name, slug FROM categories WHERE division_id = $1 ORDER BY display_order ASC LIMIT 6',
+        [div.id]
+      );
+
+      if (catRes.rows.length > 0) {
+        secondaryNavCategories.push(...catRes.rows.map((cat: any) => ({ ...cat, divSlug: div.slug })));
+        continue;
+      }
+
+      // 2) Fallback: derive top categories from products (categories that actually have products)
+      const prodCatRes = await query(
+        `SELECT c.name, c.slug, COUNT(p.id) as product_count
+         FROM products p
+         JOIN categories c ON c.id = p.category_id
+         WHERE c.division_id = $1
+         GROUP BY c.id
+         ORDER BY product_count DESC
+         LIMIT 6`,
+        [div.id]
+      );
+
+      if (prodCatRes.rows.length > 0) {
+        secondaryNavCategories.push(...prodCatRes.rows.map((cat: any) => ({ name: cat.name, slug: cat.slug, divSlug: div.slug })));
+        continue;
+      }
+
+      // 3) No categories or products available: provide helpful suggestions
+      const suggestions = [
+        { name: 'All Products', slug: `/${div.slug}` },
+        { name: 'New Arrivals', slug: `/${div.slug}?sort=new` },
+        { name: 'Best Sellers', slug: `/${div.slug}?sort=popular` },
+        { name: 'Contact Sales', slug: '/contact' },
+      ];
+      secondaryNavCategories.push(...suggestions.map(s => ({ ...s, divSlug: div.slug })));
+    }
+  }
+} catch (e) {
+  // Secondary nav is optional; log for debugging but keep site working
+  console.warn('Secondary nav categories lookup failed:', e?.message || e);
+}
+---
+
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicons/favicon-16x16.png" />
+    <link rel="manifest" href="/favicons/site.webmanifest" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title} | Delight Group LLC</title>
+    <meta name="description" content={description} />
+    
+    <!-- Google Fonts: Outfit and Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style is:global>
+      :root {
+        --font-sans: 'Inter', sans-serif;
+        --font-display: 'Outfit', sans-serif;
+      }
+      body {
+        font-family: var(--font-sans);
+      }
+      h1, h2, h3, h4, h5, h6 {
+        font-family: var(--font-display);
+      }
+    </style>
+  </head>
+  <body class="bg-[#fcfdfd] text-slate-900 min-h-screen flex flex-col antialiased selection:bg-blue-500/30 selection:text-blue-900">
+    <!-- Sticky Glassmorphism Header -->
+    <header class="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-all duration-300">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-24 items-center justify-between">
+          <!-- Logo Section -->
+          <div class="flex-none w-64 text-left">
+            <a href={isDTL ? "/delighttechnicallighting" : (isDGS ? "/delightgreenscapes" : "/")} class="inline-flex items-center gap-3 group">
+              <img 
+                src={logoSrc} 
+                alt={logoAlt} 
+                class="h-18 md:h-20 w-auto group-hover:scale-103 transition-transform duration-300 object-contain" 
+              />
+            </a>
+          </div>
+
+          <!-- Main Desktop Navigation (Centered) -->
+          <nav class="hidden md:flex items-center justify-center gap-8 flex-grow">
+            {!isHome && (
+              <a href="/" class="text-sm font-bold font-display tracking-tight text-slate-650 hover:text-slate-950 transition-colors duration-200">Home</a>
+            )}
+            <a href="/about" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">About</a>
+            <a href="/delighttechnicallighting" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Delight Technical Lighting</a>
+            <a href="/delightgreenscapes" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Delight Greenscapes</a>
+            {(!isDTL && !isDGS) && (
+              <a href="/downloads" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Downloads</a>
+            )}
+            <a href="/contact" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Contact</a>
+          </nav>
+
+          <!-- Action Buttons / Auth (Right-aligned) -->
+          <div class="hidden md:flex items-center justify-end gap-4 w-64">
+            {userId ? (
+              <div class="flex items-center gap-3">
+                {hasDashboardAccess && (
+                  <a 
+                    href="/dashboard" 
+                    class="flex items-center gap-2 border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold text-slate-700 transition shadow-sm bg-white"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Dashboard</span>
+                  </a>
+                )}
+                <UserButton afterSignOutUrl="/" />
+              </div>
+            ) : (
+              <div class="flex items-center gap-3">
+                <a href="/login" class="text-sm font-bold text-slate-650 hover:text-slate-950 transition">Sign In</a>
+                <a 
+                  href="/dashboard" 
+                  class="flex items-center gap-2 border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold text-slate-700 transition shadow-sm bg-white"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Dashboard</span>
+                </a>
+              </div>
+            )}
+          </div>
+
+          <!-- Mobile Actions (Row 1 Right) -->
+          <div class="flex md:hidden items-center gap-2.5">
+            <!-- Search Trigger -->
+            <button class="p-2 text-slate-550 hover:text-slate-900" aria-label="Search">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+            
+            <!-- User / Clerk Button Profile -->
+            <div class="scale-90 origin-center select-none">
+              <UserButton afterSignOutUrl="/" />
+            </div>
+
+            <!-- Mobile Menu Toggle Button -->
+            <button id="mobile-menu-btn" class="flex items-center justify-center p-2 text-slate-600 hover:text-slate-900 focus:outline-none" aria-label="Toggle menu">
+              <Menu id="menu-icon" class="h-6 w-6 transition-all duration-300" />
+              <X id="close-icon" class="h-6 w-6 hidden transition-all duration-300" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Navigation Drawer -->
+      <div id="mobile-drawer" class="md:hidden hidden border-b border-slate-200 bg-white p-5 transition-all duration-300">
+        <nav class="flex flex-col gap-1.5 text-left">
+          <!-- Drawer Links with Icons -->
+          <div class="space-y-0.5">
+            <a href="/about" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+              <span class="flex items-center gap-3">
+                <User class="h-4.5 w-4.5 text-slate-400" />
+                <span>About Us</span>
+              </span>
+              <ChevronDown class="h-4 w-4 text-slate-450" />
+            </a>
+
+            <a href="/delighttechnicallighting" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+              <span class="flex items-center gap-3">
+                <Cpu class="h-4.5 w-4.5 text-slate-400" />
+                <span>Technical Lighting</span>
+              </span>
+              <ChevronDown class="h-4 w-4 text-slate-450" />
+            </a>
+
+            <a href="/delightgreenscapes" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+              <span class="flex items-center gap-3">
+                <Activity class="h-4.5 w-4.5 text-slate-400" />
+                <span>Delight Greenscapes</span>
+              </span>
+              <ChevronDown class="h-4 w-4 text-slate-450" />
+            </a>
+
+            <a href="/downloads" class="flex items-center p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+              <span class="flex items-center gap-3">
+                <DownloadCloud class="h-4.5 w-4.5 text-slate-400" />
+                <span>Downloads / Resources</span>
+              </span>
+            </a>
+
+            <a href="/contact" class="flex items-center p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+              <span class="flex items-center gap-3">
+                <PhoneCall class="h-4.5 w-4.5 text-slate-400" />
+                <span>Contact</span>
+              </span>
+            </a>
+          </div>
+
+          <div class="border-t border-slate-100 my-3"></div>
+
+          <!-- Bottom full-width Dashboard button in Drawer -->
+          {userId ? (
+            <a 
+              href="/dashboard" 
+              class="w-full flex items-center justify-center gap-2 border border-slate-200 py-2.5 rounded-lg text-sm font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 transition shadow-sm"
+            >
+              <User class="h-4.5 w-4.5 text-slate-500" />
+              <span>Dashboard</span>
+            </a>
+          ) : (
+            <a 
+              href="/login" 
+              class="w-full flex items-center justify-center gap-2 border border-slate-200 py-2.5 rounded-lg text-sm font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 transition shadow-sm"
+            >
+              <User class="h-4.5 w-4.5 text-slate-500" />
+              <span>Sign In / Dashboard</span>
+            </a>
+          )}
+        </nav>
+      </div>
+    </header>
+
+    <!-- Secondary Category Navigation (DTL/DGS only) - Mega Menu -->
+    {(isDTL || isDGS) && (
+      <div class="hidden md:block border-b border-slate-200 bg-white">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
+          <nav class="flex items-center justify-center h-24">
+            <div class="flex items-center justify-between w-full max-w-5xl">
+              
+              <!-- 1) Products Dropdown -->
+              <div class="group py-3 flex flex-col items-center justify-center flex-1 cursor-pointer">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class={`h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 text-slate-500 transition duration-300 ${isDTL ? 'group-hover:bg-amber-50 group-hover:text-amber-650 group-hover:border-amber-200/50' : 'group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-200/50'}`}>
+                    <Package class="h-5 w-5" />
+                  </div>
+                  <span class={`text-[11px] font-extrabold uppercase tracking-wider text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+                    Products
+                    <ChevronDown class="h-3.5 w-3.5 group-hover:rotate-180 transition-transform" />
+                  </span>
+                </div>
+
+                <!-- Products Mega Menu Dropdown -->
+                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-5xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-6 md:p-8 mt-1 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                  <div class="grid grid-cols-5 gap-6">
+                    {isDTL ? (
+                      <>
+                        <div>
+                          <h4 class="font-black text-slate-900 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Indoor</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delighttechnicallighting/indoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Batten Lights</a></li>
+                            <li><a href="/delighttechnicallighting/indoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Ceiling Lights</a></li>
+                            <li><a href="/delighttechnicallighting/indoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Continuous Linear</a></li>
+                            <li><a href="/delighttechnicallighting/indoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Downlights</a></li>
+                            <li><a href="/delighttechnicallighting/indoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Magnetic Track</a></li>
+                            <li><a href="/delighttechnicallighting/indoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Pendant Lights</a></li>
+                            <li><a href="/delighttechnicallighting/indoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Recessed Lights</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-slate-900 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Outdoor</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delighttechnicallighting/outdoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Area & Post-Top</a></li>
+                            <li><a href="/delighttechnicallighting/outdoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Bollard Lights</a></li>
+                            <li><a href="/delighttechnicallighting/outdoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Floodlights</a></li>
+                            <li><a href="/delighttechnicallighting/outdoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Inground Lights</a></li>
+                            <li><a href="/delighttechnicallighting/outdoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Spike Lights</a></li>
+                            <li><a href="/delighttechnicallighting/outdoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Step Lights</a></li>
+                            <li><a href="/delighttechnicallighting/outdoor-lighting" class="hover:text-amber-600 hover:font-bold transition">Street Lights</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-slate-900 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Specialty</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Strip Lights</a></li>
+                            <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Decorative</a></li>
+                            <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Spotlights</a></li>
+                            <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Tracklights</a></li>
+                            <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Wall Lights</a></li>
+                            <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Chandeliers</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-slate-900 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Smart solutions</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Smart Lights</a></li>
+                            <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">IoT Systems</a></li>
+                            <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Automation</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-slate-900 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Downloads</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/downloads" class="hover:text-amber-600 hover:font-bold transition">Catalogs</a></li>
+                            <li><a href="/downloads" class="hover:text-amber-600 hover:font-bold transition">Technical sheets</a></li>
+                            <li><a href="/downloads" class="hover:text-amber-600 hover:font-bold transition">Certificates</a></li>
+                          </ul>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <h4 class="font-black text-[#004712] mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Plants</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightgreenscapes/indoor-plants" class="hover:text-emerald-700 hover:font-bold transition">Indoor Plants</a></li>
+                            <li><a href="/delightgreenscapes/outdoor-landscaping" class="hover:text-emerald-700 hover:font-bold transition">Outdoor Plants</a></li>
+                            <li><a href="/delightgreenscapes/outdoor-landscaping" class="hover:text-emerald-700 hover:font-bold transition">Trees & Palms</a></li>
+                            <li><a href="/delightgreenscapes/outdoor-landscaping" class="hover:text-emerald-700 hover:font-bold transition">Shrubs</a></li>
+                            <li><a href="/delightgreenscapes/outdoor-landscaping" class="hover:text-emerald-700 hover:font-bold transition">Desert Flowers</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-[#004712] mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Planters</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightgreenscapes/planters-pots" class="hover:text-emerald-700 hover:font-bold transition">Ceramic Pots</a></li>
+                            <li><a href="/delightgreenscapes/planters-pots" class="hover:text-emerald-700 hover:font-bold transition">Fiberglass</a></li>
+                            <li><a href="/delightgreenscapes/planters-pots" class="hover:text-emerald-700 hover:font-bold transition">Concrete planters</a></li>
+                            <li><a href="/delightgreenscapes/planters-pots" class="hover:text-emerald-700 hover:font-bold transition">Custom boxes</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-[#004712] mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Accessories</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightgreenscapes/outdoor-landscaping" class="hover:text-emerald-700 hover:font-bold transition">Soil & Compost</a></li>
+                            <li><a href="/delightgreenscapes/outdoor-landscaping" class="hover:text-emerald-700 hover:font-bold transition">Fertilizers</a></li>
+                            <li><a href="/delightgreenscapes/outdoor-landscaping" class="hover:text-emerald-700 hover:font-bold transition">Irrigation tools</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-[#004712] mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Services</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightgreenscapes" class="hover:text-emerald-700 hover:font-bold transition">Golf Construction</a></li>
+                            <li><a href="/delightgreenscapes" class="hover:text-emerald-700 hover:font-bold transition">Landscape Construction</a></li>
+                            <li><a href="/delightgreenscapes" class="hover:text-emerald-700 hover:font-bold transition">Maintenance Contract</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-[#004712] mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Nursery</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightgreenscapes" class="hover:text-emerald-700 hover:font-bold transition">Wahat Al Sahraa</a></li>
+                            <li><a href="/delightgreenscapes" class="hover:text-emerald-700 hover:font-bold transition">Native Flora Cultivation</a></li>
+                          </ul>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Vertical Divider -->
+              <div class="h-10 w-px bg-slate-200/80"></div>
+
+              <!-- 2) Solutions Dropdown -->
+              <div class="relative group py-3 flex flex-col items-center justify-center flex-1 cursor-pointer">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class={`h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 text-slate-500 transition duration-300 ${isDTL ? 'group-hover:bg-amber-50 group-hover:text-amber-650 group-hover:border-amber-200/50' : 'group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-200/50'}`}>
+                    <Building2 class="h-5 w-5" />
+                  </div>
+                  <span class={`text-[11px] font-extrabold uppercase tracking-wider text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+                    Solutions
+                    <ChevronDown class="h-3.5 w-3.5 group-hover:rotate-180 transition-transform" />
+                  </span>
+                </div>
+
+                <!-- Solutions Dropdown Menu -->
+                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-96 bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-1 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                  <div class="grid grid-cols-2">
+                    <div class="border-r border-slate-100 p-4 space-y-1.5 text-left">
+                      <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Retail Solutions</a>
+                      <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Industrial Spaces</a>
+                      <a href={isDTL ? "/delighttechnicallighting/indoor-lighting" : "/delightgreenscapes/indoor-plants"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Residential Luxury</a>
+                      <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/indoor-plants"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Corporate Offices</a>
+                      <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Hotels & Resorts</a>
+                    </div>
+                    <div class="p-4 flex flex-col justify-between text-left">
+                      <p class="text-[10px] text-slate-500 leading-relaxed font-semibold">
+                        Premium architectural landscaping and smart digital lighting configurations mapped precisely for GCC requirements.
+                      </p>
+                      <div class="h-20 bg-slate-50 rounded border border-slate-100 flex items-center justify-center text-slate-350 text-xs font-bold font-display select-none uppercase tracking-widest">
+                        Delight Group
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Vertical Divider -->
+              <div class="h-10 w-px bg-slate-200/80"></div>
+
+              <!-- 3) Projects Link -->
+              <a href={isDTL ? "/projects?division=dtl" : (isDGS ? "/projects?division=dgs" : "/projects")} class="group flex flex-col items-center justify-center flex-1 py-3 cursor-pointer">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class={`h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 text-slate-500 transition duration-300 ${isDTL ? 'group-hover:bg-amber-50 group-hover:text-amber-650 group-hover:border-amber-200/50' : 'group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-200/50'}`}>
+                    <Briefcase class="h-5 w-5" />
+                  </div>
+                  <span class={`text-[11px] font-extrabold uppercase tracking-wider text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+                    Projects
+                  </span>
+                </div>
+              </a>
+
+              <!-- Vertical Divider -->
+              <div class="h-10 w-px bg-slate-200/80"></div>
+
+              <!-- 4) Downloads Link -->
+              <a href="/downloads" class="group flex flex-col items-center justify-center flex-1 py-3 cursor-pointer">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class={`h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 text-slate-500 transition duration-300 ${isDTL ? 'group-hover:bg-amber-50 group-hover:text-amber-650 group-hover:border-amber-200/50' : 'group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-200/50'}`}>
+                    <DownloadCloud class="h-5 w-5" />
+                  </div>
+                  <span class={`text-[11px] font-extrabold uppercase tracking-wider text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+                    Downloads
+                  </span>
+                </div>
+              </a>
+
+              <!-- Vertical Divider -->
+              <div class="h-10 w-px bg-slate-200/80"></div>
+
+              <!-- 5) All Categories / Grid Link -->
+              <div class="relative group py-3 flex flex-col items-center justify-center flex-1 cursor-pointer">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div class={`h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 text-slate-500 transition duration-300 ${isDTL ? 'group-hover:bg-amber-50 group-hover:text-amber-650 group-hover:border-amber-200/50' : 'group-hover:bg-emerald-50 group-hover:text-emerald-700 group-hover:border-emerald-200/50'}`}>
+                    <LayoutGrid class="h-5 w-5" />
+                  </div>
+                  <span class={`text-[11px] font-extrabold uppercase tracking-wider text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+                    All Categories
+                  </span>
+                </div>
+
+                <!-- Categories Quick Links Menu -->
+                <div class={`absolute right-0 top-full w-64 bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-1 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'} p-4`}>
+                  <div class="text-left font-extrabold text-[10px] uppercase tracking-wider text-slate-400 mb-2.5 px-2">Quick Navigation</div>
+                  <div class="space-y-1 text-left">
+                    {secondaryNavCategories.filter(cat => cat.divSlug === (isDTL ? 'delighttechnicallighting' : 'delightgreenscapes')).map(cat => (
+                      <a href={`/${cat.divSlug}/${cat.slug}`} class={`block px-3 py-2 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition ${isDTL ? 'hover:text-amber-600' : 'hover:text-emerald-700'}`}>
+                        {cat.name}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </nav>
+        </div>
+
+        <!-- Mobile Row 2 Navigation (Horizontal Scrolling Grid with Top Icons and Small Down Chevrons) -->
+        <div class="block md:hidden overflow-x-auto py-2 bg-slate-50/50 border-t border-slate-100 scrollbar-none">
+          <div class="flex items-center justify-between min-w-[480px] px-4 gap-2">
+            
+            <!-- Products -->
+            <div class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group cursor-pointer">
+              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                <Package class="h-4.5 w-4.5" />
+              </div>
+              <span class="text-[10px] font-extrabold text-slate-650 mt-1 flex items-center gap-0.5 select-none uppercase tracking-wide">
+                Products
+                <ChevronDown class="h-2.5 w-2.5 text-slate-400" />
+              </span>
+            </div>
+
+            <!-- Solutions -->
+            <div class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group cursor-pointer">
+              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                <Building2 class="h-4.5 w-4.5" />
+              </div>
+              <span class="text-[10px] font-extrabold text-slate-650 mt-1 flex items-center gap-0.5 select-none uppercase tracking-wide">
+                Solutions
+                <ChevronDown class="h-2.5 w-2.5 text-slate-400" />
+              </span>
+            </div>
+
+            <!-- Projects -->
+            <a href={isDTL ? "/projects?division=dtl" : (isDGS ? "/projects?division=dgs" : "/projects")} class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
+              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                <Briefcase class="h-4.5 w-4.5" />
+              </div>
+              <span class="text-[10px] font-extrabold text-slate-650 mt-1 uppercase tracking-wide">Projects</span>
+            </a>
+
+            <!-- Downloads -->
+            <a href="/downloads" class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
+              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                <DownloadCloud class="h-4.5 w-4.5" />
+              </div>
+              <span class="text-[10px] font-extrabold text-slate-650 mt-1 uppercase tracking-wide">Downloads</span>
+            </a>
+
+            <!-- All -->
+            <a href={`/${isDTL ? 'delighttechnicallighting' : 'delightgreenscapes'}`} class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
+              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                <LayoutGrid class="h-4.5 w-4.5" />
+              </div>
+              <span class="text-[10px] font-extrabold text-slate-650 mt-1 uppercase tracking-wide">All</span>
+            </a>
+
+          </div>
+        </div>
+      </div>
+    )}
+
+    <!-- Main Dynamic Content Wrapper -->
+    <main class="flex-grow">
+      <slot />
+    </main>
+
+    <!-- Clean Light Footer matching the about page theme -->
+    <footer class="bg-white border-t border-slate-200 pt-16 pb-8">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-12 pb-12 border-b border-slate-100">
+          <!-- Column 1: Corporate identity -->
+          <div class="space-y-5 col-span-1 md:col-span-1">
+            <a href="/" class="inline-block">
+              <img src="/dgllclogosmall.png" alt="Delight Group Logo" class="h-14 w-auto object-contain" />
+            </a>
+            <p class="text-sm text-slate-500 leading-relaxed max-w-xs">
+              Premium technical lighting and curated greenscapes supplied across the UAE.
+            </p>
+            <div class="flex gap-3">
+              <a href="mailto:info@delightgroupllc.com" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center text-slate-500 transition-colors" title="Email">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              </a>
+              <a href="tel:+971566618040" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center text-slate-500 transition-colors" title="Phone">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.21 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21.5 16a2 2 0 0 1 .5.92Z"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Column 2: Divisions -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Divisions</h4>
+            <ul class="space-y-3">
+              <li>
+                <a href="/delighttechnicallighting" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
+                  <span class="w-1 h-1 rounded-full bg-amber-400 group-hover:w-2 transition-all"></span>
+                  Delight Technical Lighting
+                </a>
+              </li>
+              <li>
+                <a href="/delightgreenscapes" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
+                  <span class="w-1 h-1 rounded-full bg-emerald-400 group-hover:w-2 transition-all"></span>
+                  Delight Greenscapes
+                </a>
+              </li>
+              <li>
+                <a href="/portfolio" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
+                  <span class="w-1 h-1 rounded-full bg-blue-400 group-hover:w-2 transition-all"></span>
+                  Project Portfolio
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Column 3: Company -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Company</h4>
+            <ul class="space-y-3">
+              <li><a href="/about" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Our Story</a></li>
+              <li><a href="/downloads" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Downloads</a></li>
+              <li><a href="/contact" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Contact Support</a></li>
+            </ul>
+          </div>
+
+          <!-- Column 4: Contact -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Get In Touch</h4>
+            <ul class="space-y-3 text-sm text-slate-600">
+              <li>
+                <a href="mailto:info@delightgroupllc.com" class="hover:text-slate-900 transition-colors hover:font-semibold">info@delightgroupllc.com</a>
+              </li>
+              <li>
+                <a href="tel:+971566618040" class="hover:text-slate-900 transition-colors hover:font-semibold">+971 56 661 8040</a>
+              </li>
+              <li class="text-slate-400 leading-relaxed text-xs">
+                Shams Business Center<br />Sharjah, United Arab Emirates
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p class="text-xs text-slate-400 font-medium">&copy; {new Date().getFullYear()} Delight Group LLC. All rights reserved.</p>
+          <div class="flex gap-6">
+            <a href="/privacy" class="text-xs text-slate-400 hover:text-slate-700 font-semibold uppercase tracking-wider transition-colors">Privacy Policy</a>
+            <a href="/terms" class="text-xs text-slate-400 hover:text-slate-700 font-semibold uppercase tracking-wider transition-colors">Terms of Service</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+
+    <!-- Mobile Navigation Toggle Script -->
+    <script>
+      const btn = document.getElementById('mobile-menu-btn');
+      const drawer = document.getElementById('mobile-drawer');
+      const menuIcon = document.getElementById('menu-icon');
+      const closeIcon = document.getElementById('close-icon');
+
+      btn?.addEventListener('click', () => {
+        drawer?.classList.toggle('hidden');
+        menuIcon?.classList.toggle('hidden');
+        closeIcon?.classList.toggle('hidden');
+      });
+    </script>
+  </body>
+</html>
+*** End Patch

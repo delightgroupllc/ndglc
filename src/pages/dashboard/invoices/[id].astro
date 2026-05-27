@@ -1,0 +1,147 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import { query } from '../../../lib/db';
+
+const { id } = Astro.params;
+
+let inv: any = null;
+let items: any[] = [];
+let logs: any[] = [];
+
+try {
+  const invRes = await query(`
+    SELECT i.*, 
+       (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+    FROM invoices i WHERE id = $1
+  `, [id]);
+  inv = invRes.rows[0];
+
+  if (inv) {
+    items = typeof inv.items_list === 'string' ? JSON.parse(inv.items_list) : (inv.items_list || []);
+  }
+
+  // Get order audit logs (simulated for now since there's no actual audit table yet, or we use inventory_logs later)
+  // The system was doing alert() before. So we just show static creation details.
+  logs = [
+    { action: 'Invoice Generated', date: inv?.created_at || inv?.issue_date, user: 'System' },
+    { action: `Status set to ${inv?.payment_status}`, date: inv?.created_at || inv?.issue_date, user: 'System' }
+  ];
+
+} catch (err: any) {
+  console.warn('DB error in order details:', err.message);
+}
+
+if (!inv) {
+  return Astro.redirect('/dashboard/invoices');
+}
+---
+
+<DashboardLayout title={`Order ${inv.invoice_number}`} activeItem="invoices">
+  <div class="max-w-5xl mx-auto space-y-6">
+    
+    <!-- Back to Orders Link -->
+    <div class="flex items-center">
+      <a href="/dashboard/invoices" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors uppercase tracking-wider group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Orders
+      </a>
+    </div>
+
+    <!-- Header -->
+    <div class="flex items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight">{inv.invoice_number}</h1>
+        <p class="text-sm text-slate-500 font-medium mt-1">
+          {inv.order_type === 'quotation' ? 'Estimation' : (inv.order_type === 'lpo' ? 'LPO' : (inv.order_type === 'delivery_note' ? 'Delivery Note' : 'Tax Invoice'))}
+          • {inv.source_division || 'DTL'}
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/dashboard/invoices" class="inline-flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Orders
+        </a>
+        <a href={`/dashboard/invoices/print/${inv.id}`} class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Print Document
+        </a>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Left Col: Details -->
+      <div class="md:col-span-2 space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+          <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3">Items Overview</h2>
+          
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="text-slate-400 uppercase text-[10px] tracking-wider font-bold">
+                <th class="pb-3">Item Description</th>
+                <th class="pb-3 text-center">Qty</th>
+                <th class="pb-3 text-right">Price</th>
+                <th class="pb-3 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-700">
+              {items.map(item => (
+                <tr>
+                  <td class="py-3 font-medium">
+                    <span class="block">{item.description}</span>
+                    {item.catalogue_ref && <span class="text-[10px] text-slate-400 font-mono">REF: {item.catalogue_ref}</span>}
+                  </td>
+                  <td class="py-3 text-center">{item.quantity}</td>
+                  <td class="py-3 text-right font-mono">AED {Number(item.unit_price).toLocaleString()}</td>
+                  <td class="py-3 text-right font-mono font-bold text-slate-900">AED {(item.quantity * item.unit_price).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div class="flex justify-end pt-4">
+            <div class="w-64 space-y-2 text-sm">
+              <div class="flex justify-between text-slate-500"><span>Subtotal</span><span class="font-mono">AED {Number(inv.subtotal).toLocaleString()}</span></div>
+              <div class="flex justify-between text-slate-500"><span>Tax (5%)</span><span class="font-mono">AED {Number(inv.gst_amount).toLocaleString()}</span></div>
+              <div class="flex justify-between font-black text-slate-900 text-base pt-2 border-t border-slate-200">
+                <span>Grand Total</span><span class="font-mono">AED {Number(inv.total_amount).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Col: Metadata -->
+      <div class="space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3">Client Info</h2>
+          <div class="space-y-2 text-sm text-slate-600">
+            <p><span class="block text-[10px] uppercase font-bold text-slate-400">Name</span><span class="font-medium text-slate-900">{inv.customer_name}</span></p>
+            {inv.company_name && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Company</span>{inv.company_name}</p>}
+            {inv.customer_email && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Email</span>{inv.customer_email}</p>}
+            {inv.customer_phone && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Phone</span>{inv.customer_phone}</p>}
+            {inv.billing_address && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Address</span>{inv.billing_address}</p>}
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3">Timeline</h2>
+          <div class="relative pl-4 space-y-4 border-l-2 border-slate-100 text-xs">
+            {logs.map((log, i) => (
+              <div class="relative">
+                <div class={`absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full ${i === 0 ? 'bg-cyan-500 border-2 border-cyan-100' : 'bg-slate-300'}`}></div>
+                <p class="font-bold text-slate-800">{log.action}</p>
+                <p class="text-slate-500 mt-0.5">{log.date ? new Date(log.date).toLocaleString('en-AE') : ''} • {log.user}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</DashboardLayout>

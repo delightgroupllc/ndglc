@@ -1,0 +1,282 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { query } from '../../../lib/db';
+import { ArrowRight, ChevronRight, Search, Settings, AlertTriangle, Cpu, Activity } from 'lucide-astro';
+
+const { division, category } = Astro.params;
+
+const divSlug = division!.toLowerCase();
+const catSlug = category!.toLowerCase();
+
+const isDtl = divSlug === 'dtl';
+const isDgs = divSlug === 'dgs';
+
+if (!isDtl && !isDgs) {
+  return Astro.redirect('/');
+}
+
+let categoryDetails: any = null;
+let products: any[] = [];
+let dbConnected = true;
+
+try {
+  // 1. Get Category Details
+  const catRes = await query(
+    `SELECT c.*, d.name as division_name 
+     FROM categories c 
+     JOIN divisions d ON d.id = c.division_id 
+     WHERE c.slug = $1 AND d.slug = $2`,
+    [catSlug, divSlug]
+  );
+  categoryDetails = catRes.rows[0];
+
+  if (!categoryDetails) {
+    return Astro.redirect(`/${divSlug}`);
+  }
+
+  // 2. Get Products in Category
+  const prodRes = await query(
+    `SELECT p.*, pi.url as image_url
+     FROM products p
+     LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = true
+     WHERE p.category_id = $1 AND p.status = 'active'
+     ORDER BY p.name ASC`,
+    [categoryDetails.id]
+  );
+  products = prodRes.rows;
+} catch (err: any) {
+  console.warn('Database connection failed, loading mock category and products:', err.message);
+  dbConnected = false;
+  
+  // Custom mock category details
+  const mockCategories: Record<string, any> = {
+    'valves-actuators': { name: 'Valves & Actuators', division_name: 'Division DTL', seo_title: 'Valves & Flow Controls' },
+    'pipes-fittings': { name: 'Pipes & Fittings', division_name: 'Division DTL', seo_title: 'Heavy Pipeline Fittings' },
+    'industrial-pumps': { name: 'Industrial Pumps', division_name: 'Division DTL', seo_title: 'Hydraulic Pumps' },
+    'cloud-infrastructure': { name: 'Cloud Infrastructure', division_name: 'Division DGS', seo_title: 'Enterprise Cloud Backup' },
+    'cyber-security': { name: 'Cyber Security', division_name: 'Division DGS', seo_title: 'Neural OT Firewalls' },
+    'data-analytics': { name: 'Data Analytics', division_name: 'Division DGS', seo_title: 'Big Data telemetry Analytics' },
+  };
+
+  categoryDetails = mockCategories[catSlug] || { name: 'Unknown Category', division_name: isDtl ? 'Division DTL' : 'Division DGS', seo_title: 'Category Portfolio' };
+
+  // Category specific fallback products
+  if (catSlug === 'valves-actuators') {
+    products = [
+      {
+        id: 'mock-p1',
+        name: 'HP-100 High-Pressure Stainless Ball Valve',
+        sku: 'SKU-DTL-VALVE-001',
+        slug: 'hp100-ball-valve',
+        description: 'Constructed from grade 316 stainless steel, engineered for environments up to 6,000 PSI.',
+        featured: true,
+        image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'
+      }
+    ];
+  } else if (catSlug === 'industrial-pumps') {
+    products = [
+      {
+        id: 'mock-p2',
+        name: 'CPX-500 Heavy-Duty Centrifugal Pump',
+        sku: 'SKU-DTL-PUMP-002',
+        slug: 'cpx500-centrifugal-pump',
+        description: 'High-volume impeller design optimized for oil, wastewater, and agricultural fluid transfer.',
+        featured: false,
+        image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'
+      }
+    ];
+  } else if (catSlug === 'cloud-infrastructure') {
+    products = [
+      {
+        id: 'mock-p3',
+        name: 'Vortex Cloud-Native Backup Storage Suite',
+        sku: 'SKU-DGS-CLOUD-001',
+        slug: 'vortex-cloud-backup',
+        description: 'Military-grade end-to-end encrypted storage replication system featuring incremental transaction logs.',
+        featured: true,
+        image_url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80'
+      }
+    ];
+  } else if (catSlug === 'cyber-security') {
+    products = [
+      {
+        id: 'mock-p4',
+        name: 'IronWall Industrial Firewall Appliance v4',
+        sku: 'SKU-DGS-SEC-002',
+        slug: 'ironwall-firewall-v4',
+        description: 'Hardware firewall with AI intrusion detection systems specifically engineered to protect OT networks.',
+        featured: true,
+        image_url: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=800&q=80'
+      }
+    ];
+  } else {
+    products = [];
+  }
+}
+---
+
+<Layout title={categoryDetails.name} description={`${categoryDetails.name} listings under ${categoryDetails.division_name}.`}>
+  <!-- Header Banner -->
+  <section class="relative overflow-hidden pt-32 pb-12 bg-white border-b border-slate-200">
+    <div class={`absolute top-0 right-1/4 -z-10 h-96 w-96 rounded-full blur-[120px] ${
+      isDtl ? 'bg-amber-400/20' : 'bg-cyan-400/20'
+    }`}></div>
+
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="space-y-4">
+        <!-- Breadcrumbs -->
+        <nav class="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+          <a href="/" class="hover:text-slate-900 transition-colors">Portal</a>
+          <ChevronRight class="h-3 w-3" />
+          <a href={`/${divSlug}`} class="hover:text-slate-900 transition-colors">{categoryDetails.division_name}</a>
+          <ChevronRight class="h-3 w-3" />
+          <span class="text-slate-900 font-bold">{categoryDetails.name}</span>
+        </nav>
+
+        <div class="flex items-center gap-3 pt-2">
+          <div class={`flex h-8 w-8 items-center justify-center rounded-lg font-bold shadow-md ${
+            isDtl ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+          }`}>
+            {isDtl ? <Activity class="h-4.5 w-4.5" /> : <Cpu class="h-4.5 w-4.5" />}
+          </div>
+          <span class="text-xs font-semibold text-slate-600 tracking-wider uppercase">
+            {categoryDetails.division_name} Products Portfolio
+          </span>
+        </div>
+
+        <h1 class="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-slate-900 mt-1">
+          {categoryDetails.name}
+        </h1>
+      </div>
+    </div>
+  </section>
+
+  <!-- Database Connection Banner (Only shown if offline) -->
+  {!dbConnected && (
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-8">
+      <div class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
+            <AlertTriangle class="h-5 w-5" />
+          </div>
+          <div>
+            <h4 class="text-sm font-semibold text-slate-900">PostgreSQL Offline Fallback</h4>
+            <p class="text-xs text-slate-600 mt-0.5">The application is running in mock database mode. Connect your PostgreSQL database in the `.env` file to load live production items.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+
+  <!-- Search and Products Grid -->
+  <section class="py-12 bg-slate-50">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <!-- Search and Filter Bar -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-200">
+        <!-- Search Input -->
+        <div class="relative flex-grow max-w-md">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-500" />
+          <input 
+            type="text" 
+            id="product-search"
+            placeholder={`Filter ${categoryDetails.name.toLowerCase()} by name, SKU...`} 
+            class="w-full rounded-lg border border-slate-300 bg-white px-10 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 shadow-sm transition-colors"
+          />
+        </div>
+        
+        <!-- Systems count info -->
+        <div class="text-xs text-slate-500 font-medium flex items-center gap-1.5 self-center bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+          Showing <span id="filtered-count" class="text-slate-900 font-bold">{products.length}</span> systems
+        </div>
+      </div>
+
+      <!-- Products Grid -->
+      {products.length === 0 ? (
+        <div class="text-center py-20 border border-dashed border-slate-300 rounded-2xl bg-white shadow-sm">
+          <Settings class="h-12 w-12 text-slate-300 mx-auto animate-spin" />
+          <h3 class="text-lg font-bold text-slate-900 mt-4 font-display">No Systems Logged</h3>
+          <p class="text-xs text-slate-500 max-w-xs mx-auto mt-2">
+            There are currently no products seeded or created under this category. Visit the admin dashboard to add new items.
+          </p>
+        </div>
+      ) : (
+        <div id="products-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {products.map((p) => (
+            <div 
+              class="product-card group border border-slate-200 rounded-2xl bg-white overflow-hidden flex flex-col justify-between hover:shadow-xl hover:border-slate-300 transition-all duration-300"
+              data-name={p.name.toLowerCase()}
+              data-sku={p.sku.toLowerCase()}
+            >
+              <div>
+                <!-- Image -->
+                <div class="h-56 overflow-hidden bg-slate-50 relative border-b border-slate-100">
+                  <img 
+                    src={p.image_url || '/noimage.jpg'} 
+                    alt={p.name}
+                    class="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
+                  />
+                  {p.featured && (
+                    <span class="absolute top-4 right-4 rounded-full bg-cyan-50 border border-cyan-200 px-2.5 py-1 text-2xs font-bold uppercase tracking-wider text-cyan-600 shadow-sm">
+                      Featured
+                    </span>
+                  )}
+                </div>
+
+                <!-- Product specs detail -->
+                <div class="p-6">
+                  <span class="text-2xs font-bold text-slate-400 uppercase tracking-widest">{p.sku}</span>
+                  <h3 class="text-lg font-bold text-slate-900 mt-1 group-hover:text-blue-600 transition-colors truncate" title={p.name}>
+                    {p.name}
+                  </h3>
+                  <p class="text-xs text-slate-500 mt-2.5 leading-relaxed line-clamp-2">
+                    {p.description}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Button footer -->
+              <div class="px-6 pb-6 pt-2 mt-auto">
+                <a 
+                  href={`/${divSlug}/${catSlug}/${p.slug || p.id}`}
+                  class="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                >
+                  View Specifications
+                  <ArrowRight class="h-3.5 w-3.5" />
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+
+  <!-- Client-Side Instant Filtering Script -->
+  <script>
+    const searchInput = document.getElementById('product-search') as HTMLInputElement | null;
+    const cards = document.querySelectorAll('.product-card');
+    const filteredCount = document.getElementById('filtered-count');
+
+    searchInput?.addEventListener('input', (e) => {
+      const query = (e.target as HTMLInputElement).value.toLowerCase();
+      let matchCount = 0;
+
+      cards.forEach((card) => {
+        const name = card.getAttribute('data-name') || '';
+        const sku = card.getAttribute('data-sku') || '';
+        
+        if (name.includes(query) || sku.includes(query)) {
+          (card as HTMLElement).classList.remove('hidden');
+          matchCount++;
+        } else {
+          (card as HTMLElement).classList.add('hidden');
+        }
+      });
+
+      if (filteredCount) {
+        filteredCount.textContent = matchCount.toString();
+      }
+    });
+  </script>
+</Layout>

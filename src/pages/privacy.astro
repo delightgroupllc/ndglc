@@ -1,0 +1,60 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { query } from '../lib/db';
+
+let policy: any = null;
+try {
+  const res = await query(
+    `SELECT title, content, updated_at FROM legal_artifacts WHERE identifier = 'privacy-policy' LIMIT 1`
+  );
+  if (res.rows.length > 0) policy = res.rows[0];
+} catch (e) {}
+
+const fallbackContent = `
+<h2>1. Information We Collect</h2>
+<p>We collect information you provide directly to us when you contact us, request a quote, or interact with our website.</p>
+<h2>2. How We Use Your Information</h2>
+<p>We use the information we collect to respond to your enquiries, provide our services, and improve your experience with Delight Group LLC.</p>
+<h2>3. Information Sharing</h2>
+<p>We do not sell or share your personal information with third parties except as required by law or to fulfill your service requests.</p>
+<h2>4. Data Security</h2>
+<p>We implement appropriate security measures to protect your personal information against unauthorized access, alteration, or disclosure.</p>
+<h2>5. Contact Us</h2>
+<p>If you have any questions about this Privacy Policy, please contact us at info@delightgroupllc.com.</p>
+`;
+
+const title = policy?.title || 'Privacy Policy';
+const content = policy?.content || fallbackContent;
+const updatedAt = policy?.updated_at ? new Date(policy.updated_at).toLocaleDateString('en-AE', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
+---
+
+<Layout title="Privacy Policy" description="Privacy Policy for Delight Group LLC — how we collect, use, and protect your information.">
+  <div class="min-h-screen bg-white">
+    <!-- Hero -->
+    <section class="pt-32 pb-16 border-b border-slate-100 bg-slate-50">
+      <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <span class="text-xs font-bold text-amber-500 uppercase tracking-widest mb-4 block">Legal</span>
+        <h1 class="text-4xl sm:text-5xl font-extrabold font-display text-slate-900 tracking-tight">{title}</h1>
+        {updatedAt && (
+          <p class="mt-4 text-sm text-slate-400">Last updated: {updatedAt}</p>
+        )}
+      </div>
+    </section>
+
+    <!-- Content -->
+    <section class="py-16">
+      <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <div class="prose prose-slate prose-sm sm:prose max-w-none
+          prose-headings:font-display prose-headings:font-bold prose-headings:text-slate-900
+          prose-p:text-slate-600 prose-p:leading-relaxed
+          prose-h2:text-xl prose-h2:mt-10 prose-h2:mb-4
+          prose-li:text-slate-600"
+          set:html={content}
+        />
+        <div class="mt-16 pt-8 border-t border-slate-100">
+          <a href="/" class="text-sm font-semibold text-amber-600 hover:text-amber-700 transition-colors">&larr; Back to Home</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</Layout>

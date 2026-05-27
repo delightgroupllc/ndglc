@@ -1,0 +1,187 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { Users2, Search, ToggleLeft, ToggleRight, ShieldAlert, Award, AlertTriangle } from 'lucide-astro';
+
+let users: any[] = [];
+let dbConnected = true;
+
+try {
+  const res = await query(
+    `SELECT u.*, 
+       (SELECT ARRAY_TO_STRING(ARRAY_AGG(r.name), ', ') FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = u.id) as roles_list,
+       (SELECT ARRAY_TO_STRING(ARRAY_AGG(t.name), ', ') FROM tags t JOIN user_tags ut ON ut.tag_id = t.id WHERE ut.user_id = u.id) as tags_list
+     FROM users u
+     ORDER BY u.created_at DESC`
+  );
+  users = res.rows;
+} catch (err: any) {
+  console.warn('Database offline, running mock user directory ledger:', err.message);
+  dbConnected = false;
+
+  users = [
+    { id: 'user_1', name: 'Alexander Vance', email: 'alex.vance@steelgroup.com', is_suspended: false, roles_list: 'admin', tags_list: 'VIP', created_at: new Date().toISOString() },
+    { id: 'user_2', name: 'Jane Stark', email: 'finance@starkcorp.com', is_suspended: false, roles_list: 'moderator', tags_list: 'partner', created_at: new Date().toISOString() },
+    { id: 'user_3', name: 'Standard Portal Guest', email: 'client@company.com', is_suspended: true, roles_list: 'user', tags_list: '', created_at: new Date().toISOString() }
+  ];
+}
+---
+
+<DashboardLayout title="User Directory" activeItem="users">
+
+  <!-- Offline Warning -->
+  {!dbConnected && (
+    <div class="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-600 font-medium">
+      <AlertTriangle class="h-4.5 w-4.5 shrink-0" />
+      <div>
+        <span class="font-bold">PostgreSQL is Offline</span>: Telemetry displays simulated Clerk-synced accounts.
+      </div>
+    </div>
+  )}
+
+  <div class="space-y-6">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div class="relative flex-grow max-w-md">
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <input 
+          type="text" 
+          id="admin-search-users"
+          placeholder="Filter user directory..." 
+          class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+        />
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="rounded-xl border border-slate-200 bg-white overflow-x-auto shadow-sm">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
+            <th class="px-6 py-4 font-semibold">Profile Name</th>
+            <th class="px-6 py-4 font-semibold">B2B Mapped Roles</th>
+            <th class="px-6 py-4 font-semibold">Active Portal Tags</th>
+            <th class="px-6 py-4 font-semibold text-center">Status</th>
+            <th class="px-6 py-4 font-semibold text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="admin-users-table">
+          {users.map(u => (
+            <tr class="admin-user-row border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors" data-name={u.name.toLowerCase()} data-email={u.email.toLowerCase()}>
+              <!-- User credentials -->
+              <td class="px-6 py-4">
+                <div class="font-bold text-slate-900">{u.name}</div>
+                <div class="text-2xs text-slate-500 mt-0.5 font-mono">{u.email}</div>
+              </td>
+              <!-- Roles -->
+              <td class="px-6 py-4">
+                <span class="rounded bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-2xs font-semibold text-cyan-600 uppercase">
+                  {u.roles_list || 'user'}
+                </span>
+              </td>
+              <!-- Tags -->
+              <td class="px-6 py-4">
+                {u.tags_list ? (
+                  <div class="flex flex-wrap gap-1">
+                    {u.tags_list.split(', ').map((tag: string) => (
+                      <span class="rounded bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 text-2xs font-semibold text-rose-600 uppercase">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span class="text-2xs text-slate-400 italic">None assigned</span>
+                )}
+              </td>
+              <!-- Status suspension -->
+              <td class="px-6 py-4 text-center">
+                <span id={`status-${u.id}`} class={`rounded px-1.5 py-0.5 text-2xs font-semibold uppercase transition-colors ${
+                  u.is_suspended 
+                    ? 'bg-rose-500/10 text-rose-600' 
+                    : 'bg-emerald-500/10 text-emerald-600'
+                }`}>
+                  {u.is_suspended ? 'suspended' : 'active'}
+                </span>
+              </td>
+              <!-- Quick Actions -->
+              <td class="px-6 py-4 text-right">
+                <button 
+                  type="button" 
+                  data-user-id={u.id}
+                  data-suspended={u.is_suspended ? 'true' : 'false'}
+                  class="toggle-suspend-btn inline-flex items-center gap-1 text-2xs font-bold uppercase tracking-wider focus:outline-none transition-colors text-slate-500 hover:text-slate-900"
+                >
+                  <span class="btn-text">{u.is_suspended ? 'Unsuspend' : 'Suspend'}</span>
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('admin-search-users') as HTMLInputElement | null;
+    const rows = document.querySelectorAll('.admin-user-row');
+
+    searchInput?.addEventListener('input', (e) => {
+      const query = (e.target as HTMLInputElement).value.toLowerCase();
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        const email = row.getAttribute('data-email') || '';
+        if (name.includes(query) || email.includes(query)) {
+          (row as HTMLElement).classList.remove('hidden');
+        } else {
+          (row as HTMLElement).classList.add('hidden');
+        }
+      });
+    });
+
+    document.querySelectorAll('.toggle-suspend-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const userId = target.getAttribute('data-user-id');
+        const textSpan = target.querySelector('.btn-text');
+        if (!userId || !textSpan) return;
+
+        target.disabled = true;
+        const originalText = textSpan.textContent;
+        textSpan.textContent = '...';
+
+        try {
+          const res = await fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'suspend' })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const isSuspended = data.is_suspended;
+            
+            target.setAttribute('data-suspended', isSuspended.toString());
+            textSpan.textContent = isSuspended ? 'Unsuspend' : 'Suspend';
+
+            const statusBadge = document.getElementById(`status-${userId}`);
+            if (statusBadge) {
+              statusBadge.textContent = isSuspended ? 'suspended' : 'active';
+              if (isSuspended) {
+                statusBadge.className = 'rounded px-1.5 py-0.5 text-2xs font-semibold uppercase transition-colors bg-rose-500/10 text-rose-600';
+              } else {
+                statusBadge.className = 'rounded px-1.5 py-0.5 text-2xs font-semibold uppercase transition-colors bg-emerald-500/10 text-emerald-600';
+              }
+            }
+          } else {
+            alert('Failed to update user status.');
+            textSpan.textContent = originalText;
+          }
+        } catch (err) {
+          alert('Network error while updating user status.');
+          textSpan.textContent = originalText;
+        } finally {
+          target.disabled = false;
+        }
+      });
+    });
+  </script>
+</DashboardLayout>

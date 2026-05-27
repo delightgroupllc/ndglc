@@ -1,0 +1,1630 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { Search, PlusCircle, Calendar, Tag, ShieldCheck, Trash2, Eye, Edit3, Newspaper, Radio, Settings } from 'lucide-astro';
+
+// Run self-healing schema migrations for customizable corporate footer fields
+try {
+  await query('ALTER TABLE articles ADD COLUMN IF NOT EXISTS show_footer BOOLEAN DEFAULT TRUE');
+  await query('ALTER TABLE articles ADD COLUMN IF NOT EXISTS footer_brand TEXT');
+  await query('ALTER TABLE articles ADD COLUMN IF NOT EXISTS footer_address TEXT');
+  await query('ALTER TABLE articles ADD COLUMN IF NOT EXISTS footer_cta TEXT');
+} catch (e: any) {
+  console.warn('Migration for articles footer columns failed or already exists:', e.message);
+}
+
+let articles: any[] = [];
+try {
+  const res = await query('SELECT * FROM articles ORDER BY created_at DESC');
+  articles = res.rows;
+} catch (e: any) {
+  console.warn('DB offline or articles missing:', e?.message || e);
+}
+
+// Compute statistics
+const publishedCount = articles.filter(a => a.status === 'published').length;
+const draftCount = articles.filter(a => a.status === 'draft').length;
+const totalCount = articles.length;
+---
+
+<DashboardLayout title="Articles & Press CMS" activeItem="articles">
+  <!-- Load Quill Rich Text Editor CDN -->
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@400;600;800&family=Outfit:wght@400;700;900&family=Fira+Code:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.quilljs.com/1.3.6/quill.js" is:inline></script>
+
+  <!-- Full-Site Article Preview Styles + Quill Editor Styles -->
+  <style is:global>
+    /* Custom fonts inside Quill and Preview */
+    .ql-font-inter, .article-body-content .ql-font-inter { font-family: 'Inter', sans-serif !important; }
+    .ql-font-outfit, .article-body-content .ql-font-outfit { font-family: 'Outfit', sans-serif !important; }
+    .ql-font-playfair, .article-body-content .ql-font-playfair { font-family: 'Playfair Display', serif !important; }
+    .ql-font-fira, .article-body-content .ql-font-fira { font-family: 'Fira Code', monospace !important; }
+    .ql-font-roboto, .article-body-content .ql-font-roboto { font-family: 'Roboto', sans-serif !important; }
+
+    /* Custom Responsive Grid and Box Layouts */
+    .ql-grid-2, .article-body-content .ql-grid-2 {
+      display: grid !important;
+      grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+      gap: 1.5rem !important;
+      margin: 1.25rem 0 !important;
+    }
+    @media (min-width: 768px) {
+      .ql-grid-2, .article-body-content .ql-grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+    }
+    .ql-grid-3, .article-body-content .ql-grid-3 {
+      display: grid !important;
+      grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+      gap: 1.25rem !important;
+      margin: 1.25rem 0 !important;
+    }
+    @media (min-width: 768px) {
+      .ql-grid-3, .article-body-content .ql-grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      }
+    }
+
+    /* Callout Boxes Styles */
+    .ql-callout-gold, .article-body-content .ql-callout-gold {
+      background: linear-gradient(135deg, #fdfbf7, #fcf8f2) !important;
+      border-left: 4px solid #BE854C !important;
+      border-radius: 8px !important;
+      padding: 1rem 1.25rem !important;
+      margin: 1.25rem 0 !important;
+      box-shadow: 0 4px 12px rgba(190, 133, 76, 0.04) !important;
+    }
+    .ql-callout-green, .article-body-content .ql-callout-green {
+      background: linear-gradient(135deg, #f6fcf8, #f0faf2) !important;
+      border-left: 4px solid #10b981 !important;
+      border-radius: 8px !important;
+      padding: 1rem 1.25rem !important;
+      margin: 1.25rem 0 !important;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.04) !important;
+    }
+
+    /* Quill Editor Outlines and Helper Cues for Grid Divisions & Tables */
+    .ql-editor .ql-grid-2, .ql-editor .ql-grid-3 {
+      border: 1px dotted rgba(99, 102, 241, 0.4) !important;
+      padding: 0.5rem !important;
+      border-radius: 8px !important;
+      background: rgba(99, 102, 241, 0.01) !important;
+    }
+    .ql-editor .ql-grid-2 > div, .ql-editor .ql-grid-3 > div {
+      border: 1px dashed rgba(99, 102, 241, 0.25) !important;
+      padding: 0.5rem !important;
+      border-radius: 6px !important;
+      background: rgba(255, 255, 255, 0.9) !important;
+    }
+    .ql-editor .ql-grid-2 > div:hover, .ql-editor .ql-grid-3 > div:hover {
+      border-color: rgba(99, 102, 241, 0.5) !important;
+    }
+    .ql-editor .ql-callout-gold, .ql-editor .ql-callout-green {
+      outline: 1px dashed rgba(190, 133, 76, 0.2) !important;
+      cursor: pointer;
+    }
+    .ql-editor table, .article-body-content table {
+      border-collapse: collapse !important;
+      width: 100% !important;
+      margin: 1.25rem 0 !important;
+    }
+    .ql-editor td, .ql-editor th, .article-body-content td, .article-body-content th {
+      border: 1px solid #cbd5e1 !important;
+      padding: 10px !important;
+      min-width: 40px !important;
+    }
+    .ql-editor th, .article-body-content th {
+      background-color: #f1f5f9;
+      font-weight: bold;
+    }
+
+    /* ── ARTICLE BODY CONTENT STYLES (mirrors /news/[slug].astro) ─── */
+    .article-body-content h2 {
+      font-weight: 700 !important;
+      color: #0f172a !important;
+      margin-top: 1rem !important;
+      margin-bottom: 0.4rem !important;
+      line-height: 1.3 !important;
+    }
+    .article-body-content p {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem !important;
+      line-height: 1.7 !important;
+      color: #334155 !important;
+      margin-bottom: 0.75rem !important;
+    }
+    .article-body-content img {
+      max-width: 100% !important;
+      height: auto !important;
+      border-radius: 0.6rem !important;
+      box-shadow: 0 6px 20px -4px rgba(0,0,0,0.1) !important;
+      border: 1px solid #f1f5f9 !important;
+    }
+    .article-body-content ul {
+      list-style-type: none !important;
+      padding-left: 0 !important;
+      margin-bottom: 0.75rem !important;
+    }
+    .article-body-content ol {
+      list-style-type: decimal !important;
+      padding-left: 1.2rem !important;
+      margin-bottom: 0.75rem !important;
+    }
+    .article-body-content a {
+      color: #2563eb !important;
+      text-decoration: underline !important;
+    }
+    .article-body-content hr {
+      border: 0 !important;
+      border-top: 1px solid #e2e8f0 !important;
+      margin: 1rem 0 !important;
+    }
+    .article-body-content blockquote {
+      border-left: 3px solid #BE854C !important;
+      padding-left: 0.75rem !important;
+      font-style: italic !important;
+      color: #475569 !important;
+      margin: 1rem 0 !important;
+    }
+    /* Quill editor image style */
+    .ql-editor img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 0.375rem;
+      margin: 0.5rem 0;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 0.05);
+      cursor: pointer;
+    }
+    /* Image alignment helpers for Quill output */
+    .ql-editor img.ql-img-left  { float: left;  margin-right: 1rem; margin-bottom: 0.5rem; }
+    .ql-editor img.ql-img-right { float: right; margin-left:  1rem; margin-bottom: 0.5rem; }
+    .ql-editor img.ql-img-center { display: block; float: none; margin: 0.75rem auto; }
+    /* Floating image toolbar */
+    #img-toolbar {
+      position: absolute;
+      z-index: 9999;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 5px 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      pointer-events: auto;
+    }
+    #img-toolbar button {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #cbd5e1;
+      border-radius: 5px;
+      padding: 3px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    #img-toolbar button:hover, #img-toolbar button.active {
+      background: #334155;
+      border-color: #475569;
+      color: #f1f5f9;
+    }
+    #img-toolbar .sep { width: 1px; height: 16px; background: #334155; margin: 0 2px; }
+  </style>
+
+  <div class="space-y-6 max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+      <div>
+        <h1 class="text-xl font-bold">Articles & Press Releases</h1>
+        <p class="text-sm text-slate-500">Create, edit, and publish press releases, company events, or project blogs for DTL and DGS.</p>
+      </div>
+      
+      <button 
+        type="button" 
+        id="new-article-btn"
+        class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-colors shadow-sm shrink-0"
+      >
+        <PlusCircle class="h-4 w-4" />
+        Compose Article
+      </button>
+    </header>
+
+    <!-- Stats Quick Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
+        <div class="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-655 flex items-center justify-center">
+          <Newspaper class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 font-semibold uppercase">Total Articles</p>
+          <p class="text-2xl font-bold text-slate-900">{totalCount}</p>
+        </div>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
+        <div class="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-650 flex items-center justify-center">
+          <Radio class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 font-semibold uppercase">Published Live</p>
+          <p class="text-2xl font-bold text-slate-900">{publishedCount}</p>
+        </div>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
+        <div class="h-10 w-10 rounded-lg bg-amber-50 text-amber-650 flex items-center justify-center">
+          <Settings class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-xs text-slate-500 font-semibold uppercase">Drafts & Scheduled</p>
+          <p class="text-2xl font-bold text-slate-900">{draftCount}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="flex flex-col gap-3 md:flex-row items-stretch md:items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+      <div class="relative flex-grow max-w-md">
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <input 
+          type="text" 
+          id="search-articles" 
+          placeholder="Search articles by title..." 
+          class="w-full rounded-lg border border-slate-200 bg-white px-9 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+        />
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <select id="filter-division" class="bg-white border border-slate-200 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 font-medium">
+          <option value="all">All Divisions</option>
+          <option value="dtl">DTL (Technical Lighting)</option>
+          <option value="dgs">DGS (Greenscapes)</option>
+          <option value="both">Both Divisions</option>
+        </select>
+
+        <select id="filter-type" class="bg-white border border-slate-200 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 font-medium">
+          <option value="all">All Types</option>
+          <option value="press_release">Press Releases</option>
+          <option value="event">Company Events</option>
+          <option value="project_blog">Project Blogs</option>
+        </select>
+
+        <select id="filter-status" class="bg-white border border-slate-200 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 font-medium">
+          <option value="all">All Statuses</option>
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Articles Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="articles-grid">
+      {articles.map((art) => (
+        <div 
+          class="article-card bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+          data-title={art.title.toLowerCase()}
+          data-division={art.division}
+          data-type={art.type}
+          data-status={art.status}
+          data-id={art.id}
+        >
+          <div>
+            <!-- Banner Image -->
+            <div class="h-40 bg-slate-50 border-b border-slate-100 relative overflow-hidden flex items-center justify-center">
+              {art.featured_image ? (
+                <img src={art.featured_image} alt={art.title} class="w-full h-full object-cover" onerror="this.style.display='none'" />
+              ) : (
+                <div class="w-full h-full bg-gradient-to-br from-indigo-50 to-indigo-100 flex items-center justify-center text-indigo-400">
+                  <Newspaper class="h-12 w-12 opacity-40" />
+                </div>
+              )}
+              
+              <!-- Badges -->
+              <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                <span class={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded shadow-sm text-white ${
+                  art.status === 'published' ? 'bg-emerald-600' :
+                  art.status === 'archived' ? 'bg-slate-700' :
+                  'bg-amber-600'
+                }`}>
+                  {art.status}
+                </span>
+                
+                <span class={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded shadow-sm text-white ${
+                  art.division === 'dgs' ? 'bg-cyan-600' :
+                  art.division === 'both' ? 'bg-indigo-650' :
+                  'bg-emerald-650'
+                }`}>
+                  {art.division.toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="p-4 space-y-2 text-left">
+              <span class="text-[10px] font-black uppercase text-indigo-600 tracking-wider flex items-center gap-1">
+                <Tag class="w-3 h-3" />
+                {art.type.replace('_', ' ')}
+              </span>
+              <h3 class="font-bold text-slate-900 leading-snug line-clamp-2" title={art.title}>
+                {art.title}
+              </h3>
+              <p class="text-xs text-slate-500 leading-relaxed line-clamp-3">
+                {art.summary || 'No summary overview provided.'}
+              </p>
+            </div>
+          </div>
+
+          <!-- Bottom Footer Details & Actions -->
+          <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-1 text-[10px] text-slate-550 font-semibold">
+              <Calendar class="w-3.5 h-3.5" />
+              <span>
+                {art.published_at ? new Date(art.published_at).toLocaleDateString() : 'Draft'}
+              </span>
+            </div>
+            
+            <div class="flex items-center gap-1.5">
+              <!-- View (opens live article page) -->
+              <a 
+                href={`/news/${art.slug}`}
+                target="_blank"
+                rel="noopener"
+                class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 rounded text-[10px] font-bold transition-colors flex items-center gap-1 shadow-sm"
+              >
+                <Eye class="w-3 h-3" /> View
+              </a>
+              <!-- Edit -->
+              <button 
+                type="button" 
+                class="edit-art-btn bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-2 py-1 rounded text-[10px] font-bold transition-colors flex items-center gap-1 shadow-sm"
+                data-article={JSON.stringify(art)}
+              >
+                <Edit3 class="w-3 h-3" /> Edit
+              </button>
+              <!-- Delete -->
+              <button 
+                type="button" 
+                class="delete-art-btn bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2 py-1 rounded text-[10px] font-bold transition-colors flex items-center gap-1 shadow-sm"
+                data-id={art.id}
+              >
+                <Trash2 class="w-3 h-3" /> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {articles.length === 0 && (
+        <div class="col-span-full py-16 text-center text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-350">
+          No articles written yet. Click "Compose Article" to write your first press release!
+        </div>
+      )}
+    </div>
+  </div>
+
+  <!-- ARTICLE COMPOSE DRAWER DIALOG MODAL (Ultra-Wide Split Screen Editor Panel) -->
+  <div 
+    id="article-drawer" 
+    class="fixed inset-0 z-50 overflow-hidden hidden" 
+    aria-labelledby="slide-over-title" 
+    role="dialog" 
+    aria-modal="true"
+  >
+    <div class="absolute inset-0 overflow-hidden">
+      <!-- Background Overlay -->
+      <div id="drawer-overlay" class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity opacity-0 pointer-events-none duration-300"></div>
+
+      <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full">
+        <!-- Panel (Width optimized to max-w-6xl for side-by-side editing) -->
+        <div 
+          id="drawer-panel"
+          class="pointer-events-auto w-screen max-w-full transform translate-x-full transition-transform duration-300 bg-white shadow-2xl flex flex-col justify-between"
+        >
+          
+          <!-- Drawer Header -->
+          <div class="bg-indigo-900 px-6 py-5 sm:px-6 flex items-center justify-between text-white shrink-0">
+            <div>
+              <h2 class="text-base font-bold font-display" id="drawer-title">New Article Writer</h2>
+              <p class="text-[11px] text-indigo-200">Compose and catalog press releases, corporate news, or blogs.</p>
+            </div>
+            <button 
+              type="button" 
+              id="close-drawer"
+              class="text-indigo-200 hover:text-white font-bold text-2xl"
+            >
+              &times;
+            </button>
+          </div>
+
+          <!-- Drawer Form Body (Full-Width Side-by-Side Split Workspace) -->
+          <div class="flex-grow overflow-hidden flex flex-col lg:flex-row bg-slate-100">
+            
+            <!-- LEFT COLUMN: Editor & Form Metadata (55% width) -->
+            <div class="w-full lg:w-[55%] flex flex-col h-full bg-white border-r border-slate-200 overflow-y-auto p-6 space-y-6">
+              
+              <!-- Form Metadata Grid -->
+              <form id="article-form" class="space-y-4 text-left shrink-0">
+                <input type="hidden" name="id" id="form-art-id" />
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <!-- Row 1 -->
+                  <div class="md:col-span-2">
+                    <label class="text-xs font-bold text-slate-700">Article Title</label>
+                    <input 
+                      type="text" 
+                      name="title" 
+                      id="form-title"
+                      required
+                      placeholder="e.g. Landmark Landscaping Contract Awarded"
+                      class="w-full mt-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800" 
+                    />
+                  </div>
+                  <div>
+                    <label class="text-xs font-bold text-slate-700">Scope Division</label>
+                    <select 
+                      name="division" 
+                      id="form-division"
+                      class="w-full mt-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-700 cursor-pointer"
+                    >
+                      <option value="both">Both DTL & DGS</option>
+                      <option value="dtl">DTL (Technical Lighting)</option>
+                      <option value="dgs">DGS (Greenscapes)</option>
+                    </select>
+                  </div>
+
+                  <!-- Row 2 -->
+                  <div class="md:col-span-2">
+                    <div class="flex items-center justify-between">
+                      <label class="text-xs font-bold text-slate-700">Featured Image URL</label>
+                      <button 
+                        type="button" 
+                        onclick="window.openResourcePicker('form-image', 'preview-featured-image')" 
+                        class="text-[9px] font-black text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-250 rounded px-2 py-0.5 uppercase tracking-wider transition-colors shrink-0 cursor-pointer"
+                      >
+                        Browse Resources
+                      </button>
+                    </div>
+                    <input 
+                      type="text" 
+                      name="featured_image" 
+                      id="form-image"
+                      placeholder="https://images.unsplash.com/photo-..."
+                      class="w-full mt-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-650" 
+                    />
+                  </div>
+                  <div>
+                    <label class="text-xs font-bold text-slate-700">Content Type</label>
+                    <select 
+                      name="type" 
+                      id="form-type"
+                      class="w-full mt-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-700 cursor-pointer"
+                    >
+                      <option value="press_release">Press Release</option>
+                      <option value="event">Corporate Event</option>
+                      <option value="project_blog">Project Case Blog</option>
+                    </select>
+                  </div>
+
+                  <!-- Row 3 -->
+                  <div class="md:col-span-2">
+                    <label class="text-xs font-bold text-slate-700">Summary Overview (Synopsis)</label>
+                    <textarea 
+                      name="summary" 
+                      id="form-summary"
+                      rows="2"
+                      placeholder="Provide a brief summary overview explaining this announcement..."
+                      class="w-full mt-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-600 resize-none"
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label class="text-xs font-bold text-slate-700">Publish State Status</label>
+                    <select 
+                      name="status" 
+                      id="form-status"
+                      class="w-full mt-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-700 cursor-pointer"
+                    >
+                      <option value="draft">Draft (Saved in DB only)</option>
+                      <option value="published">Published (Visible immediately on active portals)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Corporate Signature Footer Settings Block -->
+                <div class="mt-4 border-t border-slate-250 pt-4 space-y-3 shrink-0">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      💼 Corporate Footer Signature Card
+                    </label>
+                    <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded px-2 py-0.5 shadow-3xs">
+                      <input type="checkbox" name="show_footer" id="form-show-footer" checked class="rounded border-slate-350 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer" />
+                      <label for="form-show-footer" class="text-[10px] font-black text-slate-600 cursor-pointer uppercase tracking-wider select-none">Show Signature</label>
+                    </div>
+                  </div>
+                  
+                  <div id="footer-fields-wrapper" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label class="text-[10px] font-bold text-slate-600">Publisher Brand</label>
+                      <input 
+                        type="text" 
+                        name="footer_brand" 
+                        id="form-footer-brand"
+                        placeholder="Delight Group"
+                        class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800" 
+                      />
+                    </div>
+                    <div>
+                      <label class="text-[10px] font-bold text-slate-600">Locations & Legal</label>
+                      <input 
+                        type="text" 
+                        name="footer_address" 
+                        id="form-footer-address"
+                        placeholder="Delight Group LLC · Dubai, UAE"
+                        class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800" 
+                      />
+                    </div>
+                    <div>
+                      <label class="text-[10px] font-bold text-slate-600">Action Button Text</label>
+                      <input 
+                        type="text" 
+                        name="footer_cta" 
+                        id="form-footer-cta"
+                        placeholder="Get in Touch →"
+                        class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <!-- Editor Block -->
+              <div class="flex flex-col space-y-2 flex-grow min-h-[450px]">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-slate-700">Article Body Content</label>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <button type="button" id="toggle-editor-source" class="bg-slate-100 border border-slate-200 rounded text-[10px] px-2.5 py-1 text-slate-750 font-bold hover:bg-slate-200 transition-colors focus:outline-none flex items-center gap-1 shadow-3xs">
+                      💻 Source HTML
+                    </button>
+                    <!-- Insert Table Button -->
+                    <button type="button" data-insert="table" class="insert-block-btn bg-emerald-50 border border-emerald-200 rounded text-[10px] px-2.5 py-1 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors focus:outline-none flex items-center gap-1 shadow-3xs">
+                      📊 Insert Table
+                    </button>
+                    <select id="editor-template-selector" class="bg-indigo-50/60 border border-indigo-200 rounded text-[10px] px-2.5 py-1 text-indigo-700 font-bold cursor-pointer hover:bg-indigo-100 transition-colors focus:outline-none">
+                      <option value="">📰 Insert Template</option>
+                      <option value="press-release">📰 Press Release — Official Announcement</option>
+                      <option value="feature-right">✨ Feature Article — Product Spotlight (Image Right)</option>
+                      <option value="case-study">📊 Case Study — Project Blog with Stats</option>
+                      <option value="event-recap">🎪 Event Recap — Trade Show / Conference</option>
+                    </select>
+                  </div>
+                </div>
+                <!-- Quill Editor + Source Editor -->
+                <div class="border border-slate-200 rounded-lg overflow-hidden flex-grow flex flex-col bg-white shadow-sm" style="min-height: 400px; height: 500px;">
+                  <div id="editor-container" class="text-xs flex-grow" style="height: 100%;"></div>
+                  <textarea id="source-editor-container" class="hidden text-xs font-mono p-4 w-full flex-grow border-0 focus:ring-0 focus:outline-none resize-none bg-slate-950 text-slate-100" style="height: 100%; border: 0; outline: none;" placeholder="<!-- Type your custom HTML source code here... -->"></textarea>
+                </div>
+                <input type="hidden" name="content" id="form-content" />
+              </div>
+
+            </div> <!-- end left column -->
+
+            <!-- RIGHT COLUMN: Live Site Preview (45% width) -->
+            <div class="w-full lg:w-[45%] flex flex-col h-full bg-slate-50 overflow-y-auto p-6 space-y-4">
+              
+              <!-- Preview Header Status Bar -->
+              <div class="flex items-center justify-between border-b border-slate-200 pb-2.5 shrink-0">
+                <span class="text-xs font-black text-slate-400 tracking-widest flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Live Site Preview
+                </span>
+                <span id="preview-division-badge" class="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-slate-100 border border-slate-200 text-slate-600 shadow-3xs">
+                  BOTH SCOPE
+                </span>
+              </div>
+
+              <!-- Browser Window Frame (Takes full remaining space) -->
+              <div class="flex flex-col rounded-xl border border-slate-300 shadow-xl overflow-hidden bg-white flex-grow min-h-[500px]">
+
+                <!-- Browser Chrome Bar -->
+                <div class="bg-slate-100 border-b border-slate-200 px-3 py-2 flex items-center gap-2 shrink-0">
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-2.5 h-2.5 rounded-full bg-red-400/80"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-amber-400/80"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-emerald-400/80"></div>
+                  </div>
+                  <div class="flex-grow bg-white rounded border border-slate-200 px-3 py-1 flex items-center gap-2">
+                    <svg class="w-2.5 h-2.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    <span class="text-[10px] text-slate-400 font-mono truncate">delightgroup.ae/news/your-article-slug</span>
+                  </div>
+                </div>
+
+                <!-- Scrollable Page Content -->
+                <div class="overflow-y-auto flex-grow">
+
+                  <!-- HERO BANNER -->
+                  <div id="preview-banner-block" class="relative border-b-4 overflow-hidden" style="background: linear-gradient(to bottom right, #082a17, #011705); border-bottom-color: #10b981;">
+                    <div class="absolute inset-0 opacity-20" style="background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 4rem 4rem;"></div>
+                    <div class="absolute -right-16 -bottom-16 w-56 h-56 rounded-full" style="background: rgba(255,255,255,0.04); filter: blur(48px);"></div>
+
+                    <div class="relative z-10 px-6 py-8 space-y-3">
+                      <div class="flex justify-start">
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-white/10 text-white/75 px-3 py-1.5 rounded-lg border border-white/10">
+                          ← Back to Home
+                        </span>
+                      </div>
+                      <div class="flex flex-wrap items-center justify-center gap-3 text-[10px] font-bold tracking-wider pt-1">
+                        <span id="preview-type-badge-new" class="px-2.5 py-0.5 rounded border text-[9px] font-black tracking-wider bg-emerald-500/25 text-emerald-300 border-emerald-500/30">
+                          PRESS RELEASE
+                        </span>
+                        <span class="text-white/30">•</span>
+                        <span id="preview-pub-date-new" class="text-emerald-400">TODAY</span>
+                      </div>
+                      <h1 id="preview-title-new" class="text-lg font-black tracking-tight leading-tight text-white break-words text-center">
+                        Untitled Article
+                      </h1>
+                      <p id="preview-summary-new" class="text-[11px] text-slate-300 leading-relaxed border-l-2 border-slate-500/50 pl-3 italic max-w-prose mx-auto break-words">
+                        No summary overview provided.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- MAIN CONTENT AREA -->
+                  <div class="px-6 py-8 space-y-6" style="background: #fcfdfd;">
+                    <div id="preview-featured-image-wrapper" class="hidden rounded-xl overflow-hidden shadow-xl border border-slate-100" style="max-height: 200px;">
+                      <img id="preview-featured-image" src="" alt="Featured Banner" class="w-full h-full object-cover" />
+                    </div>
+
+                    <article id="preview-body" class="article-body-content prose prose-slate max-w-none text-left break-words">
+                      <p style="color: #94a3b8; font-style: italic; font-size: 0.75rem;">Write some content in the editor to see your live preview here...</p>
+                    </article>
+
+                    <!-- Corporate Signature Footer -->
+                    <div id="preview-signature-footer-card" class="mt-6 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div class="flex items-center gap-3">
+                        <img id="preview-footer-logo" src="/dgllclogosmall.png" alt="Brand Logo" class="h-9 w-auto object-contain" />
+                        <div class="leading-none text-left space-y-0.5">
+                          <span class="text-[9px] font-black uppercase text-slate-400 block tracking-wider">Published By</span>
+                          <span id="preview-footer-name" class="text-xs font-bold text-slate-800 block">Delight Group</span>
+                          <span id="preview-footer-address" class="text-[10px] text-slate-500 block">Delight Group LLC · Dubai, UAE</span>
+                        </div>
+                      </div>
+                      <button type="button" id="preview-cta-btn" class="inline-flex items-center gap-2 text-[10px] font-bold text-white px-4 py-2.5 rounded-lg shadow-md transition-colors shrink-0" style="background: #004712;">
+                        Get in Touch →
+                      </button>
+                    </div>
+
+
+
+                  </div>
+                </div>
+              </div>
+            </div> <!-- end right column -->
+
+          </div> <!-- end drawer body -->
+
+          <!-- Drawer Footer -->
+          <div class="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
+            <button 
+              type="button" 
+              id="cancel-btn"
+              class="border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              id="submit-art-btn"
+              class="bg-indigo-650 hover:bg-indigo-755 text-white px-5 py-2 rounded-lg text-xs font-bold transition-colors shadow"
+            >
+              Save Announcement
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    // Register custom fonts in Quill
+    const Font = (window as any).Quill.import('formats/font');
+    Font.whitelist = ['inter', 'outfit', 'playfair', 'fira', 'roboto'];
+    (window as any).Quill.register(Font, true);
+
+    const quill = new (window as any).Quill('#editor-container', {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{ 'font': ['', 'inter', 'outfit', 'playfair', 'fira', 'roboto'] }],
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'align': [] }],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
+          ['blockquote', 'code-block'],
+          ['link', 'image', 'video', 'clean']
+        ]
+      },
+      formats: ['font', 'header','bold','italic','underline','strike','color','background',
+                 'align','list','indent','blockquote','code-block','link','image','video']
+    });
+
+
+    // ── FLOATING UNIVERSAL ELEMENT STYLER TOOLBAR ──────────────────────────────────────
+    // Creates a dynamic toolbar positioned above any clicked element (images, grid columns, tables, callout boxes)
+    // inside the editor to configure alignments, opacity/transparency, background colors, and deletion.
+    const imgToolbarEl = document.createElement('div');
+    imgToolbarEl.id = 'img-toolbar';
+    imgToolbarEl.style.display = 'none';
+    document.body.appendChild(imgToolbarEl);
+
+    let activeEl: HTMLElement | null = null;
+    let activeType: 'image' | 'table' | 'grid' | 'callout' | 'other' = 'other';
+
+    // Show toolbar when an element inside the Quill editor is clicked
+    const editorContainer = document.getElementById('editor-container');
+    editorContainer?.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      
+      // Prevent trigger when clicking toolbar itself
+      if (imgToolbarEl.contains(target) || target === imgToolbarEl) return;
+
+      // Identify active element and type
+      let found: { el: HTMLElement, type: typeof activeType } | null = null;
+      
+      if (target.tagName === 'IMG') {
+        found = { el: target, type: 'image' };
+      } else {
+        const callout = target.closest('.ql-callout-gold, .ql-callout-green') as HTMLElement | null;
+        if (callout) {
+          found = { el: callout, type: 'callout' };
+        } else {
+          const grid = target.closest('.ql-grid-2, .ql-grid-3') as HTMLElement | null;
+          if (grid) {
+            found = { el: grid, type: 'grid' };
+          } else {
+            const td = target.closest('td, th') as HTMLElement | null;
+            if (td) {
+              found = { el: td, type: 'table' };
+            }
+          }
+        }
+      }
+
+      if (found) {
+        activeEl = found.el;
+        activeType = found.type;
+        
+        // Dynamically populate toolbar buttons
+        let html = '';
+        const currentOpacity = activeEl.style.opacity || '1';
+        const currentWidth = activeEl.style.width || '';
+
+        if (activeType === 'image') {
+          const currentClass = activeEl.className || '';
+          html = `
+            <span style="color:#94a3b8;font-size:9px;font-weight:800;letter-spacing:0.05em;margin-right:2px;">ALIGN</span>
+            <button data-action="align" data-val="left" class="${currentClass.includes('ql-img-left') ? 'active' : ''}">Left</button>
+            <button data-action="align" data-val="center" class="${currentClass.includes('ql-img-center') ? 'active' : ''}">Center</button>
+            <button data-action="align" data-val="right" class="${currentClass.includes('ql-img-right') ? 'active' : ''}">Right</button>
+            <button data-action="align" data-val="none" class="${(!currentClass.includes('ql-img-left') && !currentClass.includes('ql-img-right') && !currentClass.includes('ql-img-center')) ? 'active' : ''}">None</button>
+            <div class="sep"></div>
+            <span style="color:#94a3b8;font-size:9px;font-weight:800;letter-spacing:0.05em;margin-right:2px;">WIDTH</span>
+            <button data-action="width" data-val="25%" class="${currentWidth === '25%' ? 'active' : ''}">25%</button>
+            <button data-action="width" data-val="50%" class="${currentWidth === '50%' ? 'active' : ''}">50%</button>
+            <button data-action="width" data-val="75%" class="${currentWidth === '75%' ? 'active' : ''}">75%</button>
+            <button data-action="width" data-val="100%" class="${(currentWidth === '100%' || !currentWidth) ? 'active' : ''}">Full</button>
+            <div class="sep"></div>
+            <span style="color:#94a3b8;font-size:9px;font-weight:800;letter-spacing:0.05em;margin-right:2px;">OPACITY</span>
+            <button data-action="opacity" data-val="1" class="${currentOpacity === '1' ? 'active' : ''}">100%</button>
+            <button data-action="opacity" data-val="0.8" class="${currentOpacity === '0.8' ? 'active' : ''}">80%</button>
+            <button data-action="opacity" data-val="0.6" class="${currentOpacity === '0.6' ? 'active' : ''}">60%</button>
+            <button data-action="opacity" data-val="0.4" class="${currentOpacity === '0.4' ? 'active' : ''}">40%</button>
+            <div class="sep"></div>
+            <button data-action="delete" style="color:#f87171">&times; Delete</button>
+          `;
+        } else if (activeType === 'callout') {
+          const isGold = activeEl.classList.contains('ql-callout-gold');
+          html = `
+            <span style="color:#94a3b8;font-size:9px;font-weight:800;letter-spacing:0.05em;margin-right:2px;">THEME</span>
+            <button data-action="theme" data-val="gold" class="${isGold ? 'active' : ''}">Gold Box</button>
+            <button data-action="theme" data-val="green" class="${!isGold ? 'active' : ''}">Green Box</button>
+            <div class="sep"></div>
+            <span style="color:#94a3b8;font-size:9px;font-weight:800;letter-spacing:0.05em;margin-right:2px;">OPACITY</span>
+            <button data-action="opacity" data-val="1" class="${currentOpacity === '1' ? 'active' : ''}">100%</button>
+            <button data-action="opacity" data-val="0.8" class="${currentOpacity === '0.8' ? 'active' : ''}">80%</button>
+            <button data-action="opacity" data-val="0.6" class="${currentOpacity === '0.6' ? 'active' : ''}">60%</button>
+            <button data-action="opacity" data-val="0.4" class="${currentOpacity === '0.4' ? 'active' : ''}">40%</button>
+            <div class="sep"></div>
+            <button data-action="delete" style="color:#f87171">&times; Delete</button>
+          `;
+        } else if (activeType === 'grid') {
+          html = `
+            <span style="color:#94a3b8;font-size:9px;font-weight:800;letter-spacing:0.05em;margin-right:2px;">GRID OPACITY</span>
+            <button data-action="opacity" data-val="1" class="${currentOpacity === '1' ? 'active' : ''}">100%</button>
+            <button data-action="opacity" data-val="0.8" class="${currentOpacity === '0.8' ? 'active' : ''}">80%</button>
+            <button data-action="opacity" data-val="0.6" class="${currentOpacity === '0.6' ? 'active' : ''}">60%</button>
+            <button data-action="opacity" data-val="0.4" class="${currentOpacity === '0.4' ? 'active' : ''}">40%</button>
+            <div class="sep"></div>
+            <button data-action="delete" style="color:#f87171">&times; Delete</button>
+          `;
+        } else if (activeType === 'table') {
+          const currentBg = activeEl.style.backgroundColor || '';
+          html = `
+            <span style="color:#94a3b8;font-size:9px;font-weight:800;letter-spacing:0.05em;margin-right:2px;">CELL BG</span>
+            <button data-action="cell-bg" data-val="#ffffff" class="${(!currentBg || currentBg.includes('255')) ? 'active' : ''}">White</button>
+            <button data-action="cell-bg" data-val="#f8fafc" class="${currentBg.includes('248') ? 'active' : ''}">Zebra</button>
+            <button data-action="cell-bg" data-val="#fcf8f2" class="${currentBg.includes('252') ? 'active' : ''}">Gold</button>
+            <button data-action="cell-bg" data-val="#f0faf2" class="${currentBg.includes('240') ? 'active' : ''}">Green</button>
+            <div class="sep"></div>
+            <span style="color:#94a3b8;font-size:9px;font-weight:800;letter-spacing:0.05em;margin-right:2px;">OPACITY</span>
+            <button data-action="opacity" data-val="1" class="${currentOpacity === '1' ? 'active' : ''}">100%</button>
+            <button data-action="opacity" data-val="0.8" class="${currentOpacity === '0.8' ? 'active' : ''}">80%</button>
+            <button data-action="opacity" data-val="0.6" class="${currentOpacity === '0.6' ? 'active' : ''}">60%</button>
+            <button data-action="opacity" data-val="0.4" class="${currentOpacity === '0.4' ? 'active' : ''}">40%</button>
+            <div class="sep"></div>
+            <button data-action="delete-table" style="color:#f87171">Del Table</button>
+          `;
+        }
+
+        imgToolbarEl.innerHTML = html;
+
+        // Position toolbar above the element
+        const rect = activeEl.getBoundingClientRect();
+        imgToolbarEl.style.display = 'flex';
+        imgToolbarEl.style.top  = `${rect.top  + window.scrollY - 44}px`;
+        imgToolbarEl.style.left = `${Math.max(8, rect.left + window.scrollX)}px`;
+        e.stopPropagation();
+      } else {
+        imgToolbarEl.style.display = 'none';
+        activeEl = null;
+      }
+    });
+
+    // Handle toolbar button clicks
+    imgToolbarEl.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('button') as HTMLButtonElement | null;
+      if (!btn || !activeEl) return;
+
+      const action = btn.dataset.action;
+      const val = btn.dataset.val;
+
+      if (action === 'delete') {
+        activeEl.remove();
+        imgToolbarEl.style.display = 'none';
+        activeEl = null;
+        updateLivePreview();
+        return;
+      }
+
+      if (action === 'delete-table') {
+        const tbl = activeEl.closest('table');
+        if (tbl) tbl.remove();
+        imgToolbarEl.style.display = 'none';
+        activeEl = null;
+        updateLivePreview();
+        return;
+      }
+
+      if (action === 'align' && activeType === 'image') {
+        activeEl.classList.remove('ql-img-left', 'ql-img-right', 'ql-img-center');
+        if (val === 'left') {
+          activeEl.classList.add('ql-img-left');
+          activeEl.style.cssText += 'float:left;margin-right:1rem;margin-bottom:0.5rem;display:inline;';
+        } else if (val === 'right') {
+          activeEl.classList.add('ql-img-right');
+          activeEl.style.cssText += 'float:right;margin-left:1rem;margin-bottom:0.5rem;display:inline;';
+        } else if (val === 'center') {
+          activeEl.classList.add('ql-img-center');
+          activeEl.style.cssText += 'float:none;display:block;margin:0.75rem auto;';
+        } else {
+          activeEl.style.float = 'none';
+          activeEl.style.margin = '0.5rem 0';
+          activeEl.style.display = 'block';
+        }
+      }
+
+      if (action === 'width' && activeType === 'image') {
+        activeEl.style.width = val || '';
+        activeEl.style.height = 'auto';
+      }
+
+      if (action === 'opacity') {
+        activeEl.style.opacity = val || '';
+      }
+
+      if (action === 'theme' && activeType === 'callout') {
+        if (val === 'gold') {
+          activeEl.classList.remove('ql-callout-green');
+          activeEl.classList.add('ql-callout-gold');
+        } else {
+          activeEl.classList.remove('ql-callout-gold');
+          activeEl.classList.add('ql-callout-green');
+        }
+      }
+
+      if (action === 'cell-bg' && activeType === 'table') {
+        activeEl.style.backgroundColor = val || '';
+      }
+
+      // Re-trigger render to sync button states
+      if (activeEl) {
+        const rect = activeEl.getBoundingClientRect();
+        imgToolbarEl.style.top  = `${rect.top  + window.scrollY - 44}px`;
+        imgToolbarEl.style.left = `${Math.max(8, rect.left + window.scrollX)}px`;
+        
+        // Re-run population to update active classes
+        const clickEvent = new MouseEvent('click', { bubbles: true });
+        activeEl.dispatchEvent(clickEvent);
+      }
+
+      updateLivePreview();
+    });
+
+    // Hide toolbar when clicking outside editor
+    document.addEventListener('click', (e) => {
+      if (!editorContainer?.contains(e.target as Node) && e.target !== imgToolbarEl && !imgToolbarEl.contains(e.target as Node)) {
+        imgToolbarEl.style.display = 'none';
+        activeEl = null;
+      }
+    });
+
+    let sourceMode = false;
+    const sourceToggle = document.getElementById('toggle-editor-source');
+    const sourceContainer = document.getElementById('source-editor-container') as HTMLTextAreaElement | null;
+    const richContainer = document.getElementById('editor-container');
+
+    const searchInput = document.getElementById('search-articles') as HTMLInputElement | null;
+    const filterDivision = document.getElementById('filter-division') as HTMLSelectElement | null;
+    const filterType = document.getElementById('filter-type') as HTMLSelectElement | null;
+    const filterStatus = document.getElementById('filter-status') as HTMLSelectElement | null;
+    const newBtn = document.getElementById('new-article-btn');
+    const drawer = document.getElementById('article-drawer');
+    const drawerOverlay = document.getElementById('drawer-overlay');
+    const drawerPanel = document.getElementById('drawer-panel');
+    const closeBtn = document.getElementById('close-drawer');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const submitBtn = document.getElementById('submit-art-btn');
+    
+    const form = document.getElementById('article-form') as HTMLFormElement;
+    const drawerTitle = document.getElementById('drawer-title');
+
+    sourceToggle?.addEventListener('click', () => {
+      sourceMode = !sourceMode;
+      if (sourceMode) {
+        // Switch to HTML source code view
+        const html = quill.root.innerHTML;
+        if (sourceContainer) {
+          sourceContainer.value = html === '<p><br></p>' ? '' : html;
+          sourceContainer.classList.remove('hidden');
+        }
+        richContainer?.classList.add('hidden');
+        // Hide Quill toolbar
+        (document.querySelector('.ql-toolbar') as HTMLElement)?.classList.add('hidden');
+        if (imgToolbarEl) imgToolbarEl.style.display = 'none';
+        sourceToggle.innerHTML = '📝 Rich Editor';
+        sourceToggle.className = 'bg-indigo-50 border border-indigo-200 rounded text-[10px] px-2.5 py-1 text-indigo-700 font-bold hover:bg-indigo-100 transition-colors focus:outline-none flex items-center gap-1 shadow-3xs';
+      } else {
+        // Switch back to rich text editor view
+        const html = sourceContainer?.value || '';
+        quill.root.innerHTML = html;
+        sourceContainer?.classList.add('hidden');
+        richContainer?.classList.remove('hidden');
+        // Show Quill toolbar
+        (document.querySelector('.ql-toolbar') as HTMLElement)?.classList.remove('hidden');
+        sourceToggle.innerHTML = '💻 Source HTML';
+        sourceToggle.className = 'bg-slate-100 border border-slate-200 rounded text-[10px] px-2.5 py-1 text-slate-700 font-bold hover:bg-slate-200 transition-colors focus:outline-none flex items-center gap-1 shadow-3xs';
+        updateLivePreview();
+      }
+    });
+
+    sourceContainer?.addEventListener('input', () => {
+      if (previewBody) {
+        const rawContent = sourceContainer.value;
+        previewBody.innerHTML = !rawContent ? '<p style="color:#94a3b8;font-style:italic;font-size:0.75rem;">Write some content...</p>' : rawContent;
+      }
+    });
+
+    const previewTitle = document.getElementById('preview-title-new');
+    const previewSummary = document.getElementById('preview-summary-new');
+    const previewBody = document.getElementById('preview-body');
+    const previewImg = document.getElementById('preview-featured-image') as HTMLImageElement | null;
+    const previewImgWrapper = document.getElementById('preview-featured-image-wrapper');
+    const previewTypeBadge = document.getElementById('preview-type-badge-new');
+    const previewDivBadge = document.getElementById('preview-division-badge');
+    const previewBannerBlock = document.getElementById('preview-banner-block');
+    const previewFooterLogo = document.getElementById('preview-footer-logo') as HTMLImageElement | null;
+    const previewFooterName = document.getElementById('preview-footer-name');
+    const previewPubDate = document.getElementById('preview-pub-date-new');
+
+    const updateLivePreview = () => {
+      const titleVal = (document.getElementById('form-title') as HTMLInputElement)?.value || '';
+      if (previewTitle) previewTitle.textContent = titleVal.trim() || 'Untitled Article';
+
+      const summaryVal = (document.getElementById('form-summary') as HTMLTextAreaElement)?.value || '';
+      if (previewSummary) previewSummary.textContent = summaryVal.trim() || 'No summary overview provided.';
+
+      const imgVal = (document.getElementById('form-image') as HTMLInputElement)?.value || '';
+      if (previewImg && previewImgWrapper) {
+        if (imgVal.trim()) {
+          previewImg.src = imgVal.trim();
+          previewImgWrapper.classList.remove('hidden');
+        } else {
+          previewImgWrapper.classList.add('hidden');
+        }
+      }
+
+      const divVal = (document.getElementById('form-division') as HTMLSelectElement)?.value || 'both';
+      const bannerEl = previewBannerBlock as HTMLElement | null;
+      const ctaBtn = document.getElementById('preview-cta-btn') as HTMLElement | null;
+
+      if (bannerEl) {
+        if (divVal === 'dtl') {
+          bannerEl.style.background = 'linear-gradient(to bottom right, #020617, #0f172a)';
+          bannerEl.style.borderBottomColor = '#f59e0b';
+          if (previewFooterLogo) previewFooterLogo.src = '/dtllogo.jpg';
+          if (previewFooterName) previewFooterName.textContent = 'Delight Technical Lighting';
+          if (ctaBtn) ctaBtn.style.background = '#1e293b';
+        } else if (divVal === 'dgs') {
+          bannerEl.style.background = 'linear-gradient(to bottom right, #002208, #001705)';
+          bannerEl.style.borderBottomColor = '#BE854C';
+          if (previewFooterLogo) previewFooterLogo.src = '/dgslogo.jpg';
+          if (previewFooterName) previewFooterName.textContent = 'Delight Greenscapes';
+          if (ctaBtn) ctaBtn.style.background = '#004712';
+        } else {
+          bannerEl.style.background = 'linear-gradient(to bottom right, #082a17, #011705)';
+          bannerEl.style.borderBottomColor = '#10b981';
+          if (previewFooterLogo) previewFooterLogo.src = '/dgllclogosmall.png';
+          if (previewFooterName) previewFooterName.textContent = 'Delight Group';
+          if (ctaBtn) ctaBtn.style.background = '#004712';
+        }
+      }
+
+      const typeVal = (document.getElementById('form-type') as HTMLSelectElement)?.value || 'press_release';
+      if (previewTypeBadge) {
+        let typeLabel = 'PRESS RELEASE';
+        let badgeStyle = 'background:rgba(16,185,129,0.2);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3);';
+        if (divVal === 'dtl') badgeStyle = 'background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);';
+        else if (divVal === 'dgs') badgeStyle = 'background:rgba(190,133,76,0.2);color:#ffffff;border:1px solid rgba(190,133,76,0.4);';
+
+        if (typeVal === 'event') typeLabel = 'COMPANY EVENT';
+        else if (typeVal === 'project_blog') typeLabel = 'PROJECT CASE';
+
+        previewTypeBadge.textContent = typeLabel;
+        (previewTypeBadge as HTMLElement).setAttribute('style', `padding:2px 8px;border-radius:4px;font-size:9px;font-weight:900;letter-spacing:0.05em;${badgeStyle}`);
+      }
+
+      if (previewPubDate) {
+        if (divVal === 'dtl') (previewPubDate as HTMLElement).style.color = '#fbbf24';
+        else if (divVal === 'dgs') (previewPubDate as HTMLElement).style.color = '#BE854C';
+        else (previewPubDate as HTMLElement).style.color = '#34d399';
+      }
+
+      if (previewDivBadge) {
+        let divLabel = 'BOTH SCOPE';
+        let divColorClass = 'bg-slate-100 border-slate-200 text-slate-600';
+        if (divVal === 'dtl') { divLabel = 'DTL LIGHTING'; divColorClass = 'bg-amber-50 border-amber-200/50 text-amber-700'; }
+        else if (divVal === 'dgs') { divLabel = 'DGS GREENSCAPES'; divColorClass = 'bg-emerald-50 border-emerald-200/50 text-emerald-700'; }
+        previewDivBadge.textContent = divLabel;
+        previewDivBadge.className = `px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border shadow-3xs ${divColorClass}`;
+      }
+
+      if (previewBody) {
+        const rawContent = quill.root.innerHTML;
+        previewBody.innerHTML = rawContent === '<p><br></p>' ? '<p style="color:#94a3b8;font-style:italic;font-size:0.75rem;">Write some content...</p>' : rawContent;
+      }
+
+      // Customize and toggle corporate signature card
+      const showFooter = (document.getElementById('form-show-footer') as HTMLInputElement)?.checked ?? true;
+      const sigCard = document.getElementById('preview-signature-footer-card');
+      const fieldsWrapper = document.getElementById('footer-fields-wrapper');
+      
+      if (sigCard) {
+        if (showFooter) {
+          sigCard.classList.remove('hidden');
+          sigCard.classList.add('flex');
+          if (fieldsWrapper) fieldsWrapper.style.opacity = '1';
+        } else {
+          sigCard.classList.add('hidden');
+          sigCard.classList.remove('flex');
+          if (fieldsWrapper) fieldsWrapper.style.opacity = '0.5';
+        }
+      }
+
+      const brandVal = (document.getElementById('form-footer-brand') as HTMLInputElement)?.value || '';
+      const addressVal = (document.getElementById('form-footer-address') as HTMLInputElement)?.value || '';
+      const ctaVal = (document.getElementById('form-footer-cta') as HTMLInputElement)?.value || '';
+
+      const previewFooterNameEl = document.getElementById('preview-footer-name');
+      const previewFooterAddressEl = document.getElementById('preview-footer-address');
+      const previewCtaBtnEl = document.getElementById('preview-cta-btn');
+
+      if (previewFooterNameEl) {
+        previewFooterNameEl.textContent = brandVal.trim() || (divVal === 'dtl' ? 'Delight Technical Lighting' : (divVal === 'dgs' ? 'Delight Greenscapes' : 'Delight Group'));
+      }
+      if (previewFooterAddressEl) {
+        previewFooterAddressEl.textContent = addressVal.trim() || 'Delight Group LLC · Dubai, UAE';
+      }
+      if (previewCtaBtnEl) {
+        previewCtaBtnEl.textContent = ctaVal.trim() || 'Get in Touch →';
+      }
+    };
+
+    quill.on('text-change', updateLivePreview);
+    document.getElementById('form-title')?.addEventListener('input', updateLivePreview);
+    document.getElementById('form-image')?.addEventListener('input', updateLivePreview);
+    document.getElementById('form-summary')?.addEventListener('input', updateLivePreview);
+    document.getElementById('form-division')?.addEventListener('change', updateLivePreview);
+    document.getElementById('form-type')?.addEventListener('change', updateLivePreview);
+    document.getElementById('form-show-footer')?.addEventListener('change', updateLivePreview);
+    document.getElementById('form-footer-brand')?.addEventListener('input', updateLivePreview);
+    document.getElementById('form-footer-address')?.addEventListener('input', updateLivePreview);
+    document.getElementById('form-footer-cta')?.addEventListener('input', updateLivePreview);
+
+    const BULLET_GOLD = "padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;";    const templates: any = {
+
+      // ── TEMPLATE 1: Official Press Release ────────────────────────────
+      'press-release': `
+        <div style="font-family:'Inter',sans-serif;line-height:1.7;color:#334155;">
+          <div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1px solid #e2e8f0;border-left:4px solid #BE854C;padding:14px 18px;border-radius:8px;margin-bottom:22px;">
+            <p style="font-size:0.68rem;font-weight:800;color:#BE854C;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 4px 0;">For Immediate Release</p>
+            <p style="font-size:0.72rem;color:#64748b;margin:0;">Dubai, United Arab Emirates — [Insert Release Date Here]</p>
+          </div>
+          <p>Delight Group LLC is pleased to announce a significant milestone in its continued expansion across the GCC region. The company has been awarded a landmark contract to supply and install a comprehensive outdoor infrastructure package for a prestigious mixed-use development in Abu Dhabi, further cementing its position as a leading supplier of premium landscape and technical lighting solutions.</p>
+          <p>The project scope encompasses full supply of architectural outdoor LED lighting fixtures, shade structures, and a curated selection of specimen trees — all delivered on an accelerated timeline to meet the client's exacting commissioning schedule without compromise to quality or specification.</p>
+          <h3 style="font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:700;color:#0f172a;margin-top:1.5rem;margin-bottom:10px;">Key Project Highlights</h3>
+          <ul style="list-style-type:none;padding-left:0;margin-bottom:20px;">
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Premium LED specification street and pathway lighting across all common area zones</li>
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Supply and installation of over 500 specimen trees and ornamental palms</li>
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Integrated smart irrigation control systems for sustainable water management</li>
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Full project documentation, warranties, and post-installation maintenance contracts</li>
+          </ul>
+          <p>This award reinforces Delight Group's strategic vision and its unwavering commitment to delivering world-class outdoor infrastructure. The division continues to strengthen its supply chain partnerships with leading global manufacturers to ensure product availability and competitive pricing for all project scales.</p>
+          <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;" />
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:16px 20px;border-radius:8px;">
+            <p style="font-weight:700;color:#0f172a;margin:0 0 6px 0;font-size:0.85rem;">Media Contact</p>
+            <p style="color:#64748b;font-size:0.78rem;margin:0 0 3px 0;">Corporate Communications — Delight Group LLC</p>
+            <p style="color:#64748b;font-size:0.78rem;margin:0;">communications@delightgroup.ae &nbsp;·&nbsp; +971 4 000 0000</p>
+          </div>
+        </div>
+      `,
+
+      // ── TEMPLATE 2: Feature Article — Product Spotlight (Image Right) ──
+      'feature-right': `
+        <div style="font-family:'Inter',sans-serif;line-height:1.7;color:#334155;">
+          <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?q=80&w=800" style="float:right;margin-left:22px;margin-bottom:14px;width:42%;border-radius:12px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.12);border:1px solid #f1f5f9;" alt="Premium product showcase" />
+          <h3 style="font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:700;color:#0f172a;margin:0 0 10px 0;">Setting the Standard in Outdoor Infrastructure</h3>
+          <p>With over a decade of experience serving major developers across the UAE and GCC region, our product catalog represents the finest selection of outdoor lighting and landscape solutions available in the market today. Each product is rigorously vetted for climate resilience, energy efficiency, and design excellence.</p>
+          <p>Our portfolio spans from precision LED street lighting systems to mature specimen trees, offering developers a single trusted procurement source for entire project scopes — reducing lead times, simplifying logistics, and ensuring complete design consistency.</p>
+          <div style="clear:both;height:16px;"></div>
+          <h3 style="font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:700;color:#0f172a;margin-top:0.5rem;margin-bottom:10px;">Why Leading Developers Choose Delight Group</h3>
+          <ul style="list-style-type:none;padding-left:0;margin-bottom:20px;">
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Direct manufacturer relationships ensuring competitive pricing and genuine products</li>
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">UAE-wide logistics network with guaranteed on-time delivery commitments</li>
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Dedicated account management and post-supply technical support</li>
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Comprehensive warranty programmes and full product documentation packages</li>
+          </ul>
+          <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=800" style="float:left;margin-right:22px;margin-bottom:14px;width:42%;border-radius:12px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.12);border:1px solid #f1f5f9;" alt="Urban landscaping and outdoor infrastructure" />
+          <h3 style="font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:700;color:#0f172a;margin-top:0;margin-bottom:10px;">Our Commitment to Sustainable Solutions</h3>
+          <p>Sustainability is not a trend — it is a core principle embedded in every product we supply. Our lighting catalog prioritises high-efficiency LED technology, reducing energy consumption by up to 70% versus conventional solutions. Our plant supply focuses on native and acclimatised species that thrive in the UAE's arid climate with minimal water requirements.</p>
+          <div style="clear:both;"></div>
+        </div>
+      `,
+
+      // ── TEMPLATE 3: Case Study / Project Blog ─────────────────────────
+      'case-study': `
+        <div style="font-family:'Inter',sans-serif;line-height:1.7;color:#334155;">
+          <p style="font-size:0.875rem;color:#475569;">This project case study documents the complete supply and delivery lifecycle of a landmark infrastructure contract, highlighting the key challenges, milestones, and outcomes achieved through close collaboration between our DTL and DGS divisions.</p>
+          <hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0;" />
+          <div>
+            <img src="https://images.unsplash.com/photo-1486325212027-8081e485255e?q=80&w=800" style="float:right;margin-left:22px;margin-bottom:14px;width:42%;border-radius:12px;box-shadow:0 10px 20px -5px rgba(0,0,0,0.1);border:1px solid #f1f5f9;" alt="Project site overview" />
+            <h3 style="font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:700;color:#0f172a;margin-top:0;margin-bottom:8px;">Project Overview &amp; Scope</h3>
+            <p>The client engaged Delight Group to supply and deliver a complete outdoor infrastructure package for a flagship mixed-use development. The contract covered architectural LED lighting for all common areas, access roads, and retail frontages, alongside a comprehensive softscaping package including large-format planters, semi-mature trees, and seasonal floral installations.</p>
+            <p>Our team conducted an initial site survey and produced a detailed supply schedule aligned with the construction programme, ensuring zero delays to the client's opening timeline.</p>
+            <div style="clear:both;height:14px;"></div>
+          </div>
+          <hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0;" />
+          <div>
+            <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800" style="float:left;margin-right:22px;margin-bottom:14px;width:42%;border-radius:12px;box-shadow:0 10px 20px -5px rgba(0,0,0,0.1);border:1px solid #f1f5f9;" alt="Technical planning session" />
+            <h3 style="font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:700;color:#0f172a;margin-top:0;margin-bottom:8px;">Challenges &amp; Solutions</h3>
+            <p>The project presented several logistical challenges, most notably the compressed delivery window and the need to source specimen-grade Phoenix palms on short notice. Our procurement team activated existing nursery partnerships across the UAE, Oman, and Spain to fulfil the order within the required timeframe.</p>
+            <p>On the lighting side, a last-minute design change to the retail frontage required swift re-specification of 180 linear metres of façade lighting. Our technical team turned around revised submittals within 48 hours, maintaining full client confidence throughout.</p>
+            <div style="clear:both;height:14px;"></div>
+          </div>
+          <hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0;" />
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px;text-align:center;">
+            <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:12px;padding:14px;">
+              <p style="font-size:1.6rem;font-weight:900;color:#15803d;margin:0;">1,200+</p>
+              <p style="font-size:0.65rem;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.05em;margin:4px 0 0 0;">Trees &amp; Palms Supplied</p>
+            </div>
+            <div style="background:linear-gradient(135deg,#fefce8,#fef9c3);border:1px solid #fde68a;border-radius:12px;padding:14px;">
+              <p style="font-size:1.6rem;font-weight:900;color:#b45309;margin:0;">3,400+</p>
+              <p style="font-size:0.65rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;margin:4px 0 0 0;">Lighting Fixtures</p>
+            </div>
+            <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-radius:12px;padding:14px;">
+              <p style="font-size:1.6rem;font-weight:900;color:#0369a1;margin:0;">98%</p>
+              <p style="font-size:0.65rem;font-weight:700;color:#075985;text-transform:uppercase;letter-spacing:0.05em;margin:4px 0 0 0;">On-Time Delivery</p>
+            </div>
+          </div>
+          <div>
+            <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=800" style="float:right;margin-left:22px;margin-bottom:14px;width:42%;border-radius:12px;box-shadow:0 10px 20px -5px rgba(0,0,0,0.1);border:1px solid #f1f5f9;" alt="Completed project outcome" />
+            <h3 style="font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:700;color:#0f172a;margin-top:0;margin-bottom:8px;">Outcomes &amp; Client Feedback</h3>
+            <p>The completed project has been widely praised by the client and end-users alike, with the cohesive lighting and landscaping scheme receiving positive coverage in regional trade publications. The client has since engaged Delight Group for two additional phases of the wider masterplan development.</p>
+            <ul style="list-style-type:none;padding-left:0;">
+              <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:9px;font-weight:600;color:#475569;"}">Project completed 4 days ahead of the original programme milestone</li>
+              <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:9px;font-weight:600;color:#475569;"}">Zero defective units reported during the initial commissioning period</li>
+              <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:9px;font-weight:600;color:#475569;"}">Client formally awarded Delight Group preferred supplier status for all future projects</li>
+            </ul>
+            <div style="clear:both;"></div>
+          </div>
+        </div>
+      `,
+
+      // ── TEMPLATE 4: Event Recap — Trade Show / Conference ─────────────
+      'event-recap': `
+        <div style="font-family:'Inter',sans-serif;line-height:1.7;color:#334155;">
+          <p>Delight Group was proud to participate as an exhibitor at <strong>[Event Name]</strong>, held at <strong>[Venue]</strong> from <strong>[Start Date]</strong> to <strong>[End Date]</strong>. The event attracted over <strong>[X,000] visitors</strong> from across the GCC and international markets, providing an invaluable platform to showcase our expanded product range and forge new strategic partnerships.</p>
+          <hr style="border:0;border-top:1px solid #e2e8f0;margin:22px 0;" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px;">
+            <div>
+              <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=700" style="width:100%;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.09);border:1px solid #f1f5f9;display:block;" alt="Exhibition stand overview" />
+              <p style="font-size:0.67rem;color:#94a3b8;text-align:center;margin:6px 0 0 0;font-style:italic;">Delight Group exhibition stand</p>
+            </div>
+            <div>
+              <img src="https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=700" style="width:100%;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.09);border:1px solid #f1f5f9;display:block;" alt="Networking at the event" />
+              <p style="font-size:0.67rem;color:#94a3b8;text-align:center;margin:6px 0 0 0;font-style:italic;">Strategic networking sessions</p>
+            </div>
+          </div>
+          <h3 style="font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:700;color:#0f172a;margin-top:0;margin-bottom:10px;">Highlights from Our Participation</h3>
+          <ul style="list-style-type:none;padding-left:0;margin-bottom:22px;">
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Showcased 45+ new product lines spanning architectural lighting, planters, and irrigation systems</li>
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Held over 80 B2B meetings with master developers, landscape architects, and procurement specialists</li>
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Signed 3 new strategic supply agreements with major regional project developers</li>
+            <li style="${"padding-left:1.75rem;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%23BE854C%22 stroke-width=%223%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 d=%22M5 13l4 4L19 7%22 /%3E%3C/svg%3E');background-repeat:no-repeat;background-position:left center;background-size:14px 14px;margin-bottom:10px;font-weight:600;color:#475569;"}">Launched the new Sharjahflex B2B procurement portal to an audience of trade visitors</li>
+          </ul>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px;">
+            <div>
+              <img src="https://images.unsplash.com/photo-1559136555-9303baea8ebd?q=80&w=700" style="width:100%;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.09);border:1px solid #f1f5f9;display:block;" alt="Live product demonstrations" />
+              <p style="font-size:0.67rem;color:#94a3b8;text-align:center;margin:6px 0 0 0;font-style:italic;">Live product demonstrations</p>
+            </div>
+            <div>
+              <img src="https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?q=80&w=700" style="width:100%;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.09);border:1px solid #f1f5f9;display:block;" alt="Industry recognition" />
+              <p style="font-size:0.67rem;color:#94a3b8;text-align:center;margin:6px 0 0 0;font-style:italic;">Industry recognition ceremony</p>
+            </div>
+          </div>
+          <h3 style="font-family:'Outfit',sans-serif;font-size:1.05rem;font-weight:700;color:#0f172a;margin-bottom:8px;">Looking Ahead</h3>
+          <p>Following the tremendous success of our participation at <strong>[Event Name]</strong>, the Delight Group team is already preparing for the upcoming <strong>[Next Event Name]</strong> in <strong>[Month, Year]</strong>. We remain committed to expanding our presence at industry events to build stronger relationships with developers, contractors, and government entities across the region.</p>
+          <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;margin-top:22px;text-align:center;">
+            <p style="font-weight:700;color:#15803d;margin:0 0 6px 0;font-size:0.85rem;">Interested in our products or upcoming events?</p>
+            <p style="font-size:0.75rem;color:#166534;margin:0;">Contact our team today to discuss your upcoming project requirements.</p>
+            <p style="font-size:0.78rem;font-weight:700;color:#15803d;margin:8px 0 0 0;">info@delightgroup.ae &nbsp;·&nbsp; +971 4 000 0000</p>
+          </div>
+        </div>
+      `
+    };
+
+    // ── TEMPLATE INSERTION (fixed: dangerouslyPasteHTML for full Quill editability) ────
+    const templateSelector = document.getElementById('editor-template-selector') as HTMLSelectElement | null;
+    templateSelector?.addEventListener('change', () => {
+      const val = templateSelector.value;
+      if (val && (templates as any)[val]) {
+        const isEmpty = !quill.root.innerHTML || quill.root.innerHTML === '<p><br></p>';
+        if (isEmpty || confirm('Insert this template? Your current content will be replaced.')) {
+          // Use dangerouslyPasteHTML so Quill properly processes the HTML into its Delta model
+          // This keeps the editor fully editable after insertion
+          quill.enable();
+          const htmlContent = (templates as any)[val];
+          quill.clipboard.dangerouslyPasteHTML(htmlContent);
+          quill.setSelection(quill.getLength(), 0); // move cursor to end
+          updateLivePreview();
+        }
+        templateSelector.value = '';
+      }
+    });
+
+    // ── BLOCK INSERTION (Tables, Grids, Callouts) via direct DOM injection ──────────────
+    // Quill 1.x strips block-level elements (table, div) when using dangerouslyPasteHTML
+    // with an index. We bypass this by directly injecting into quill.root's DOM,
+    // then placing a cursor paragraph after the element.
+    function insertBlockIntoEditor(htmlContent: string) {
+      // Get caret position and find reference paragraph node
+      const range = quill.getSelection(true);
+      const [leaf] = range ? quill.getLeaf(range.index) : [null];
+      const caretNode: HTMLElement | null = leaf ? (leaf.domNode as HTMLElement) : null;
+      
+      // Wrap HTML string into a temp container to get actual DOM nodes
+      const temp = document.createElement('div');
+      temp.innerHTML = htmlContent.trim();
+      
+      // Find the paragraph at/after cursor to insert before, or append to end
+      let insertBefore: HTMLElement | null = null;
+      if (caretNode) {
+        // Walk up to find a direct child of quill.root
+        let node: HTMLElement | null = caretNode;
+        while (node && node.parentElement !== quill.root) {
+          node = node.parentElement;
+        }
+        if (node && node.parentElement === quill.root) {
+          insertBefore = node;
+        }
+      }
+      
+      // Move all child nodes from temp into quill.root
+      const fragments = Array.from(temp.childNodes);
+      fragments.forEach(node => {
+        if (insertBefore) {
+          quill.root.insertBefore(node.cloneNode(true), insertBefore);
+        } else {
+          quill.root.appendChild(node.cloneNode(true));
+        }
+      });
+      
+      updateLivePreview();
+    }
+
+    const blockHTMLMap: Record<string, string> = {
+      'table': `
+        <table style="width:100%;border-collapse:collapse;margin:1.25rem 0;font-family:'Inter',sans-serif;font-size:11px;border:1px solid #e2e8f0;background-color:#ffffff;">
+          <thead>
+            <tr style="background-color:#0f172a;color:#ffffff;">
+              <th style="border:1px solid #334155;padding:10px;text-align:left;font-weight:bold;">Column Title A</th>
+              <th style="border:1px solid #334155;padding:10px;text-align:left;font-weight:bold;">Column Title B</th>
+              <th style="border:1px solid #334155;padding:10px;text-align:left;font-weight:bold;">Column Title C</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border:1px solid #e2e8f0;padding:10px;">Item A1</td>
+              <td style="border:1px solid #e2e8f0;padding:10px;">Item B1</td>
+              <td style="border:1px solid #e2e8f0;padding:10px;">Item C1</td>
+            </tr>
+            <tr style="background-color:#f8fafc;">
+              <td style="border:1px solid #e2e8f0;padding:10px;">Item A2</td>
+              <td style="border:1px solid #e2e8f0;padding:10px;">Item B2</td>
+              <td style="border:1px solid #e2e8f0;padding:10px;">Item C2</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #e2e8f0;padding:10px;">Item A3</td>
+              <td style="border:1px solid #e2e8f0;padding:10px;">Item B3</td>
+              <td style="border:1px solid #e2e8f0;padding:10px;">Item C3</td>
+            </tr>
+          </tbody>
+        </table>
+        <p><br></p>
+      `
+    };
+
+    // Attach click handlers to all insert block buttons
+    document.querySelectorAll('.insert-block-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = (btn as HTMLElement).dataset.insert || '';
+        const html = blockHTMLMap[key];
+        if (html) insertBlockIntoEditor(html);
+      });
+    });
+
+
+
+    // ── TAB SWITCHING (Edit / Preview) ──────────────────────────────
+    const tabEdit = document.getElementById('tab-edit');
+    const tabPreview = document.getElementById('tab-preview');
+    const panelEdit = document.getElementById('panel-edit');
+    const panelPreview = document.getElementById('panel-preview');
+
+    const switchTab = (active: 'edit' | 'preview') => {
+      if (active === 'edit') {
+        panelEdit?.classList.remove('hidden');
+        panelPreview?.classList.add('hidden');
+        if (tabEdit) { tabEdit.className = 'tab-btn px-5 py-1.5 rounded-md text-xs font-bold bg-white text-slate-800 shadow-sm transition-all'; }
+        if (tabPreview) { tabPreview.className = 'tab-btn px-5 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition-all'; }
+      } else {
+        panelEdit?.classList.add('hidden');
+        panelPreview?.classList.remove('hidden');
+        if (tabPreview) { tabPreview.className = 'tab-btn px-5 py-1.5 rounded-md text-xs font-bold bg-white text-slate-800 shadow-sm transition-all'; }
+        if (tabEdit) { tabEdit.className = 'tab-btn px-5 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition-all'; }
+        updateLivePreview();
+      }
+    };
+
+    tabEdit?.addEventListener('click', () => switchTab('edit'));
+    tabPreview?.addEventListener('click', () => switchTab('preview'));
+
+    // ── SEARCH & FILTERING ──────────────────────────────────────
+    const updateFilters = () => {
+      const q = searchInput?.value.toLowerCase() || '';
+      const divVal = filterDivision?.value || 'all';
+      const typeVal = filterType?.value || 'all';
+      const statusVal = filterStatus?.value || 'all';
+      
+      const cards = document.querySelectorAll('.article-card');
+      cards.forEach(card => {
+        const title = card.getAttribute('data-title') || '';
+        const division = card.getAttribute('data-division') || 'both';
+        const type = card.getAttribute('data-type') || '';
+        const status = card.getAttribute('data-status') || '';
+
+        const matchesSearch = title.includes(q);
+        const matchesDiv = divVal === 'all' || division === divVal || division === 'both';
+        const matchesType = typeVal === 'all' || type === typeVal;
+        const matchesStatus = statusVal === 'all' || status === statusVal;
+
+        if (matchesSearch && matchesDiv && matchesType && matchesStatus) {
+          (card as HTMLElement).style.display = 'flex';
+        } else {
+          (card as HTMLElement).style.display = 'none';
+        }
+      });
+    };
+
+    searchInput?.addEventListener('input', updateFilters);
+    filterDivision?.addEventListener('change', updateFilters);
+    filterType?.addEventListener('change', updateFilters);
+    filterStatus?.addEventListener('change', updateFilters);
+
+    // ── OPEN & CLOSE DRAWER ────────────────────────────────────
+    const openDrawer = (article: any = null) => {
+      sourceMode = false;
+      if (sourceContainer) sourceContainer.classList.add('hidden');
+      richContainer?.classList.remove('hidden');
+      (document.querySelector('.ql-toolbar') as HTMLElement)?.classList.remove('hidden');
+      if (sourceToggle) {
+        sourceToggle.innerHTML = '💻 Source HTML';
+        sourceToggle.className = 'bg-slate-100 border border-slate-200 rounded text-[10px] px-2.5 py-1 text-slate-700 font-bold hover:bg-slate-200 transition-colors focus:outline-none flex items-center gap-1 shadow-3xs';
+      }
+
+      drawer?.classList.remove('hidden');
+      setTimeout(() => {
+        drawerOverlay?.classList.remove('opacity-0', 'pointer-events-none');
+        drawerPanel?.classList.remove('translate-x-full');
+      }, 50);
+
+      if (article) {
+        drawerTitle!.textContent = 'Edit Announcement / Press';
+        (document.getElementById('form-art-id') as HTMLInputElement).value = article.id;
+        (document.getElementById('form-title') as HTMLInputElement).value = article.title;
+        (document.getElementById('form-division') as HTMLSelectElement).value = article.division;
+        (document.getElementById('form-type') as HTMLSelectElement).value = article.type;
+        (document.getElementById('form-image') as HTMLInputElement).value = article.featured_image || '';
+        (document.getElementById('form-status') as HTMLSelectElement).value = article.status;
+        (document.getElementById('form-summary') as HTMLTextAreaElement).value = article.summary || '';
+        
+        // Populate footer fields
+        (document.getElementById('form-show-footer') as HTMLInputElement).checked = article.show_footer ?? true;
+        (document.getElementById('form-footer-brand') as HTMLInputElement).value = article.footer_brand || '';
+        (document.getElementById('form-footer-address') as HTMLInputElement).value = article.footer_address || '';
+        (document.getElementById('form-footer-cta') as HTMLInputElement).value = article.footer_cta || '';
+
+        quill.root.innerHTML = article.content || '';
+      } else {
+        drawerTitle!.textContent = 'New Article Writer';
+        form.reset();
+        (document.getElementById('form-art-id') as HTMLInputElement).value = '';
+        
+        // Reset footer fields
+        (document.getElementById('form-show-footer') as HTMLInputElement).checked = true;
+        (document.getElementById('form-footer-brand') as HTMLInputElement).value = '';
+        (document.getElementById('form-footer-address') as HTMLInputElement).value = '';
+        (document.getElementById('form-footer-cta') as HTMLInputElement).value = '';
+
+        quill.root.innerHTML = '';
+      }
+
+      // Initialize live preview content
+      updateLivePreview();
+    };
+
+    const closeDrawer = () => {
+      drawerOverlay?.classList.add('opacity-0', 'pointer-events-none');
+      drawerPanel?.classList.add('translate-x-full');
+      setTimeout(() => {
+        drawer?.classList.add('hidden');
+      }, 300);
+    };
+
+    newBtn?.addEventListener('click', () => openDrawer());
+    closeBtn?.addEventListener('click', closeDrawer);
+    cancelBtn?.addEventListener('click', closeDrawer);
+
+    // ── EDIT & DELETE ACTION HANDLERS ──────────────────────────
+    document.querySelectorAll('.edit-art-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const raw = (e.currentTarget as HTMLElement).getAttribute('data-article');
+        if (raw) {
+          const article = JSON.parse(raw);
+          openDrawer(article);
+        }
+      });
+    });
+
+    document.querySelectorAll('.delete-art-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        if (!confirm('Are you sure you want to permanently delete this article? This cannot be undone.')) return;
+        const card = (e.currentTarget as HTMLElement).closest('.article-card') as HTMLElement | null;
+        const id = card?.getAttribute('data-id');
+        if (!id) return;
+
+        try {
+          const res = await fetch(`/api/articles/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            card.remove();
+            if (window.showToast) window.showToast('Article deleted successfully');
+            else window.location.reload();
+          } else {
+            alert('Failed to delete article');
+          }
+        } catch (err) {
+          alert('Error deleting article');
+        }
+      });
+    });
+
+    // ── SUBMIT ARTICLE Form ────────────────────────────────────
+    submitBtn?.addEventListener('click', async () => {
+      const id = (document.getElementById('form-art-id') as HTMLInputElement).value;
+      const title = (document.getElementById('form-title') as HTMLInputElement).value;
+      const division = (document.getElementById('form-division') as HTMLSelectElement).value;
+      const type = (document.getElementById('form-type') as HTMLSelectElement).value;
+      const image = (document.getElementById('form-image') as HTMLInputElement).value;
+      const status = (document.getElementById('form-status') as HTMLSelectElement).value;
+      const summary = (document.getElementById('form-summary') as HTMLTextAreaElement).value;
+      
+      const show_footer = (document.getElementById('form-show-footer') as HTMLInputElement).checked;
+      const footer_brand = (document.getElementById('form-footer-brand') as HTMLInputElement).value;
+      const footer_address = (document.getElementById('form-footer-address') as HTMLInputElement).value;
+      const footer_cta = (document.getElementById('form-footer-cta') as HTMLInputElement).value;
+
+      const rawContent = sourceMode ? (sourceContainer?.value || '') : quill.root.innerHTML;
+      const content = rawContent === '<p><br></p>' ? '' : rawContent;
+
+      if (!title || !content) {
+        alert('Please fill out the Title and Content fields.');
+        return;
+      }
+
+      const payload = {
+        title,
+        division,
+        type,
+        featured_image: image,
+        status,
+        summary,
+        content,
+        show_footer,
+        footer_brand,
+        footer_address,
+        footer_cta
+      };
+
+      const submitButton = submitBtn as HTMLButtonElement;
+      submitButton.disabled = true;
+      submitButton.textContent = 'Saving...';
+
+      try {
+        const url = id ? `/api/articles/${id}` : '/api/articles';
+        const method = id ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          closeDrawer();
+          if (window.showToast) window.showToast('Article saved successfully');
+          window.location.reload();
+        } else {
+          const errData = await res.json();
+          alert(errData.error || 'Failed to save article');
+        }
+      } catch (err) {
+        alert('Error saving article');
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Save Announcement';
+      }
+    });
+  </script>
+</DashboardLayout>

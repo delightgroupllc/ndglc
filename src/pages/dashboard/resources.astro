@@ -1,0 +1,875 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { Image, Search, Link2, Copy, Trash2, Globe, Radio, ExternalLink, Library, Folder, FolderPlus, FolderOpen, RotateCw } from 'lucide-astro';
+
+// Fetch all categories for reference if needed
+let initialImages: any[] = [];
+try {
+  const res = await query(
+    `SELECT * FROM section_images 
+     WHERE is_active = TRUE 
+     ORDER BY created_at DESC`
+  );
+  initialImages = res.rows;
+} catch (e: any) {
+  console.warn('DB offline or section_images missing:', e?.message || e);
+}
+---
+
+<DashboardLayout title="Resources & Media" activeItem="resources">
+  
+  <div class="space-y-6 max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+      <div>
+        <h1 class="text-xl font-bold font-display">Resources & Media Hub</h1>
+        <p class="text-xs text-slate-500">Search high-definition photography, store stock media inside the database, and organize them into folders.</p>
+      </div>
+    </header>
+
+    <!-- Tabbed interface / Workspace controls -->
+    <div class="flex border-b border-slate-200 shrink-0">
+      <button 
+        type="button" 
+        id="tab-library" 
+        class="border-b-2 border-cyan-600 px-6 py-2.5 text-xs font-bold text-cyan-700 transition-colors cursor-pointer flex items-center gap-1.5"
+      >
+        <Library class="w-4 h-4" /> Stored Media Library
+      </button>
+      <button 
+        type="button" 
+        id="tab-search" 
+        class="border-b-2 border-transparent px-6 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
+      >
+        <Globe class="w-4 h-4" /> Search Online Stock (Pexels / Unsplash)
+      </button>
+    </div>
+
+    <!-- ── TAB 1: MEDIA LIBRARY WORKSPACE ── -->
+    <div id="panel-library" class="space-y-4">
+      
+      <!-- Filter and Refresh controls -->
+      <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-slate-100 p-4 rounded-xl border border-slate-200/80">
+        <div class="relative flex-grow max-w-md">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <input 
+            type="text" 
+            id="lib-search" 
+            placeholder="Search stored media by description..." 
+            class="w-full rounded-lg border border-slate-200 bg-white px-9 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 text-slate-800 font-semibold"
+          />
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="lib-division-filter" class="bg-white border border-slate-200 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none text-slate-700 font-semibold cursor-pointer">
+            <option value="all">All Divisions</option>
+            <option value="dtl">DTL (Technical Lighting)</option>
+            <option value="dgs">DGS (Greenscapes)</option>
+          </select>
+          <select id="lib-section-filter" class="bg-white border border-slate-200 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none text-slate-700 font-semibold cursor-pointer">
+            <option value="all">All Sections</option>
+            <option value="hero">Hero Banner</option>
+            <option value="discover_by_rooms">Discover by Rooms</option>
+            <option value="featured_products">Featured Products</option>
+            <option value="projects">Projects</option>
+            <option value="instagram">Instagram Feed</option>
+          </select>
+
+          <!-- Refresh Button -->
+          <button 
+            type="button" 
+            id="lib-refresh-btn" 
+            class="flex items-center gap-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs px-3 py-1.5 font-bold text-slate-700 shadow-3xs cursor-pointer active:scale-95 transition-all"
+            title="Refresh library"
+          >
+            <RotateCw class="w-3.5 h-3.5 text-cyan-600" id="refresh-icon" />
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Two Column Layout: Folders Sidebar & Stored Media Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <!-- Folder Explorer Organizer (1/4 Width) -->
+        <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4 h-fit">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center gap-1.5">
+              <FolderOpen class="w-4 h-4 text-cyan-600" />
+              <h2 class="text-xs font-black text-slate-800 uppercase tracking-wider">Folder Explorer</h2>
+            </div>
+            <button 
+              type="button" 
+              id="create-folder-btn" 
+              class="inline-flex items-center gap-1 text-[10px] font-bold bg-cyan-55 hover:bg-cyan-100 text-cyan-700 px-2 py-1 rounded transition-colors cursor-pointer"
+              title="Create new folder"
+            >
+              <FolderPlus class="w-3.5 h-3.5" />
+              <span>New</span>
+            </button>
+          </div>
+
+          <!-- Folder list container -->
+          <div class="space-y-1 max-h-80 overflow-y-auto pr-1" id="folder-list">
+            <!-- Dynamically populated folder list will go here -->
+          </div>
+        </div>
+
+        <!-- Media Files Grid (3/4 Width) -->
+        <div class="lg:col-span-3 space-y-4">
+          <!-- Folder Path indicator -->
+          <div class="flex items-center justify-between bg-slate-55 border border-slate-250/70 px-4 py-2 rounded-lg">
+            <div class="flex items-center gap-2 text-xs font-bold text-slate-600">
+              <span>Current Folder:</span>
+              <span id="current-folder-path" class="text-cyan-700 font-black bg-cyan-50 px-2.5 py-0.5 rounded border border-cyan-100 font-mono">/</span>
+            </div>
+            <div class="text-[10px] text-slate-450 font-bold" id="folder-stats">
+              Loading files...
+            </div>
+          </div>
+
+          <!-- Library Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6" id="lib-grid">
+            <!-- Dynamically populated or SSR initialImages -->
+            {initialImages.map((img) => (
+              <div 
+                class="lib-card bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                data-desc={img.alt_text?.toLowerCase() || ''}
+                data-division={img.division}
+                data-section={img.section}
+                data-id={img.id}
+                data-folder={img.folder_path || '/'}
+              >
+                <div>
+                  <div class="h-40 bg-slate-50 relative overflow-hidden flex items-center justify-center border-b border-slate-100">
+                    <img src={img.image_url} alt={img.alt_text} class="w-full h-full object-cover" onerror="this.src='/noimage.jpg'" />
+                    <span class={`absolute top-2 left-2 text-[9px] font-black uppercase px-2 py-0.5 rounded shadow text-white ${
+                      img.division === 'dgs' ? 'bg-emerald-600' : 'bg-amber-600'
+                    }`}>
+                      {img.division.toUpperCase()}
+                    </span>
+                    <span class="absolute top-2 right-2 text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-800/85 text-slate-100 shadow">
+                      {img.section.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  <div class="p-4 space-y-1.5 text-left">
+                    <p class="text-xs font-bold text-slate-800 line-clamp-2 leading-snug" title={img.alt_text}>
+                      {img.alt_text || 'No description provided'}
+                    </p>
+                    <div class="flex flex-wrap items-center gap-1 text-[9px] text-slate-450 font-bold">
+                      <span class="capitalize bg-slate-100 px-1.5 py-0.5 rounded text-slate-650">Source: {img.source}</span>
+                      <span class="bg-cyan-50 text-cyan-700 px-1.5 py-0.5 rounded border border-cyan-100 font-mono truncate max-w-[120px]" title={img.folder_path || '/'}>📁 {img.folder_path || '/'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5">
+                  <button 
+                    type="button" 
+                    class="copy-url-btn flex-grow inline-flex items-center justify-center gap-1 bg-white hover:bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-700 py-1.5 transition-colors cursor-pointer shadow-3xs"
+                    data-url={img.image_url}
+                  >
+                    <Copy class="w-3.5 h-3.5" /> Copy URL
+                  </button>
+                  <button 
+                    type="button" 
+                    class="move-folder-btn bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-250 p-1.5 rounded transition-colors cursor-pointer shadow-3xs shrink-0"
+                    data-id={img.id}
+                    data-current-folder={img.folder_path || '/'}
+                    title="Move to Folder"
+                  >
+                    <Folder class="w-3.5 h-3.5 text-cyan-600" />
+                  </button>
+                  <button 
+                    type="button" 
+                    class="delete-lib-btn bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 p-1.5 rounded transition-colors cursor-pointer shadow-3xs shrink-0"
+                    data-id={img.id}
+                    title="Delete Image"
+                  >
+                    <Trash2 class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            
+            {initialImages.length === 0 && (
+              <div class="col-span-full py-16 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                No images saved in your database yet. Switch to "Search Online Stock" to find and add some!
+              </div>
+            )}
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ── TAB 2: ONLINE STOCK SEARCH WORKSPACE ── -->
+    <div id="panel-search" class="hidden space-y-6">
+      
+      <!-- Search configurations -->
+      <div class="bg-slate-100 border border-slate-200/80 p-5 rounded-xl space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Search Photography</label>
+            <div class="relative">
+              <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input 
+                type="text" 
+                id="search-input" 
+                placeholder="e.g., modern architectural lighting, green garden plants, luxury dubai villa..." 
+                class="w-full rounded-lg border border-slate-200 bg-white px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 text-slate-800 font-semibold"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Platform Source</label>
+            <select id="search-source" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 font-semibold cursor-pointer">
+              <option value="both">Both Unsplash & Pexels</option>
+              <option value="unsplash">Unsplash Only</option>
+              <option value="pexels">Pexels Only</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Target Storage Scope</label>
+            <select id="target-division" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 font-semibold cursor-pointer">
+              <option value="dtl">DTL (Technical Lighting)</option>
+              <option value="dgs">DGS (Greenscapes)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Assigned Page Layout Segment</label>
+            <select id="target-section" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 font-semibold cursor-pointer">
+              <option value="hero">Hero Banner Segment</option>
+              <option value="discover_by_rooms">Discover by Rooms Category</option>
+              <option value="featured_products">Featured Products Section</option>
+              <option value="projects">Portfolio / Project Showcase</option>
+              <option value="instagram">Instagram / Social Grid Feed</option>
+            </select>
+          </div>
+
+          <!-- Target Folder selector -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Target Storage Folder</label>
+            <div class="flex gap-2">
+              <select id="search-target-folder" class="flex-grow px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 font-semibold cursor-pointer">
+                <option value="/">/ (Root)</option>
+              </select>
+              <button 
+                type="button" 
+                id="btn-create-search-folder" 
+                class="px-2.5 bg-slate-200 hover:bg-slate-350 text-slate-700 rounded-lg text-xs font-black cursor-pointer"
+                title="Create a new folder path"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-end">
+            <button 
+              type="button" 
+              id="search-btn"
+              class="w-full bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg py-2 text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1"
+            >
+              <Globe class="w-4 h-4" /> Trigger Search Engine
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading spinner -->
+      <div id="search-loading" class="hidden text-center py-16">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
+        <p class="text-slate-500 text-xs mt-3 font-semibold">Running multi-channel stock API search query...</p>
+      </div>
+
+      <!-- Search results -->
+      <div id="search-results-panel" class="hidden space-y-4">
+        <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Search Results Feed</h3>
+        <div id="search-results-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+        
+        <div id="results-sentinel" class="h-6"></div>
+        <div class="text-center pt-4">
+          <button id="load-more-btn" type="button" class="hidden px-5 py-2 border border-slate-200 hover:bg-slate-100 bg-white rounded-lg text-xs font-black text-slate-700 transition-colors shadow-3xs cursor-pointer">
+            Load More Results
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // ── TAB SWITCHING ──────────────────────────────────────────────────
+    const tabLib = document.getElementById('tab-library');
+    const tabSearch = document.getElementById('tab-search');
+    const panelLib = document.getElementById('panel-library');
+    const panelSearch = document.getElementById('panel-search');
+
+    tabLib?.addEventListener('click', () => {
+      tabLib.className = 'border-b-2 border-cyan-600 px-6 py-2.5 text-xs font-bold text-cyan-700 transition-colors cursor-pointer flex items-center gap-1.5';
+      tabSearch!.className = 'border-b-2 border-transparent px-6 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer flex items-center gap-1.5';
+      panelLib?.classList.remove('hidden');
+      panelSearch?.classList.add('hidden');
+    });
+
+    tabSearch?.addEventListener('click', () => {
+      tabSearch.className = 'border-b-2 border-cyan-600 px-6 py-2.5 text-xs font-bold text-cyan-700 transition-colors cursor-pointer flex items-center gap-1.5';
+      tabLib!.className = 'border-b-2 border-transparent px-6 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer flex items-center gap-1.5';
+      panelSearch?.classList.remove('hidden');
+      panelLib?.classList.add('hidden');
+    });
+
+    // ── DATA STATE FOR FOLDER ORGANIZER ──────────────────────────────
+    // Tracks current selected folder path in UI explorer
+    let activeFolder = '/';
+    // Dynamic folders set
+    let customFolders = new Set(['/']);
+
+    // ── REBUILD FOLDER TREE SIDEBAR DYNAMICALLY ─────────────────────
+    const rebuildFolderSidebar = () => {
+      const folderListContainer = document.getElementById('folder-list');
+      if (!folderListContainer) return;
+
+      // Scan all current DOM library cards to build folders dynamic set and calculate counts
+      const counts: Record<string, number> = {};
+      customFolders.forEach(f => counts[f] = 0);
+
+      const cards = document.querySelectorAll('.lib-card');
+      cards.forEach(card => {
+        const folder = card.getAttribute('data-folder') || '/';
+        customFolders.add(folder);
+        counts[folder] = (counts[folder] || 0) + 1;
+      });
+
+      // Sort folder list alphabetically
+      const sortedFolders = Array.from(customFolders).sort((a, b) => {
+        if (a === '/') return -1;
+        if (b === '/') return 1;
+        return a.localeCompare(b);
+      });
+
+      // Update Search Picker selector options as well
+      const searchTargetFolderSelect = document.getElementById('search-target-folder') as HTMLSelectElement | null;
+      if (searchTargetFolderSelect) {
+        const selectedVal = searchTargetFolderSelect.value;
+        searchTargetFolderSelect.innerHTML = sortedFolders.map(folder => 
+          `<option value="${folder}" ${folder === selectedVal ? 'selected' : ''}>${folder}</option>`
+        ).join('');
+      }
+
+      // Generate HTML list
+      folderListContainer.innerHTML = sortedFolders.map(folder => {
+        const isActive = folder === activeFolder;
+        const count = counts[folder] || 0;
+        return `
+          <button 
+            type="button" 
+            class="folder-item w-full flex items-center justify-between text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+              isActive 
+                ? 'bg-cyan-50 text-cyan-700 shadow-3xs border-cyan-200/50' 
+                : 'text-slate-650 hover:bg-slate-50 hover:text-slate-900 border-transparent'
+            }"
+            data-folder-path="${folder}"
+          >
+            <div class="flex items-center gap-2 truncate">
+              <span class="text-cyan-600 font-bold shrink-0">📁</span>
+              <span class="truncate font-mono">${folder}</span>
+            </div>
+            <span class="bg-slate-105 text-slate-500 font-bold px-1.5 py-0.5 rounded-full text-[9px] shrink-0 min-w-5 text-center shadow-4xs border border-slate-200/50">
+              ${count}
+            </span>
+          </button>
+        `;
+      }).join('');
+
+      // Add click listeners to folder items
+      folderListContainer.querySelectorAll('.folder-item').forEach(el => {
+        el.addEventListener('click', (e) => {
+          const btn = e.currentTarget as HTMLButtonElement;
+          const folder = btn.dataset.folderPath || '/';
+          activeFolder = folder;
+          
+          const pathIndicator = document.getElementById('current-folder-path');
+          if (pathIndicator) pathIndicator.textContent = activeFolder;
+
+          rebuildFolderSidebar();
+          filterLibrary();
+        });
+      });
+
+      // Update total stats
+      const stats = document.getElementById('folder-stats');
+      if (stats) {
+        const visibleCount = Array.from(cards).filter(c => (c as HTMLElement).style.display !== 'none').length;
+        stats.textContent = `Showing ${visibleCount} of ${cards.length} files`;
+      }
+    };
+
+    // ── MEDIA LIBRARY FILTERING & SEARCH ─────────────────────────────────
+    const libSearch = document.getElementById('lib-search') as HTMLInputElement | null;
+    const divFilter = document.getElementById('lib-division-filter') as HTMLSelectElement | null;
+    const secFilter = document.getElementById('lib-section-filter') as HTMLSelectElement | null;
+
+    const filterLibrary = () => {
+      const q = libSearch?.value.toLowerCase().trim() || '';
+      const divVal = divFilter?.value || 'all';
+      const secVal = secFilter?.value || 'all';
+
+      document.querySelectorAll('.lib-card').forEach((card) => {
+        const desc = card.getAttribute('data-desc') || '';
+        const division = card.getAttribute('data-division') || '';
+        const section = card.getAttribute('data-section') || '';
+        const folder = card.getAttribute('data-folder') || '/';
+
+        const matchQuery = !q || desc.includes(q);
+        const matchDiv = divVal === 'all' || division === divVal;
+        const matchSec = secVal === 'all' || section === secVal;
+        
+        // Exact match or nesting subfolder check (showing items strictly under active folder)
+        const matchFolder = folder === activeFolder;
+
+        if (matchQuery && matchDiv && matchSec && matchFolder) {
+          (card as HTMLElement).style.display = 'flex';
+        } else {
+          (card as HTMLElement).style.display = 'none';
+        }
+      });
+
+      // Update count stats
+      const stats = document.getElementById('folder-stats');
+      const cards = document.querySelectorAll('.lib-card');
+      if (stats) {
+        const visibleCount = Array.from(cards).filter(c => (c as HTMLElement).style.display !== 'none').length;
+        stats.textContent = `Showing ${visibleCount} of ${cards.length} files`;
+      }
+    };
+
+    libSearch?.addEventListener('input', filterLibrary);
+    divFilter?.addEventListener('change', filterLibrary);
+    secFilter?.addEventListener('change', filterLibrary);
+
+    // ── CREATE NEW FOLDER (LOCALLY OR IN DIALOG) ────────────────────────
+    const createFolderBtn = document.getElementById('create-folder-btn');
+    const createSearchFolderBtn = document.getElementById('btn-create-search-folder');
+
+    const handleCreateFolder = () => {
+      const path = prompt("Enter new folder path (e.g. '/plants', '/lighting/indoor'):", "/");
+      if (!path) return;
+
+      let normalized = path.trim().replace(/\\/g, '/');
+      if (!normalized.startsWith('/')) {
+        normalized = '/' + normalized;
+      }
+      if (normalized.endsWith('/') && normalized.length > 1) {
+        normalized = normalized.slice(0, -1);
+      }
+
+      customFolders.add(normalized);
+      activeFolder = normalized;
+
+      const pathIndicator = document.getElementById('current-folder-path');
+      if (pathIndicator) pathIndicator.textContent = activeFolder;
+
+      rebuildFolderSidebar();
+      filterLibrary();
+
+      if (window.showToast) {
+        window.showToast(`Folder "${normalized}" created successfully!`);
+      }
+    };
+
+    createFolderBtn?.addEventListener('click', handleCreateFolder);
+    createSearchFolderBtn?.addEventListener('click', handleCreateFolder);
+
+    // ── COPY IMAGE URL HANDLER ──────────────────────────────────────────
+    document.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.copy-url-btn') as HTMLButtonElement | null;
+      if (btn) {
+        const url = btn.dataset.url;
+        if (url) {
+          navigator.clipboard.writeText(url);
+          if (window.showToast) {
+            window.showToast('Copied Image URL successfully!');
+          } else {
+            alert('URL Copied: ' + url);
+          }
+        }
+      }
+    });
+
+    // ── MOVE TO FOLDER HANDLER ──────────────────────────────────────────
+    document.addEventListener('click', async (e) => {
+      const btn = (e.target as HTMLElement).closest('.move-folder-btn') as HTMLButtonElement | null;
+      if (btn) {
+        const id = btn.dataset.id;
+        const currentFolder = btn.dataset.currentFolder || '/';
+        const card = btn.closest('.lib-card');
+        if (!id || !card) return;
+
+        const pathList = Array.from(customFolders).join(', ');
+        const path = prompt(`Enter target folder path to move this image to.\nExisting paths: [ ${pathList} ]`, currentFolder);
+        
+        if (path === null) return;
+        let normalized = path.trim().replace(/\\/g, '/');
+        if (!normalized.startsWith('/')) {
+          normalized = '/' + normalized;
+        }
+        if (normalized.endsWith('/') && normalized.length > 1) {
+          normalized = normalized.slice(0, -1);
+        }
+
+        try {
+          btn.disabled = true;
+          const res = await fetch('/api/images', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, folderPath: normalized })
+          });
+
+          if (res.ok) {
+            card.setAttribute('data-folder', normalized);
+            // update visual text inside card if rendering
+            const folderBadge = card.querySelector('.font-mono');
+            if (folderBadge) {
+              folderBadge.textContent = `📁 ${normalized}`;
+              folderBadge.setAttribute('title', normalized);
+            }
+            btn.dataset.currentFolder = normalized;
+            
+            customFolders.add(normalized);
+            rebuildFolderSidebar();
+            filterLibrary();
+            
+            if (window.showToast) window.showToast(`Image moved to "${normalized}"`);
+          } else {
+            alert('Failed to move image to new folder.');
+          }
+        } catch (err) {
+          alert('Error updating database folder.');
+        } finally {
+          btn.disabled = false;
+        }
+      }
+    });
+
+    // ── DELETE IMAGE FROM LIBRARY ───────────────────────────────────────
+    document.addEventListener('click', async (e) => {
+      const btn = (e.target as HTMLElement).closest('.delete-lib-btn') as HTMLButtonElement | null;
+      if (btn) {
+        if (!confirm('Are you sure you want to delete this image from your resources?')) return;
+        const id = btn.dataset.id;
+        const card = btn.closest('.lib-card');
+        if (!id || !card) return;
+
+        try {
+          const res = await fetch(`/api/images?id=${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            card.remove();
+            rebuildFolderSidebar();
+            filterLibrary();
+            if (window.showToast) window.showToast('Image removed from library');
+          } else {
+            alert('Failed to delete image.');
+          }
+        } catch (err) {
+          alert('Error deleting image.');
+        }
+      }
+    });
+
+    // ── DYNAMIC LIVE REFRESH BUTTON ────────────────────────────────────
+    const refreshBtn = document.getElementById('lib-refresh-btn');
+    const refreshIcon = document.getElementById('refresh-icon');
+
+    const refreshLibrary = async () => {
+      if (refreshIcon) refreshIcon.classList.add('animate-spin');
+      if (refreshBtn) refreshBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/images');
+        if (res.ok) {
+          const data = await res.json();
+          const images = data.images || [];
+          
+          const grid = document.getElementById('lib-grid');
+          if (grid) {
+            if (images.length === 0) {
+              grid.innerHTML = `
+                <div class="col-span-full py-16 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                  No images saved in your database yet. Switch to "Search Online Stock" to find and add some!
+                </div>
+              `;
+            } else {
+              grid.innerHTML = images.map((img: any) => `
+                <div 
+                  class="lib-card bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                  data-desc="${img.alt_text?.toLowerCase() || ''}"
+                  data-division="${img.division}"
+                  data-section="${img.section}"
+                  data-id="${img.id}"
+                  data-folder="${img.folder_path || '/'}"
+                >
+                  <div>
+                    <div class="h-40 bg-slate-50 relative overflow-hidden flex items-center justify-center border-b border-slate-100">
+                      <img src="${img.image_url}" alt="${img.alt_text}" class="w-full h-full object-cover" onerror="this.src='/noimage.jpg'" />
+                      <span class="absolute top-2 left-2 text-[9px] font-black uppercase px-2 py-0.5 rounded shadow text-white ${
+                        img.division === 'dgs' ? 'bg-emerald-600' : 'bg-amber-600'
+                      }">
+                        ${img.division.toUpperCase()}
+                      </span>
+                      <span class="absolute top-2 right-2 text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-800/85 text-slate-100 shadow">
+                        ${img.section.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div class="p-4 space-y-1.5 text-left">
+                      <p class="text-xs font-bold text-slate-800 line-clamp-2 leading-snug" title="${img.alt_text}">
+                        ${img.alt_text || 'No description provided'}
+                      </p>
+                      <div class="flex flex-wrap items-center gap-1 text-[9px] text-slate-450 font-bold">
+                        <span class="capitalize bg-slate-100 px-1.5 py-0.5 rounded text-slate-650">Source: ${img.source}</span>
+                        <span class="bg-cyan-50 text-cyan-700 px-1.5 py-0.5 rounded border border-cyan-100 font-mono truncate max-w-[120px]" title="${img.folder_path || '/'}">📁 ${img.folder_path || '/'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="p-3 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5">
+                    <button 
+                      type="button" 
+                      class="copy-url-btn flex-grow inline-flex items-center justify-center gap-1 bg-white hover:bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-700 py-1.5 transition-colors cursor-pointer shadow-3xs"
+                      data-url="${img.image_url}"
+                    >
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy URL
+                    </button>
+                    <button 
+                      type="button" 
+                      class="move-folder-btn bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-250 p-1.5 rounded transition-colors cursor-pointer shadow-3xs shrink-0"
+                      data-id="${img.id}"
+                      data-current-folder="${img.folder_path || '/'}"
+                      title="Move to Folder"
+                    >
+                      <svg class="w-3.5 h-3.5 text-cyan-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    </button>
+                    <button 
+                      type="button" 
+                      class="delete-lib-btn bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 p-1.5 rounded transition-colors cursor-pointer shadow-3xs shrink-0"
+                      data-id="${img.id}"
+                      title="Delete Image"
+                    >
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="11" y1="11" x2="16" y2="17"></line></svg>
+                    </button>
+                  </div>
+                </div>
+              `).join('');
+            }
+          }
+
+          // Read all folder paths to ensure they exist in our list
+          images.forEach((img: any) => {
+            if (img.folder_path) customFolders.add(img.folder_path);
+          });
+
+          rebuildFolderSidebar();
+          filterLibrary();
+
+          if (window.showToast) window.showToast('Stored Media Library refreshed successfully!');
+        } else {
+          alert('Failed to refresh resources.');
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+        if (refreshBtn) refreshBtn.disabled = false;
+      }
+    };
+
+    refreshBtn?.addEventListener('click', refreshLibrary);
+
+    // ── ONLINE STOCK SEARCH ─────────────────────────────────────────────
+    const searchInput = document.getElementById('search-input') as HTMLInputElement | null;
+    const searchSource = document.getElementById('search-source') as HTMLSelectElement | null;
+    const searchBtn = document.getElementById('search-btn');
+    const searchLoading = document.getElementById('search-loading');
+    const resultsPanel = document.getElementById('search-results-panel');
+    const resultsList = document.getElementById('search-results-list');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+
+    let currentPage = 1;
+    let currentQuery = '';
+    let currentSource = 'both';
+    let isFetching = false;
+    const perPage = 16;
+
+    const runSearch = async (append = false) => {
+      if (!searchInput) return;
+      const q = searchInput.value.trim();
+      if (!q) {
+        alert('Please enter a search term');
+        return;
+      }
+
+      currentQuery = q;
+      currentSource = searchSource?.value || 'both';
+      isFetching = true;
+
+      if (!append) {
+        currentPage = 1;
+        if (searchLoading) searchLoading.classList.remove('hidden');
+        if (resultsPanel) resultsPanel.classList.add('hidden');
+      }
+
+      try {
+        const res = await fetch(`/api/images/search?query=${encodeURIComponent(currentQuery)}&source=${currentSource}&page=${currentPage}&per_page=${perPage}`);
+        const data = await res.json();
+        
+        if (searchLoading) searchLoading.classList.add('hidden');
+        if (resultsPanel) resultsPanel.classList.remove('hidden');
+
+        if (data.images && data.images.length > 0) {
+          renderSearchResults(data.images, append);
+          if (loadMoreBtn) {
+            loadMoreBtn.classList.remove('hidden');
+            loadMoreBtn.style.display = data.images.length >= perPage ? 'inline-block' : 'none';
+          }
+        } else {
+          if (!append && resultsList) {
+            resultsList.innerHTML = '<div class="col-span-full py-16 text-center text-slate-500 font-semibold bg-white border border-slate-200 rounded-xl">No stock photos found. Try a different query.</div>';
+          }
+          if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+        }
+      } catch (err) {
+        alert('Failed to contact photography search servers.');
+      } finally {
+        isFetching = false;
+      }
+    };
+
+    searchBtn?.addEventListener('click', () => runSearch(false));
+    searchInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runSearch(false);
+      }
+    });
+
+    loadMoreBtn?.addEventListener('click', () => {
+      if (isFetching) return;
+      currentPage++;
+      runSearch(true);
+    });
+
+    const renderSearchResults = (images: any[], append = false) => {
+      if (!resultsList) return;
+      
+      const targetDiv = document.getElementById('target-division') as HTMLSelectElement | null;
+      const targetSec = document.getElementById('target-section') as HTMLSelectElement | null;
+      const searchTargetFolderSelect = document.getElementById('search-target-folder') as HTMLSelectElement | null;
+
+      const html = images.map((img) => `
+        <div class="border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-white flex flex-col justify-between">
+          <div class="h-44 bg-slate-55 overflow-hidden flex items-center justify-center border-b border-slate-100">
+            <img src="${img.thumbUrl}" alt="${img.altText}" class="w-full h-full object-cover" />
+          </div>
+          <div class="p-4 space-y-3 flex-grow flex flex-col justify-between">
+            <div class="space-y-1">
+              <p class="text-xs font-bold text-slate-800 line-clamp-2 leading-snug">${img.altText || 'Stock image description'}</p>
+              <p class="text-[10px] text-slate-400 font-bold">
+                by <a href="${img.photographerUrl}" target="_blank" class="text-cyan-600 hover:underline inline-flex items-center gap-0.5">${img.photographer} <span class="text-[8px]">&#x2197;</span></a>
+              </p>
+            </div>
+            
+            <button 
+              type="button" 
+              class="save-to-lib-btn w-full bg-cyan-600 hover:bg-cyan-700 text-white rounded py-2 text-[10px] font-black transition-colors cursor-pointer shadow-3xs flex items-center justify-center gap-1"
+              data-url="${img.url}"
+              data-alt="${img.altText}"
+              data-photographer="${img.photographer}"
+              data-source="${img.source}"
+              data-source-id="${img.sourceId}"
+            >
+              📥 Save to Library
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      if (append) {
+        resultsList.insertAdjacentHTML('beforeend', html);
+      } else {
+        resultsList.innerHTML = html;
+      }
+
+      // Add save handlers
+      resultsList.querySelectorAll('.save-to-lib-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const button = e.currentTarget as HTMLButtonElement;
+          const url = button.dataset.url;
+          const alt = button.dataset.alt;
+          const photographer = button.dataset.photographer;
+          const source = button.dataset.source;
+          const sourceId = button.dataset.sourceId;
+
+          const division = targetDiv?.value || 'dtl';
+          const section = targetSec?.value || 'hero';
+          const folderPath = searchTargetFolderSelect?.value || '/';
+
+          button.disabled = true;
+          button.textContent = 'Saving...';
+
+          try {
+            const resp = await fetch('/api/images', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                division,
+                section,
+                imageUrl: url,
+                altText: `${alt || 'Stock image'} - ${photographer}`,
+                source,
+                sourceId,
+                displayOrder: 0,
+                folderPath
+              })
+            });
+
+            if (resp.ok) {
+              button.textContent = 'Saved!';
+              button.className = 'w-full bg-emerald-600 text-white rounded py-2 text-[10px] font-black cursor-not-allowed flex items-center justify-center gap-1';
+              if (window.showToast) window.showToast(`Stored in folder "${folderPath}" successfully!`);
+              
+              // Seed customFolders and auto refresh if tab switched back
+              customFolders.add(folderPath);
+              refreshLibrary();
+            } else {
+              button.disabled = false;
+              button.textContent = '📥 Save to Library';
+              alert('Failed to save image.');
+            }
+          } catch (err) {
+            button.disabled = false;
+            button.textContent = '📥 Save to Library';
+            alert('Error communicating with database.');
+          }
+        });
+      });
+    };
+
+    // ── INITIALIZATION ────────────────────────────────────────────────
+    // Parse any existing folder paths on first boot
+    document.querySelectorAll('.lib-card').forEach(card => {
+      const f = card.getAttribute('data-folder') || '/';
+      customFolders.add(f);
+    });
+    
+    // Build tree + filter
+    rebuildFolderSidebar();
+    filterLibrary();
+  </script>
+</DashboardLayout>

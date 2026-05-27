@@ -1,0 +1,146 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { query } from '../../lib/db';
+
+let dtlProjects: any[] = [];
+let dgsProjects: any[] = [];
+
+try {
+  const res = await query(`
+    SELECT *
+    FROM projects
+    WHERE status = 'active'
+    ORDER BY completion_date DESC NULLS LAST, created_at DESC
+  `);
+  
+  res.rows.forEach(p => {
+    if (p.division === 'dtl') {
+      dtlProjects.push(p);
+    } else if (p.division === 'dgs') {
+      dgsProjects.push(p);
+    }
+  });
+} catch (err: any) {
+  console.warn('Database offline, running mock portfolio:', err.message);
+  dtlProjects = [
+    { title: 'Grand Hotel Facade Lighting', client_name: 'Hilton Group', description: 'A complete architectural facade lighting overhaul featuring programmable dynamic LEDs synced to environmental triggers.', completion_date: '2025-11-20' },
+    { title: 'Oasis Mall Interior Ambient', client_name: 'Oasis Group', description: 'Energy-efficient high-lumen ambient lighting across 5 floors, achieving a 40% reduction in power consumption.', completion_date: '2025-05-14' },
+  ];
+
+  dgsProjects = [
+    { title: 'City Square Greenscapes', client_name: 'Dubai Municipality', description: 'Smart urban irrigation automation deploying IoT soil sensors across 40 acres of public parkland.', completion_date: '2026-02-15' },
+  ];
+}
+---
+
+<Layout title="Project Portfolio" description="Showcasing our premier enterprise deployments and engineering feats.">
+  <!-- CSS Pattern Background (Day Theme) -->
+  <div class="min-h-screen bg-[#fcfdfd] relative">
+    <div class="absolute inset-0 z-0 opacity-30" style="background-image: linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%, #e2e8f0), linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%, #e2e8f0); background-size: 60px 60px; background-position: 0 0, 30px 30px;"></div>
+    
+    <!-- Fade overlay -->
+    <div class="absolute inset-0 z-0 bg-white/80"></div>
+    
+    <div class="relative z-10 pt-24 pb-32">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        
+        <!-- Hero Section -->
+        <div class="text-center max-w-3xl mx-auto mb-24">
+          <h1 class="text-5xl sm:text-6xl font-extrabold font-display text-slate-900 tracking-tight leading-tight">
+            Project Portfolio
+          </h1>
+          <p class="mt-6 text-lg text-slate-600 leading-relaxed font-medium">
+            Showcasing our technical lighting and greenscape projects worldwide.
+          </p>
+        </div>
+
+        <!-- DTL Portfolio -->
+        <div class="mb-32">
+          <div class="flex items-center justify-between mb-12">
+            <div>
+              <h2 class="text-3xl font-bold font-display text-slate-900 tracking-tight flex items-center gap-4">
+                <span class="h-8 w-1.5 bg-blue-500 rounded-full"></span>
+                DTL Technical Lighting
+              </h2>
+              <p class="text-slate-500 mt-2 ml-5">Showcasing architectural and commercial lighting milestones.</p>
+            </div>
+          </div>
+
+          {dtlProjects.length > 0 ? (
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {dtlProjects.map(project => (
+                <div class="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 hover:-translate-y-1">
+                  <div class="h-48 bg-slate-100 relative overflow-hidden">
+                    {project.featured_image ? (
+                      <img src={project.featured_image} alt={project.title} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div class="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                        <span class="text-slate-400 font-display font-bold text-2xl opacity-50">DTL</span>
+                      </div>
+                    )}
+                    <div class="absolute top-4 right-4 bg-white/90 backdrop-blur px-2.5 py-1 rounded text-xs font-bold text-slate-700 shadow-sm">
+                      {project.completion_date ? new Date(project.completion_date).getFullYear() : 'Ongoing'}
+                    </div>
+                  </div>
+                  <div class="p-8">
+                    <span class="text-2xs font-bold uppercase tracking-wider text-blue-600 mb-2 block">{project.client_name}</span>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3 leading-snug">{project.title}</h3>
+                    <p class="text-sm text-slate-600 line-clamp-3 leading-relaxed">{project.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+             <div class="bg-slate-50 border border-slate-200 rounded-2xl p-12 text-center">
+                <p class="text-slate-500 font-medium">No active DTL projects showcased at this time.</p>
+             </div>
+          )}
+        </div>
+
+        <!-- DGS Portfolio -->
+        <div>
+          <div class="flex items-center justify-between mb-12">
+            <div>
+              <h2 class="text-3xl font-bold font-display text-slate-900 tracking-tight flex items-center gap-4">
+                <span class="h-8 w-1.5 bg-emerald-500 rounded-full"></span>
+                DGS Greenscapes
+              </h2>
+              <p class="text-slate-500 mt-2 ml-5">Curated plant supply and landscaping projects across the UAE.</p>
+            </div>
+          </div>
+
+          {dgsProjects.length > 0 ? (
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {dgsProjects.map(project => (
+                <div class="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 hover:-translate-y-1">
+                  <div class="h-48 bg-slate-100 relative overflow-hidden">
+                    {project.featured_image ? (
+                      <img src={project.featured_image} alt={project.title} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div class="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-emerald-100/50 flex items-center justify-center">
+                        <span class="text-emerald-300 font-display font-bold text-2xl opacity-50">DGS</span>
+                      </div>
+                    )}
+                    <div class="absolute top-4 right-4 bg-white/90 backdrop-blur px-2.5 py-1 rounded text-xs font-bold text-slate-700 shadow-sm">
+                      {project.completion_date ? new Date(project.completion_date).getFullYear() : 'Ongoing'}
+                    </div>
+                  </div>
+                  <div class="p-8">
+                    <span class="text-2xs font-bold uppercase tracking-wider text-emerald-600 mb-2 block">{project.client_name}</span>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3 leading-snug">{project.title}</h3>
+                    <p class="text-sm text-slate-600 line-clamp-3 leading-relaxed">{project.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+             <div class="bg-slate-50 border border-slate-200 rounded-2xl p-12 text-center">
+                <p class="text-slate-500 font-medium">No active DGS projects showcased at this time.</p>
+             </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  </div>
+</Layout>

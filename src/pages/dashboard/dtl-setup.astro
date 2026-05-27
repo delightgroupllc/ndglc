@@ -1,0 +1,777 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+
+let dtlSetup: any = {
+  hero: { imageUrl: '/hero-dtl.jpg', title: 'Every corner deserves\\nPERFECT LIGHTING.', subtitle: '', ctaText: '', ctaUrl: '' },
+  discover: { enabled: true, title: 'Discover by Rooms', max_items: 6 },
+  trending: { enabled: true, title: 'Discover New Arrivals and Trendings', promoImageUrl: '', promoTitle: 'Complimentary Lighting Design', promoSubtitle: 'T&C Applied', max_items: 4 },
+  facts: [
+    { label: 'Projects Completed', value: '800+' },
+    { label: 'High-End Products', value: '3K+' },
+    { label: 'Installations', value: '11K+' },
+    { label: 'Production Line', value: '50+' }
+  ],
+  instagram: { enabled: false, title: 'Instagram', posts: [] },
+  imageStore: [],
+};
+
+// Load all DTL projects for the picker
+let allDtlProjects: any[] = [];
+// Load currently saved homepage project IDs
+let homepageProjectIds: string[] = [];
+
+try {
+  const res = await query("SELECT key, value FROM settings WHERE key IN ('dtl_setup','dtl_instagram_block','dtl_homepage_projects')");
+  for (const row of res.rows) {
+    if (row.key === 'dtl_setup') {
+      try { dtlSetup = { ...dtlSetup, ...JSON.parse(row.value) }; } catch {}
+    }
+    if (row.key === 'dtl_instagram_block') {
+      try { dtlSetup.instagram = JSON.parse(row.value); } catch {}
+    }
+    if (row.key === 'dtl_homepage_projects') {
+      try { homepageProjectIds = JSON.parse(row.value); } catch {}
+    }
+  }
+} catch (err: any) {
+  console.warn('DB offline or settings missing:', err?.message || err);
+}
+
+// Fetch all active DTL projects for the project picker
+try {
+  const projRes = await query(
+    `SELECT id, title, client_name, featured_image, description
+     FROM projects
+     WHERE division = 'dtl' AND status = 'active'
+     ORDER BY created_at DESC`
+  );
+  allDtlProjects = projRes.rows;
+} catch (e: any) {
+  console.warn('Unable to load DTL projects:', e?.message || e);
+}
+
+// Build an ordered list of selected projects (maintain order from homepageProjectIds)
+const selectedProjects = homepageProjectIds
+  .map(id => allDtlProjects.find(p => p.id === id))
+  .filter(Boolean);
+
+---
+
+<DashboardLayout title="DTL Setup" activeItem="dtl-setup">
+<!-- Tabs Switcher (Visible only on mobile/tablet) -->
+  <div class="flex border-b border-slate-200 bg-white p-1 rounded-xl shadow-3xs lg:hidden shrink-0 mb-4 select-none">
+    <button type="button" id="tab-toggle-form" class="flex-1 text-center py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all bg-indigo-50 text-indigo-700">
+      Configuration
+    </button>
+    <button type="button" id="tab-toggle-preview" class="flex-1 text-center py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all text-slate-500 hover:text-slate-800">
+      Live Preview
+    </button>
+  </div>
+
+  <div class="min-h-[calc(100vh-120px)] lg:h-[calc(100vh-120px)] flex flex-col lg:flex-row gap-6 lg:overflow-hidden w-full">
+    <!-- LEFT: Configuration Form -->
+    <div id="dtl-form-column" class="w-full lg:w-5/12 flex flex-col min-h-0 bg-white border border-slate-200 rounded-2xl shadow-sm">
+      
+      <header class="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
+        <div>
+          <h1 class="text-lg font-black text-slate-900 tracking-tight">DTL Setup</h1>
+          <p class="text-[11px] text-slate-500 font-medium">Configure Hero, Discover & Projects</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div id="save-msg" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1.5"></div>
+          <button id="save-dtl" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">Save</button>
+        </div>
+      </header>
+
+      <div class="overflow-y-auto p-5 flex-1 custom-scrollbar">
+        <form id="dtl-form" class="space-y-6">
+
+          <!-- ═══ HERO ═══ -->
+          <div class="mb-4">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">1</span>
+          Hero Section
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Title</label>
+            <textarea name="hero_title" rows="2" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">{dtlSetup.hero?.title || ''}</textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Subtitle</label>
+            <input name="hero_subtitle" value={dtlSetup.hero?.subtitle || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Hero Image URL</label>
+            <input name="hero_imageUrl" value={dtlSetup.hero?.imageUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="https://..." />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA Button Text</label>
+            <input name="hero_ctaText" value={dtlSetup.hero?.ctaText || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA URL</label>
+            <input name="hero_ctaUrl" value={dtlSetup.hero?.ctaUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="/products" />
+          </div>
+        </div>
+          </div>
+
+          <!-- ═══ DISCOVER BY ROOMS ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">2</span>
+          Discover by Rooms
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600">Section Title</label>
+            <input name="discover_title" value={dtlSetup.discover?.title || 'Discover by Rooms'} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Display Style</label>
+            <select name="discover_display" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+              <option value="grid" selected={dtlSetup.discover?.display !== 'list'}>Grid</option>
+              <option value="list" selected={dtlSetup.discover?.display === 'list'}>List</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Max Items Shown</label>
+            <input type="number" name="discover_max" value={dtlSetup.discover?.max_items || 6} min="1" max="12" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Enabled</label>
+            <select name="discover_enabled" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+              <option value="true" selected={dtlSetup.discover?.enabled !== false}>Enabled</option>
+              <option value="false" selected={dtlSetup.discover?.enabled === false}>Disabled</option>
+            </select>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Room images are managed in <a href="/dashboard/categories" class="text-indigo-500 underline">Categories → Rooms</a>.</p>
+          </div>
+
+          <!-- ═══ TRENDING ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">3</span>
+          Trending / New Arrivals
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600">Section Title</label>
+            <input name="trending_title" value={dtlSetup.trending?.title || 'Discover New Arrivals and Trendings'} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Max Products Shown</label>
+            <input type="number" name="trending_max" value={dtlSetup.trending?.max_items || 4} min="1" max="8" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Promo Panel Image URL</label>
+            <input name="trending_promoImageUrl" value={dtlSetup.trending?.promoImageUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="https://..." />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Promo Title Text</label>
+            <input name="trending_promoTitle" value={dtlSetup.trending?.promoTitle || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="e.g. Complimentary Lighting Design" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Promo Subtitle Text</label>
+            <input name="trending_promoSubtitle" value={dtlSetup.trending?.promoSubtitle || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="e.g. T&C Applied" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Enabled</label>
+            <select name="trending_enabled" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+              <option value="true" selected={dtlSetup.trending?.enabled !== false}>Enabled</option>
+              <option value="false" selected={dtlSetup.trending?.enabled === false}>Disabled</option>
+            </select>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Trending products are those marked <strong>Featured</strong> in the <a href="/dashboard/products" class="text-indigo-500 underline">Products</a> dashboard.</p>
+          </div>
+
+          <!-- ═══ HOMEPAGE PROJECTS ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs">4</span>
+            Homepage Projects
+          </h2>
+          <button
+            type="button"
+            id="save-projects-btn"
+            class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors"
+          >
+            Save Projects
+          </button>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">
+          Select up to <strong>3 projects</strong> to feature in the "Discover Projects" section on the DTL homepage. Drag to reorder.
+        </p>
+
+        <!-- Selected Projects (shown on homepage) -->
+        <div class="mb-5">
+          <p class="text-xs font-semibold text-slate-700 mb-2">📌 Featured on Homepage <span class="text-slate-400 font-normal">(drag to reorder)</span></p>
+          <div
+            id="selected-projects-list"
+            class="space-y-2 min-h-16 rounded-xl border-2 border-dashed border-slate-200 p-3"
+            data-empty-text="No projects selected yet — pick from the list below"
+          >
+            {selectedProjects.length === 0 && (
+              <p class="text-xs text-slate-400 text-center py-3">No projects selected yet — pick from the list below</p>
+            )}
+            {selectedProjects.map((proj: any, idx: number) => (
+              <div
+                class="selected-proj-card flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3 cursor-grab"
+                draggable="true"
+                data-id={proj.id}
+              >
+                <span class="text-slate-400 text-sm select-none">⠿</span>
+                {proj.featured_image ? (
+                  <img src={proj.featured_image} alt={proj.title} class="w-14 h-10 object-cover rounded-lg shrink-0" />
+                ) : (
+                  <div class="w-14 h-10 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400 text-xs">No img</div>
+                )}
+                <div class="flex-grow min-w-0">
+                  <p class="text-sm font-semibold text-slate-900 truncate">{proj.title}</p>
+                  <p class="text-xs text-slate-500 truncate">{proj.client_name}</p>
+                </div>
+                <span class="text-xs font-bold text-amber-600 bg-amber-100 rounded-full px-2 py-0.5">#{idx + 1}</span>
+                <button type="button" class="remove-proj-btn text-rose-500 hover:text-rose-700 font-bold text-lg leading-none shrink-0">&times;</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- All DTL Projects picker -->
+        <div>
+          <p class="text-xs font-semibold text-slate-700 mb-2">All DTL Projects <span class="text-slate-400 font-normal">— click to add</span></p>
+          <input
+            type="text"
+            id="proj-search"
+            placeholder="Search projects..."
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-1 focus:ring-amber-400"
+          />
+          <div id="all-projects-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {allDtlProjects.length === 0 ? (
+              <p class="text-xs text-slate-400 text-center py-6">No active DTL projects found. <a href="/dashboard/projects" class="text-indigo-500 underline">Add projects</a> first.</p>
+            ) : allDtlProjects.map((proj: any) => {
+              const isSelected = homepageProjectIds.includes(proj.id);
+              return (
+                <div
+                  class={`proj-pick-row flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${isSelected ? 'border-amber-300 bg-amber-50 opacity-50 pointer-events-none' : 'border-slate-100 hover:border-amber-300 hover:bg-amber-50'}`}
+                  data-id={proj.id}
+                  data-title={proj.title}
+                  data-client={proj.client_name}
+                  data-image={proj.featured_image || ''}
+                  data-selected={isSelected ? 'true' : 'false'}
+                >
+                  {proj.featured_image ? (
+                    <img src={proj.featured_image} alt={proj.title} class="w-14 h-10 object-cover rounded-lg shrink-0" loading="lazy" />
+                  ) : (
+                    <div class="w-14 h-10 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400 text-xs">No img</div>
+                  )}
+                  <div class="flex-grow min-w-0">
+                    <p class="text-sm font-semibold text-slate-900 truncate">{proj.title}</p>
+                    <p class="text-xs text-slate-500 truncate">{proj.client_name}</p>
+                  </div>
+                  {isSelected ? (
+                    <span class="text-xs font-bold text-amber-600 shrink-0">✓ Added</span>
+                  ) : (
+                    <span class="text-xs font-bold text-indigo-500 shrink-0">+ Add</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+          </div>
+
+          <!-- ═══ FACTS ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">5</span>
+          Stats / Facts
+        </h2>
+        <div id="facts-list" class="space-y-2">
+          {dtlSetup.facts?.map((f: any, i: number) => (
+            <div class="flex gap-2 items-center">
+              <input class="fact-label rounded-md border border-slate-200 px-3 py-2 text-sm w-48 focus:outline-none focus:ring-1 focus:ring-indigo-400" value={f.label} placeholder="Label e.g. Projects" />
+              <input class="fact-value rounded-md border border-slate-200 px-3 py-2 text-sm w-32 focus:outline-none focus:ring-1 focus:ring-indigo-400" value={f.value} placeholder="e.g. 800+" />
+              <button type="button" class="remove-fact bg-red-50 hover:bg-red-100 text-red-500 px-2 py-1 rounded text-xs font-bold">&times; Remove</button>
+            </div>
+          ))}
+        </div>
+        <button id="add-fact" type="button" class="mt-3 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">+ Add Stat</button>
+          </div>
+
+          <!-- ═══ INSTAGRAM ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">6</span>
+          Instagram Block
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600">Enabled</label>
+            <select name="instagram_enabled" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+              <option value="true" selected={dtlSetup.instagram?.enabled}>Enabled</option>
+              <option value="false" selected={!dtlSetup.instagram?.enabled}>Disabled</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Section Title</label>
+            <input name="instagram_title" value={dtlSetup.instagram?.title || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+        </div>
+          </div>
+
+          <!-- ═══ CENTRALIZED RESOURCES HUB ═══ -->
+          <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mt-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">7</span>
+              Centralized Resources Hub
+            </h2>
+            <p class="text-xs text-slate-500">The Image Store has been upgraded and migrated to the centralized Resources manager. Search stock images, build local galleries, and copy urls dynamically.</p>
+          </div>
+          <a
+            href="/dashboard/resources"
+            class="inline-flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-750 text-white px-5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm shrink-0 uppercase tracking-wider"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Open Resources
+          </a>
+        </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- RIGHT: Live Preview (Centered and Scalable Viewport) -->
+    <div id="dtl-preview-column" class="hidden lg:flex flex-col flex-1 bg-slate-950 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden min-h-0">
+      
+      <!-- Browser Chrome Mockup -->
+      <div class="h-12 bg-slate-800 flex items-center px-4 gap-4 shrink-0 border-b border-slate-900 print-hidden select-none">
+        <div class="flex items-center gap-1.5 shrink-0">
+          <div class="w-3 h-3 rounded-full bg-rose-500"></div>
+          <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+          <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+        </div>
+        
+        <!-- URL bar -->
+        <div class="flex-1 max-w-md bg-slate-900 rounded-md h-7 flex items-center justify-center px-3 relative border border-slate-850">
+          <span class="text-[9px] text-slate-400 font-mono tracking-wider truncate">delightgroup.com/delighttechnicallighting</span>
+          <button type="button" id="refresh-preview-btn" class="absolute right-2 text-slate-400 hover:text-white transition-colors" title="Reload Preview">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Viewport Switcher Toolbar -->
+        <div class="flex items-center bg-slate-900 border border-slate-850 rounded-lg p-0.5 ml-auto">
+          <button type="button" class="viewport-btn active px-2 py-1 rounded text-cyan-400 hover:text-white transition-all" data-viewport="desktop" title="Desktop View (100%)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+          </button>
+          <button type="button" class="viewport-btn px-2 py-1 rounded text-slate-550 hover:text-white transition-all" data-viewport="tablet" title="Tablet View (768px)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <rect x="4" y="2" width="16" height="20" rx="2" />
+              <circle cx="12" cy="18" r="1" />
+            </svg>
+          </button>
+          <button type="button" class="viewport-btn px-2 py-1 rounded text-slate-555 hover:text-white transition-all" data-viewport="mobile" title="Mobile View (375px)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <rect x="5" y="2" width="14" height="20" rx="2" />
+              <line x1="11" y1="18" x2="13" y2="18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Iframe Canvas -->
+      <div class="flex-1 relative bg-slate-950 flex justify-center items-center overflow-hidden p-4">
+        <div id="iframe-wrapper" class="w-full h-full mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-0">
+          <iframe id="dtl-preview-frame" src="/delighttechnicallighting" class="w-full h-full border-0 absolute inset-0 bg-white"></iframe>
+        </div>
+        <div id="preview-loader" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-10 transition-opacity">
+          <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 10px;
+    }
+    .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+      background-color: #94a3b8;
+    }
+  </style>
+
+  <script>
+    const form = document.getElementById('dtl-form') as HTMLFormElement;
+    const saveBtn = document.getElementById('save-dtl');
+    const saveMsg = document.getElementById('save-msg');
+
+    // ── READ FORM ──────────────────────────────────────────────
+    const readForm = () => {
+      const data = new FormData(form);
+      return {
+        hero: {
+          title: data.get('hero_title') || '',
+          subtitle: data.get('hero_subtitle') || '',
+          imageUrl: data.get('hero_imageUrl') || '',
+          ctaText: data.get('hero_ctaText') || '',
+          ctaUrl: data.get('hero_ctaUrl') || ''
+        },
+        discover: {
+          enabled: data.get('discover_enabled') !== 'false',
+          title: data.get('discover_title') || 'Discover by Rooms',
+          display: data.get('discover_display') || 'grid',
+          max_items: Number(data.get('discover_max')) || 6,
+        },
+        trending: {
+          enabled: data.get('trending_enabled') !== 'false',
+          title: data.get('trending_title') || 'Discover New Arrivals and Trendings',
+          promoImageUrl: data.get('trending_promoImageUrl') || '',
+          promoTitle: data.get('trending_promoTitle') || '',
+          promoSubtitle: data.get('trending_promoSubtitle') || '',
+          max_items: Number(data.get('trending_max')) || 4,
+        },
+        instagram: {
+          enabled: data.get('instagram_enabled') === 'true',
+          title: data.get('instagram_title') || '',
+        },
+        facts: Array.from(document.querySelectorAll('#facts-list > div')).map(r => ({
+          label: (r.querySelector('.fact-label') as HTMLInputElement)?.value || '',
+          value: (r.querySelector('.fact-value') as HTMLInputElement)?.value || ''
+        })),
+      };
+    };
+
+    // ── SAVE MAIN FORM ─────────────────────────────────────────
+    saveBtn?.addEventListener('click', async () => {
+      const payload: any = { dtl_setup: JSON.stringify(readForm()) };
+      const dtl = JSON.parse(payload.dtl_setup);
+      payload['dtl_instagram_block'] = JSON.stringify(dtl.instagram || {});
+
+      try {
+        saveBtn.setAttribute('disabled', 'true');
+        (saveBtn as HTMLButtonElement).textContent = 'Saving...';
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Failed to save settings');
+        saveMsg!.classList.remove('hidden');
+        saveMsg!.textContent = '✓ Saved successfully';
+        
+        // Refresh Preview automatically
+        refreshPreview();
+
+        setTimeout(() => { saveMsg!.classList.add('hidden'); }, 2500);
+      } catch (err: any) {
+        alert(err?.message || 'Error saving settings');
+      } finally {
+        saveBtn.removeAttribute('disabled');
+        (saveBtn as HTMLButtonElement).textContent = 'Save';
+      }
+    });
+
+    // ── REFRESH PREVIEW ─────────────────────────────────────────
+    const refreshPreviewBtn = document.getElementById('refresh-preview-btn');
+    const iframe = document.getElementById('dtl-preview-frame') as HTMLIFrameElement;
+    const previewLoader = document.getElementById('preview-loader');
+
+    const refreshPreview = () => {
+      if (!iframe) return;
+      if (previewLoader) {
+        previewLoader.classList.remove('hidden');
+        previewLoader.classList.add('flex');
+      }
+      // Force reload by appending timestamp
+      const currentSrc = iframe.src.split('?')[0];
+      iframe.src = `${currentSrc}?t=${Date.now()}`;
+    };
+
+    refreshPreviewBtn?.addEventListener('click', refreshPreview);
+    
+    if (iframe) {
+      iframe.addEventListener('load', () => {
+        if (previewLoader) {
+          previewLoader.classList.add('hidden');
+          previewLoader.classList.remove('flex');
+        }
+      });
+    }
+
+    // ── FACTS ──────────────────────────────────────────────────
+    document.getElementById('add-fact')?.addEventListener('click', () => {
+      const wrapper = document.getElementById('facts-list');
+      const node = document.createElement('div');
+      node.className = 'flex gap-2 items-center';
+      node.innerHTML = `<input class="fact-label rounded-md border border-slate-200 px-3 py-2 text-sm w-48 focus:outline-none" placeholder="Label" value="" /><input class="fact-value rounded-md border border-slate-200 px-3 py-2 text-sm w-32 focus:outline-none" placeholder="e.g. 800+" value="" /><button type="button" class="remove-fact bg-red-50 text-red-500 px-2 py-1 rounded text-xs font-bold">&times; Remove</button>`;
+      wrapper?.appendChild(node);
+    });
+    document.getElementById('facts-list')?.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      if (t.classList.contains('remove-fact')) t.closest('div')?.remove();
+    });
+
+    // ══════════════════════════════════════════════════════════
+    // HOMEPAGE PROJECTS PICKER
+    // ══════════════════════════════════════════════════════════
+    const selectedList = document.getElementById('selected-projects-list');
+    const allList = document.getElementById('all-projects-list');
+    const saveProjectsBtn = document.getElementById('save-projects-btn');
+    const projSearch = document.getElementById('proj-search') as HTMLInputElement;
+
+    // Helper: get ordered IDs from selected list
+    const getSelectedIds = () =>
+      Array.from(selectedList!.querySelectorAll('.selected-proj-card')).map(el => el.getAttribute('data-id') || '');
+
+    // Helper: create a selected card node
+    const makeSelectedCard = (id: string, title: string, client: string, imageUrl: string) => {
+      const div = document.createElement('div');
+      div.className = 'selected-proj-card flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3 cursor-grab';
+      div.setAttribute('draggable', 'true');
+      div.setAttribute('data-id', id);
+      div.innerHTML = `
+        <span class="text-slate-400 text-sm select-none">⠿</span>
+        ${imageUrl ? `<img src="${imageUrl}" alt="${title}" class="w-14 h-10 object-cover rounded-lg shrink-0" />` : `<div class="w-14 h-10 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400 text-xs">No img</div>`}
+        <div class="flex-grow min-w-0">
+          <p class="text-sm font-semibold text-slate-900 truncate">${title}</p>
+          <p class="text-xs text-slate-500 truncate">${client}</p>
+        </div>
+        <span class="proj-rank text-xs font-bold text-amber-600 bg-amber-100 rounded-full px-2 py-0.5">#1</span>
+        <button type="button" class="remove-proj-btn text-rose-500 hover:text-rose-700 font-bold text-lg leading-none shrink-0">&times;</button>
+      `;
+      return div;
+    };
+
+    // Update rank badges #1, #2, #3
+    const updateRanks = () => {
+      const cards = selectedList!.querySelectorAll('.selected-proj-card');
+      // Show/hide empty placeholder
+      const emptyP = selectedList!.querySelector('p.text-slate-400');
+      if (cards.length === 0) {
+        if (!emptyP) {
+          const p = document.createElement('p');
+          p.className = 'text-xs text-slate-400 text-center py-3';
+          p.textContent = 'No projects selected yet — pick from the list below';
+          selectedList!.appendChild(p);
+        }
+      } else {
+        if (emptyP) emptyP.remove();
+      }
+      cards.forEach((card, i) => {
+        const rank = card.querySelector('.proj-rank');
+        if (rank) rank.textContent = `#${i + 1}`;
+      });
+    };
+
+    // Mark a row in all-list as selected/unselected
+    const markPickRow = (id: string, selected: boolean) => {
+      const row = allList?.querySelector(`.proj-pick-row[data-id="${id}"]`) as HTMLElement | null;
+      if (!row) return;
+      row.setAttribute('data-selected', selected ? 'true' : 'false');
+      if (selected) {
+        row.classList.add('border-amber-300', 'bg-amber-50', 'opacity-50', 'pointer-events-none');
+        row.classList.remove('border-slate-100', 'hover:border-amber-300', 'hover:bg-amber-50');
+        const addSpan = row.querySelector('span.text-indigo-500');
+        if (addSpan) { addSpan.className = 'text-xs font-bold text-amber-600 shrink-0'; addSpan.textContent = '✓ Added'; }
+      } else {
+        row.classList.remove('border-amber-300', 'bg-amber-50', 'opacity-50', 'pointer-events-none');
+        row.classList.add('border-slate-100', 'hover:border-amber-300', 'hover:bg-amber-50');
+        const addedSpan = row.querySelector('span.text-amber-600');
+        if (addedSpan) { addedSpan.className = 'text-xs font-bold text-indigo-500 shrink-0'; addedSpan.textContent = '+ Add'; }
+      }
+    };
+
+    // Click "Add" from all-projects list
+    allList?.addEventListener('click', (e) => {
+      const row = (e.target as HTMLElement).closest('.proj-pick-row') as HTMLElement | null;
+      if (!row) return;
+      if (row.getAttribute('data-selected') === 'true') return;
+      const currentCount = selectedList!.querySelectorAll('.selected-proj-card').length;
+      if (currentCount >= 3) { alert('Maximum 3 projects can be featured. Remove one first.'); return; }
+
+      const id = row.getAttribute('data-id') || '';
+      const title = row.getAttribute('data-title') || '';
+      const client = row.getAttribute('data-client') || '';
+      const image = row.getAttribute('data-image') || '';
+
+      const card = makeSelectedCard(id, title, client, image);
+      // Attach remove listener
+      attachRemoveListener(card);
+      attachDragListeners(card);
+      selectedList!.appendChild(card);
+      markPickRow(id, true);
+      updateRanks();
+    });
+
+    // Remove from selected
+    const attachRemoveListener = (card: HTMLElement) => {
+      card.querySelector('.remove-proj-btn')?.addEventListener('click', () => {
+        const id = card.getAttribute('data-id') || '';
+        card.remove();
+        markPickRow(id, false);
+        updateRanks();
+      });
+    };
+
+    // Attach to existing remove buttons
+    selectedList?.querySelectorAll('.selected-proj-card').forEach(card => {
+      attachRemoveListener(card as HTMLElement);
+    });
+
+    // ── DRAG & DROP REORDER ─────────────────────────────────
+    let dragSrc: HTMLElement | null = null;
+
+    const attachDragListeners = (card: HTMLElement) => {
+      card.addEventListener('dragstart', (e) => {
+        dragSrc = card;
+        e.dataTransfer?.setData('text/plain', card.getAttribute('data-id') || '');
+        card.classList.add('opacity-50');
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('opacity-50');
+        dragSrc = null;
+        updateRanks();
+      });
+    };
+
+    selectedList?.querySelectorAll('.selected-proj-card').forEach(card => {
+      attachDragListeners(card as HTMLElement);
+    });
+
+    selectedList?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const target = (e.target as HTMLElement).closest('.selected-proj-card') as HTMLElement | null;
+      if (!target || !dragSrc || target === dragSrc) return;
+      const allCards = Array.from(selectedList.querySelectorAll('.selected-proj-card'));
+      const srcIdx = allCards.indexOf(dragSrc);
+      const destIdx = allCards.indexOf(target);
+      if (srcIdx < destIdx) selectedList.insertBefore(dragSrc, target.nextSibling);
+      else selectedList.insertBefore(dragSrc, target);
+    });
+
+    // ── SEARCH FILTER ───────────────────────────────────────
+    projSearch?.addEventListener('input', () => {
+      const q = projSearch.value.toLowerCase();
+      allList?.querySelectorAll('.proj-pick-row').forEach(row => {
+        const title = row.getAttribute('data-title')?.toLowerCase() || '';
+        const client = row.getAttribute('data-client')?.toLowerCase() || '';
+        (row as HTMLElement).style.display = (title.includes(q) || client.includes(q)) ? '' : 'none';
+      });
+    });
+
+    // ── SAVE HOMEPAGE PROJECTS ──────────────────────────────
+    saveProjectsBtn?.addEventListener('click', async () => {
+      const ids = getSelectedIds();
+      const btn = saveProjectsBtn as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dtl_homepage_projects: JSON.stringify(ids) }),
+        });
+        if (!res.ok) throw new Error('Failed to save');
+        btn.textContent = '✓ Saved!';
+        btn.className = btn.className.replace('bg-amber-500', 'bg-emerald-500').replace('hover:bg-amber-600', 'hover:bg-emerald-600');
+        
+        refreshPreview();
+
+        setTimeout(() => {
+          btn.textContent = 'Save Projects';
+          btn.className = btn.className.replace('bg-emerald-500', 'bg-amber-500').replace('hover:bg-emerald-600', 'hover:bg-amber-600');
+        }, 2000);
+      } catch (err: any) {
+        alert(err?.message || 'Error saving projects');
+        btn.textContent = 'Save Projects';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // Initial rank update
+    // ── MOBILE TABS TOGGLE ──────────────────────────────────────
+    const formColumn = document.getElementById('dtl-form-column');
+    const previewColumn = document.getElementById('dtl-preview-column');
+    const tabFormBtn = document.getElementById('tab-toggle-form');
+    const tabPreviewBtn = document.getElementById('tab-toggle-preview');
+
+    tabFormBtn?.addEventListener('click', () => {
+      formColumn?.classList.remove('hidden');
+      previewColumn?.classList.add('hidden');
+      previewColumn?.classList.remove('flex');
+      
+      tabFormBtn.className = tabFormBtn.className.replace('text-slate-500', 'bg-indigo-50 text-indigo-700').replace('hover:text-slate-800', '');
+      if (tabPreviewBtn) {
+        tabPreviewBtn.className = tabPreviewBtn.className.replace('bg-indigo-50 text-indigo-700', 'text-slate-500 hover:text-slate-800');
+      }
+    });
+
+    tabPreviewBtn?.addEventListener('click', () => {
+      formColumn?.classList.add('hidden');
+      previewColumn?.classList.remove('hidden');
+      previewColumn?.classList.add('flex');
+      
+      tabPreviewBtn.className = tabPreviewBtn.className.replace('text-slate-550', 'bg-indigo-50 text-indigo-700').replace('text-slate-500', 'bg-indigo-50 text-indigo-700').replace('hover:text-slate-800', '');
+      if (tabFormBtn) {
+        tabFormBtn.className = tabFormBtn.className.replace('bg-indigo-50 text-indigo-700', 'text-slate-500 hover:text-slate-800');
+      }
+      
+      // Auto trigger resize on show
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    // ── VIEWPORT SIMULATOR SWITCHER ─────────────────────────────
+    const viewportBtns = document.querySelectorAll('.viewport-btn');
+    const iframeWrapper = document.getElementById('iframe-wrapper');
+
+    viewportBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        viewportBtns.forEach(b => {
+          b.classList.remove('active', 'text-cyan-400');
+          b.classList.add('text-slate-500');
+        });
+        
+        const target = e.currentTarget as HTMLButtonElement;
+        target.classList.add('active', 'text-cyan-400');
+        target.classList.remove('text-slate-500');
+        
+        const mode = target.getAttribute('data-viewport');
+        if (iframeWrapper) {
+          if (mode === 'desktop') {
+            iframeWrapper.className = 'w-full h-full mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-0';
+          } else if (mode === 'tablet') {
+            iframeWrapper.className = 'w-[768px] max-w-full h-[95%] mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-x border-y border-slate-700 rounded-lg';
+          } else if (mode === 'mobile') {
+            iframeWrapper.className = 'w-[375px] max-w-full h-[85%] mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-x border-y border-slate-700 rounded-2xl';
+          }
+        }
+      });
+    });
+
+    updateRanks();
+  </script>
+
+</DashboardLayout>

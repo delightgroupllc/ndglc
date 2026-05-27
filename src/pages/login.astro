@@ -1,0 +1,16 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { SignIn } from '@clerk/astro/components';
+---
+
+<Layout title="B2B Portal Sign In" description="Sign in to the NDGLC Global B2B client portal and ERP monitor.">
+  <section class="min-h-[80vh] flex items-center justify-center py-16 px-4 bg-slate-950 relative overflow-hidden">
+    <div class="absolute top-1/4 left-1/4 -z-10 h-72 w-72 rounded-full bg-cyan-500/5 blur-[100px]"></div>
+    <div class="absolute bottom-1/4 right-1/4 -z-10 h-72 w-72 rounded-full bg-blue-600/5 blur-[100px]"></div>
+
+    <div class="w-full max-w-md flex justify-center relative">
+      <!-- Embedded Clerk SignIn -->
+      <SignIn signUpUrl="/signup" redirectUrl="/dashboard" />
+    </div>
+  </section>
+</Layout>

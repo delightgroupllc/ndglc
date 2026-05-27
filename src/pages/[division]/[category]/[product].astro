@@ -1,0 +1,359 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { query } from '../../../lib/db';
+import { ChevronRight, FileText, Settings, AlertTriangle, ShieldCheck, CheckCircle2, Server, Terminal, Gauge } from 'lucide-astro';
+
+const { division, category, product } = Astro.params;
+
+const divSlug = division!.toLowerCase();
+const catSlug = category!.toLowerCase();
+const prodSlug = product!.toLowerCase();
+
+const isDtl = divSlug === 'dtl';
+const isDgs = divSlug === 'dgs';
+
+if (!isDtl && !isDgs) {
+  return Astro.redirect('/');
+}
+
+let categoryDetails: any = null;
+let productDetails: any = null;
+let dbConnected = true;
+
+try {
+  // 1. Get Category details
+  const catRes = await query(
+    `SELECT c.*, d.name as division_name 
+     FROM categories c 
+     JOIN divisions d ON d.id = c.division_id 
+     WHERE c.slug = $1 AND d.slug = $2`,
+    [catSlug, divSlug]
+  );
+  categoryDetails = catRes.rows[0];
+
+  if (!categoryDetails) {
+    return Astro.redirect(`/${divSlug}`);
+  }
+
+  // 2. Get Product details
+  const isPreview = Astro.url.searchParams.get('preview') === 'true' || Astro.url.searchParams.has('preview');
+  const prodQuery = isPreview
+    ? `SELECT p.*, i.stock_level, i.warehouse_location
+       FROM products p
+       LEFT JOIN inventory i ON i.product_id = p.id
+       WHERE p.slug = $1 AND p.category_id = $2`
+    : `SELECT p.*, i.stock_level, i.warehouse_location
+       FROM products p
+       LEFT JOIN inventory i ON i.product_id = p.id
+       WHERE p.slug = $1 AND p.category_id = $2 AND p.status = 'active'`;
+
+  const prodRes = await query(prodQuery, [prodSlug, categoryDetails.id]);
+  productDetails = prodRes.rows[0];
+
+  if (!productDetails) {
+    return Astro.redirect(`/${divSlug}/${catSlug}`);
+  }
+
+  // 3. Get all images for slideshow
+  const imgRes = await query(
+    `SELECT * FROM product_images WHERE product_id = $1 ORDER BY is_primary DESC, created_at ASC`,
+    [productDetails.id]
+  );
+  productDetails.images = imgRes.rows.map((r: any) => r.url);
+  if (productDetails.images.length === 0) {
+    productDetails.images = ['/noimage.jpg'];
+  }
+
+  if (!productDetails) {
+    return Astro.redirect(`/${divSlug}/${catSlug}`);
+  }
+} catch (err: any) {
+  console.warn('Database offline, running mock product telemetry sheets:', err.message);
+  dbConnected = false;
+  
+  // Custom mock details
+  categoryDetails = { name: catSlug.split('-').map((s: string) => s[0].toUpperCase() + s.substring(1)).join(' '), division_name: isDtl ? 'Division DTL' : 'Division DGS' };
+  
+  const mockProducts: Record<string, any> = {
+    'hp100-ball-valve': {
+      name: 'HP-100 High-Pressure Stainless Ball Valve',
+      sku: 'SKU-DTL-VALVE-001',
+      slug: 'hp100-ball-valve',
+      description: 'Engineered for extreme flow situations, our HP-100 series provides severe-service isolation with zero downstream leakage. Precision-machined ball and seats guarantee seamless operations even under full differential loads.',
+      specifications: [
+        { key: 'Working Pressure', value: 'Up to 6,000 PSI (413 Bar)' },
+        { key: 'Body Material', value: '316 Stainless Steel (Duplex option available)' },
+        { key: 'Flange Connection', value: '1/2 inch to 2 inch NPT Threaded' },
+        { key: 'Temperature Rating', value: '-29°C to 232°C (-20°F to 450°F)' },
+        { key: 'Seal Material', value: 'Reinforced PTFE / PEEK seats' },
+        { key: 'Testing Standards', value: 'API 598 Pressure Tested' }
+      ],
+      stock_level: 45,
+      warehouse_location: 'Warehouse Alpha',
+      image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'
+    },
+    'cpx500-centrifugal-pump': {
+      name: 'CPX-500 Heavy-Duty Centrifugal Pump',
+      sku: 'SKU-DTL-PUMP-002',
+      slug: 'cpx500-centrifugal-pump',
+      description: 'A high-efficiency fluid displacement pump, configured with heavy-duty open impellers. It is specifically designed to handle corrosive fluids, wastewater, or high viscosity oil in mining and chemical processing pipelines.',
+      specifications: [
+        { key: 'Flow Performance', value: '500 Gallons Per Minute (GPM)' },
+        { key: 'Motor Capacity', value: '15 HP / 11 kW High Torque' },
+        { key: 'Inlet connection', value: '3" Flanged standard' },
+        { key: 'Outlet connection', value: '2" Flanged standard' },
+        { key: 'Impeller Structure', value: 'Dynamically balanced open impeller' },
+        { key: 'Efficiency rating', value: 'IE3 Premium efficiency' }
+      ],
+      stock_level: 12,
+      warehouse_location: 'Warehouse Beta',
+      image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'
+    },
+    'vortex-cloud-backup': {
+      name: 'Vortex Cloud-Native Backup Storage Suite',
+      sku: 'SKU-DGS-CLOUD-001',
+      slug: 'vortex-cloud-backup',
+      description: 'A cutting-edge military-grade cloud storage replication platform. It enables real-time continuous data protection with block-level incremental sync, protected by zero-knowledge encryption keys.',
+      specifications: [
+        { key: 'Encryption Protocol', value: 'AES-256-GCM Zero-Knowledge client-side' },
+        { key: 'SLA Durability', value: '99.999999999% (11 nines) target' },
+        { key: 'API Telemetry', value: 'Full REST JSON, S3-Compatible and gRPC endpoints' },
+        { key: 'Multi-Region Sync', value: 'Continuous active-active replication' },
+        { key: 'RTO / RPO Targets', value: 'Recovery time under 5 minutes; RPO near zero' },
+        { key: 'Compliance standard', value: 'SOC2 Type II, ISO 27001, HIPAA Compliant' }
+      ],
+      stock_level: 999,
+      warehouse_location: 'Cloud Region East-1',
+      image_url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80'
+    },
+    'ironwall-firewall-v4': {
+      name: 'IronWall Industrial Firewall Appliance v4',
+      sku: 'SKU-DGS-SEC-002',
+      slug: 'ironwall-firewall-v4',
+      description: 'Hardware firewall appliance specifically designed to isolate and protect operational technology (OT) and SCADA systems. Employs machine learning traffic profiling to identify anomalies and block threats.',
+      specifications: [
+        { key: 'Inspection Throughput', value: '10 Gbps stateful DPI' },
+        { key: 'Port Interface', value: '8x 1G RJ45 Copper ports, 2x 10G SFP+ Fiber' },
+        { key: 'Form Standard', value: '1U Rackmount industrial metal housing' },
+        { key: 'OT Protocol DPI', value: 'Modbus, DNP3, OPC UA, PROFINET deep packet analysis' },
+        { key: 'Anomalies Engine', value: 'Integrated neural traffic profiling' },
+        { key: 'Operating Temp', value: '-40°C to 75°C fanless operational chassis' }
+      ],
+      stock_level: 28,
+      warehouse_location: 'Warehouse Delta',
+      image_url: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=800&q=80'
+    }
+  };
+
+  productDetails = mockProducts[prodSlug] || {
+    name: 'Unknown System Specs',
+    sku: 'SKU-UNKNOWN',
+    slug: prodSlug,
+    description: 'No detailed parameters currently seeded for this catalog listing. Visit administrative matrix to configure spec keys.',
+    specifications: [
+      { key: 'Status', value: 'Telemetries pending configurations' }
+    ],
+    stock_level: 0,
+    warehouse_location: 'Unassigned',
+    images: ['https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1517594422361-5eeb8ae275a9?auto=format&fit=crop&w=800&q=80']
+  };
+}
+
+// Convert specifications if they are stored as JSONB string or object
+let specList: any[] = [];
+if (Array.isArray(productDetails.specifications)) {
+  specList = productDetails.specifications;
+} else if (typeof productDetails.specifications === 'string') {
+  try {
+    specList = JSON.parse(productDetails.specifications);
+  } catch {
+    specList = [];
+  }
+} else if (productDetails.specifications && typeof productDetails.specifications === 'object') {
+  specList = Object.entries(productDetails.specifications).map(([key, value]) => ({ key, value }));
+}
+---
+
+<Layout title={productDetails.name} description={productDetails.description}>
+  <!-- Header Breadcrumbs -->
+  <section class="relative overflow-hidden pt-32 pb-8 bg-white border-b border-slate-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <nav class="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+        <a href="/" class="hover:text-slate-900 transition-colors">Portal</a>
+        <ChevronRight class="h-3 w-3" />
+        <a href={`/${divSlug}`} class="hover:text-slate-900 transition-colors">{categoryDetails.division_name}</a>
+        <ChevronRight class="h-3 w-3" />
+        <a href={`/${divSlug}/${catSlug}`} class="hover:text-slate-900 transition-colors">{categoryDetails.name}</a>
+        <ChevronRight class="h-3 w-3" />
+        <span class="text-slate-900 font-bold truncate">{productDetails.name}</span>
+      </nav>
+    </div>
+  </section>
+
+  <!-- Database Connection Banner (Only shown if offline) -->
+  {!dbConnected && (
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-8">
+      <div class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
+            <AlertTriangle class="h-5 w-5" />
+          </div>
+          <div>
+            <h4 class="text-sm font-semibold text-slate-900">PostgreSQL Offline Fallback</h4>
+            <p class="text-xs text-slate-600 mt-0.5">Loaded mock engineering and telemetry specification records. Connect PostgreSQL database in `.env` to pull live parameters.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+
+  <!-- Product Specifications Showcase -->
+  <section class="pb-24 bg-slate-50 pt-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        
+        <!-- Column 1: Image Gallery & Telemetry details -->
+        <div class="lg:col-span-5 space-y-6">
+          <div class="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm flex flex-col">
+            <!-- Main Slideshow Image -->
+            <div class="aspect-square relative group bg-slate-50">
+              <img 
+                id="main-product-image"
+                src={productDetails.images ? productDetails.images[0] : (productDetails.image_url || '/noimage.jpg')} 
+                alt={productDetails.name}
+                class="w-full h-full object-contain p-4 transition-all duration-300"
+              />
+            </div>
+            
+            <!-- Thumbnail Gallery -->
+            {productDetails.images && productDetails.images.length > 1 && (
+              <div class="flex items-center gap-2 p-4 border-t border-slate-100 overflow-x-auto">
+                {productDetails.images.map((img: string, idx: number) => (
+                  <button 
+                    class={`thumbnail-btn h-16 w-16 shrink-0 rounded-lg border-2 overflow-hidden ${idx === 0 ? 'border-cyan-500' : 'border-transparent'} hover:border-cyan-400 transition-colors bg-slate-50`}
+                    data-img={img}
+                  >
+                    <img src={img} class="w-full h-full object-contain" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <!-- Logistics telemetry widget -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <Gauge class="h-4 w-4 text-cyan-600" />
+              Warehouse Logistics Telemetry
+            </h4>
+            <div class="grid grid-cols-2 gap-4 pt-2">
+              <div>
+                <p class="text-2xs text-slate-400 font-bold uppercase tracking-wider">Stock Level Status</p>
+                <div class="flex items-center gap-1.5 mt-1">
+                  <span class={`h-2 w-2 rounded-full ${
+                    productDetails.stock_level > 15 ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'
+                  }`}></span>
+                  <span class="text-md font-extrabold text-slate-900">
+                    {productDetails.stock_level > 0 ? `${productDetails.stock_level} units` : 'Out of Stock'}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p class="text-2xs text-slate-400 font-bold uppercase tracking-wider">Depot Location</p>
+                <p class="text-sm font-semibold text-slate-700 mt-1.5 truncate">{productDetails.warehouse_location || 'Warehouse Alpha'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 2: System Specifications -->
+        <div class="lg:col-span-7 space-y-8">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="rounded bg-white border border-slate-200 px-2.5 py-0.5 text-2xs font-bold text-slate-500 shadow-sm">
+                {productDetails.sku}
+              </span>
+              <span class={`rounded-full px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider shadow-sm ${
+                isDtl ? 'bg-amber-50 text-amber-600 border border-amber-200' : 'bg-cyan-50 text-cyan-600 border border-cyan-200'
+              }`}>
+                {divSlug.toUpperCase()}
+              </span>
+            </div>
+            
+            <h2 class="text-2xl sm:text-3xl font-bold font-display text-slate-900 mt-4 tracking-tight">{productDetails.name}</h2>
+            <p class="text-sm text-slate-600 mt-4 leading-relaxed max-w-3xl">{productDetails.description}</p>
+          </div>
+
+          <!-- Specifications Sheet -->
+          <div class="space-y-4">
+            <h3 class="text-md font-bold font-display text-slate-900 flex items-center gap-2">
+              <ShieldCheck class="h-5 w-5 text-cyan-600" />
+              Technical Specifications
+            </h3>
+            
+            <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+              <table class="w-full text-left border-collapse">
+                <tbody>
+                  {specList.map((spec: any, idx: number) => (
+                    <tr class={`border-b border-slate-100 ${idx % 2 === 0 ? 'bg-slate-50' : 'bg-white'}`}>
+                      <td class="px-5 py-3.5 text-xs font-semibold text-slate-500 w-1/3 border-r border-slate-100">{spec.key}</td>
+                      <td class="px-5 py-3.5 text-xs font-bold text-slate-900">{spec.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- B2B Procurement Action -->
+          <div class="rounded-xl border border-blue-100 bg-blue-50/50 p-6 space-y-4 shadow-sm">
+            <h4 class="text-sm font-bold text-blue-900 flex items-center gap-2">
+              <CheckCircle2 class="h-5 w-5 text-blue-600" />
+              Procure Engineering Specifications
+            </h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Downloads of high-fidelity blueprints, 3D CAD step meshes, or gRPC telemetry connection libraries are fully synced with B2B accounts. Submitting inquiries automatically triggers inventory alerts.
+            </p>
+            <div class="flex flex-wrap gap-4 pt-2">
+              <a 
+                href="/downloads" 
+                class="inline-flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider bg-white border border-slate-300 hover:border-blue-500 px-5 py-2.5 rounded-lg text-slate-700 hover:text-blue-700 transition-all shadow-sm"
+              >
+                <FileText class="h-4 w-4" />
+                Datasheet Brochure
+              </a>
+              <a 
+                href="/contact?inquiry=sales" 
+                class="inline-flex items-center justify-center text-xs font-bold uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg transition-all shadow-sm"
+              >
+                B2B Quote Enquiry
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Image Gallery Script -->
+  <script>
+    const mainImg = document.getElementById('main-product-image') as HTMLImageElement;
+    const thumbnails = document.querySelectorAll('.thumbnail-btn');
+
+    thumbnails.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const newSrc = target.getAttribute('data-img');
+        if (mainImg && newSrc) {
+          mainImg.src = newSrc;
+          // Update active state
+          thumbnails.forEach(t => t.classList.remove('border-cyan-500'));
+          thumbnails.forEach(t => t.classList.add('border-transparent'));
+          target.classList.remove('border-transparent');
+          target.classList.add('border-cyan-500');
+        }
+      });
+    });
+  </script>
+</Layout>
