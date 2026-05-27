@@ -4,12 +4,17 @@ import { query } from '../lib/db';
 import { Search, ArrowRight, Lightbulb, Flower, CheckCircle, HelpCircle, Sparkles, Building, Globe } from 'lucide-astro';
 
 let latestProjects: any[] = [];
+let brands: any[] = [];
 let dbConnected = true;
 
 try {
   // Query projects if they exist (we can query invoices or products or default projects)
   const res = await query('SELECT * FROM products WHERE featured = true LIMIT 3');
   latestProjects = res.rows;
+
+  // Query partners from the database
+  const partnersRes = await query("SELECT name FROM trusted_partners WHERE status = 'active' ORDER BY name ASC");
+  brands = partnersRes.rows.map(r => r.name);
 } catch (err: any) {
   dbConnected = false;
 }
@@ -41,28 +46,30 @@ if (latestProjects.length === 0) {
   ];
 }
 
-// Brands list
-const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco', 'Simes', 'Vibia'];
+// Brands list fallback if DB is empty or offline
+if (brands.length === 0) {
+  brands = ['Legrand', 'SYV', 'Lutron', 'Solux Lighting', 'ZCL', 'Thorn', 'Pelsan', 'HansGreen', 'Cortem Group'];
+}
 ---
 
 <Layout title="Premium Technical Lighting & Greenscapes UAE" description="Delight Group LLC supplies premium architectural lighting and curated landscape plants across Dubai, Abu Dhabi, and the UAE.">
   <!-- Hero Section -->
-  <section class="relative overflow-hidden pt-36 pb-24 md:pt-44 md:pb-36 bg-slate-950">
+  <section class="relative overflow-hidden pt-36 pb-24 md:pt-44 md:pb-36 bg-gradient-to-b from-blue-50/50 via-white to-white border-b border-slate-100">
     <div class="absolute top-0 left-1/4 -z-10 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-cyan-500/5 blur-[120px]"></div>
     <div class="absolute bottom-0 right-1/4 -z-10 h-[500px] w-[500px] translate-x-1/2 rounded-full bg-amber-500/5 blur-[120px]"></div>
     
     <!-- Grid overlay pattern -->
-    <div class="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30"></div>
+    <div class="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40"></div>
 
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="text-center max-w-3xl mx-auto space-y-6">
         <!-- Title -->
-        <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold font-display tracking-tight leading-tight text-white hero-animate">
-          A Trusted Partner in <span class="bg-gradient-to-r from-cyan-400 via-blue-500 to-amber-400 bg-clip-text text-transparent font-black">Light & Nature</span>
+        <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold font-display tracking-tight leading-tight text-slate-900 hero-animate">
+          A Trusted Partner in <span class="bg-gradient-to-r from-cyan-500 via-blue-600 to-amber-500 bg-clip-text text-transparent font-black">Light & Nature</span>
         </h1>
 
         <!-- Description -->
-        <p class="text-md sm:text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto hero-animate">
+        <p class="text-md sm:text-lg text-slate-650 leading-relaxed max-w-2xl mx-auto hero-animate">
           Providing premium technical lighting and curated greenscapes to the UAE's most prestigious projects. Experience global quality, reliability, and excellence at first sight.
         </p>
 
@@ -70,16 +77,16 @@ const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco'
         <div class="flex flex-wrap items-center justify-center gap-4 pt-6 hero-animate">
           <a 
             href="/delighttechnicallighting" 
-            class="inline-flex items-center gap-2 text-sm font-semibold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-450 px-6 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/10"
+            class="inline-flex items-center gap-2 text-sm font-bold text-slate-950 bg-gradient-to-r from-amber-450 to-amber-500 hover:from-amber-400 hover:to-amber-550 px-6 py-3 rounded-xl transition-all shadow-md shadow-amber-500/10"
           >
             <Lightbulb class="h-4.5 w-4.5" />
             Lighting Division
           </a>
           <a 
             href="/delightgreenscapes" 
-            class="inline-flex items-center gap-2 text-sm font-semibold text-white bg-slate-900 border border-slate-800 hover:border-cyan-500/30 hover:bg-slate-850 px-6 py-3 rounded-xl transition-all"
+            class="inline-flex items-center gap-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200/60 px-6 py-3 rounded-xl transition-all"
           >
-            <Flower class="h-4.5 w-4.5 text-cyan-400" />
+            <Flower class="h-4.5 w-4.5 text-emerald-600" />
             Greenscapes Division
           </a>
         </div>
@@ -88,50 +95,50 @@ const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco'
   </section>
 
   <!-- Division Cards -->
-  <section class="py-16 border-t border-slate-900 bg-slate-950/40">
+  <section class="py-16 bg-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <!-- Division DTL Card -->
-        <div class="relative group overflow-hidden rounded-2xl border border-slate-900 bg-slate-900/20 p-8 hover:border-amber-500/20 transition-all duration-300 flex flex-col justify-between min-h-[300px] cascade-item">
+        <div class="relative group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/30 p-8 hover:border-amber-500/30 transition-all duration-300 flex flex-col justify-between min-h-[300px] cascade-item shadow-2xs hover:shadow-sm">
           <div class="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-amber-500/5 blur-3xl group-hover:bg-amber-500/10 transition-colors duration-300"></div>
           
           <div class="space-y-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-550 border border-amber-500/20">
               <Lightbulb class="h-6 w-6" />
             </div>
             <div>
-              <h3 class="text-xl font-bold font-display text-white">Delight Technical Lighting 💡</h3>
-              <p class="text-slate-400 text-xs mt-3 leading-relaxed">
+              <h3 class="text-xl font-bold font-display text-slate-900">Delight Technical Lighting 💡</h3>
+              <p class="text-slate-600 text-xs mt-3 leading-relaxed">
                 Indoor & outdoor architectural lighting fixtures. Sourced from elite global brands, supplying UAE-wide for residential, office, and commercial landmark developments.
               </p>
             </div>
           </div>
           
           <div class="pt-6">
-            <a href="/delighttechnicallighting" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 transition-colors group/link">
+            <a href="/delighttechnicallighting" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-600 hover:text-amber-500 transition-colors group/link">
               Explore Catalog &rarr;
             </a>
           </div>
         </div>
 
         <!-- Division DGS Card -->
-        <div class="relative group overflow-hidden rounded-2xl border border-slate-900 bg-slate-900/20 p-8 hover:border-cyan-500/20 transition-all duration-300 flex flex-col justify-between min-h-[300px] cascade-item">
-          <div class="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-cyan-500/5 blur-3xl group-hover:bg-cyan-500/10 transition-colors duration-300"></div>
+        <div class="relative group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/30 p-8 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between min-h-[300px] cascade-item shadow-2xs hover:shadow-sm">
+          <div class="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-emerald-500/5 blur-3xl group-hover:bg-emerald-500/10 transition-colors duration-300"></div>
           
           <div class="space-y-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
               <Flower class="h-6 w-6" />
             </div>
             <div>
-              <h3 class="text-xl font-bold font-display text-white">Delight Greenscapes 🌿</h3>
-              <p class="text-slate-400 text-xs mt-3 leading-relaxed">
+              <h3 class="text-xl font-bold font-display text-slate-900">Delight Greenscapes 🌿</h3>
+              <p class="text-slate-600 text-xs mt-3 leading-relaxed">
                 Curated indoor & outdoor plants, premium designer pots, and custom planters. Sourced and delivered to residences, corporate offices, hotels and estates across the Emirates.
               </p>
             </div>
           </div>
           
           <div class="pt-6">
-            <a href="/delightgreenscapes" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400 hover:text-cyan-300 transition-colors group/link">
+            <a href="/delightgreenscapes" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-550 transition-colors group/link">
               Explore Catalog &rarr;
             </a>
           </div>
@@ -141,22 +148,22 @@ const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco'
   </section>
 
   <!-- Who We Are / About Section -->
-  <section class="py-20 border-t border-slate-900 bg-slate-950">
+  <section class="py-20 border-t border-slate-100 bg-slate-50/30">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
         
         <!-- Text -->
         <div class="lg:col-span-7 space-y-6 cascade-item">
-          <span class="text-xs font-bold text-cyan-400 uppercase tracking-widest">Our Philosophy</span>
-          <h2 class="text-3xl font-bold font-display text-white">A new kind of supply partner for the UAE.</h2>
-          <p class="text-sm text-slate-400 leading-relaxed">
+          <span class="text-xs font-bold text-cyan-600 uppercase tracking-widest">Our Philosophy</span>
+          <h2 class="text-3xl font-bold font-display text-slate-900">A new kind of supply partner for the UAE.</h2>
+          <p class="text-sm text-slate-600 leading-relaxed">
             Delight Group LLC is a UAE-based trade company operating two specialist divisions — Technical Lighting and Greenscapes. We source premium products from global brands and make them available to individuals, designers, contractors, and businesses.
           </p>
-          <p class="text-sm text-slate-400 leading-relaxed">
+          <p class="text-sm text-slate-600 leading-relaxed">
             We are not engineers. We are suppliers who care deeply about product quality and honest service — whether you need one pendant light or a full commercial plant fitout.
           </p>
           <div class="pt-2">
-            <a href="/about" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white bg-slate-900 border border-slate-800 hover:border-slate-700 px-5 py-2.5 rounded-lg transition-colors group/link">
+            <a href="/about" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-5 py-2.5 rounded-lg transition-colors group/link shadow-2xs">
               Our Story
               <ArrowRight class="h-4 w-4 group-hover/link:translate-x-1 transition-transform" />
             </a>
@@ -165,36 +172,36 @@ const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco'
 
         <!-- Categories grids -->
         <div class="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 cascade-item">
-          <div class="rounded-xl border border-slate-900 bg-slate-900/10 p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300">
-            <h4 class="text-sm font-bold text-white flex items-center gap-2">
-              <span class="h-6 w-6 rounded bg-slate-800 flex items-center justify-center text-xs">🏠</span>
+          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300 shadow-2xs">
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span class="h-6 w-6 rounded bg-slate-50 flex items-center justify-center text-xs">🏠</span>
               Residential
             </h4>
-            <p class="text-2xs text-slate-400 leading-relaxed">Villas, high-end apartments, and private homes across Dubai & Abu Dhabi.</p>
+            <p class="text-2xs text-slate-500 leading-relaxed">Villas, high-end apartments, and private homes across Dubai & Abu Dhabi.</p>
           </div>
           
-          <div class="rounded-xl border border-slate-900 bg-slate-900/10 p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300">
-            <h4 class="text-sm font-bold text-white flex items-center gap-2">
-              <span class="h-6 w-6 rounded bg-slate-800 flex items-center justify-center text-xs">🏢</span>
+          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300 shadow-2xs">
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span class="h-6 w-6 rounded bg-slate-50 flex items-center justify-center text-xs">🏢</span>
               Commercial
             </h4>
-            <p class="text-2xs text-slate-400 leading-relaxed">Bespoke office hubs, retail boutiques, and luxury hospitality lobbies.</p>
+            <p class="text-2xs text-slate-500 leading-relaxed">Bespoke office hubs, retail boutiques, and luxury hospitality lobbies.</p>
           </div>
 
-          <div class="rounded-xl border border-slate-900 bg-slate-900/10 p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300">
-            <h4 class="text-sm font-bold text-white flex items-center gap-2">
-              <span class="h-6 w-6 rounded bg-slate-800 flex items-center justify-center text-xs">🏗️</span>
+          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300 shadow-2xs">
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span class="h-6 w-6 rounded bg-slate-50 flex items-center justify-center text-xs">🏗️</span>
               Developers
             </h4>
-            <p class="text-2xs text-slate-400 leading-relaxed">High volume, reliable bulk supply with strict SLA dispatch tracking.</p>
+            <p class="text-2xs text-slate-500 leading-relaxed">High volume, reliable bulk supply with strict SLA dispatch tracking.</p>
           </div>
 
-          <div class="rounded-xl border border-slate-900 bg-slate-900/10 p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300">
-            <h4 class="text-sm font-bold text-white flex items-center gap-2">
-              <span class="h-6 w-6 rounded bg-slate-800 flex items-center justify-center text-xs">🚚</span>
+          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300 shadow-2xs">
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span class="h-6 w-6 rounded bg-slate-50 flex items-center justify-center text-xs">🚚</span>
               UAE-Wide
             </h4>
-            <p class="text-2xs text-slate-400 leading-relaxed">Prompt logistics dispatch and deliveries direct to your project site.</p>
+            <p class="text-2xs text-slate-500 leading-relaxed">Prompt logistics dispatch and deliveries direct to your project site.</p>
           </div>
         </div>
 
@@ -203,21 +210,21 @@ const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco'
   </section>
 
   <!-- Latest Projects -->
-  <section class="py-20 border-t border-slate-900 bg-slate-950/40">
+  <section class="py-20 bg-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-end justify-between gap-4 mb-16 border-b border-slate-900 pb-6 cascade-item">
+      <div class="flex items-end justify-between gap-4 mb-16 border-b border-slate-100 pb-6 cascade-item">
         <div>
-          <span class="text-xs font-bold text-cyan-400 uppercase tracking-widest">Showcase</span>
-          <h2 class="text-3xl font-bold font-display text-white mt-1">Latest Projects</h2>
+          <span class="text-xs font-bold text-cyan-600 uppercase tracking-widest">Showcase</span>
+          <h2 class="text-3xl font-bold font-display text-slate-900 mt-1">Latest Projects</h2>
         </div>
-        <a href="/downloads" class="text-xs font-semibold text-slate-400 hover:text-white transition-colors flex items-center gap-1">
+        <a href="/downloads" class="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">
           View Specifications <ArrowRight class="h-4 w-4" />
         </a>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         {latestProjects.map((proj, idx) => (
-          <div class="group border border-slate-900 rounded-2xl bg-slate-900/20 overflow-hidden flex flex-col justify-between hover:border-slate-800 transition-all duration-300 cascade-item" style={`transition-delay: ${idx * 150}ms`}>
+          <div class="group border border-slate-200 rounded-2xl bg-white overflow-hidden flex flex-col justify-between hover:border-slate-350 transition-all duration-300 cascade-item shadow-2xs hover:shadow-sm" style={`transition-delay: ${idx * 150}ms`}>
             <div>
               <!-- Curtain Reveal Container -->
               <div class={`h-48 overflow-hidden relative reveal-container ${idx === 1 ? 'amber-curtain' : ''}`}>
@@ -227,16 +234,16 @@ const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco'
                   alt={proj.name}
                   class="reveal-image object-cover"
                 />
-                <span class="absolute top-4 right-4 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 text-2xs font-semibold uppercase tracking-wider text-cyan-400 backdrop-blur-md z-20">
+                <span class="absolute top-4 right-4 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider text-cyan-600 backdrop-blur-md z-20">
                   {proj.tag || 'Project'}
                 </span>
               </div>
 
               <div class="p-6">
-                <h3 class="text-md font-bold text-white truncate group-hover:text-cyan-400 transition-colors" title={proj.name}>
+                <h3 class="text-md font-bold text-slate-900 truncate group-hover:text-cyan-600 transition-colors" title={proj.name}>
                   {proj.name}
                 </h3>
-                <p class="text-xs text-slate-400 mt-2.5 leading-relaxed line-clamp-3">
+                <p class="text-xs text-slate-650 mt-2.5 leading-relaxed line-clamp-3">
                   {proj.description}
                 </p>
               </div>
@@ -245,7 +252,7 @@ const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco'
             <div class="px-6 pb-6 pt-2">
               <a 
                 href="/contact"
-                class="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-800 bg-slate-950 text-2xs font-bold text-slate-300 hover:bg-slate-900 transition-colors"
+                class="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 bg-slate-50 text-2xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
               >
                 Inquire About Specifications
               </a>
@@ -256,38 +263,38 @@ const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco'
     </div>
   </section>
 
-  <!-- Brands Carousel Section -->
-  <section class="py-16 border-t border-slate-900 bg-slate-950 relative overflow-hidden select-none cascade-item">
-    <div class="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none"></div>
-    <div class="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none"></div>
+  <!-- Brands Carousel Section (Synced with DB) -->
+  <section class="py-16 border-t border-slate-150 bg-slate-50/40 relative overflow-hidden select-none cascade-item">
+    <div class="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-50/50 to-transparent z-10 pointer-events-none"></div>
+    <div class="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-50/50 to-transparent z-10 pointer-events-none"></div>
     
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-6">
-      <p class="text-center text-3xs font-semibold uppercase tracking-widest text-slate-550">Sourcing from elite global brands</p>
+      <p class="text-center text-3xs font-semibold uppercase tracking-widest text-slate-450">Sourcing from elite global partners</p>
     </div>
 
     <!-- Brands Carousel container -->
     <div class="flex items-center gap-12 whitespace-nowrap overflow-x-hidden py-4">
       <div class="flex items-center gap-16 animate-marquee">
         {brands.concat(brands).map(b => (
-          <span class="text-xl font-bold font-display text-slate-700 tracking-wider hover:text-slate-400 transition-colors">{b.toUpperCase()}</span>
+          <span class="text-xl font-bold font-display text-slate-350 tracking-wider hover:text-slate-600 transition-colors">{b.toUpperCase()}</span>
         ))}
       </div>
     </div>
   </section>
 
   <!-- CTA Band -->
-  <section class="py-16 border-t border-slate-900 bg-gradient-to-br from-slate-950 to-slate-900 relative overflow-hidden cascade-item">
+  <section class="py-16 border-t border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100/50 relative overflow-hidden cascade-item">
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[350px] w-[350px] rounded-full bg-cyan-500/5 blur-[80px]"></div>
 
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative text-center space-y-6">
-      <h2 class="text-2xl sm:text-3xl font-bold font-display text-white">Ready to supply your next project?</h2>
-      <p class="text-sm text-slate-405 max-w-md mx-auto leading-relaxed">
+      <h2 class="text-2xl sm:text-3xl font-bold font-display text-slate-900">Ready to supply your next project?</h2>
+      <p class="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
         Get in touch with our team — we respond within 24 hours with product sheets and custom pricing models.
       </p>
       <div class="pt-2">
         <a 
           href="/contact" 
-          class="inline-flex justify-center text-xs font-bold uppercase tracking-wider text-slate-950 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 px-8 py-3 rounded-xl transition-all shadow-md shadow-cyan-400/10 hover:shadow-cyan-400/25"
+          class="inline-flex justify-center text-xs font-bold uppercase tracking-wider text-slate-950 bg-gradient-to-r from-amber-450 to-amber-500 hover:from-amber-400 hover:to-amber-550 px-8 py-3 rounded-xl transition-all shadow-md shadow-amber-500/10"
         >
           Contact Us Now
         </a>
@@ -413,4 +420,5 @@ const brands = ['Artemide', 'Flos', 'Delta Light', 'Lechuza', 'iGuzzini', 'Erco'
     });
   });
 </script>
+
 
