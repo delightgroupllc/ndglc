@@ -597,19 +597,11 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
           <!-- Column 1: Corporate identity -->
           <div class="space-y-5 col-span-1 md:col-span-1">
             <a href="/" class="inline-block">
-              <img src="/dgllclogosmall.png" alt="Delight Group Logo" class="h-14 w-auto object-contain" />
+              <img src="/dgllclogosmall.png" alt="Delight Group Logo" class="h-20 w-auto object-contain" />
             </a>
             <p class="text-sm text-slate-500 leading-relaxed max-w-xs">
               Premium technical lighting and curated greenscapes supplied across the UAE.
             </p>
-            <div class="flex gap-3">
-              <a href="mailto:info@delightgroupllc.com" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center text-slate-500 transition-colors" title="Email">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-              </a>
-              <a href="tel:+971566618040" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center text-slate-500 transition-colors" title="Phone">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.21 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21.5 16a2 2 0 0 1 .5.92Z"/></svg>
-              </a>
-            </div>
           </div>
 
           <!-- Column 2: Divisions -->
@@ -643,6 +635,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
             <ul class="space-y-3">
               <li><a href="/about" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Our Story</a></li>
               <li><a href="/downloads" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Downloads</a></li>
+              <li><a href="/news" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Newsroom</a></li>
               <li><a href="/contact" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Contact Support</a></li>
             </ul>
           </div>
@@ -652,13 +645,20 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
             <h4 class="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Get In Touch</h4>
             <ul class="space-y-3 text-sm text-slate-600">
               <li>
-                <a href="mailto:info@delightgroupllc.com" class="hover:text-slate-900 transition-colors hover:font-semibold">info@delightgroupllc.com</a>
+                <a href="mailto:info@delightgroupllc.com" class="hover:text-slate-900 transition-colors hover:font-semibold inline-flex items-center gap-2 group">
+                  <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  <span>info@delightgroupllc.com</span>
+                </a>
               </li>
               <li>
-                <a href="tel:+971566618040" class="hover:text-slate-900 transition-colors hover:font-semibold">+971 56 661 8040</a>
+                <a href="tel:+971566618040" class="hover:text-slate-900 transition-colors hover:font-semibold inline-flex items-center gap-2 group">
+                  <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.21 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.5a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21.5 16a2 2 0 0 1 .5.92Z"/></svg>
+                  <span>+971 56 661 8040</span>
+                </a>
               </li>
-              <li class="text-slate-400 leading-relaxed text-xs">
-                Shams Business Center<br />Sharjah, United Arab Emirates
+              <li class="text-slate-400 leading-relaxed text-xs inline-flex items-start gap-2 pt-1">
+                <svg class="w-4 h-4 text-slate-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>Shams Business Center<br />Sharjah, United Arab Emirates</span>
               </li>
             </ul>
           </div>
