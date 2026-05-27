@@ -86,6 +86,8 @@ try {
   // Secondary nav is optional; log for debugging but keep site working
   console.warn('Secondary nav categories lookup failed:', e?.message || e);
 }
+
+const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.com').href;
 ---
 
 <!DOCTYPE html>
@@ -101,12 +103,41 @@ try {
     <link rel="manifest" href="/favicons/site.webmanifest" />
     <meta name="generator" content={Astro.generator} />
     <title>{title} | Delight Group LLC</title>
+    
+    <!-- Primary SEO Metadata -->
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    <meta name="robots" content="index, follow" />
+    <link rel="sitemap" href="/sitemap.xml" />
+
+    <!-- Open Graph / Facebook / LinkedIn -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:title" content={`${title} | Delight Group LLC`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content="https://www.delightgroupllc.com/dgllclogolarge.png" />
+
+    <!-- Twitter Card -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content={canonicalUrl} />
+    <meta property="twitter:title" content={`${title} | Delight Group LLC`} />
+    <meta property="twitter:description" content={description} />
+    <meta property="twitter:image" content="https://www.delightgroupllc.com/dgllclogolarge.png" />
     
     <!-- Google Fonts: Outfit and Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Vercel Telemetry Integration -->
+    <script>
+      import { inject } from '@vercel/analytics';
+      import { injectSpeedInsights } from '@vercel/speed-insights';
+
+      // Initialize privacy-friendly client telemetry
+      inject();
+      injectSpeedInsights();
+    </script>
 
     <style is:global>
       :root {
