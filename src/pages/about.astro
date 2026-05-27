@@ -11,28 +11,28 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
       <!-- Soft ambient glows -->
       <div class="absolute top-0 right-0 -mr-32 -mt-32 w-[500px] h-[500px] rounded-full bg-amber-50/60 opacity-60 blur-3xl pointer-events-none select-none z-0"></div>
       <div class="absolute bottom-0 left-0 -ml-32 -mb-32 w-[500px] h-[500px] rounded-full bg-green-50/60 opacity-60 blur-3xl pointer-events-none select-none z-0"></div>
-
+ 
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           
           <!-- Left Column (Text & Buttons) -->
           <div class="lg:col-span-7 text-left space-y-6">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] block">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] block hero-animate">
               DELIGHT GROUP LLC &bull; SHARJAH, UAE
             </span>
             
-            <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold font-display tracking-tight text-slate-900 leading-tight">
+            <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold font-display tracking-tight text-slate-900 leading-tight hero-animate">
               We supply <br />
               <span class="text-[#b45309] font-serif italic font-medium">light</span> & 
               <span class="text-[#166534] font-serif italic font-medium">nature</span> <br />
               to the UAE.
             </h1>
             
-            <p class="text-sm sm:text-base text-slate-500 font-semibold leading-relaxed max-w-xl">
+            <p class="text-sm sm:text-base text-slate-500 font-semibold leading-relaxed max-w-xl hero-animate">
               Two specialist divisions. One trusted supplier. Premium products for homes, businesses, and developers — available to all.
             </p>
             
-            <div class="flex flex-col sm:flex-row items-center gap-4 pt-4">
+            <div class="flex flex-col sm:flex-row items-center gap-4 pt-4 hero-animate">
               <a 
                 href="/delighttechnicallighting" 
                 class="w-full sm:w-auto px-6 py-4 bg-[#082a17] hover:bg-[#051a0e] text-white font-extrabold rounded-lg text-xs uppercase tracking-wider inline-flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/10 hover:shadow-lg hover:-translate-y-0.5"
@@ -48,25 +48,25 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
               </a>
             </div>
           </div>
-
-          <!-- Right Column (Premium Hero Image with Curved Frame) -->
+ 
+          <!-- Right Column (Premium Hero Image with Curved Frame and Curtain Reveal) -->
           <div class="lg:col-span-5">
-            <div class="relative w-full h-[380px] sm:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-slate-100 bg-slate-50 group">
+            <div class="relative w-full h-[380px] sm:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-slate-100 bg-slate-50 reveal-container">
+              <div class="reveal-curtain"></div>
               <img 
                 src="/about-hero.png" 
                 alt="Delight Group Upscale Lighting & Greenscapes Entryway" 
-                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-103"
+                class="reveal-image object-cover"
               />
-              <div class="absolute inset-0 bg-gradient-to-t from-black/5 via-transparent to-transparent"></div>
             </div>
           </div>
-
+ 
         </div>
       </div>
     </section>
-
-    <!-- Dark Forest Green Bar Banners -->
-    <div class="bg-[#082a17] py-5 shadow-lg relative z-20">
+ 
+    <!-- Dark Forest Green Bar Banners (Cascade Stagger) -->
+    <div class="bg-[#082a17] py-5 shadow-lg relative z-20 cascade-item">
       <div class="mx-auto max-w-7xl px-4">
         <div class="flex flex-wrap md:flex-nowrap justify-between items-center gap-6 md:gap-4 text-white text-[10px] font-black uppercase tracking-[0.2em]">
           
@@ -75,51 +75,51 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
             <Cpu class="w-4 h-4 text-emerald-450 shrink-0" />
             <span>Technical Lighting</span>
           </div>
-
+ 
           <!-- Vertical Dots / Dividers on desktop -->
           <span class="hidden md:inline text-emerald-800 opacity-60">&bull;</span>
-
+ 
           <!-- Greenscapes -->
           <div class="flex items-center gap-2 mx-auto md:mx-0">
             <Leaf class="w-4 h-4 text-emerald-450 shrink-0" />
             <span>Greenscapes</span>
           </div>
-
+ 
           <span class="hidden md:inline text-emerald-800 opacity-60">&bull;</span>
-
+ 
           <!-- B2B & B2C -->
           <div class="flex items-center gap-2 mx-auto md:mx-0">
             <Users class="w-4 h-4 text-emerald-450 shrink-0" />
             <span>B2B & B2C</span>
           </div>
-
+ 
           <span class="hidden md:inline text-emerald-800 opacity-60">&bull;</span>
-
+ 
           <!-- UAE-Wide Delivery -->
           <div class="flex items-center gap-2 mx-auto md:mx-0">
             <Truck class="w-4 h-4 text-emerald-450 shrink-0" />
             <span>UAE-Wide Delivery</span>
           </div>
-
+ 
           <span class="hidden md:inline text-emerald-800 opacity-60">&bull;</span>
-
+ 
           <!-- Sharjah Based -->
           <div class="flex items-center gap-2 mx-auto md:mx-0">
             <MapPin class="w-4 h-4 text-emerald-450 shrink-0" />
             <span>Sharjah Based</span>
           </div>
-
+ 
         </div>
       </div>
     </div>
-
+ 
     <!-- Greetings / Our Story Section -->
     <section class="py-24 bg-[#fcfdfd] relative border-b border-slate-100">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-12 items-start">
           
           <!-- Left Column (Heading + Architectural Sketch) -->
-          <div class="lg:col-span-5 space-y-6">
+          <div class="lg:col-span-5 space-y-6 cascade-item">
             <span class="text-xs font-bold text-amber-500 uppercase tracking-widest block">Our Story</span>
             <h2 class="text-4xl font-extrabold font-display text-slate-900 leading-tight">Greetings from <br />Delight Group LLC</h2>
             
@@ -148,9 +148,9 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
               </svg>
             </div>
           </div>
-
+ 
           <!-- Right Column (Text Description) -->
-          <div class="lg:col-span-7 space-y-6 text-sm text-slate-500 font-semibold leading-relaxed text-left">
+          <div class="lg:col-span-7 space-y-6 text-sm text-slate-500 font-semibold leading-relaxed text-left cascade-item">
             <p>
               Delight Group LLC is a UAE-based trading company headquartered in Sharjah. We are the parent organization of two specialist supply divisions — <strong class="text-slate-800 font-bold">Delight Technical Lighting</strong> and <strong class="text-slate-800 font-bold">Delight Greenscapes</strong>.
             </p>
@@ -161,32 +161,32 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
               As a new company entering the UAE market, our commitment is simple: honest pricing, genuine products, and service that makes you want to come back.
             </p>
           </div>
-
+ 
         </div>
-
+ 
         <!-- Premium Redesigned Division Panels (Replicating exact card features) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mt-24">
           
           <!-- Card 1: DTL Division -->
-          <div class="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/5 rounded-3xl p-8 sm:p-10 text-left transition-all duration-300 hover:shadow-2xl hover:border-slate-350/80 hover:-translate-y-1 relative overflow-hidden group">
+          <div class="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/5 rounded-3xl p-8 sm:p-10 text-left transition-all duration-300 hover:shadow-2xl hover:border-slate-350/80 hover:-translate-y-1 relative overflow-hidden group cascade-item">
             <div class="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-amber-500/5 opacity-50 blur-2xl group-hover:bg-amber-500/10 transition-all duration-500"></div>
             
             <div class="w-12 h-12 bg-amber-50 text-[#b45309] rounded-2xl flex items-center justify-center mb-8 border border-amber-100 shadow-sm shrink-0">
               <Lightbulb class="w-5.5 h-5.5" />
             </div>
-
+ 
             <h3 class="text-xl sm:text-2xl font-extrabold tracking-tight mb-4 font-display">
               <span class="text-slate-400 font-bold uppercase tracking-wider text-sm sm:text-base mr-1">DELIGHT</span>
               <span class="text-[#b45309] uppercase tracking-wide">TECHNICAL LIGHTING</span>
             </h3>
             
-            <p class="text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold mb-8">
+            <p class="text-xs sm:text-sm text-slate-550 leading-relaxed font-semibold mb-8">
               We supply premium indoor and outdoor lighting fixtures from trusted global brands to homes, offices, hotels, retail spaces, and development projects across the UAE. From pendant lights and downlights to architectural outdoor fixtures — if it illuminates a space, we carry it.
             </p>
-
+ 
             <ul class="space-y-3.5 mb-10">
               {['INDOOR LIGHTING FIXTURES', 'OUTDOOR & FACADE LIGHTING', 'DECORATIVE & STATEMENT PIECES', 'BULK B2B TRADE SUPPLY'].map(item => (
-                <li class="flex items-center gap-3 text-[11px] font-black text-slate-700 tracking-wider">
+                <li class="flex items-center gap-3 text-[11px] font-black text-slate-750 tracking-wider">
                   <span class="w-5 h-5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[#b45309] flex items-center justify-center shrink-0">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                   </span>
@@ -194,7 +194,7 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
                 </li>
               ))}
             </ul>
-
+ 
             <a 
               href="/delighttechnicallighting" 
               class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#b45309] hover:text-amber-800 transition-colors border-b-2 border-amber-500/20 hover:border-amber-600 pb-0.5"
@@ -203,27 +203,27 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
               <ArrowRight class="w-3.5 h-3.5" />
             </a>
           </div>
-
+ 
           <!-- Card 2: DGS Division -->
-          <div class="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/5 rounded-3xl p-8 sm:p-10 text-left transition-all duration-300 hover:shadow-2xl hover:border-slate-350/80 hover:-translate-y-1 relative overflow-hidden group">
+          <div class="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/5 rounded-3xl p-8 sm:p-10 text-left transition-all duration-300 hover:shadow-2xl hover:border-slate-350/80 hover:-translate-y-1 relative overflow-hidden group cascade-item">
             <div class="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-emerald-500/5 opacity-50 blur-2xl group-hover:bg-emerald-500/10 transition-all duration-500"></div>
-
+ 
             <div class="w-12 h-12 bg-emerald-50 text-[#166534] rounded-2xl flex items-center justify-center mb-8 border border-emerald-100 shadow-sm shrink-0">
               <Leaf class="w-5.5 h-5.5" />
             </div>
-
+ 
             <h3 class="text-xl sm:text-2xl font-extrabold tracking-tight mb-4 font-display">
               <span class="text-slate-400 font-bold uppercase tracking-wider text-sm sm:text-base mr-1">DELIGHT</span>
               <span class="text-[#166534] uppercase tracking-wide">GREENSCAPES</span>
             </h3>
-
-            <p class="text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold mb-8">
+ 
+            <p class="text-xs sm:text-sm text-slate-555 leading-relaxed font-semibold mb-8">
               We supply curated indoor and outdoor plants, decorative pots, and planters to residences, offices, hotels, and commercial developments. Whether you need a single statement palm for your living room or bulk greenery for a hotel lobby fitout, Greenscapes is your UAE source.
             </p>
-
+ 
             <ul class="space-y-3.5 mb-10">
               {['INDOOR PLANTS & COLLECTIONS', 'OUTDOOR & GARDEN PLANTS', 'COMMERCIAL B2B PLANT SUPPLY', 'DECORATIVE POTS & PLANTERS'].map(item => (
-                <li class="flex items-center gap-3 text-[11px] font-black text-slate-700 tracking-wider">
+                <li class="flex items-center gap-3 text-[11px] font-black text-slate-750 tracking-wider">
                   <span class="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[#166534] flex items-center justify-center shrink-0">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                   </span>
@@ -231,7 +231,7 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
                 </li>
               ))}
             </ul>
-
+ 
             <a 
               href="/delightgreenscapes" 
               class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#166534] hover:text-emerald-800 transition-colors border-b-2 border-emerald-500/20 hover:border-emerald-700 pb-0.5"
@@ -240,18 +240,18 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
               <ArrowRight class="w-3.5 h-3.5" />
             </a>
           </div>
-
+ 
         </div>
       </div>
     </section>
-
+ 
     <!-- Circular Vision, Mission, Values (Precise Outline Rows) -->
     <section class="py-24 bg-white border-b border-slate-100">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16">
           
           <!-- Vision -->
-          <div class="flex flex-col text-left space-y-4">
+          <div class="flex flex-col text-left space-y-4 cascade-item">
             <div class="flex items-center gap-4">
               <div class="w-12 h-12 rounded-full border border-slate-200/80 flex items-center justify-center text-[#b45309] bg-slate-50/50 shadow-2xs shrink-0">
                 <Target class="w-5 h-5" />
@@ -264,9 +264,9 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
               To become the UAE's most trusted specialist supplier of premium lighting and plants — valued for quality, transparency, and dependable service.
             </p>
           </div>
-
+ 
           <!-- Mission -->
-          <div class="flex flex-col text-left space-y-4">
+          <div class="flex flex-col text-left space-y-4 cascade-item" style="transition-delay: 150ms">
             <div class="flex items-center gap-4">
               <div class="w-12 h-12 rounded-full border border-slate-200/80 flex items-center justify-center text-[#b45309] bg-slate-50/50 shadow-2xs shrink-0">
                 <Heart class="w-5 h-5" />
@@ -279,9 +279,9 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
               Make beautiful, high-quality products accessible to every client — from a homeowner redecorating a room to a developer fitting out an entire building.
             </p>
           </div>
-
+ 
           <!-- Values -->
-          <div class="flex flex-col text-left space-y-4">
+          <div class="flex flex-col text-left space-y-4 cascade-item" style="transition-delay: 300ms">
             <div class="flex items-center gap-4">
               <div class="w-12 h-12 rounded-full border border-slate-200/80 flex items-center justify-center text-[#b45309] bg-slate-50/50 shadow-2xs shrink-0">
                 <ShieldCheck class="w-5 h-5" />
@@ -290,7 +290,7 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
                 Values
               </h4>
             </div>
-            <ul class="space-y-2.5 text-xs font-semibold text-slate-550 pl-1">
+            <ul class="space-y-2.5 text-xs font-semibold text-slate-500 pl-1">
               <li class="flex items-center gap-2">
                 <span class="w-1 h-1 rounded-full bg-slate-400"></span>
                 Honest about what we are — resellers, not engineers
@@ -309,11 +309,11 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
               </li>
             </ul>
           </div>
-
+ 
         </div>
       </div>
     </section>
-
+ 
     <!-- Work With Us CTA (Leaf Overlay Integration) -->
     <section class="py-24 bg-[#f8fafc] text-center relative overflow-hidden border-t border-slate-200/40">
       
@@ -332,8 +332,8 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
           class="w-44 sm:w-60 h-auto"
         />
       </div>
-
-      <div class="mx-auto max-w-3xl px-4 relative z-10 space-y-6">
+ 
+      <div class="mx-auto max-w-3xl px-4 relative z-10 space-y-6 cascade-item">
         <span class="text-xs font-bold text-[#b45309] uppercase tracking-widest block">Work With Us</span>
         <h2 class="text-3xl sm:text-4xl font-extrabold font-display text-slate-900 leading-tight max-w-xl mx-auto">
           Whether you need lighting or plants &mdash; we've got you.
@@ -355,6 +355,112 @@ import { Cpu, Leaf, Users, Truck, MapPin, Target, Heart, ShieldCheck, ArrowRight
         </div>
       </div>
     </section>
-
+ 
   </div>
 </Layout>
+
+<style is:global>
+  /* Curtain Reveal Animation */
+  .reveal-container {
+    position: relative;
+    overflow: hidden;
+    background-color: #020617;
+  }
+  .reveal-image {
+    width: 100%;
+    height: 100%;
+    transform: scale(1.18);
+    opacity: 0;
+    filter: blur(8px);
+    transition: transform 1.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), 
+                filter 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal-curtain {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #059669, #047857); /* Greenscapes curtain */
+    z-index: 10;
+    transform: scaleX(1);
+    transform-origin: left;
+    transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+
+  /* Trigger reveal state */
+  .reveal-container.is-revealed .reveal-image {
+    transform: scale(1);
+    opacity: 0.95;
+    filter: blur(0);
+  }
+  .reveal-container.is-revealed .reveal-curtain {
+    transform: scaleX(0);
+    transform-origin: right;
+  }
+
+  /* Cascade Item scroll animation */
+  .cascade-item {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .cascade-item.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Hero slide-up cascade styles */
+  .hero-animate {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hero-animate.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+
+<script>
+  // Scroll reveal handler using standard IntersectionObserver
+  const observerOptions = {
+    root: null,
+    threshold: 0.1,
+    rootMargin: "0px 0px -50px 0px"
+  };
+
+  const observer = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        // Reveal curtain container
+        if (entry.target.classList.contains('reveal-container')) {
+          entry.target.classList.add('is-revealed');
+        }
+        // Reveal cascade item
+        if (entry.target.classList.contains('cascade-item')) {
+          entry.target.classList.add('is-visible');
+        }
+        observer.unobserve(entry.target);
+      }
+    });
+  }, observerOptions);
+
+  // Bind observer to elements
+  document.querySelectorAll('.reveal-container, .cascade-item').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Stagger animate Hero elements immediately on mount
+  window.addEventListener('DOMContentLoaded', () => {
+    const heroElements = document.querySelectorAll('.hero-animate');
+    heroElements.forEach((el, idx) => {
+      setTimeout(() => {
+        el.classList.add('is-visible');
+      }, idx * 150);
+    });
+  });
+</script>

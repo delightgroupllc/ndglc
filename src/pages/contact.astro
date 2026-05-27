@@ -26,10 +26,10 @@ const faqs = [
         
         <!-- Hero Section -->
         <div class="text-center max-w-2xl mx-auto mb-12 space-y-4">
-          <h1 class="text-4xl sm:text-6xl font-extrabold font-display text-slate-900 tracking-tight leading-none">
+          <h1 class="text-4xl sm:text-6xl font-extrabold font-display text-slate-900 tracking-tight leading-none hero-animate">
             Let's Start a <span class="text-[#0f2d1d]">Conversation</span>
           </h1>
-          <p class="text-sm sm:text-base text-slate-500 font-medium leading-relaxed max-w-lg mx-auto">
+          <p class="text-sm sm:text-base text-slate-500 font-medium leading-relaxed max-w-lg mx-auto hero-animate">
             Whether you have a specific project in mind or just want to explore possibilities, our team is ready to assist.
           </p>
         </div>
@@ -38,7 +38,7 @@ const faqs = [
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start mb-24">
           
           <!-- Left Column: Info & Urgent -->
-          <div class="lg:col-span-4 space-y-8">
+          <div class="lg:col-span-4 space-y-8 cascade-item">
             <!-- Direct Channels Card -->
             <div class="bg-white border border-slate-200 shadow-xl shadow-slate-200/5 rounded-2xl p-8 relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/10 hover:border-slate-300">
               <div class="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-slate-50 opacity-50 blur-2xl"></div>
@@ -96,7 +96,7 @@ const faqs = [
                 <AlertCircle class="w-5 h-5 text-slate-900" />
               </div>
               <h3 class="text-xl font-bold font-display text-white mb-2">Urgent Response</h3>
-              <p class="text-xs text-slate-350 mb-6 leading-relaxed">
+              <p class="text-xs text-slate-355 mb-6 leading-relaxed">
                 Call our 24/7 technical hotline for immediate emergency on-site assistance and deployment.
               </p>
               <div>
@@ -112,13 +112,13 @@ const faqs = [
           </div>
  
           <!-- Right Column: Form -->
-          <div class="lg:col-span-8">
+          <div class="lg:col-span-8 cascade-item" style="transition-delay: 150ms">
             <ContactForm />
           </div>
         </div>
  
         <!-- Common Questions -->
-        <div class="max-w-3xl mx-auto">
+        <div class="max-w-3xl mx-auto cascade-item" style="transition-delay: 300ms">
           <div class="bg-white border border-slate-200 shadow-xl shadow-slate-200/5 rounded-2xl p-8 sm:p-10">
             <div class="text-center mb-8 space-y-2">
               <h2 class="text-2xl font-bold font-display text-slate-900">
@@ -134,3 +134,64 @@ const faqs = [
     </div>
   </div>
 </Layout>
+
+<style is:global>
+  /* Cascade Item scroll animation */
+  .cascade-item {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .cascade-item.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Hero slide-up cascade styles */
+  .hero-animate {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hero-animate.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+
+<script>
+  // Scroll reveal handler using standard IntersectionObserver
+  const observerOptions = {
+    root: null,
+    threshold: 0.1,
+    rootMargin: "0px 0px -50px 0px"
+  };
+
+  const observer = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        if (entry.target.classList.contains('cascade-item')) {
+          entry.target.classList.add('is-visible');
+        }
+        observer.unobserve(entry.target);
+      }
+    });
+  }, observerOptions);
+
+  // Bind observer to elements
+  document.querySelectorAll('.cascade-item').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Stagger animate Hero elements immediately on mount
+  window.addEventListener('DOMContentLoaded', () => {
+    const heroElements = document.querySelectorAll('.hero-animate');
+    heroElements.forEach((el, idx) => {
+      setTimeout(() => {
+        el.classList.add('is-visible');
+      }, idx * 150);
+    });
+  });
+</script>
