@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
-import tailwind from '@astrojs/tailwind';
 import node from '@astrojs/node';
 import clerk from '@clerk/astro';
+import tailwindcss from '@tailwindcss/vite'; // 1. Import Tailwind's native Vite plugin
 
 // https://astro.build/config
 export default defineConfig({
@@ -10,7 +10,9 @@ export default defineConfig({
     mode: 'standalone'
   }),
   integrations: [
-    tailwind(),
-    clerk()
-  ]
+    clerk() // 2. Keep Clerk here
+  ],
+  vite: {
+    plugins: [tailwindcss()], // 3. Embed Tailwind inside the Vite layer
+  },
 });
