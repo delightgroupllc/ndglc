@@ -1,0 +1,235 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { query } from '../../lib/db';
+import { Calendar, Tag, ArrowRight, Lightbulb, Flower, Newspaper, Filter } from 'lucide-astro';
+
+let articles: any[] = [];
+let dbConnected = true;
+
+try {
+  const res = await query("SELECT * FROM articles WHERE status = 'published' ORDER BY published_at DESC, created_at DESC");
+  articles = res.rows.map((d: any) => ({
+    id: d.id,
+    title: d.title,
+    slug: d.slug,
+    summary: d.summary || 'Read full article details...',
+    division: d.division || 'both',
+    type: d.type || 'announcement',
+    published_at: d.published_at || d.created_at,
+    featured_image: d.featured_image || '/about-hero.png'
+  }));
+} catch (err: any) {
+  dbConnected = false;
+  console.warn("Database offline, rendering high-fidelity mock newsroom articles:", err.message);
+  
+  // High-fidelity fallback articles matching editorial brand
+  articles = [
+    {
+      id: 1,
+      title: 'Delight Technical Lighting Secures Flagship Abu Dhabi Hotel Facade Project',
+      slug: 'abu-dhabi-hotel-facade',
+      summary: 'Delight Group has been selected as the prime luminaire reselling partner for an upscale facade lighting installation across Abu Dhabi, introducing next-generation warm-led fixtures.',
+      division: 'dtl',
+      type: 'announcement',
+      published_at: '2026-05-20',
+      featured_image: '/about-hero.png'
+    },
+    {
+      id: 2,
+      title: 'The Rise of Biophilic Architecture: Integrating Thriving Greenscapes into Office Spaces',
+      slug: 'biophilic-architecture-office-spaces',
+      summary: 'Explore how indoor green layouts improve air quality, increase workforce productivity, and align office interior workspaces with modern B2B sustainable designs.',
+      division: 'dgs',
+      type: 'article',
+      published_at: '2026-05-15',
+      featured_image: '/about-hero.png'
+    },
+    {
+      id: 3,
+      title: 'Sustainable LED Core Fixtures: Aligning Compliance with the New UAE Lighting Codes',
+      slug: 'sustainable-led-uae-lighting-codes',
+      summary: 'A deep dive guide into the newly updated energy guidelines across Dubai and Sharjah, showing fitout contractors how to select compliant decorative and downlight products.',
+      division: 'dtl',
+      type: 'guide',
+      published_at: '2026-05-08',
+      featured_image: '/about-hero.png'
+    },
+    {
+      id: 4,
+      title: 'Delight Group LLC Announces Central Logistics Expansion in Sharjah Shams',
+      slug: 'sharjah-shams-logistics-expansion',
+      summary: 'To streamline UAE-wide delivery commitments, we are scaling our storage capacity, ensuring stock availability of high-demand lighting models and pot plant collections.',
+      division: 'both',
+      type: 'announcement',
+      published_at: '2026-04-28',
+      featured_image: '/about-hero.png'
+    }
+  ];
+}
+
+// Format dates
+articles = articles.map(art => {
+  const d = new Date(art.published_at);
+  return {
+    ...art,
+    formattedDate: d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  };
+});
+---
+
+<Layout title="Newsroom & Insights" description="Latest announcements, biophilic articles, and lighting guides from Delight Group LLC.">
+  <div class="min-h-screen bg-[#fbfaf7] py-16 sm:py-24 relative overflow-hidden">
+    <!-- Subtle architectural blueprint background -->
+    <div class="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(#000000 1.5px, transparent 1.5px); background-size: 32px 32px;"></div>
+    
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      
+      <!-- Premium Newsroom Header -->
+      <div class="border-b border-slate-200/60 pb-10 text-left space-y-4 max-w-3xl">
+        <span class="text-[10px] font-black uppercase tracking-[0.25em] text-[#a34e36] block">
+          Delight Publications
+        </span>
+        <h1 class="text-4xl sm:text-6xl font-serif text-[#0f2d1d] font-semibold leading-tight tracking-tight">
+          Newsroom & Insights
+        </h1>
+        <p class="text-slate-600 font-semibold text-sm sm:text-base leading-relaxed">
+          Explore our latest projects, architectural deep-dives, corporate publications, and biophilic research designed to bring precision to your architectural workflows.
+        </p>
+      </div>
+
+      <!-- Categories Filter Tabs (Interactive Client Side Filtering) -->
+      <div class="flex flex-wrap items-center gap-2 border-b border-slate-200/40 pb-6">
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider mr-2 flex items-center gap-1.5 shrink-0">
+          <Filter class="w-3.5 h-3.5" />
+          Filter Insights:
+        </span>
+        <button class="filter-tab active px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg bg-[#0f2d1d] text-white border border-transparent transition-all" data-filter="all">
+          All Insights
+        </button>
+        <button class="filter-tab px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-all" data-filter="dtl">
+          Technical Lighting
+        </button>
+        <button class="filter-tab px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-all" data-filter="dgs">
+          Greenscapes
+        </button>
+        <button class="filter-tab px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-all" data-filter="both">
+          Global Corporate
+        </button>
+      </div>
+
+      <!-- Articles Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="articles-grid">
+        {articles.map(art => {
+          const isDtl = art.division === 'dtl';
+          const isDgs = art.division === 'dgs';
+          
+          let divisionBadge = 'Delight Corporate';
+          let divisionClass = 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20';
+          let borderHoverClass = 'hover:border-emerald-700/45';
+          let accentText = 'text-emerald-700';
+          let DivisionIcon = Newspaper;
+
+          if (isDtl) {
+            divisionBadge = 'Technical Lighting';
+            divisionClass = 'bg-amber-500/10 text-amber-800 border-amber-500/20';
+            borderHoverClass = 'hover:border-amber-700/45';
+            accentText = 'text-[#7f2d1b]';
+            DivisionIcon = Lightbulb;
+          } else if (isDgs) {
+            divisionBadge = 'Greenscapes';
+            divisionClass = 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20';
+            borderHoverClass = 'hover:border-emerald-700/45';
+            accentText = 'text-[#0f2d1d]';
+            DivisionIcon = Flower;
+          }
+
+          return (
+            <div 
+              class={`bg-white rounded-3xl border border-slate-200/50 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between h-full group ${borderHoverClass} article-card`}
+              data-division={art.division}
+            >
+              <div>
+                <!-- Cover Image -->
+                <div class="relative aspect-video w-full bg-slate-100 overflow-hidden">
+                  <img 
+                    src={art.featured_image} 
+                    alt={art.title} 
+                    class="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                  />
+                  <!-- Division overlay tag -->
+                  <span class={`absolute top-4 left-4 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded border backdrop-blur-md ${divisionClass} flex items-center gap-1.5`}>
+                    <DivisionIcon class="w-3 h-3" />
+                    {divisionBadge}
+                  </span>
+                </div>
+
+                <!-- Text Body -->
+                <div class="p-6 sm:p-8 space-y-4 text-left">
+                  <div class="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <span class="px-1.5 py-0.5 border border-slate-200 rounded">{art.type}</span>
+                    <span>&bull;</span>
+                    <span class="flex items-center gap-1">
+                      <Calendar class="w-3.5 h-3.5" />
+                      {art.formattedDate}
+                    </span>
+                  </div>
+
+                  <h3 class="text-xl sm:text-2xl font-serif text-slate-900 font-medium leading-snug group-hover:text-slate-950 transition-colors">
+                    {art.title}
+                  </h3>
+
+                  <p class="text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold">
+                    {art.summary}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Action Card footer -->
+              <div class="px-6 pb-8 pt-2 text-left">
+                <a 
+                  href={`/news/${art.slug}`}
+                  class={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest ${accentText} hover:opacity-80 transition-opacity border-b-2 border-current pb-0.5`}
+                >
+                  <span>Read Article</span>
+                  <ArrowRight class="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                </a>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Dynamic Client-side Category Filtering
+  const tabs = document.querySelectorAll('.filter-tab');
+  const cards = document.querySelectorAll('.article-card');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Remove active state
+      tabs.forEach(t => {
+        t.classList.remove('active', 'bg-[#0f2d1d]', 'text-white', 'border-transparent');
+        t.classList.add('bg-white', 'text-slate-700', 'border-slate-200');
+      });
+
+      // Set current active
+      tab.classList.add('active', 'bg-[#0f2d1d]', 'text-white', 'border-transparent');
+      tab.classList.remove('bg-white', 'text-slate-700', 'border-slate-200');
+
+      const filterVal = tab.getAttribute('data-filter');
+
+      cards.forEach(card => {
+        const cardDiv = card.getAttribute('data-division');
+        if (filterVal === 'all' || cardDiv === filterVal) {
+          (card as HTMLElement).style.display = 'flex';
+        } else {
+          (card as HTMLElement).style.display = 'none';
+        }
+      });
+    });
+  });
+</script>

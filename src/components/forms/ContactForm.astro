@@ -1,65 +1,63 @@
 ---
 ---
 
-<div class="bg-white/85 backdrop-blur-xl border border-slate-200/60 shadow-2xl shadow-slate-200/5 rounded-2xl p-8 sm:p-10 transition-all duration-300 hover:shadow-slate-250/10 hover:border-slate-300/80">
-  <div class="mb-8 text-left space-y-1">
-    <h3 class="text-2xl font-bold font-display text-slate-900 leading-tight">Project Inquiry</h3>
-    <p class="text-xs text-slate-500 font-medium">Submit your details and our division lead will reach out within 24 hours.</p>
+<div class="bg-white p-6 sm:p-12 text-left space-y-6 rounded-3xl h-full flex flex-col justify-center">
+  <div class="space-y-3">
+    <span class="text-[10px] font-black tracking-[0.2em] text-[#b45309] uppercase block">
+      Start a Conversation
+    </span>
+    <h3 class="text-3xl sm:text-4xl font-serif text-slate-900 font-medium">Project Inquiry</h3>
+    <p class="text-xs sm:text-sm text-slate-500 font-semibold leading-relaxed">
+      Share your vision with us. Whether it's a private retreat or a sustainable commercial hub, our team is ready to bring precision to your concept.
+    </p>
   </div>
 
-  <form id="contact-form" class="space-y-6">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-      <div class="space-y-2 text-left">
-        <label for="name" class="block text-[11px] font-black uppercase tracking-wider text-slate-500">Name</label>
-        <input type="text" id="name" name="name" required class="w-full bg-slate-50/60 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none rounded-xl px-4 py-3.5 text-sm font-semibold text-slate-800 placeholder-slate-405/80" placeholder="Full Name" />
+  <form id="contact-form" class="space-y-8 pt-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+      <!-- Full Name -->
+      <div class="space-y-2 relative border-b border-slate-200 focus-within:border-slate-900 transition-colors pb-1">
+        <label for="name" class="block text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Full Name</label>
+        <input type="text" id="name" name="name" required class="w-full bg-transparent outline-none py-1 text-sm font-semibold text-slate-800 placeholder-slate-350" placeholder="e.g. John Doe" />
       </div>
-      <div class="space-y-2 text-left">
-        <label for="email" class="block text-[11px] font-black uppercase tracking-wider text-slate-500">Work Email</label>
-        <input type="email" id="email" name="email" required class="w-full bg-slate-50/60 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none rounded-xl px-4 py-3.5 text-sm font-semibold text-slate-800 placeholder-slate-405/80" placeholder="email@company.ae" />
+      
+      <!-- Email Address -->
+      <div class="space-y-2 relative border-b border-slate-200 focus-within:border-slate-900 transition-colors pb-1">
+        <label for="email" class="block text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Email Address</label>
+        <input type="email" id="email" name="email" required class="w-full bg-transparent outline-none py-1 text-sm font-semibold text-slate-800 placeholder-slate-350" placeholder="e.g. john@company.ae" />
       </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-      <div class="space-y-2 text-left">
-        <label for="phone" class="block text-[11px] font-black uppercase tracking-wider text-slate-500">Phone Number</label>
-        <div class="flex shadow-sm rounded-xl overflow-hidden">
-          <select class="bg-slate-50/80 border border-slate-200 border-r-0 rounded-l-xl px-3 py-3.5 text-xs font-bold text-slate-700 focus:border-blue-500 outline-none">
-            <option>UAE (+971)</option>
-          </select>
-          <input type="tel" id="phone" name="phone" required class="w-full bg-slate-50/60 border border-slate-200 rounded-r-xl px-4 py-3.5 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all placeholder-slate-405/80" placeholder="50 000 0000" />
-        </div>
-      </div>
-      <div class="space-y-2 text-left">
-        <label for="division" class="block text-[11px] font-black uppercase tracking-wider text-slate-500">Division</label>
-        <div class="relative">
-          <select id="division" name="division" class="w-full bg-slate-50/60 border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-semibold text-slate-800 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all appearance-none cursor-pointer">
-            <option>Technical Lighting</option>
-            <option>Greenscapes</option>
-            <option>General Corporate</option>
-          </select>
-          <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </div>
+    <!-- Project Category -->
+    <div class="space-y-2 relative border-b border-slate-200 focus-within:border-slate-900 transition-colors pb-1">
+      <label for="division" class="block text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Project Category</label>
+      <div class="relative">
+        <select id="division" name="division" class="w-full bg-transparent outline-none py-1 text-sm font-semibold text-slate-800 appearance-none cursor-pointer pr-8">
+          <option value="" disabled selected>Select Project Type</option>
+          <option value="Technical Lighting">Technical Lighting</option>
+          <option value="Greenscapes">Greenscapes</option>
+          <option value="General Corporate">General Corporate Supply</option>
+        </select>
+        <div class="absolute inset-y-0 right-0 flex items-center pointer-events-none text-slate-400">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
         </div>
       </div>
     </div>
 
-    <div class="space-y-2 text-left">
-      <label for="subject" class="block text-[11px] font-black uppercase tracking-wider text-slate-500">Subject</label>
-      <input type="text" id="subject" name="subject" required class="w-full bg-slate-50/60 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none rounded-xl px-4 py-3.5 text-sm font-semibold text-slate-800 placeholder-slate-405/80" placeholder="What is this regarding?" />
-    </div>
-
-    <div class="space-y-2 text-left">
-      <label for="message" class="block text-[11px] font-black uppercase tracking-wider text-slate-500">Message</label>
-      <textarea id="message" name="message" required rows="4" class="w-full bg-slate-50/60 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none rounded-xl px-4 py-3.5 text-sm font-semibold text-slate-800 placeholder-slate-405/80 resize-none" placeholder="Brief description of your project or inquiry..."></textarea>
+    <!-- Describe Your Vision -->
+    <div class="space-y-2 relative border-b border-slate-200 focus-within:border-slate-900 transition-colors pb-1">
+      <label for="message" class="block text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Describe your vision</label>
+      <textarea id="message" name="message" required rows="2" class="w-full bg-transparent outline-none py-1 text-sm font-semibold text-slate-800 placeholder-slate-355 resize-none" placeholder="Share a brief overview..."></textarea>
     </div>
 
     <div id="form-message" class="hidden p-4 rounded-xl text-sm font-semibold"></div>
 
-    <button type="submit" id="submit-btn" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold tracking-wide py-4 px-6 rounded-xl flex items-center justify-center gap-2.5 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 shadow-sm">
-      <span>Send Message</span>
-      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-    </button>
+    <!-- Button -->
+    <div class="pt-2">
+      <button type="submit" id="submit-btn" class="px-8 py-4 bg-[#111827] hover:bg-slate-900 text-white font-extrabold text-xs uppercase tracking-widest rounded-md flex items-center justify-center gap-3 transition-colors shadow-sm group">
+        <span>Send Message</span>
+        <svg class="w-4 h-4 shrink-0 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+      </button>
+    </div>
   </form>
 </div>
 
@@ -97,7 +95,7 @@
       msgBox.textContent = 'Oops! Something went wrong. Please try again.';
     } finally {
       btn.removeAttribute('disabled');
-      btn.innerHTML = '<span>Send Message</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>';
+      btn.innerHTML = '<span>Send Message</span><svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>';
     }
   });
 </script>

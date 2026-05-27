@@ -1,15 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { query } from '../lib/db';
-import { Search, ArrowRight, Lightbulb, Flower, CheckCircle, HelpCircle, Sparkles, Building, Globe } from 'lucide-astro';
+import { Search, ArrowRight, Lightbulb, Flower, ShieldCheck, Heart, Scale, Truck, Sparkles, Building, Globe, Layers, Compass, BookOpen } from 'lucide-astro';
 
 let latestProjects: any[] = [];
 let brands: any[] = [];
 let dbConnected = true;
 
 try {
-  // Query projects if they exist (we can query invoices or products or default projects)
-  const res = await query('SELECT * FROM products WHERE featured = true LIMIT 3');
+  // Query projects if they exist (we can query products or default projects)
+  const res = await query('SELECT * FROM products WHERE featured = true LIMIT 4');
   latestProjects = res.rows;
 
   // Query partners from the database
@@ -24,24 +24,31 @@ if (latestProjects.length === 0) {
   latestProjects = [
     {
       id: 'proj-1',
-      name: "One Za'abeel Luxury Residences & Hotel",
-      description: "Complete facade architectural lighting supply and curated internal lobby greenscape fitouts for this iconic Dubai cantilever structure.",
-      image_url: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=800&q=80", // Dubai skyline
-      tag: "Facade & Interior"
+      name: "Modern Desert Villa",
+      description: "Integrated biodynamic facade lighting and custom specimen biophilic fitouts for a luxury private estate in Jumeirah.",
+      image_url: "https://lh3.googleusercontent.com/aida/ADBb0ug_vCupwao6cvGT_3Lp5FWyAJp36SIFy_IwJEEnztO-t7GuOp9QmYdkZUvk5XAKgZZhaPjlbePklZlT4i6H12LAswxt8jHoF2Ldo2EldVy-zKS5tfblh0sKZbgJQGhdBena31UI4Ok3Yc3dGgjHBS_dGIUlLkAcl62ZnLI0eKO2IQIR_VPgK8pVHNDBE7YgKTqnAOlMOEcvePjpsARuHkeb73yZZR47CdyWDMThsTLFmdfYFkBlAeOT180",
+      tag: "Residential"
     },
     {
       id: 'proj-2',
-      name: "Jumeirah Golf Estates Luxury Villas",
-      description: "Supply of premium IP67 landscape spikes, path uplights, and heavy specimen plants for multiple premium residential estates.",
-      image_url: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80", // Luxury villa
-      tag: "Landscape & Garden"
+      name: "Luminous Office Plaza",
+      description: "Human-centric circadian track systems and automated clean-air plant partitions for DIFC corporate suites.",
+      image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD7nsYOrT4ZujveZ2gaCNLNjtjZaRD2VWcnHtn6VQ894_SPJNlzZJ-aKe7XH-aYOyiDqLxrDKMJtgYGFpo6UkPoP7QMNbZw5nyytRt_hdGf0xT1JGR5Q6e4FVRc8iBBgjniVAsKqtqS27UaZhtSX8myI-dEdebMrfksPbi1O-19l7iUNYWT0LpVG0CIFyfs5LH5F94dZp4uivWHCEapIc694gvs_EEzjq3DWOYIYPwpBF2pbMpT-djVVvdF0RtIibGr2WY0O2NzXvI",
+      tag: "Commercial"
     },
     {
       id: 'proj-3',
-      name: "DIFC Corporate Headquarters",
-      description: "Low-glare technical track spotlighting and automated self-watering greenwalls for premium financial offices.",
-      image_url: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80", // Modern office lobby
-      tag: "Acoustics & Office"
+      name: "Sustainable Resort Garden",
+      description: "High-efficiency low-voltage accent lighting and xeriscape specimens designed for local climate resiliency in Abu Dhabi.",
+      image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD9rzXaLwkdm6_vzUsundUtnEWJa75zIeMYfwD487NnRtw9Y7vugJNH_uZxouwmGlPwpa5CdhdI61ReIyhgl0HJz38MKHMZRHNV72kS6wclydWPI4z6UhOFYq7lViqiNmNo2W9oJQUzHzHl5K5yvZdHkDhafV4kU7Xj4zfCeO_dalChIKT4Cwdx3zgWEiaux1Cz2XoclQvgHq4rR6MgqCo8fVrlYSVchdIP09aAiWip5zceFnu6i4XWzjKbakEiQSIoo5IxZNsrqoc",
+      tag: "Hospitality"
+    },
+    {
+      id: 'proj-4',
+      name: "Urban Botanical Hub",
+      description: "Atmospheric evening uplighting and specimen foliage installations for a premium wellness retreat in Sharjah.",
+      image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCnR0aAcmNwGS0LlfoaZRwJP20UOuqZgl63bU6HKnQ_KJR9t6pLryqgemhzIC2cMMgfWrsUIhuK4_bfDxz0-89gSkh2LYvSH-G2V76w2RmvQbXp8Ziv3zSI2AXt7PDkzFTkwM-AB_CMW40UytVn03QvPbsU-6tXpXZFK4O3JQPFWbBeTbWpRiAigCd7XpByzZqTR8lbBvuJaogJcZ1jH-MO1tOetnhgJo02RnOX5Xig238w-Wo9q64dID3P5vd1NSP9nWIQCUK5WME",
+      tag: "Wellness"
     }
   ];
 }
@@ -53,372 +60,331 @@ if (brands.length === 0) {
 ---
 
 <Layout title="Premium Technical Lighting & Greenscapes UAE" description="Delight Group LLC supplies premium architectural lighting and curated landscape plants across Dubai, Abu Dhabi, and the UAE.">
+  
   <!-- Hero Section -->
-  <section class="relative overflow-hidden pt-36 pb-24 md:pt-44 md:pb-36 bg-gradient-to-b from-blue-50/50 via-white to-white border-b border-slate-100">
-    <div class="absolute top-0 left-1/4 -z-10 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-cyan-500/5 blur-[120px]"></div>
-    <div class="absolute bottom-0 right-1/4 -z-10 h-[500px] w-[500px] translate-x-1/2 rounded-full bg-amber-500/5 blur-[120px]"></div>
-    
-    <!-- Grid overlay pattern -->
-    <div class="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40"></div>
-
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="text-center max-w-3xl mx-auto space-y-6">
-        <!-- Title -->
-        <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold font-display tracking-tight leading-tight text-slate-900 hero-animate">
-          A Trusted Partner in <span class="bg-gradient-to-r from-cyan-500 via-blue-600 to-amber-500 bg-clip-text text-transparent font-black">Light & Nature</span>
-        </h1>
-
-        <!-- Description -->
-        <p class="text-md sm:text-lg text-slate-650 leading-relaxed max-w-2xl mx-auto hero-animate">
-          Providing premium technical lighting and curated greenscapes to the UAE's most prestigious projects. Experience global quality, reliability, and excellence at first sight.
+  <section class="relative h-screen flex items-center overflow-hidden bg-[#fcf9f8]">
+    <div class="absolute inset-0 z-0">
+      <img 
+        alt="Modern villa at dusk with warm exterior lighting and lush landscaping" 
+        class="w-full h-full object-cover" 
+        src="/2screen.png"
+      />
+      <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
+    </div>
+    <div class="relative z-10 px-6 sm:px-16 max-w-[1280px] mx-auto w-full">
+      <div class="max-w-3xl text-left">
+        <span class="inline-block font-sans text-sm text-[#ffddb4] uppercase tracking-[0.3em] mb-6 drop-shadow-sm">DTL & DGS Synergy</span>
+        <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl text-white mb-8 leading-[1.1] tracking-tight drop-shadow-lg">Luminous Nature: Harmonizing Light & Life.</h1>
+        <p class="font-sans text-lg text-white/95 mb-10 max-w-xl leading-relaxed drop-shadow-md">
+          Where technical lighting precision meets organic landscape vitality. We engineer atmospheres that synchronize human circadian rhythms with the vibrant soul of the natural world.
         </p>
+        <div class="flex items-center space-x-6">
+          <a 
+            href="#divisions" 
+            class="bg-[#805612] text-white px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#ffddb4] hover:text-[#291800] transition-all duration-300"
+          >
+            Explore Divisions
+          </a>
+          <a 
+            href="/about" 
+            class="flex items-center space-x-2 text-white text-xs font-black uppercase tracking-widest group"
+          >
+            <span>Our Philosophy</span>
+            <ArrowRight class="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="absolute bottom-12 left-6 sm:left-16 flex items-center space-x-12 text-white/80">
+      <div class="flex flex-col text-left">
+        <span class="font-serif text-2xl text-[#ffddb4] font-semibold">DTL</span>
+        <span class="text-[10px] font-black uppercase tracking-widest">Lighting Division</span>
+      </div>
+      <div class="flex flex-col text-left">
+        <span class="font-serif text-2xl text-[#ffddb4] font-semibold">DGS</span>
+        <span class="text-[10px] font-black uppercase tracking-widest">Greenscapes Division</span>
+      </div>
+    </div>
+  </section>
 
-        <!-- CTA Buttons -->
-        <div class="flex flex-wrap items-center justify-center gap-4 pt-6 hero-animate">
+  <!-- Division Feature Rows -->
+  <section id="divisions" class="w-full">
+    <!-- DTL Division Row (Text Left / Image Right) -->
+    <div class="flex flex-col lg:flex-row min-h-[600px] bg-[#1a3c34]">
+      <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#83a69c] text-left">
+        <div class="max-w-xl mx-auto lg:ml-auto lg:mr-12">
+          <span class="text-xs font-black text-[#aacec3] uppercase tracking-[0.3em] mb-4 block">Architectural Precision</span>
+          <h2 class="font-serif text-4xl sm:text-5xl text-white mb-6 leading-tight tracking-tight">Technical Lighting</h2>
+          <p class="font-sans text-md sm:text-lg mb-10 text-white/90 leading-relaxed">
+            Precision-engineered illumination that transforms architectural volumes. We specialize in circadian-aligned systems and museum-grade technical lighting for the world's most demanding environments, ensuring perfect clarity and atmospheric control.
+          </p>
           <a 
             href="/delighttechnicallighting" 
-            class="inline-flex items-center gap-2 text-sm font-bold text-slate-950 bg-gradient-to-r from-amber-450 to-amber-500 hover:from-amber-400 hover:to-amber-550 px-6 py-3 rounded-xl transition-all shadow-md shadow-amber-500/10"
+            class="inline-block bg-white text-[#01261f] px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#c5eadf] transition-all duration-300"
           >
-            <Lightbulb class="h-4.5 w-4.5" />
-            Lighting Division
+            Explore DTL Division
           </a>
+        </div>
+      </div>
+      <div class="flex-1 min-h-[400px] lg:min-h-0">
+        <img 
+          alt="High-end architectural lighting showroom" 
+          class="w-full h-full object-cover" 
+          src="/3screen.png"
+        />
+      </div>
+    </div>
+
+    <!-- DGS Division Row (Image Left / Text Right) -->
+    <div class="flex flex-col lg:flex-row-reverse min-h-[600px] bg-[#fcf9f8]">
+      <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#1c1b1b] text-left">
+        <div class="max-w-xl mx-auto lg:mr-auto lg:ml-12">
+          <span class="text-xs font-black text-[#805612] uppercase tracking-[0.3em] mb-4 block">Organic Serenity</span>
+          <h2 class="font-serif text-4xl sm:text-5xl text-[#01261f] mb-6 leading-tight tracking-tight">Greenscapes</h2>
+          <p class="font-sans text-md sm:text-lg mb-10 text-[#414846] leading-relaxed">
+            Curated biophilic experiences that breathe life into the built environment. From vertical gardens to exotic landscape ecosystems, we design living architecture that evolves with time, fostering a deep connection between urban dwellers and the natural world.
+          </p>
           <a 
             href="/delightgreenscapes" 
-            class="inline-flex items-center gap-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200/60 px-6 py-3 rounded-xl transition-all"
+            class="inline-block bg-[#01261f] text-white px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#1a3c34] transition-all duration-300"
           >
-            <Flower class="h-4.5 w-4.5 text-emerald-600" />
-            Greenscapes Division
+            Explore DGS Division
           </a>
         </div>
       </div>
+      <div class="flex-1 min-h-[400px] lg:min-h-0">
+        <img 
+          alt="Lush indoor biophilic garden" 
+          class="w-full h-full object-cover" 
+          src="/1screen.png"
+        />
+      </div>
     </div>
   </section>
 
-  <!-- Division Cards -->
-  <section class="py-16 bg-white">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Division DTL Card -->
-        <div class="relative group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/30 p-8 hover:border-amber-500/30 transition-all duration-300 flex flex-col justify-between min-h-[300px] cascade-item shadow-2xs hover:shadow-sm">
-          <div class="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-amber-500/5 blur-3xl group-hover:bg-amber-500/10 transition-colors duration-300"></div>
-          
-          <div class="space-y-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-550 border border-amber-500/20">
-              <Lightbulb class="h-6 w-6" />
+  <!-- Sectors We Serve Section -->
+  <section class="py-24 bg-[#f6f3f2] border-y border-slate-200/40">
+    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto">
+      <div class="flex flex-col items-center text-center mb-16">
+        <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-2">Expertise</span>
+        <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight">Sectors We Serve</h2>
+        <div class="w-20 h-1 bg-[#fec577] mt-6"></div>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <!-- Residential Card -->
+        <div class="group relative overflow-hidden bg-white shadow-sm hover:shadow-xl transition-all duration-500 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="aspect-[4/5] overflow-hidden">
+              <img 
+                alt="Luxury villa interior with elegant lighting" 
+                class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKzpmZidP2wrFcJyW8Lsfa-46IwJ_ofH6_cLB_g2pCXDeoZUlVQG1Jd2RQbD5iuRp8tyTVQNqpsYqoOkRgMhWPgnjwOxJZVmv7NFQc8yccF63VN3PNzKq2thOWuGHiSFZeoXXabJ5Jd4dhGPoRfiXr-goFkYKHIGxG66Q9dut2QZftzVxda3dLswNO7EAyDezFdJAF8IJoJ6XJcmDsysGNx53GKYiXNeRhTjJWM6lm3Thp1ZS9gAghfzAlunkNFzmiLUppkPgFZw8"
+              />
             </div>
-            <div>
-              <h3 class="text-xl font-bold font-display text-slate-900">Delight Technical Lighting 💡</h3>
-              <p class="text-slate-600 text-xs mt-3 leading-relaxed">
-                Indoor & outdoor architectural lighting fixtures. Sourced from elite global brands, supplying UAE-wide for residential, office, and commercial landmark developments.
-              </p>
+            <div class="p-8 text-center">
+              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">Residential</h3>
+              <p class="text-[#414846] text-xs font-semibold leading-relaxed">Individual Houses, Villas, and private estates tailored for personal wellness.</p>
             </div>
           </div>
-          
-          <div class="pt-6">
-            <a href="/delighttechnicallighting" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-600 hover:text-amber-500 transition-colors group/link">
-              Explore Catalog &rarr;
-            </a>
+          <div class="px-8 pb-8 text-center">
+            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/portfolio?sector=residential">View Details</a>
           </div>
         </div>
 
-        <!-- Division DGS Card -->
-        <div class="relative group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/30 p-8 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between min-h-[300px] cascade-item shadow-2xs hover:shadow-sm">
-          <div class="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-emerald-500/5 blur-3xl group-hover:bg-emerald-500/10 transition-colors duration-300"></div>
-          
-          <div class="space-y-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-              <Flower class="h-6 w-6" />
+        <!-- Commercial Card -->
+        <div class="group relative overflow-hidden bg-white shadow-sm hover:shadow-xl transition-all duration-500 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="aspect-[4/5] overflow-hidden">
+              <img 
+                alt="Modern office space with integrated greenery" 
+                class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBixLKPHKgXt131Z4yztKrDxoddfna7VJIlNInz9ePdOZblArS_GJJ5tHO1f_StEC0kalUDShHXkgk_DWXfEll4gOPLpGBbh_WNlbztmPLWWxyJl3awnm9yP2Xu_lQJkSYMAXamcp155pvLuwx69Iz_LviErccNSy1CQjYExwtYFfzonuUwqO5KOVvR4M_btDvqYgix9TydUNAN_rE2vqGwZf3rM3P-jBrIUp91q46ZO2FI5LEWEO0zIO0GSK4cldl4RmGIb0Jifr4"
+              />
             </div>
-            <div>
-              <h3 class="text-xl font-bold font-display text-slate-900">Delight Greenscapes 🌿</h3>
-              <p class="text-slate-600 text-xs mt-3 leading-relaxed">
-                Curated indoor & outdoor plants, premium designer pots, and custom planters. Sourced and delivered to residences, corporate offices, hotels and estates across the Emirates.
-              </p>
+            <div class="p-8 text-center">
+              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">Commercial</h3>
+              <p class="text-[#414846] text-xs font-semibold leading-relaxed">Productive Office Spaces and immersive Retail environments designed for impact.</p>
             </div>
           </div>
-          
-          <div class="pt-6">
-            <a href="/delightgreenscapes" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-550 transition-colors group/link">
-              Explore Catalog &rarr;
-            </a>
+          <div class="px-8 pb-8 text-center">
+            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/portfolio?sector=commercial">View Details</a>
+          </div>
+        </div>
+
+        <!-- Hospitality Card -->
+        <div class="group relative overflow-hidden bg-white shadow-sm hover:shadow-xl transition-all duration-500 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="aspect-[4/5] overflow-hidden">
+              <img 
+                alt="High-end resort pool area at night" 
+                class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMx1j_FCvrJtX9CaD6c3KgMaZCisZEmzZpaN_gYZTZ_wjpros1ZrWHeo0eBK7iYZSdi_xQsiD05RavSG2LygkPRuE69C_B1JijZyrXI2D3JvjqzMM2vGFZkx8Cb4UXjnpBwDK1zr0_ArVHEVDY58CqM-c6YUjCCQf_0iDF8cHO_kAI-JoYdXUneS-V__iLArbGxDnCyAOb70B4ur49InnUaRewyD1BgRmBHEyCaw-HL1Qz9iUXrkQC18V_01g-8U3iXu10IU2aHrk"
+              />
+            </div>
+            <div class="p-8 text-center">
+              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">Hospitality</h3>
+              <p class="text-[#414846] text-xs font-semibold leading-relaxed">Luxury Hotels and Resorts where atmosphere is the defining guest experience.</p>
+            </div>
+          </div>
+          <div class="px-8 pb-8 text-center">
+            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/portfolio?sector=hospitality">View Details</a>
+          </div>
+        </div>
+
+        <!-- B2B Trade & Procurement Card -->
+        <div class="group relative overflow-hidden bg-white shadow-sm hover:shadow-xl transition-all duration-500 rounded-lg flex flex-col justify-between">
+          <div>
+            <div class="aspect-[4/5] overflow-hidden">
+              <img 
+                alt="B2B volume scale shipping and procurement logistics" 
+                class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuArzukkQe74HgIm92FnG3-sCZ-j0fHmv-kwwSws7u1yiSen96IHxJbd-MJLZX_CaNUzyhJhlmmZEx4cJUqUfYEoazhxeB5qnadct4xwJQxcXOUINJUsjU80-Ltb1PmkqjbcyZ222OFEq-dahQJaTDpLdi10-JkaxPrG69kJObYR8QwIKbaXmhgZGhCKapbZbQYD8wQAy5KetzliYsUP-BhpuS9x61NvpXSON_g_OrH6SKt8Ilc65qD5_osbEEEUuiQxp1-LZl38xXY"
+              />
+            </div>
+            <div class="p-8 text-center">
+              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">B2B & Procurement</h3>
+              <p class="text-[#414846] text-xs font-semibold leading-relaxed">Volume-scale supply, technical specifications, and strict SLA dispatch tracking.</p>
+            </div>
+          </div>
+          <div class="px-8 pb-8 text-center">
+            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/contact">Inquire Logistics</a>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Who We Are / About Section -->
-  <section class="py-20 border-t border-slate-100 bg-slate-50/30">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+  <!-- Featured Projects Section -->
+  <section class="py-24 bg-[#fcf9f8]">
+    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto">
+      <div class="flex flex-col items-center text-center mb-16">
+        <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-2">Showcase</span>
+        <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight">Featured Projects</h2>
+        <p class="text-[#414846] max-w-2xl mx-auto mt-4 text-xs font-semibold leading-relaxed">A curated collection of our most impactful architectural lighting and landscaping collaborations.</p>
+        <div class="w-20 h-1 bg-[#fec577] mt-6"></div>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        {latestProjects.map((proj, idx) => (
+          <div class="group cursor-pointer text-left">
+            <div class="aspect-square overflow-hidden mb-6 rounded-lg">
+              <img 
+                alt={proj.name} 
+                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                src={proj.image_url}
+              />
+            </div>
+            <h4 class="font-serif text-md font-semibold text-[#01261f] mb-2 group-hover:text-[#805612] transition-colors">{proj.name}</h4>
+            <a class="inline-flex items-center space-x-2 text-[#805612] text-[10px] font-black uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/portfolio">
+              <span>View Project</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- News & Articles Section -->
+  <section class="py-24 bg-[#f6f3f2] border-t border-slate-200/40">
+    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto">
+      <div class="text-center mb-16">
+        <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-4 block">Insights</span>
+        <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight mb-4">News & Articles</h2>
+        <p class="text-[#414846] max-w-xl mx-auto text-xs font-semibold leading-relaxed">Bridging the gap between technological innovation and ecological stewardship.</p>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        <!-- Article 1 -->
+        <a href="/news" class="group cursor-pointer text-left">
+          <div class="aspect-[16/9] overflow-hidden mb-6 border border-[#01261f]/10 rounded-lg">
+            <img 
+              alt="Abstract light patterns" 
+              class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0XeE0sAka_CBFwwD40sz98D0o4Jdn8AQnkCYIw892qrBOzOmpqMyOWzvRA09E-yaDm1rVG-rDXm5nBLMkD2OStlrujTcTCKIId0K9PoXVt3aoSIFsm1Eikdl3AfKTRtPxayirQUeYWuDNEOGX6Or9TbjXzdHHuLXb5GtvRtqDrBNzQhnoGQUWbW9Y3sGzhbd-MnjnEH8Jufo3Ar95cqVYOQ5CznTSsskHmRfrMoKLxDGta6zUpY6faLj6xask2_DBXrt8N8BFAAY"
+            />
+          </div>
+          <span class="text-[10px] font-black text-[#805612] uppercase tracking-[0.2em] block mb-3">DTL Insight</span>
+          <h4 class="font-serif text-lg font-semibold text-[#01261f] mb-4 group-hover:text-[#805612] transition-colors">The Psychology of Light: Circadian Harmony</h4>
+          <p class="text-[#414846] mb-6 text-xs font-semibold leading-relaxed line-clamp-2">How tuned-spectrum lighting influences mood, productivity, and the biological clock in modern residential architecture.</p>
+          <div class="inline-flex items-center space-x-2 text-[#01261f] text-[10px] font-black uppercase tracking-widest border-b border-[#01261f]/20 pb-1 group-hover:border-[#805612] transition-all">
+            <span>Read More</span>
+            <ArrowRight class="w-3.5 h-3.5" />
+          </div>
+        </a>
         
-        <!-- Text -->
-        <div class="lg:col-span-7 space-y-6 cascade-item">
-          <span class="text-xs font-bold text-cyan-600 uppercase tracking-widest">Our Philosophy</span>
-          <h2 class="text-3xl font-bold font-display text-slate-900">A new kind of supply partner for the UAE.</h2>
-          <p class="text-sm text-slate-600 leading-relaxed">
-            Delight Group LLC is a UAE-based trade company operating two specialist divisions — Technical Lighting and Greenscapes. We source premium products from global brands and make them available to individuals, designers, contractors, and businesses.
-          </p>
-          <p class="text-sm text-slate-600 leading-relaxed">
-            We are not engineers. We are suppliers who care deeply about product quality and honest service — whether you need one pendant light or a full commercial plant fitout.
-          </p>
-          <div class="pt-2">
-            <a href="/about" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 px-5 py-2.5 rounded-lg transition-colors group/link shadow-2xs">
-              Our Story
-              <ArrowRight class="h-4 w-4 group-hover/link:translate-x-1 transition-transform" />
-            </a>
+        <!-- Article 2 -->
+        <a href="/news" class="group cursor-pointer text-left">
+          <div class="aspect-[16/9] overflow-hidden mb-6 border border-[#01261f]/10 rounded-lg">
+            <img 
+              alt="Green architecture concept" 
+              class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsA92pa18473lfcBjE7BoHkF_gf2wRUG8mqLy62apv9hEGoXv-XqrDJLz2PMyW9FphFEQzx6Rge5TAPP6v1986le2k9EnjCa0A_BmPZN9j2tQcaX0dj1WJB01l5R7Qrk3d-XnGjo6-cxHFfM2Cq8Ce12cKI6dwFed-6DxsFYpnDUZJSk0euYp3A8wbiI8ZGT8hO8rDCU415pfQWRzROWNHR03MEBfUd4t_KAh91VsGYW5gyWj04ycj9aT2gPGaEpnKuAe7fMxmrZw"
+            />
           </div>
-        </div>
-
-        <!-- Categories grids -->
-        <div class="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-4 cascade-item">
-          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300 shadow-2xs">
-            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="h-6 w-6 rounded bg-slate-50 flex items-center justify-center text-xs">🏠</span>
-              Residential
-            </h4>
-            <p class="text-2xs text-slate-500 leading-relaxed">Villas, high-end apartments, and private homes across Dubai & Abu Dhabi.</p>
+          <span class="text-[10px] font-black text-[#805612] uppercase tracking-[0.2em] block mb-3">DGS Insight</span>
+          <h4 class="font-serif text-lg font-semibold text-[#01261f] mb-4 group-hover:text-[#805612] transition-colors">Sustainable Biophilia: Living Skin Walls</h4>
+          <p class="text-[#414846] mb-6 text-xs font-semibold leading-relaxed line-clamp-2">The evolution of vertical gardens from aesthetic features to functional air-purification systems for luxury developments.</p>
+          <div class="inline-flex items-center space-x-2 text-[#01261f] text-[10px] font-black uppercase tracking-widest border-b border-[#01261f]/20 pb-1 group-hover:border-[#805612] transition-all">
+            <span>Read More</span>
+            <ArrowRight class="w-3.5 h-3.5" />
           </div>
-          
-          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300 shadow-2xs">
-            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="h-6 w-6 rounded bg-slate-50 flex items-center justify-center text-xs">🏢</span>
-              Commercial
-            </h4>
-            <p class="text-2xs text-slate-500 leading-relaxed">Bespoke office hubs, retail boutiques, and luxury hospitality lobbies.</p>
-          </div>
-
-          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300 shadow-2xs">
-            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="h-6 w-6 rounded bg-slate-50 flex items-center justify-center text-xs">🏗️</span>
-              Developers
-            </h4>
-            <p class="text-2xs text-slate-500 leading-relaxed">High volume, reliable bulk supply with strict SLA dispatch tracking.</p>
-          </div>
-
-          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2 hover:border-cyan-500/20 transition-all duration-300 shadow-2xs">
-            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <span class="h-6 w-6 rounded bg-slate-50 flex items-center justify-center text-xs">🚚</span>
-              UAE-Wide
-            </h4>
-            <p class="text-2xs text-slate-500 leading-relaxed">Prompt logistics dispatch and deliveries direct to your project site.</p>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- Latest Projects -->
-  <section class="py-20 bg-white">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-end justify-between gap-4 mb-16 border-b border-slate-100 pb-6 cascade-item">
-        <div>
-          <span class="text-xs font-bold text-cyan-600 uppercase tracking-widest">Showcase</span>
-          <h2 class="text-3xl font-bold font-display text-slate-900 mt-1">Latest Projects</h2>
-        </div>
-        <a href="/downloads" class="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1">
-          View Specifications <ArrowRight class="h-4 w-4" />
         </a>
       </div>
+    </div>
+  </section>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {latestProjects.map((proj, idx) => (
-          <div class="group border border-slate-200 rounded-2xl bg-white overflow-hidden flex flex-col justify-between hover:border-slate-350 transition-all duration-300 cascade-item shadow-2xs hover:shadow-sm" style={`transition-delay: ${idx * 150}ms`}>
-            <div>
-              <!-- Curtain Reveal Container -->
-              <div class={`h-48 overflow-hidden relative reveal-container ${idx === 1 ? 'amber-curtain' : ''}`}>
-                <div class="reveal-curtain"></div>
-                <img 
-                  src={proj.image_url} 
-                  alt={proj.name}
-                  class="reveal-image object-cover"
-                />
-                <span class="absolute top-4 right-4 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider text-cyan-600 backdrop-blur-md z-20">
-                  {proj.tag || 'Project'}
-                </span>
-              </div>
-
-              <div class="p-6">
-                <h3 class="text-md font-bold text-slate-900 truncate group-hover:text-cyan-600 transition-colors" title={proj.name}>
-                  {proj.name}
-                </h3>
-                <p class="text-xs text-slate-650 mt-2.5 leading-relaxed line-clamp-3">
-                  {proj.description}
-                </p>
-              </div>
-            </div>
-
-            <div class="px-6 pb-6 pt-2">
-              <a 
-                href="/contact"
-                class="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 bg-slate-50 text-2xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                Inquire About Specifications
-              </a>
-            </div>
+  <!-- Partners Section -->
+  <section class="py-16 bg-[#ffffff] border-t border-slate-200/40 overflow-hidden">
+    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto text-center mb-10">
+      <span class="text-[10px] font-black text-[#83a69c] uppercase tracking-[0.3em]">Trusted by Global Industry Leaders</span>
+    </div>
+    
+    <div class="relative w-full overflow-hidden flex flex-col gap-8">
+      <!-- First Row of Partners -->
+      <div class="flex space-x-12 animate-marquee-right whitespace-nowrap items-center w-max">
+        {[...brands, ...brands].map((brand, i) => (
+          <div class="flex items-center justify-center min-w-[160px] h-20 bg-[#fcf9f8] rounded-xl border border-slate-100 shadow-sm px-8">
+            <span class="font-serif text-xl font-bold text-[#414846] opacity-70 hover:opacity-100 transition-opacity">{brand}</span>
+          </div>
+        ))}
+      </div>
+      
+      <!-- Second Row of Partners (Reverse or offset) -->
+      <div class="flex space-x-12 animate-marquee-left whitespace-nowrap items-center w-max">
+        {[...brands, ...brands].reverse().map((brand, i) => (
+          <div class="flex items-center justify-center min-w-[160px] h-20 bg-[#fcf9f8] rounded-xl border border-slate-100 shadow-sm px-8">
+            <span class="font-serif text-xl font-bold text-[#414846] opacity-70 hover:opacity-100 transition-opacity">{brand}</span>
           </div>
         ))}
       </div>
     </div>
   </section>
 
-  <!-- Brands Carousel Section (Synced with DB) -->
-  <section class="py-16 border-t border-slate-150 bg-slate-50/40 relative overflow-hidden select-none cascade-item">
-    <div class="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-50/50 to-transparent z-10 pointer-events-none"></div>
-    <div class="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-50/50 to-transparent z-10 pointer-events-none"></div>
-    
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-6">
-      <p class="text-center text-3xs font-semibold uppercase tracking-widest text-slate-450">Sourcing from elite global partners</p>
-    </div>
-
-    <!-- Brands Carousel container -->
-    <div class="flex items-center gap-12 whitespace-nowrap overflow-x-hidden py-4">
-      <div class="flex items-center gap-16 animate-marquee">
-        {brands.concat(brands).map(b => (
-          <span class="text-xl font-bold font-display text-slate-350 tracking-wider hover:text-slate-600 transition-colors">{b.toUpperCase()}</span>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA Band -->
-  <section class="py-16 border-t border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100/50 relative overflow-hidden cascade-item">
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[350px] w-[350px] rounded-full bg-cyan-500/5 blur-[80px]"></div>
-
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative text-center space-y-6">
-      <h2 class="text-2xl sm:text-3xl font-bold font-display text-slate-900">Ready to supply your next project?</h2>
-      <p class="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-        Get in touch with our team — we respond within 24 hours with product sheets and custom pricing models.
+  <!-- CTA Section -->
+  <section class="py-24 bg-[#ffddb4]">
+    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto text-center space-y-8">
+      <h2 class="font-serif text-4xl sm:text-5xl text-[#291800] leading-tight tracking-tight">Ready to harmonize your space?</h2>
+      <p class="font-sans text-md sm:text-lg text-[#633f00] max-w-2xl mx-auto mb-12">
+        Whether it's technical lighting precision or organic landscape vitality, let's collaborate to create an environment that breathes with life and light.
       </p>
-      <div class="pt-2">
+      <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
         <a 
           href="/contact" 
-          class="inline-flex justify-center text-xs font-bold uppercase tracking-wider text-slate-950 bg-gradient-to-r from-amber-450 to-amber-500 hover:from-amber-400 hover:to-amber-550 px-8 py-3 rounded-xl transition-all shadow-md shadow-amber-500/10"
+          class="bg-[#01261f] text-white px-12 py-5 text-xs font-black uppercase tracking-widest hover:bg-[#1a3c34] transition-all shadow-lg inline-block"
         >
-          Contact Us Now
+          Start a Project
+        </a>
+        <a 
+          href="/downloads" 
+          class="border border-[#01261f] text-[#01261f] px-12 py-5 text-xs font-black uppercase tracking-widest hover:bg-[#01261f]/5 transition-all inline-block"
+        >
+          Request Division Catalog
         </a>
       </div>
     </div>
   </section>
+
 </Layout>
-
-<style is:global>
-  @keyframes marquee {
-    0% { transform: translateX(0%); }
-    100% { transform: translateX(-50%); }
-  }
-  .animate-marquee {
-    display: inline-flex;
-    animation: marquee 25s linear infinite;
-  }
-
-  /* Curtain Reveal Animation */
-  .reveal-container {
-    position: relative;
-    overflow: hidden;
-    background-color: #020617;
-  }
-  .reveal-image {
-    width: 100%;
-    height: 100%;
-    transform: scale(1.18);
-    opacity: 0;
-    filter: blur(8px);
-    transition: transform 1.4s cubic-bezier(0.16, 1, 0.3, 1), 
-                opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), 
-                filter 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .reveal-curtain {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #06b6d4, #3b82f6);
-    z-index: 10;
-    transform: scaleX(1);
-    transform-origin: left;
-    transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1);
-  }
-  .reveal-container.amber-curtain .reveal-curtain {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-  }
-
-  /* Trigger reveal state */
-  .reveal-container.is-revealed .reveal-image {
-    transform: scale(1);
-    opacity: 0.8;
-    filter: blur(0);
-  }
-  .reveal-container.is-revealed .reveal-curtain {
-    transform: scaleX(0);
-    transform-origin: right;
-  }
-
-  /* Cascade Item scroll animation */
-  .cascade-item {
-    opacity: 0;
-    transform: translateY(40px);
-    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .cascade-item.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* Hero slide-up cascade styles */
-  .hero-animate {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .hero-animate.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-</style>
-
-<script>
-  // Scroll reveal handler using standard IntersectionObserver
-  const observerOptions = {
-    root: null,
-    threshold: 0.1,
-    rootMargin: "0px 0px -50px 0px"
-  };
-
-  const observer = new IntersectionObserver((entries, observer) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        // Reveal curtain container
-        if (entry.target.classList.contains('reveal-container')) {
-          entry.target.classList.add('is-revealed');
-        }
-        // Reveal cascade item
-        if (entry.target.classList.contains('cascade-item')) {
-          entry.target.classList.add('is-visible');
-        }
-        observer.unobserve(entry.target);
-      }
-    });
-  }, observerOptions);
-
-  // Bind observer to elements
-  document.querySelectorAll('.reveal-container, .cascade-item').forEach(el => {
-    observer.observe(el);
-  });
-
-  // Stagger animate Hero elements immediately on mount
-  window.addEventListener('DOMContentLoaded', () => {
-    const heroElements = document.querySelectorAll('.hero-animate');
-    heroElements.forEach((el, idx) => {
-      setTimeout(() => {
-        el.classList.add('is-visible');
-      }, idx * 150);
-    });
-  });
-</script>
-
-

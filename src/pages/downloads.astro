@@ -1,13 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import DownloadCard from '../components/ui/DownloadCard.astro';
 import { query } from '../lib/db';
+import { FileText, PenTool, Leaf, Compass, Layers, BookOpen, Download, ArrowRight } from 'lucide-astro';
 
 let dtlDownloads: any[] = [];
 let dgsDownloads: any[] = [];
 
 try {
-  // Fetch active downloads — division column added via migration, visibility_rules is the JSONB fallback
   const res = await query(`
     SELECT *
     FROM downloads
@@ -16,16 +15,14 @@ try {
     ORDER BY created_at DESC
   `);
   
-  // Distribute into arrays based on division column (with JSONB fallback)
   res.rows.forEach((d: any) => {
     const item = {
       title: d.title,
-      category: (d.type || 'catalog').toUpperCase(),
-      size: d.file_size || 'Unknown',
+      type: (d.type || 'PDF').toUpperCase(),
+      size: d.file_size || 'Unknown MB',
       url: d.url
     };
 
-    // Determine division: prefer explicit column, fall back to visibility_rules JSONB
     let division = d.division;
     if (!division && d.visibility_rules) {
       try {
@@ -34,7 +31,6 @@ try {
       } catch {}
     }
 
-    // Skip items with hidden/archived status (handles null status = pre-migration rows)
     if (d.status === 'hidden' || d.status === 'archived') return;
 
     if (division === 'dtl' || !division) {
@@ -44,134 +40,188 @@ try {
     }
   });
 } catch (err: any) {
-  console.warn('Database offline, running mock downloads catalog:', err.message);
-  dtlDownloads = [
-    { title: 'DELIGHT TECHNICAL LIGHTING INDOOR CATALOG', category: 'LIGHTING', size: '19 MB', url: '/downloads/dtl-indoor-catalog.pdf' },
-    { title: 'DELIGHT TECHNICAL LIGHTING OUTDOOR CATALOG', category: 'LIGHTING', size: '13 MB', url: '/downloads/dtl-outdoor-catalog.pdf' },
-    { title: 'DELIGHT TECHNICAL LIGHTING COMPANY PROFILE', category: 'LIGHTING', size: '13 MB', url: '/downloads/dtl-company-profile.pdf' },
-  ];
+  console.warn('Database offline, running high-fidelity mock downloads catalog:', err.message);
+}
 
-  dgsDownloads = [
-    { title: 'DELIGHT GREENSCAPES CATALOG', category: 'LANDSCAPING', size: '42 MB', url: '/downloads/dgs-catalog.pdf' },
+// Fallback to match mockup exact data structure
+if (dtlDownloads.length === 0) {
+  dtlDownloads = [
+    { title: 'Technical Catalog 2024', type: 'PDF', size: '12.4 MB', icon: FileText, url: '/downloads/dtl-indoor-catalog.pdf' },
+    { title: 'Brand Assets', type: 'ZIP', size: '45.8 MB', icon: PenTool, url: '/downloads/dtl-brand-assets.zip' },
+    { title: 'Sustainability Certs', type: 'PDF', size: '3.2 MB', icon: Leaf, url: '/downloads/dtl-sustainability.pdf' },
   ];
+} else {
+  // Map icons to dynamic database downloads for a unified look
+  dtlDownloads = dtlDownloads.map((item, idx) => ({
+    ...item,
+    icon: idx % 3 === 0 ? FileText : idx % 3 === 1 ? PenTool : Leaf
+  }));
+}
+
+if (dgsDownloads.length === 0) {
+  dgsDownloads = [
+    { title: 'CAD Spec Library', type: 'DWG/RVT', size: '156 MB', icon: Compass, url: '/downloads/dgs-cad-library.zip' },
+    { title: 'Texture Maps', type: 'TIF', size: '89.1 MB', icon: Layers, url: '/downloads/dgs-texture-maps.zip' },
+    { title: 'Install Manuals', type: 'PDF', size: '18.5 MB', icon: BookOpen, url: '/downloads/dgs-install-manual.pdf' },
+  ];
+} else {
+  dgsDownloads = dgsDownloads.map((item, idx) => ({
+    ...item,
+    icon: idx % 3 === 0 ? Compass : idx % 3 === 1 ? Layers : BookOpen
+  }));
 }
 ---
 
-<Layout title="Download Center" description="Direct access to our technical documentation and product catalogs.">
-  <!-- CSS Dot Pattern & Cooler Calm Background -->
-  <div class="min-h-screen bg-[#fcfdfd] relative overflow-hidden">
-    <!-- Ambient subtle calm background blobs -->
-    <div class="absolute top-20 left-10 w-[450px] h-[450px] rounded-full bg-slate-100/50 blur-[130px] pointer-events-none select-none z-0"></div>
-    <div class="absolute bottom-20 right-10 w-[500px] h-[500px] rounded-full bg-slate-100/40 blur-[150px] pointer-events-none select-none z-0"></div>
-
-    <div class="absolute inset-0 z-0 opacity-[0.12]" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 32px 32px;"></div>
+<Layout title="Download Center" description="Access our technical specifications, brand assets, and sustainability reports.">
+  <!-- Luxury Editorial Sand Canvas Background (Optimized compact spacing) -->
+  <div class="min-h-screen bg-[#fbfaf7] py-10 sm:py-14 relative overflow-hidden">
+    <!-- Subtle architectural blueprint guideline lines -->
+    <div class="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(#000000 1.5px, transparent 1.5px); background-size: 32px 32px;"></div>
     
-    <div class="relative z-10 pt-10 pb-32">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        
-        <!-- Hero Section -->
-        <div class="text-center max-w-2xl mx-auto mb-12 space-y-4">
-          <h1 class="text-4xl sm:text-6xl font-extrabold font-display text-slate-900 tracking-tight leading-none hero-animate">
-            Download <span class="text-[#0f2d1d]">Center</span>
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+      
+      <!-- Premium sand-themed Header Section -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center border-b border-slate-200/60 pb-8">
+        <!-- Left text column -->
+        <div class="md:col-span-8 space-y-4 text-left">
+          <h1 class="text-4xl sm:text-6xl font-serif text-[#0f2d1d] font-semibold leading-tight tracking-tight">
+            Download Center
           </h1>
-          <p class="mt-4 text-sm sm:text-base text-slate-500 leading-relaxed font-semibold max-w-lg mx-auto hero-animate">
-            Access our comprehensive technical documentation, product catalogs, and corporate specifications across all divisions.
+          <p class="text-slate-600 font-semibold text-sm sm:text-base leading-relaxed max-w-2xl">
+            Access technical specifications, brand assets, and sustainability reports for our core divisions. Designed for precision and ease of integration into your architectural workflows.
           </p>
         </div>
- 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8">
-          
-          <div class="space-y-8 relative cascade-item">
-            <div class="absolute -left-4 top-0 bottom-0 w-px bg-slate-200 hidden lg:block"></div>
-            <div class="pl-0 lg:pl-6">
-              <DownloadCard 
-                badge="DTL Division"
-                badgeColor="blue"
-                titleStart="Technical Lighting"
-                titleAccent="Solutions"
-                description="Comprehensive indoor, outdoor, and facade lighting specifications and component blueprints."
-                items={dtlDownloads}
-              />
-            </div>
+        <!-- Right Image Column -->
+        <div class="md:col-span-4 flex justify-end">
+          <div class="w-full max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-slate-100 relative group">
+            <img 
+              src="/about-hero.png" 
+              alt="Architectural Abstract Geometric Facade" 
+              class="w-full h-full object-cover filter grayscale contrast-125 transition-transform duration-700 group-hover:scale-105"
+            />
           </div>
- 
-          <div class="space-y-8 relative cascade-item" style="transition-delay: 150ms">
-            <div class="absolute -left-4 top-0 bottom-0 w-px bg-slate-200 hidden lg:block"></div>
-            <div class="pl-0 lg:pl-6">
-              <DownloadCard 
-                badge="DGS Division"
-                badgeColor="green"
-                titleStart="Greenscapes &"
-                titleAccent="Landscaping"
-                description="System architectures and operational guidelines for urban landscaping and irrigation technologies."
-                items={dgsDownloads}
-              />
-            </div>
-          </div>
- 
         </div>
       </div>
+
+      <!-- Division Catalogs Grid (Two Column Layout) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- Column 1: Delight Technical Lighting -->
+        <div class="bg-[#f4f2eb] rounded-[24px] p-6 sm:p-8 border border-slate-200/40 flex flex-col justify-between space-y-6 text-left transition-all duration-300 hover:shadow-xl hover:border-slate-300/60">
+          <div class="space-y-5">
+            <div class="space-y-1">
+              <h2 class="text-2xl font-serif text-[#7f2d1b] font-medium">Delight Technical Lighting</h2>
+            </div>
+            
+            <!-- Up to 5 items visible, scrollable if more -->
+            <div class="space-y-3.5 max-h-[385px] overflow-y-auto pr-1.5 custom-scrollbar">
+              {dtlDownloads.map(item => {
+                const IconComponent = item.icon || FileText;
+                return (
+                  <a 
+                    href={item.url} 
+                    download
+                    class="bg-white rounded-xl p-4 flex items-center justify-between border border-slate-200/30 shadow-sm transition-all duration-300 hover:shadow-md hover:border-slate-350 hover:-translate-y-0.5 group block"
+                  >
+                    <div class="flex items-center gap-4">
+                      <div class="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-700 border border-slate-150 shrink-0">
+                        <IconComponent class="w-4 h-4 text-[#7f2d1b]" />
+                      </div>
+                      <div class="text-left">
+                        <h4 class="text-xs sm:text-sm font-extrabold text-slate-800 leading-tight">{item.title}</h4>
+                        <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block mt-0.5">{item.type} &bull; {item.size}</span>
+                      </div>
+                    </div>
+                    
+                    <div class="w-8 h-8 rounded-full border border-slate-150 flex items-center justify-center text-slate-400 group-hover:text-slate-800 group-hover:border-slate-350 group-hover:bg-slate-50 transition-all shrink-0">
+                      <Download class="w-3.5 h-3.5" />
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <a 
+              href="/delighttechnicallighting" 
+              class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#7f2d1b] hover:text-amber-800 transition-colors border-b border-[#7f2d1b]/20 hover:border-[#7f2d1b]/80 pb-0.5"
+            >
+              <span>Visit Delight Technical Lighting</span>
+              <ArrowRight class="w-3 h-3" />
+            </a>
+          </div>
+        </div>
+
+        <!-- Column 2: Delight Greenscapes -->
+        <div class="bg-[#f4f2eb] rounded-[24px] p-6 sm:p-8 border border-slate-200/40 flex flex-col justify-between space-y-6 text-left transition-all duration-300 hover:shadow-xl hover:border-slate-350/60">
+          <div class="space-y-5">
+            <div class="space-y-1">
+              <h2 class="text-2xl font-serif text-[#0f2d1d] font-medium">Delight Greenscapes</h2>
+            </div>
+            
+            <!-- Up to 5 items visible, scrollable if more -->
+            <div class="space-y-3.5 max-h-[385px] overflow-y-auto pr-1.5 custom-scrollbar">
+              {dgsDownloads.map(item => {
+                const IconComponent = item.icon || Compass;
+                return (
+                  <a 
+                    href={item.url} 
+                    download
+                    class="bg-white rounded-xl p-4 flex items-center justify-between border border-slate-200/30 shadow-sm transition-all duration-300 hover:shadow-md hover:border-slate-350 hover:-translate-y-0.5 group block"
+                  >
+                    <div class="flex items-center gap-4">
+                      <div class="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-700 border border-slate-150 shrink-0">
+                        <IconComponent class="w-4 h-4 text-[#0f2d1d]" />
+                      </div>
+                      <div class="text-left">
+                        <h4 class="text-xs sm:text-sm font-extrabold text-slate-800 leading-tight">{item.title}</h4>
+                        <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block mt-0.5">{item.type} &bull; {item.size}</span>
+                      </div>
+                    </div>
+                    
+                    <div class="w-8 h-8 rounded-full border border-slate-150 flex items-center justify-center text-slate-400 group-hover:text-slate-800 group-hover:border-slate-350 group-hover:bg-slate-50 transition-all shrink-0">
+                      <Download class="w-3.5 h-3.5" />
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <a 
+              href="/delightgreenscapes" 
+              class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#0f2d1d] hover:text-emerald-800 transition-colors border-b border-[#0f2d1d]/20 hover:border-[#0f2d1d]/80 pb-0.5"
+            >
+              <span>Visit Delight Greenscapes</span>
+              <ArrowRight class="w-3 h-3" />
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Specific Requirement Horizontal Card CTA -->
+      <div class="bg-[#f4f2eb] rounded-[24px] p-8 sm:p-12 border border-slate-200/40 grid grid-cols-1 md:grid-cols-12 gap-8 items-center transition-all duration-300 hover:shadow-xl">
+        <!-- Text -->
+        <div class="md:col-span-8 space-y-4 text-left">
+          <h2 class="text-3xl font-serif text-slate-900 font-medium">Have a specific requirement?</h2>
+          <p class="text-slate-650 font-semibold text-xs sm:text-sm leading-relaxed max-w-2xl">
+            Our technical team is available for deep-dive consultations regarding custom specifications, large-scale integrations, and material compliance for your unique project needs.
+          </p>
+        </div>
+        <!-- Button -->
+        <div class="md:col-span-4 flex justify-start md:justify-end">
+          <a 
+            href="/contact" 
+            class="px-8 py-4 bg-[#0f2d1d] hover:bg-[#071b11] text-white font-extrabold text-xs uppercase tracking-widest rounded-md transition-colors shadow-md inline-block text-center"
+          >
+            Contact Our Team
+          </a>
+        </div>
+      </div>
+
     </div>
   </div>
 </Layout>
-
-<style is:global>
-  /* Cascade Item scroll animation */
-  .cascade-item {
-    opacity: 0;
-    transform: translateY(40px);
-    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .cascade-item.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* Hero slide-up cascade styles */
-  .hero-animate {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .hero-animate.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-</style>
-
-<script>
-  // Scroll reveal handler using standard IntersectionObserver
-  const observerOptions = {
-    root: null,
-    threshold: 0.1,
-    rootMargin: "0px 0px -50px 0px"
-  };
-
-  const observer = new IntersectionObserver((entries, observer) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        if (entry.target.classList.contains('cascade-item')) {
-          entry.target.classList.add('is-visible');
-        }
-        observer.unobserve(entry.target);
-      }
-    });
-  }, observerOptions);
-
-  // Bind observer to elements
-  document.querySelectorAll('.cascade-item').forEach(el => {
-    observer.observe(el);
-  });
-
-  // Stagger animate Hero elements immediately on mount
-  window.addEventListener('DOMContentLoaded', () => {
-    const heroElements = document.querySelectorAll('.hero-animate');
-    heroElements.forEach((el, idx) => {
-      setTimeout(() => {
-        el.classList.add('is-visible');
-      }, idx * 150);
-    });
-  });
-</script>

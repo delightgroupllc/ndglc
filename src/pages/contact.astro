@@ -1,197 +1,155 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ContactForm from '../components/forms/ContactForm.astro';
-import Accordion from '../components/ui/Accordion.astro';
-import { Mail, Phone, MapPin, AlertCircle } from 'lucide-astro';
+import { Mail, Phone, MapPin, Zap, Globe, Share2, Grid } from 'lucide-astro';
+import { query } from '../lib/db';
 
-const faqs = [
-  { question: 'What are your primary service areas?', answer: 'We primarily serve the UAE market, including Dubai, Abu Dhabi, Sharjah, and other emirates. For international inquiries, please contact our global sales team.' },
-  { question: 'Do you handle residential projects?', answer: 'Yes, while we are a B2B supplier for large developments, our Greenscapes division and specific lighting collections cater to premium residential projects and private villas.' },
-  { question: 'How can I request a site visit?', answer: 'You can request a site visit by filling out the project inquiry form and mentioning your location in the message. Our team will schedule an assessment within 48 hours.' },
-  { question: 'What is the standard delivery timeline?', answer: 'For in-stock items, delivery within the UAE takes 2-3 business days. Custom orders or imported specialized fixtures may take 4-8 weeks depending on the manufacturer.' },
-];
+let address = 'Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE';
+let phone = '+971 (4) 555-0100';
+let email = 'info@delightgroupllc.ae';
+
+try {
+  const settingsRes = await query(`
+    SELECT key, value 
+    FROM settings 
+    WHERE key IN ('company_address', 'contact_phone', 'contact_email')
+  `);
+  
+  settingsRes.rows.forEach(row => {
+    if (row.key === 'company_address') address = row.value;
+    if (row.key === 'contact_phone') phone = row.value;
+    if (row.key === 'contact_email') email = row.value;
+  });
+} catch (err: any) {
+  console.warn('Failed to load contact settings from DB:', err.message);
+}
 ---
 
 <Layout title="Contact Us" description="Start a conversation with Delight Group LLC">
-  <!-- CSS Dot Pattern & Cooler Calm Background -->
-  <div class="min-h-screen bg-[#fcfdfd] relative overflow-hidden">
-    <!-- Ambient extremely subtle calm background blobs -->
-    <div class="absolute top-20 left-10 w-[450px] h-[450px] rounded-full bg-slate-100/50 blur-[130px] pointer-events-none select-none z-0"></div>
-    <div class="absolute bottom-20 right-10 w-[500px] h-[500px] rounded-full bg-slate-100/40 blur-[150px] pointer-events-none select-none z-0"></div>
-
-    <div class="absolute inset-0 z-0 opacity-[0.12]" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 32px 32px;"></div>
+  <div class="min-h-screen bg-[#f3f4f6] py-16 sm:py-24 relative overflow-hidden">
+    <!-- Subtle architectural guidelines background pattern -->
+    <div class="absolute inset-0 z-0 opacity-[0.06] pointer-events-none" style="background-image: radial-gradient(#000000 1px, transparent 1px); background-size: 24px 24px;"></div>
     
-    <div class="relative z-10 pt-10 pb-28">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <!-- Primary Two-Column Grid Card -->
+      <div class="bg-white rounded-[32px] overflow-hidden shadow-2xl border border-slate-100 grid grid-cols-1 lg:grid-cols-12 gap-0 mb-16">
         
-        <!-- Hero Section -->
-        <div class="text-center max-w-2xl mx-auto mb-12 space-y-4">
-          <h1 class="text-4xl sm:text-6xl font-extrabold font-display text-slate-900 tracking-tight leading-none hero-animate">
-            Let's Start a <span class="text-[#0f2d1d]">Conversation</span>
-          </h1>
-          <p class="text-sm sm:text-base text-slate-500 font-medium leading-relaxed max-w-lg mx-auto hero-animate">
-            Whether you have a specific project in mind or just want to explore possibilities, our team is ready to assist.
-          </p>
+        <!-- Left Column: Premium Architectural Facade Image with Frosted Overlay -->
+        <div class="lg:col-span-5 relative min-h-[380px] lg:min-h-[550px] bg-slate-900 overflow-hidden flex flex-col justify-end p-6 sm:p-10">
+          <img 
+            src="/about-hero.png" 
+            alt="Delight Group Luxury Facade Lighting" 
+            class="absolute inset-0 w-full h-full object-cover opacity-85 transition-transform duration-700 hover:scale-105"
+          />
+          <!-- Gentle dark gradient cover -->
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/20 to-transparent z-0"></div>
         </div>
- 
-        <!-- Two Column Layout -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start mb-24">
-          
-          <!-- Left Column: Info & Urgent -->
-          <div class="lg:col-span-4 space-y-8 cascade-item">
-            <!-- Direct Channels Card -->
-            <div class="bg-white border border-slate-200 shadow-xl shadow-slate-200/5 rounded-2xl p-8 relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/10 hover:border-slate-300">
-              <div class="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-slate-50 opacity-50 blur-2xl"></div>
-              
-              <h3 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-8 border-b pb-2 border-slate-100">Direct Channels</h3>
-              
-              <div class="space-y-6">
-                <!-- Email -->
-                <div class="flex gap-4 group">
-                  <div class="w-10 h-10 rounded-full bg-slate-50 text-slate-700 flex items-center justify-center border border-slate-200 group-hover:scale-105 group-hover:bg-slate-100 transition-all duration-300 shrink-0">
-                    <Mail class="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Email</h4>
-                    <a href="mailto:info@delightgroupllc.com" class="text-[13px] font-extrabold text-slate-800 hover:text-slate-950 transition-colors relative">
-                      info@delightgroupllc.com
-                    </a>
-                  </div>
-                </div>
-                
-                <!-- Phone -->
-                <div class="flex gap-4 group">
-                  <div class="w-10 h-10 rounded-full bg-slate-50 text-slate-700 flex items-center justify-center border border-slate-200 group-hover:scale-105 group-hover:bg-slate-100 transition-all duration-300 shrink-0">
-                    <Phone class="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Phone</h4>
-                    <a href="tel:+971566618040" class="text-[13px] font-extrabold text-slate-800 hover:text-slate-950 transition-colors relative">
-                      +971 56 661 8040
-                    </a>
-                  </div>
-                </div>
- 
-                <!-- Address -->
-                <div class="flex gap-4 group">
-                  <div class="w-10 h-10 rounded-full bg-slate-50 text-slate-700 flex items-center justify-center border border-slate-200 group-hover:scale-105 group-hover:bg-slate-100 transition-all duration-300 shrink-0">
-                    <MapPin class="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Address</h4>
-                    <p class="text-[13px] font-extrabold text-slate-800 leading-relaxed max-w-[200px]">
-                      DELIGHT GROUP LLC, FLEXI DESK, SHAMS BUSINESS CENTERS, SHARJAH, UAE
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
- 
-            <!-- Urgent Response Card (Calm Solid Background) -->
-            <div class="bg-[#0f172a] border border-slate-800 shadow-xl shadow-slate-950/10 rounded-2xl p-8 text-white overflow-hidden relative group">
-              <!-- Soft background shade -->
-              <div class="absolute -bottom-16 -right-16 w-32 h-32 rounded-full bg-slate-800/40 blur-2xl transition-colors duration-500"></div>
-              
-              <div class="w-10 h-10 bg-white text-slate-900 rounded flex items-center justify-center mb-5 shadow-lg shadow-black/10">
-                <AlertCircle class="w-5 h-5 text-slate-900" />
-              </div>
-              <h3 class="text-xl font-bold font-display text-white mb-2">Urgent Response</h3>
-              <p class="text-xs text-slate-355 mb-6 leading-relaxed">
-                Call our 24/7 technical hotline for immediate emergency on-site assistance and deployment.
-              </p>
-              <div>
-                <a 
-                  href="tel:+971566618040" 
-                  class="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-900 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 shadow-md"
-                >
-                  <Phone class="w-3.5 h-3.5 text-slate-900 shrink-0" />
-                  <span>Call Hotline</span>
-                </a>
-              </div>
-            </div>
-          </div>
- 
-          <!-- Right Column: Form -->
-          <div class="lg:col-span-8 cascade-item" style="transition-delay: 150ms">
-            <ContactForm />
-          </div>
+        
+        <!-- Right Column: Minimal Underline Project Form -->
+        <div class="lg:col-span-7 bg-white">
+          <ContactForm />
         </div>
- 
-        <!-- Common Questions -->
-        <div class="max-w-3xl mx-auto cascade-item" style="transition-delay: 300ms">
-          <div class="bg-white border border-slate-200 shadow-xl shadow-slate-200/5 rounded-2xl p-8 sm:p-10">
-            <div class="text-center mb-8 space-y-2">
-              <h2 class="text-2xl font-bold font-display text-slate-900">
-                Common <span class="text-[#0f2d1d]">Questions</span>
-              </h2>
-              <div class="w-10 h-0.5 bg-slate-300 mx-auto"></div>
-            </div>
-            <Accordion items={faqs} />
-          </div>
-        </div>
- 
+        
       </div>
+      
+      <!-- Bottom Detail Cards (Three Column Layout) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+        
+        <!-- Card 1: Headquarters -->
+        <div class="bg-white border border-slate-200/60 shadow-xl shadow-slate-100/50 rounded-2xl p-8 text-left flex flex-col justify-between h-full transition-all duration-300 hover:shadow-2xl hover:border-slate-300">
+          <div class="space-y-6">
+            <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-800 shrink-0">
+              <MapPin class="w-4.5 h-4.5" />
+            </div>
+            
+            <div class="space-y-3">
+              <h3 class="text-lg font-serif font-medium text-slate-900">Headquarters</h3>
+              <div class="w-8 h-[1px] bg-slate-300"></div>
+            </div>
+            
+            <p class="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed" set:html={address.replace(/,\s*/g, ',<br />')} />
+          </div>
+          
+          <div class="pt-8">
+            <a 
+              href="https://maps.google.com" 
+              target="_blank"
+              class="text-[10px] font-black uppercase tracking-widest text-[#b45309] hover:text-amber-800 transition-colors border-b border-[#b45309]/30 hover:border-amber-700 pb-0.5"
+            >
+              View On Map
+            </a>
+          </div>
+        </div>
+        
+        <!-- Card 2: Direct Inquiry -->
+        <div class="bg-white border border-slate-200/60 shadow-xl shadow-slate-100/50 rounded-2xl p-8 text-left flex flex-col justify-between h-full transition-all duration-300 hover:shadow-2xl hover:border-slate-300">
+          <div class="space-y-6">
+            <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-800 shrink-0">
+              <Mail class="w-4.5 h-4.5" />
+            </div>
+            
+            <div class="space-y-3">
+              <h3 class="text-lg font-serif font-medium text-slate-900">Direct Inquiry</h3>
+              <div class="w-8 h-[1px] bg-slate-300"></div>
+            </div>
+            
+            <div class="space-y-2 text-xs sm:text-sm font-semibold text-slate-500">
+              <p>General: <a href={`mailto:${email}`} class="text-slate-800 hover:text-slate-950 font-bold">{email}</a></p>
+              <p>Press: <a href="mailto:media@delightgroupllc.com" class="text-slate-800 hover:text-slate-950 font-bold">media@delightgroupllc.com</a></p>
+              <p>Careers: <a href="mailto:careers@delightgroupllc.com" class="text-slate-800 hover:text-slate-950 font-bold">careers@delightgroupllc.com</a></p>
+            </div>
+          </div>
+          
+          <div class="pt-8 opacity-0 pointer-events-none select-none">
+            <span class="text-[10px] font-black uppercase tracking-widest">Spacer</span>
+          </div>
+        </div>
+        
+        <!-- Card 3: Call Us -->
+        <div class="bg-white border border-slate-200/60 shadow-xl shadow-slate-100/50 rounded-2xl p-8 text-left flex flex-col justify-between h-full transition-all duration-300 hover:shadow-2xl hover:border-slate-300">
+          <div class="space-y-6">
+            <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-800 shrink-0">
+              <Phone class="w-4.5 h-4.5" />
+            </div>
+            
+            <div class="space-y-3">
+              <h3 class="text-lg font-serif font-medium text-slate-900">Call Us</h3>
+              <div class="w-8 h-[1px] bg-slate-300"></div>
+            </div>
+            
+            <div class="space-y-2 text-xs sm:text-sm font-semibold text-slate-500">
+              <p>Monday – Friday: 09:00 – 18:00 GST</p>
+              <a href={`tel:${phone.replace(/[()\s-]/g, '')}`} class="text-slate-800 text-base sm:text-lg font-extrabold hover:text-slate-950 transition-colors block mt-2">
+                {phone}
+              </a>
+            </div>
+          </div>
+          
+          <!-- Social / Utility Button Row (Mockup replication) -->
+          <div class="pt-8 flex items-center gap-2">
+            <a 
+              href="https://delightgroupllc.com" 
+              target="_blank"
+              class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-850 hover:bg-slate-50 transition-all"
+            >
+              <Globe class="w-3.5 h-3.5" />
+            </a>
+            <button 
+              class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-850 hover:bg-slate-50 transition-all"
+            >
+              <Share2 class="w-3.5 h-3.5" />
+            </button>
+            <button 
+              class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-850 hover:bg-slate-50 transition-all"
+            >
+              <Grid class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+        
+      </div>
+      
     </div>
   </div>
 </Layout>
-
-<style is:global>
-  /* Cascade Item scroll animation */
-  .cascade-item {
-    opacity: 0;
-    transform: translateY(40px);
-    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .cascade-item.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* Hero slide-up cascade styles */
-  .hero-animate {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), 
-                transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .hero-animate.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-</style>
-
-<script>
-  // Scroll reveal handler using standard IntersectionObserver
-  const observerOptions = {
-    root: null,
-    threshold: 0.1,
-    rootMargin: "0px 0px -50px 0px"
-  };
-
-  const observer = new IntersectionObserver((entries, observer) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        if (entry.target.classList.contains('cascade-item')) {
-          entry.target.classList.add('is-visible');
-        }
-        observer.unobserve(entry.target);
-      }
-    });
-  }, observerOptions);
-
-  // Bind observer to elements
-  document.querySelectorAll('.cascade-item').forEach(el => {
-    observer.observe(el);
-  });
-
-  // Stagger animate Hero elements immediately on mount
-  window.addEventListener('DOMContentLoaded', () => {
-    const heroElements = document.querySelectorAll('.hero-animate');
-    heroElements.forEach((el, idx) => {
-      setTimeout(() => {
-        el.classList.add('is-visible');
-      }, idx * 150);
-    });
-  });
-</script>
