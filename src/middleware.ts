@@ -52,6 +52,13 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
 
   const { userId, sessionClaims } = auth();
 
+  interface ClerkSessionClaims {
+    email?: string;
+    primary_email?: string;
+    fullName?: string;
+    name?: string;
+  }
+
   // Initialize default locals
   context.locals.user = null;
   context.locals.roles = [];
@@ -65,22 +72,32 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
       let localUser = userRes.rows[0];
 
       if (!localUser) {
-        // Extract info from Clerk session claims
-        let email = (sessionClaims as any)?.email || (sessionClaims as any)?.primary_email || '';
-        let name = (sessionClaims as any)?.fullName || (sessionClaims as any)?.name || '';
+        let email = '';
+        let name = '';
+        let clerkRoles: string[] = [];
 
-        // If email or name is missing, fetch from Clerk API using Backend SDK
-        if (!email || !name) {
-          try {
-            const { createClerkClient } = await import('@clerk/backend');
-            const clerkSecretKey = process.env.CLERK_SECRET_KEY || import.meta.env?.CLERK_SECRET_KEY;
-            const clerk = createClerkClient({ secretKey: clerkSecretKey });
-            const clerkUser = await clerk.users.getUser(userId);
-            email = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress || '';
-            name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
-          } catch (clerkErr) {
-            console.error('Failed to fetch user details from Clerk Backend API during sync:', clerkErr);
+        try {
+          const { createClerkClient } = await import('@clerk/backend');
+          const clerkSecretKey = process.env.CLERK_SECRET_KEY || import.meta.env?.CLERK_SECRET_KEY;
+          const clerk = createClerkClient({ secretKey: clerkSecretKey });
+          const clerkUser = await clerk.users.getUser(userId);
+          email = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress || '';
+          name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
+          
+          // Read metadata roles
+          const metaRole = (clerkUser.publicMetadata as any)?.role;
+          const metaRoles = (clerkUser.publicMetadata as any)?.roles;
+          if (Array.isArray(metaRoles)) {
+            clerkRoles = metaRoles.map(String);
+          } else if (metaRole) {
+            clerkRoles = [String(metaRole)];
           }
+        } catch (clerkErr) {
+          console.error('Failed to fetch user details from Clerk Backend API during sync:', clerkErr);
+          // Fallback to session claims if API call fails
+          const claims = sessionClaims as unknown as ClerkSessionClaims;
+          email = claims?.email || claims?.primary_email || '';
+          name = claims?.fullName || claims?.name || '';
         }
 
         if (!name) {
@@ -95,17 +112,23 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
         localUser = insertRes.rows[0];
         console.log(`Synced new Clerk authenticated user: ${name} (${userId})`);
 
-        // Assign the default customer 'user' role, promoting admin emails automatically
-        const isAdminEmail = email === 'sales@delightgroupllc.com' || email === 'sales@delightgroupllc.com';
-        const roleNameToAssign = isAdminEmail ? 'admin' : 'user';
-        const roleRes = await query("SELECT id FROM roles WHERE name = $1", [roleNameToAssign]);
-        if (roleRes.rows[0]) {
-          await query(
-            'INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-            [userId, roleRes.rows[0].id]
-          );
-          if (isAdminEmail) {
-            console.log(`Successfully elevated incoming user ${email} to admin role during session sync.`);
+        // Assign roles, promoting admin emails automatically or using Clerk metadata
+        const isAdminEmail = email === 'sales@delightgroupllc.com';
+        if (isAdminEmail && !clerkRoles.includes('admin')) {
+          clerkRoles.push('admin');
+        }
+        if (clerkRoles.length === 0) {
+          clerkRoles.push('user');
+        }
+
+        for (const r of clerkRoles) {
+          const roleRes = await query("SELECT id FROM roles WHERE name = $1", [r]);
+          if (roleRes.rows[0]) {
+            await query(
+              'INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+              [userId, roleRes.rows[0].id]
+            );
+            console.log(`Assigned role "${r}" to new user ${email} during sync.`);
           }
         }
       }
@@ -119,7 +142,7 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
           const clerkUser = await clerk.users.getUser(userId);
           const email = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress || '';
           const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || email.split('@')[0] || 'New User';
-
+          
           if (email || name) {
             const updateRes = await query(
               `UPDATE users 
@@ -131,26 +154,29 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
             localUser = updateRes.rows[0];
             console.log(`Self-healed Clerk user info for ${userId}: ${email} (${name})`);
 
-            // Check if they should be admin
-            const isAdminEmail = email === 'sales@delightgroupllc.com' || email === 'sales@delightgroupllc.com';
-            if (isAdminEmail) {
-              const rolesRes = await query(
-                `SELECT r.name 
-                 FROM roles r
-                 JOIN user_roles ur ON ur.role_id = r.id
-                 WHERE ur.user_id = $1`,
-                [userId]
-              );
-              const currentRoles = rolesRes.rows.map(row => row.name);
-              if (!currentRoles.includes('admin')) {
-                const adminRoleRes = await query("SELECT id FROM roles WHERE name = 'admin'");
-                if (adminRoleRes.rows[0]) {
-                  await query(
-                    'INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                    [userId, adminRoleRes.rows[0].id]
-                  );
-                  console.log(`Self-heal: Successfully elevated incoming user ${email} to admin role.`);
-                }
+            // Sync roles from Clerk publicMetadata
+            let clerkRoles: string[] = [];
+            const metaRole = (clerkUser.publicMetadata as any)?.role;
+            const metaRoles = (clerkUser.publicMetadata as any)?.roles;
+            if (Array.isArray(metaRoles)) {
+              clerkRoles = metaRoles.map(String);
+            } else if (metaRole) {
+              clerkRoles = [String(metaRole)];
+            }
+
+            const isAdminEmail = email === 'sales@delightgroupllc.com';
+            if (isAdminEmail && !clerkRoles.includes('admin')) {
+              clerkRoles.push('admin');
+            }
+
+            for (const r of clerkRoles) {
+              const roleRes = await query("SELECT id FROM roles WHERE name = $1", [r]);
+              if (roleRes.rows[0]) {
+                await query(
+                  'INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                  [userId, roleRes.rows[0].id]
+                );
+                console.log(`Self-heal: Synced role "${r}" from Clerk metadata to database for user ${email}`);
               }
             }
           }
