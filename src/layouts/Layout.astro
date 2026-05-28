@@ -130,13 +130,11 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Vercel Telemetry Integration -->
+    <!-- Vercel Speed Insights Integration -->
     <script>
-      import { inject } from '@vercel/analytics';
       import { injectSpeedInsights } from '@vercel/speed-insights';
 
-      // Initialize privacy-friendly client telemetry
-      inject();
+      // Initialize Speed Insights (Web Analytics configured via adapter)
       injectSpeedInsights();
     </script>
 

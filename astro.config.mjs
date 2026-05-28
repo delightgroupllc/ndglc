@@ -6,7 +6,9 @@ import tailwindcss from '@tailwindcss/vite'; // 1. Import Tailwind's native Vite
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
-  adapter: vercel(),
+  adapter: vercel({
+    webAnalytics: { enabled: true },
+  }),
   integrations: [
     clerk() // 2. Keep Clerk here
   ],
