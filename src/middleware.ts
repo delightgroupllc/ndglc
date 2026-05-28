@@ -66,8 +66,26 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
 
       if (!localUser) {
         // Extract info from Clerk session claims
-        const email = (sessionClaims as any)?.email || (sessionClaims as any)?.primary_email || '';
-        const name = (sessionClaims as any)?.fullName || (sessionClaims as any)?.name || email.split('@')[0] || 'New User';
+        let email = (sessionClaims as any)?.email || (sessionClaims as any)?.primary_email || '';
+        let name = (sessionClaims as any)?.fullName || (sessionClaims as any)?.name || '';
+
+        // If email or name is missing, fetch from Clerk API using Backend SDK
+        if (!email || !name) {
+          try {
+            const { createClerkClient } = await import('@clerk/backend');
+            const clerkSecretKey = process.env.CLERK_SECRET_KEY || import.meta.env?.CLERK_SECRET_KEY;
+            const clerk = createClerkClient({ secretKey: clerkSecretKey });
+            const clerkUser = await clerk.users.getUser(userId);
+            email = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress || '';
+            name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
+          } catch (clerkErr) {
+            console.error('Failed to fetch user details from Clerk Backend API during sync:', clerkErr);
+          }
+        }
+
+        if (!name) {
+          name = email ? email.split('@')[0] : 'New User';
+        }
 
         // Synchronize and insert user
         const insertRes = await query(
@@ -89,6 +107,55 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
           if (isAdminEmail) {
             console.log(`Successfully elevated incoming user ${email} to admin role during session sync.`);
           }
+        }
+      }
+
+      // Self-heal: If user exists in local DB but has empty email (common when switching Clerk instances/JWT config)
+      if (localUser && (!localUser.email || localUser.name === 'New User')) {
+        try {
+          const { createClerkClient } = await import('@clerk/backend');
+          const clerkSecretKey = process.env.CLERK_SECRET_KEY || import.meta.env?.CLERK_SECRET_KEY;
+          const clerk = createClerkClient({ secretKey: clerkSecretKey });
+          const clerkUser = await clerk.users.getUser(userId);
+          const email = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress || '';
+          const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || email.split('@')[0] || 'New User';
+          
+          if (email || name) {
+            const updateRes = await query(
+              `UPDATE users 
+               SET email = COALESCE(NULLIF($1, ''), email), 
+                   name = CASE WHEN name = 'New User' AND $2 <> '' THEN $2 ELSE name END 
+               WHERE id = $3 RETURNING *`,
+              [email, name, userId]
+            );
+            localUser = updateRes.rows[0];
+            console.log(`Self-healed Clerk user info for ${userId}: ${email} (${name})`);
+
+            // Check if they should be admin
+            const isAdminEmail = email === 'sales@delighgroupllc.com' || email === 'sales@delightgroupllc.com';
+            if (isAdminEmail) {
+              const rolesRes = await query(
+                `SELECT r.name 
+                 FROM roles r
+                 JOIN user_roles ur ON ur.role_id = r.id
+                 WHERE ur.user_id = $1`,
+                [userId]
+              );
+              const currentRoles = rolesRes.rows.map(row => row.name);
+              if (!currentRoles.includes('admin')) {
+                const adminRoleRes = await query("SELECT id FROM roles WHERE name = 'admin'");
+                if (adminRoleRes.rows[0]) {
+                  await query(
+                    'INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                    [userId, adminRoleRes.rows[0].id]
+                  );
+                  console.log(`Self-heal: Successfully elevated incoming user ${email} to admin role.`);
+                }
+              }
+            }
+          }
+        } catch (healErr) {
+          console.error('Failed to self-heal user details from Clerk:', healErr);
         }
       }
 
@@ -179,7 +246,6 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
       if (
         (path.startsWith('/dashboard/products') && !permissions.includes('products.create') && !isModerator) ||
         (path.startsWith('/dashboard/categories') && !isModerator) ||
-        (path.startsWith('/dashboard/invoices') && !permissions.includes('invoices.manage')) ||
         (path.startsWith('/dashboard/inventory') && !permissions.includes('inventory.manage') && !isModerator)
       ) {
         return new Response('Access Denied: You do not have permissions to perform management actions on this module.', { status: 403 });

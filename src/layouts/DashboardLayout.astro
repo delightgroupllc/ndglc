@@ -63,7 +63,7 @@ const navGroups = [
       { id: 'categories', name: 'Categories', href: '/dashboard/categories', icon: FolderGit2, show: isAdmin || isModerator },
       { id: 'products', name: 'Products', href: '/dashboard/products', icon: Package, show: isAdmin || isModerator },
       { id: 'inventory', name: 'Inventory', href: '/dashboard/inventory', icon: Activity, show: isAdmin || isModerator },
-      { id: 'invoices', name: 'Orders', href: '/dashboard/invoices', icon: FileSpreadsheet, show: isAdmin },
+      { id: 'invoices', name: 'Orders', href: '/dashboard/invoices', icon: FileSpreadsheet, show: hasDashboardAccess },
     ]
   },
   {

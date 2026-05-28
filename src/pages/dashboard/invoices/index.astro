@@ -4,6 +4,11 @@ import InvoiceForm from '../../../components/forms/InvoiceForm.astro';
 import { query } from '../../../lib/db';
 import { FileSpreadsheet, PlusCircle, Search, Save, AlertTriangle, Printer, CheckCircle, Clock } from '@lucide/astro';
 
+const user = Astro.locals.user;
+const roles = Astro.locals.roles || [];
+const permissions = Astro.locals.permissions || [];
+const isAdmin = roles.includes('admin') || roles.includes('moderator') || permissions.includes('invoices.manage');
+
 let invoices: any[] = [];
 let dbConnected = true;
 let settings: Record<string, string> = {};
@@ -11,12 +16,19 @@ let legalArtifacts: any[] = [];
 let products: any[] = [];
 
 try {
-  const res = await query(
-    `SELECT i.*, 
-       (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
-     FROM invoices i
-     ORDER BY i.created_at DESC`
-  );
+  const queryStr = isAdmin
+    ? `SELECT i.*, 
+         (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+       FROM invoices i
+       ORDER BY i.created_at DESC`
+    : `SELECT i.*, 
+         (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+       FROM invoices i
+       WHERE i.customer_email = $1
+       ORDER BY i.created_at DESC`;
+  
+  const queryParams = isAdmin ? [] : [user?.email || ''];
+  const res = await query(queryStr, queryParams);
   invoices = res.rows;
 
   const settingsRes = await query('SELECT key, value FROM settings');
@@ -177,14 +189,16 @@ invoices = invoices.map(inv => {
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           Billing Workflow
         </button>
-        <button 
-          type="button" 
-          onclick="document.dispatchEvent(new CustomEvent('open-invoice-modal', { detail: { invoice: null } }))"
-          class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
-        >
-          <PlusCircle class="h-4 w-4" />
-          Generate Invoice
-        </button>
+        {isAdmin && (
+          <button 
+            type="button" 
+            onclick="document.dispatchEvent(new CustomEvent('open-invoice-modal', { detail: { invoice: null } }))"
+            class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
+          >
+            <PlusCircle class="h-4 w-4" />
+            Generate Invoice
+          </button>
+        )}
       </div>
     </div>
 
@@ -240,65 +254,76 @@ invoices = invoices.map(inv => {
                   </td>
                   <td class="px-6 py-5 text-right pr-6">
                     <div class="flex justify-end">
-                      <div class="grid grid-cols-3 gap-1.5 w-64">
-                        {/* VIEW button - always visible */}
-                        <a href={`/dashboard/invoices/${inv.id}`} class="inline-flex items-center justify-center px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs">
-                          View
-                        </a>
-                        
-                        {/* AUDIT button - from Stage 4 onwards */}
-                        {inv.showAudit ? (
-                          <button type="button" class="audit-invoice-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs" data-num={inv.invoice_number} data-status={inv.payment_status} data-date={inv.issue_date}>
-                            Audit
+                      {isAdmin ? (
+                        <div class="grid grid-cols-3 gap-1.5 w-64">
+                          {/* VIEW button - always visible */}
+                          <a href={`/dashboard/invoices/${inv.id}`} class="inline-flex items-center justify-center px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs">
+                            View
+                          </a>
+                          
+                          {/* AUDIT button - from Stage 4 onwards */}
+                          {inv.showAudit ? (
+                            <button type="button" class="audit-invoice-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs" data-num={inv.invoice_number} data-status={inv.payment_status} data-date={inv.issue_date}>
+                              Audit
+                            </button>
+                          ) : (
+                            <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">N/A</div>
+                          )}
+
+                          {/* PRINT button - always visible */}
+                          <a href={`/dashboard/invoices/print/${inv.id}`} class="inline-flex items-center justify-center px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs">
+                            Print
+                          </a>
+
+                          {/* UPDATE button - unconfirmed draft stage only */}
+                          {inv.showUpdate ? (
+                            <button type="button" class="update-invoice-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs" data-invoice={JSON.stringify(inv)}>
+                              Update
+                            </button>
+                          ) : (
+                            <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">Locked</div>
+                          )}
+
+                          {/* BILL button - Stage 6 only */}
+                          {inv.showBill ? (
+                            <button type="button" class="bill-invoice-btn px-2 py-1.5 border border-emerald-100 bg-emerald-50 hover:bg-emerald-100/70 text-[9px] font-black text-emerald-700 rounded transition-colors uppercase tracking-wider" data-id={inv.id}>
+                              Bill
+                            </button>
+                          ) : (
+                            <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">N/A</div>
+                          )}
+
+                          {/* CONFIRM button - Stage 2, 3, 4 only */}
+                          {inv.showConfirm ? (
+                            <button type="button" class="confirm-payment-btn px-2 py-1.5 border border-blue-100 bg-blue-50 hover:bg-blue-100/70 text-[9px] font-black text-blue-700 rounded transition-colors uppercase tracking-wider" data-id={inv.id}>
+                              Confirm
+                            </button>
+                          ) : (
+                            <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">Approved</div>
+                          )}
+
+                          {/* CANCEL ORDER button - Stages 4, 5, 6 only */}
+                          {inv.showCancelOrder ? (
+                            <button type="button" class="cancel-invoice-btn px-2 py-1.5 border border-amber-100 bg-amber-50 hover:bg-amber-100 text-[9px] font-black text-amber-700 rounded transition-colors uppercase tracking-wider col-span-3" data-num={inv.invoice_number}>
+                              Cancel Order
+                            </button>
+                          ) : null}
+
+                          {/* DELETE / ARCHIVE button - always visible, layout and labels changes dynamically */}
+                          <button type="button" class={inv.deleteBtnClass} data-id={inv.id}>
+                            {inv.deleteLabel}
                           </button>
-                        ) : (
-                          <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">N/A</div>
-                        )}
-
-                        {/* PRINT button - always visible */}
-                        <a href={`/dashboard/invoices/print/${inv.id}`} class="inline-flex items-center justify-center px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs">
-                          Print
-                        </a>
-
-                        {/* UPDATE button - unconfirmed draft stage only */}
-                        {inv.showUpdate ? (
-                          <button type="button" class="update-invoice-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs" data-invoice={JSON.stringify(inv)}>
-                            Update
-                          </button>
-                        ) : (
-                          <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">Locked</div>
-                        )}
-
-                        {/* BILL button - Stage 6 only */}
-                        {inv.showBill ? (
-                          <button type="button" class="bill-invoice-btn px-2 py-1.5 border border-emerald-100 bg-emerald-50 hover:bg-emerald-100/70 text-[9px] font-black text-emerald-700 rounded transition-colors uppercase tracking-wider" data-id={inv.id}>
-                            Bill
-                          </button>
-                        ) : (
-                          <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">N/A</div>
-                        )}
-
-                        {/* CONFIRM button - Stage 2, 3, 4 only */}
-                        {inv.showConfirm ? (
-                          <button type="button" class="confirm-payment-btn px-2 py-1.5 border border-blue-100 bg-blue-50 hover:bg-blue-100/70 text-[9px] font-black text-blue-700 rounded transition-colors uppercase tracking-wider" data-id={inv.id}>
-                            Confirm
-                          </button>
-                        ) : (
-                          <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">Approved</div>
-                        )}
-
-                        {/* CANCEL ORDER button - Stages 4, 5, 6 only */}
-                        {inv.showCancelOrder ? (
-                          <button type="button" class="cancel-invoice-btn px-2 py-1.5 border border-amber-100 bg-amber-50 hover:bg-amber-100 text-[9px] font-black text-amber-700 rounded transition-colors uppercase tracking-wider col-span-3" data-num={inv.invoice_number}>
-                            Cancel Order
-                          </button>
-                        ) : null}
-
-                        {/* DELETE / ARCHIVE button - always visible, layout and labels changes dynamically */}
-                        <button type="button" class={inv.deleteBtnClass} data-id={inv.id}>
-                          {inv.deleteLabel}
-                        </button>
-                      </div>
+                        </div>
+                      ) : (
+                        <div class="flex gap-2 justify-end w-44">
+                          <a href={`/dashboard/invoices/${inv.id}`} class="inline-flex items-center justify-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-[10px] font-black text-slate-650 rounded-lg transition-colors uppercase tracking-wider shadow-3xs flex-1 text-center">
+                            View Details
+                          </a>
+                          <a href={`/dashboard/invoices/print/${inv.id}`} class="inline-flex items-center justify-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-[10px] font-black text-slate-650 rounded-lg transition-colors uppercase tracking-wider shadow-3xs flex-1 text-center">
+                            Print
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1043,5 +1068,5 @@ invoices = invoices.map(inv => {
     });
   </script>
 
-  <InvoiceForm />
+  {isAdmin && <InvoiceForm />}
 </DashboardLayout>
