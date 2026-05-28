@@ -145,6 +145,37 @@ const navItems = navGroups.flatMap(g => g.items);
       .dark ::-webkit-scrollbar-thumb:hover {
         background: #475569;
       }
+
+      /* Collapsible Sidebar Styles */
+      #sidebar.collapsed .collapsed-hide {
+        display: none !important;
+      }
+      #sidebar.collapsed {
+        width: 4rem !important; /* w-16 */
+      }
+      #sidebar.collapsed .sidebar-header {
+        justify-content: center !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+      }
+      #sidebar.collapsed a {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+      }
+      #sidebar.collapsed .mb-2 {
+        text-align: center;
+      }
+      #sidebar.collapsed .grid-cols-2 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+      }
+      #sidebar.collapsed #sidebar-signout-btn span {
+        display: none;
+      }
+      #sidebar.collapsed #sidebar-signout-btn {
+        width: auto;
+        padding: 0.5rem;
+      }
     </style>
   </head>
   <body class="bg-slate-50 text-slate-800 min-h-screen flex antialiased selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden transition-colors duration-250">
@@ -152,13 +183,22 @@ const navItems = navGroups.flatMap(g => g.items);
     <!-- Sidebar Backdrop (Mobile only) -->
     <div id="sidebar-backdrop" class="fixed inset-0 bg-slate-950/45 backdrop-blur-xs z-30 hidden transition-opacity duration-300 opacity-0 print:hidden select-none"></div>
 
+    <!-- Floating Hamburger Button (Mobile only) -->
+    <button 
+      id="open-sidebar-btn" 
+      class="fixed top-4 left-4 z-30 md:hidden bg-slate-900/80 hover:bg-slate-900 text-white p-2 rounded border border-slate-800 shadow-md flex items-center justify-center transition-all"
+      aria-label="Open navigation"
+    >
+      <Menu class="h-5 w-5" />
+    </button>
+
     <!-- Sidebar -->
     <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white/90 backdrop-blur-xl flex flex-col transition-all duration-300 md:translate-x-0 -translate-x-full">
       <!-- Sidebar Header -->
-      <div class="h-20 border-b border-slate-200 flex items-center justify-between px-5 bg-slate-50/50">
+      <div class="sidebar-header h-20 border-b border-slate-200 flex items-center justify-between px-5 bg-slate-50/50">
         <a href="/" class="flex items-center gap-3 group">
           <img src="/dgllclogosmall.png" alt="Delight Group Logo" class="h-12 w-auto object-contain transition-transform duration-350 group-hover:scale-105" />
-          <span class="text-base font-black font-display tracking-tight text-slate-900 leading-tight">
+          <span class="text-base font-black font-display tracking-tight text-slate-900 leading-tight collapsed-hide">
             Delight <span class="text-cyan-550 font-bold block text-xs tracking-wider uppercase -mt-0.5">Group LLC</span>
           </span>
         </a>
@@ -175,7 +215,7 @@ const navItems = navGroups.flatMap(g => g.items);
           return (
             <div class="mb-2">
               {group.label && (
-                <div class="px-2.5 pt-2 pb-0.5">
+                <div class="px-2.5 pt-2 pb-0.5 collapsed-hide">
                   <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">{group.label}</span>
                 </div>
               )}
@@ -184,15 +224,15 @@ const navItems = navGroups.flatMap(g => g.items);
                 return (
                   <a
                     href={item.href}
-                    class={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] font-semibold transition-all duration-150 ${
+                    class={`flex items-center gap-2.5 px-2.5 py-1.5 rounded text-[13px] font-semibold transition-all duration-150 ${
                       isActive
                         ? 'bg-cyan-50/80 text-cyan-700 font-bold'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                     }`}
                   >
                     {item.icon && <item.icon class={`h-4 w-4 shrink-0 ${isActive ? 'text-cyan-600' : 'text-slate-400'}`} />}
-                    <span class="truncate">{item.name}</span>
-                    {isActive && <span class="ml-auto w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0"></span>}
+                    <span class="truncate collapsed-hide">{item.name}</span>
+                    {isActive && <span class="ml-auto w-1.5 h-1.5 rounded bg-cyan-500 shrink-0 collapsed-hide"></span>}
                   </a>
                 );
               })}
@@ -208,56 +248,52 @@ const navItems = navGroups.flatMap(g => g.items);
           <!-- Home -->
           <a 
             href="/" 
-            class="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-650 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-all group"
+            class="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold text-slate-650 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-all group"
             title="Go to Corporate Home"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 21V12h6v9" />
             </svg>
-            <span>Home</span>
+            <span class="collapsed-hide">Home</span>
           </a>
 
           <!-- Profile -->
           <a 
             href="/dashboard/profile" 
-            class="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-650 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-all group"
+            class="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold text-slate-650 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-all group"
             title="Manage Profile"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0z" />
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <span class="truncate max-w-[80px]">{user ? (user.name || user.firstName || 'Profile') : 'Profile'}</span>
+            <span class="truncate max-w-[80px] collapsed-hide">{user ? (user.name || user.firstName || 'Profile') : 'Profile'}</span>
           </a>
         </div>
 
         <!-- Sign Out -->
         <button
           id="sidebar-signout-btn"
-          class="w-full flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-100 bg-rose-50/30 transition-all group"
+          class="w-full flex items-center justify-center gap-2 px-2.5 py-1.5 rounded text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-100 bg-rose-50/30 transition-all group"
         >
           <LogOut class="h-3.5 w-3.5 shrink-0 text-rose-400 group-hover:text-rose-600" />
-          <span>Sign Out</span>
+          <span class="collapsed-hide">Sign Out</span>
+        </button>
+
+        <!-- Minimize/Collapse Toggle button -->
+        <button
+          id="toggle-sidebar-collapse"
+          class="w-full mt-2 flex items-center justify-center gap-2 px-2.5 py-1.5 rounded text-2xs font-extrabold text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-all group"
+        >
+          <ChevronLeft id="collapse-icon" class="h-3 w-3 shrink-0 text-slate-400 group-hover:text-slate-600 transition-transform duration-300" />
+          <span id="collapse-text" class="collapsed-hide">Collapse Sidebar</span>
         </button>
       </div>
     </aside>
 
     <!-- Main Container -->
-    <div class="md:pl-64 flex flex-col flex-1 min-h-screen w-full transition-all duration-300">
-      <!-- Top Bar -->
-      <header class="h-8 border-b border-slate-200 bg-white/60 backdrop-blur-md flex items-center justify-between px-6 md:px-8 transition-colors duration-250">
-        <div class="flex items-center gap-4">
-          <button id="open-sidebar-btn" class="md:hidden text-slate-500 hover:text-slate-900" aria-label="Open navigation">
-            <Menu class="h-6 w-6" />
-          </button>
-        </div>
-        
-        <!-- User button & system status -->
-        <div class="flex items-center gap-4">
-        </div>
-      </header>
-
+    <div id="main-container" class="md:pl-64 flex flex-col flex-1 min-h-screen w-full transition-all duration-300">
       <!-- Panel Dynamic Content Body -->
       <main class="flex-grow bg-slate-50 transition-colors duration-250 overflow-hidden">
         <slot />
@@ -289,6 +325,9 @@ const navItems = navGroups.flatMap(g => g.items);
       const backdrop = document.getElementById('sidebar-backdrop');
       const openBtn = document.getElementById('open-sidebar-btn');
       const closeBtn = document.getElementById('close-sidebar-btn');
+      const mainContainer = document.getElementById('main-container');
+      const toggleCollapseBtn = document.getElementById('toggle-sidebar-collapse');
+      const collapseIcon = document.getElementById('collapse-icon');
 
       const openSidebar = () => {
         if (sidebar) sidebar.classList.remove('-translate-x-full');
@@ -316,6 +355,38 @@ const navItems = navGroups.flatMap(g => g.items);
       openBtn?.addEventListener('click', openSidebar);
       closeBtn?.addEventListener('click', closeSidebar);
       backdrop?.addEventListener('click', closeSidebar);
+
+      // Collapsible Sidebar logic
+      const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+      if (isCollapsed && window.innerWidth >= 768) {
+        sidebar?.classList.add('collapsed');
+        sidebar?.classList.remove('w-64');
+        sidebar?.classList.add('w-16');
+        mainContainer?.classList.remove('md:pl-64');
+        mainContainer?.classList.add('md:pl-16');
+        if (collapseIcon) collapseIcon.style.transform = 'rotate(180deg)';
+      }
+
+      toggleCollapseBtn?.addEventListener('click', () => {
+        const wasCollapsed = sidebar?.classList.contains('collapsed');
+        if (wasCollapsed) {
+          sidebar?.classList.remove('collapsed');
+          sidebar?.classList.remove('w-16');
+          sidebar?.classList.add('w-64');
+          mainContainer?.classList.remove('md:pl-16');
+          mainContainer?.classList.add('md:pl-64');
+          if (collapseIcon) collapseIcon.style.transform = 'rotate(0deg)';
+          localStorage.setItem('sidebar-collapsed', 'false');
+        } else {
+          sidebar?.classList.add('collapsed');
+          sidebar?.classList.remove('w-64');
+          sidebar?.classList.add('w-16');
+          mainContainer?.classList.remove('md:pl-64');
+          mainContainer?.classList.add('md:pl-16');
+          if (collapseIcon) collapseIcon.style.transform = 'rotate(180deg)';
+          localStorage.setItem('sidebar-collapsed', 'true');
+        }
+      });
 
       // Sidebar Sign Out button — triggers Clerk sign-out
       document.getElementById('sidebar-signout-btn')?.addEventListener('click', async () => {

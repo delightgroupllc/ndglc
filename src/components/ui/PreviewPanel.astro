@@ -11,49 +11,49 @@ const displayUrl = urlLabel || `delightgroupllc.com${src}`;
 ---
 
 <!-- Full-height preview panel with viewport switcher -->
-<div id={`${iframeId}-container`} class="flex flex-col h-[calc(100vh-32px)] bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+<div id={`${iframeId}-container`} class="flex flex-col h-full bg-slate-950 rounded-lg border border-slate-850 shadow-md overflow-hidden">
   
   <!-- Browser chrome top bar -->
-  <div class="shrink-0 bg-slate-950 px-3 py-2 border-b border-slate-800 flex items-center gap-2">
+  <div class="shrink-0 bg-slate-950 px-3 py-2 border-b border-slate-850 flex items-center gap-2">
     <!-- Traffic lights -->
     <div class="flex items-center gap-1.5 shrink-0">
-      <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
-      <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
-      <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+      <div class="w-2.5 h-2.5 rounded-full bg-red-500/60"></div>
+      <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/60"></div>
+      <div class="w-2.5 h-2.5 rounded-full bg-green-500/60"></div>
     </div>
 
     <!-- URL bar -->
-    <div class="flex-1 mx-2 bg-slate-800 rounded-md px-3 py-1 flex items-center min-w-0">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-slate-500 shrink-0 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <div class="flex-1 mx-2 bg-slate-900 rounded border border-slate-800 px-3 py-1 flex items-center min-w-0">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-slate-550 shrink-0 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
       </svg>
-      <span class="text-[10px] text-slate-400 font-mono truncate">{displayUrl}</span>
+      <span class="text-[10px] text-slate-450 font-mono truncate">{displayUrl}</span>
     </div>
 
     <!-- Viewport switcher -->
-    <div class="flex items-center bg-slate-800 rounded-lg p-0.5 shrink-0">
+    <div class="flex items-center bg-slate-900 rounded border border-slate-800 p-0.5 shrink-0">
       <!-- Desktop -->
       <button type="button" class="viewport-btn-preview active px-2 py-1 rounded text-cyan-400 transition-all" data-viewport="desktop" title="Desktop">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          <rect x="2" y="3" width="20" height="14" rx="1.5"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
         </svg>
       </button>
       <!-- Tablet -->
-      <button type="button" class="viewport-btn-preview px-2 py-1 rounded text-slate-500 hover:text-slate-300 transition-all" data-viewport="tablet" title="Tablet (768px)">
+      <button type="button" class="viewport-btn-preview px-2 py-1 rounded text-slate-550 hover:text-slate-305 transition-all" data-viewport="tablet" title="Tablet (768px)">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="18" r="1"/>
+          <rect x="4" y="2" width="16" height="20" rx="1.5"/><circle cx="12" cy="18" r="1"/>
         </svg>
       </button>
       <!-- Mobile -->
-      <button type="button" class="viewport-btn-preview px-2 py-1 rounded text-slate-500 hover:text-slate-300 transition-all" data-viewport="mobile" title="Mobile (390px)">
+      <button type="button" class="viewport-btn-preview px-2 py-1 rounded text-slate-550 hover:text-slate-305 transition-all" data-viewport="mobile" title="Mobile (390px)">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/>
+          <rect x="5" y="2" width="14" height="20" rx="1.5"/><line x1="11" y1="18" x2="13" y2="18"/>
         </svg>
       </button>
     </div>
 
     <!-- Refresh button -->
-    <button type="button" id={refreshBtnId} class="shrink-0 text-slate-500 hover:text-white transition-colors p-1 rounded" title="Reload preview">
+    <button type="button" id={refreshBtnId} class="shrink-0 text-slate-550 hover:text-white transition-colors p-1 rounded" title="Reload preview">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
       </svg>
@@ -61,13 +61,13 @@ const displayUrl = urlLabel || `delightgroupllc.com${src}`;
   </div>
 
   <!-- Loading indicator -->
-  <div id={`${iframeId}-loader`} class="hidden absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-10 items-center justify-center">
-    <div class="w-7 h-7 border-3 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
+  <div id={`${iframeId}-loader`} class="hidden absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-10 items-center justify-center">
+    <div class="w-7 h-7 border-3 border-cyan-205 border-t-cyan-500 rounded-full animate-spin"></div>
   </div>
 
   <!-- Iframe canvas -->
   <div class="flex-1 relative bg-slate-950 flex items-center justify-center overflow-hidden p-0">
-    <div id={`${iframeId}-wrapper`} class="w-full h-full relative shadow-2xl transition-all duration-300 ease-in-out">
+    <div id={`${iframeId}-wrapper`} class="w-full h-full relative shadow-lg transition-all duration-300 ease-in-out">
       <iframe
         id={iframeId}
         src={src}
@@ -93,19 +93,25 @@ const displayUrl = urlLabel || `delightgroupllc.com${src}`;
       btn.addEventListener('click', () => {
         vpBtns.forEach(b => {
           b.classList.remove('active', 'text-cyan-400');
-          b.classList.add('text-slate-500');
+          b.classList.add('text-slate-550');
         });
         btn.classList.add('active', 'text-cyan-400');
-        btn.classList.remove('text-slate-500');
+        btn.classList.remove('text-slate-550');
 
         const vp = btn.getAttribute('data-viewport');
         if (!wrapper) return;
         if (vp === 'desktop') {
-          wrapper.className = 'w-full h-full relative shadow-2xl transition-all duration-300 ease-in-out';
+          wrapper.style.width = '100%';
+          wrapper.style.height = '100%';
+          wrapper.className = 'relative shadow-lg transition-all duration-300 ease-in-out';
         } else if (vp === 'tablet') {
-          wrapper.className = 'w-[768px] h-[95%] relative shadow-2xl transition-all duration-300 ease-in-out border border-slate-700 rounded-lg overflow-hidden';
+          wrapper.style.width = '768px';
+          wrapper.style.height = '95%';
+          wrapper.className = 'relative shadow-lg transition-all duration-300 ease-in-out border border-slate-800 rounded-md overflow-hidden';
         } else {
-          wrapper.className = 'w-[390px] h-[85%] relative shadow-2xl transition-all duration-300 ease-in-out border border-slate-700 rounded-2xl overflow-hidden';
+          wrapper.style.width = '390px';
+          wrapper.style.height = '85%';
+          wrapper.className = 'relative shadow-lg transition-all duration-300 ease-in-out border border-slate-800 rounded-lg overflow-hidden';
         }
       });
     });

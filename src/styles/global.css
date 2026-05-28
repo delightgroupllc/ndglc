@@ -1,2 +1,6 @@
 @import "tailwindcss";
 @config "../../tailwind.config.mjs";
+
+:root {
+  --radius: 8px;
+}

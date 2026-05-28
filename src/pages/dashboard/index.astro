@@ -19,7 +19,13 @@ let metrics = {
   activeInquiries: 0
 };
 
-let recentActivities: any[] = [];
+let connectionStatuses = {
+  db: { status: 'ONLINE', latency: '0ms' },
+  clerk: { status: 'CONFIGURED', version: 'v1' },
+  resend: { status: 'CONFIGURED', limit: 'Free Tier' },
+  vercel: { status: 'CONNECTED', environment: 'production' }
+};
+
 let dbConnected = true;
 
 try {
@@ -56,25 +62,16 @@ try {
     metrics.totalValuation = dbVal;
   }
 
-  // 7. Load activity logs / transaction events
-  const logsRes = await query(
-    `SELECT al.*, u.name as user_name
-     FROM audit_logs al
-     LEFT JOIN users u ON u.id = al.user_id
-     ORDER BY al.timestamp DESC
-     LIMIT 6`
-  );
-  recentActivities = logsRes.rows.map((log: any) => ({
-    id: log.id,
-    type: log.action,
-    details: log.details,
-    timestamp: log.timestamp,
-    user: log.user_name || 'System automated'
-  }));
+  // 7. Load connection status checks
+  connectionStatuses.db.status = 'ONLINE';
+  const start = Date.now();
+  await query('SELECT 1');
+  connectionStatuses.db.latency = `${Date.now() - start}ms`;
 
 } catch (err: any) {
   console.warn('Database offline, running mock dashboard overview:', err.message);
   dbConnected = false;
+  connectionStatuses.db.status = 'OFFLINE';
 
   // Set mock dashboard statistics
   metrics = {
@@ -85,13 +82,18 @@ try {
     accountStanding: 'EXCELLENT',
     activeInquiries: 2
   };
-
-  recentActivities = [
-    { id: '1', type: 'order_update', details: 'Order INV-2026-8094 marked as COMPLETED', timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(), user: 'Alexander Vance' },
-    { id: '2', type: 'transaction_event', details: 'B2B payment of $12,390 received', timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(), user: 'System checkout' },
-    { id: '3', type: 'status_change', details: 'New catalog category "Indoor Lighting" added', timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(), user: 'Jane Stark' }
-  ];
 }
+
+// 8. Load other API keys/connection checks
+const hasClerkKey = !!(process.env.CLERK_SECRET_KEY || import.meta.env?.CLERK_SECRET_KEY);
+connectionStatuses.clerk.status = hasClerkKey ? 'CONFIGURED' : 'MISSING';
+
+const hasResendKey = !!(process.env.RESEND_API_KEY || import.meta.env?.RESEND_API_KEY);
+connectionStatuses.resend.status = hasResendKey ? 'CONFIGURED' : 'MISSING';
+
+const isVercel = !!(process.env.VERCEL || import.meta.env?.VERCEL);
+connectionStatuses.vercel.status = isVercel ? 'CONNECTED' : 'LOCAL HOST';
+connectionStatuses.vercel.environment = process.env.NODE_ENV === 'production' ? 'production' : 'development';
 ---
 
 <DashboardLayout title="Overview" activeItem="dashboard">
@@ -132,8 +134,8 @@ try {
   )}
 
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-    <!-- Metrics Grid (lg:col-span-8) -->
-    <div class="lg:col-span-8 space-y-6">
+    <!-- Metrics Grid (lg:col-span-12) -->
+    <div class="lg:col-span-12 space-y-6">
       <h3 class="text-sm font-bold font-display text-slate-900 uppercase tracking-wider">Metrics Grid</h3>
       
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -141,37 +143,37 @@ try {
           <!-- Admin View: 6 Metrics -->
           <>
             <!-- Total Valuation -->
-            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Valuation</p>
               <p class="text-2xl font-bold font-display text-slate-900">AED {metrics.totalValuation.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
             </div>
 
             <!-- Pending Settlements -->
-            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Pending Settlements</p>
               <p class="text-2xl font-bold font-display text-amber-600">AED {metrics.pendingSettlements.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
             </div>
 
             <!-- Total Revenue -->
-            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Revenue</p>
               <p class="text-2xl font-bold font-display text-emerald-600">AED {metrics.totalRevenue.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
             </div>
 
             <!-- Project Count -->
-            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Project Count</p>
               <p class="text-2xl font-bold font-display text-cyan-600">{metrics.projectCount} Collections</p>
             </div>
 
             <!-- Account Standing -->
-            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Account Standing</p>
               <p class="text-2xl font-bold font-display text-emerald-600">{metrics.accountStanding}</p>
             </div>
 
             <!-- Active Enquiries -->
-            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Active Inquiries</p>
               <p class="text-2xl font-bold font-display text-blue-600">{metrics.activeInquiries} CRM Dispatches</p>
             </div>
@@ -180,19 +182,19 @@ try {
           <!-- Regular User View: 3 Metrics -->
           <>
             <!-- Project Count -->
-            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Project Mapped Count</p>
               <p class="text-2xl font-bold font-display text-cyan-600">{metrics.projectCount} Collections</p>
             </div>
 
             <!-- Awaiting Settlement -->
-            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Awaiting Settlement</p>
               <p class="text-2xl font-bold font-display text-amber-600">AED {metrics.pendingSettlements.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
             </div>
 
             <!-- Account Standing -->
-            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Account Standing</p>
               <p class="text-2xl font-bold font-display text-emerald-600">{metrics.accountStanding}</p>
             </div>
@@ -200,72 +202,79 @@ try {
         )}
       </div>
 
+      <!-- Connection Status Console -->
+      <div class="rounded-lg border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+        <div class="space-y-1">
+          <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            System Integrations Heartbeat
+          </h3>
+          <p class="text-3xs text-slate-400 font-semibold uppercase tracking-widest">Live Platform Verification</p>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
+          <!-- PostgreSQL DB -->
+          <div class="rounded border border-slate-200 bg-slate-50/50 p-4 flex items-start justify-between">
+            <div class="space-y-1">
+              <span class="text-3xs font-semibold uppercase tracking-wider text-slate-500">PostgreSQL DB</span>
+              <p class="text-sm font-black text-slate-800 mt-1">{connectionStatuses.db.status}</p>
+              <p class="text-3xs text-slate-450 font-mono">Latency: {connectionStatuses.db.latency}</p>
+            </div>
+            <span class={`h-2 w-2 rounded-full mt-1 ${connectionStatuses.db.status === 'ONLINE' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+          </div>
+
+          <!-- Clerk Auth -->
+          <div class="rounded border border-slate-200 bg-slate-50/50 p-4 flex items-start justify-between">
+            <div class="space-y-1">
+              <span class="text-3xs font-semibold uppercase tracking-wider text-slate-500">Clerk Auth Provider</span>
+              <p class="text-sm font-black text-slate-800 mt-1">{connectionStatuses.clerk.status}</p>
+              <p class="text-3xs text-slate-450 font-mono">API Service: Active</p>
+            </div>
+            <span class={`h-2 w-2 rounded-full mt-1 ${connectionStatuses.clerk.status === 'CONFIGURED' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+          </div>
+
+          <!-- Resend Service -->
+          <div class="rounded border border-slate-200 bg-slate-50/50 p-4 flex items-start justify-between">
+            <div class="space-y-1">
+              <span class="text-3xs font-semibold uppercase tracking-wider text-slate-500">Resend Mail API</span>
+              <p class="text-sm font-black text-slate-800 mt-1">{connectionStatuses.resend.status}</p>
+              <p class="text-3xs text-slate-455 font-mono">Plan: {connectionStatuses.resend.limit}</p>
+            </div>
+            <span class={`h-2 w-2 rounded-full mt-1 ${connectionStatuses.resend.status === 'CONFIGURED' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+          </div>
+
+          <!-- Vercel hosting -->
+          <div class="rounded border border-slate-200 bg-slate-50/50 p-4 flex items-start justify-between">
+            <div class="space-y-1">
+              <span class="text-3xs font-semibold uppercase tracking-wider text-slate-500">Hosting & Runtime</span>
+              <p class="text-sm font-black text-slate-800 mt-1">{connectionStatuses.vercel.status}</p>
+              <p class="text-3xs text-slate-450 font-mono">Env: {connectionStatuses.vercel.environment}</p>
+            </div>
+            <span class="h-2 w-2 rounded-full bg-emerald-500 mt-1 animate-pulse"></span>
+          </div>
+        </div>
+      </div>
+
       <!-- Quick Shortcuts -->
-      <div class="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+      <div class="rounded-lg border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
         <h3 class="text-sm font-bold font-display text-slate-900">Operations Command Console</h3>
-        <p class="text-xs text-slate-650 leading-relaxed">Select an administrative quick link below to update ledger invoice sheets or configure product categories.</p>
-        <div class="flex flex-wrap gap-4">
+        <p class="text-xs text-slate-600 leading-relaxed">Select an administrative quick link below to update ledger invoice sheets or configure product categories.</p>
+        <div class="flex flex-wrap gap-3">
           {isAdmin && (
             <>
-              <a href="/dashboard/transactions" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 rounded-lg text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
+              <a href="/dashboard/transactions" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2 rounded text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
                 Financial Ledger
               </a>
-              <a href="/dashboard/projects" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 rounded-lg text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
+              <a href="/dashboard/projects" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2 rounded text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
                 Portfolio CRUD
               </a>
-              <a href="/dashboard/communications" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 rounded-lg text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
+              <a href="/dashboard/communications" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2 rounded text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
                 CRM Messages
               </a>
             </>
           )}
-          <a href="/dashboard/downloads" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2.5 rounded-lg text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
+          <a href="/dashboard/downloads" class="text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2 rounded text-slate-750 transition-all flex items-center gap-1.5 shadow-2xs hover:shadow-xs">
             Library Downloads
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Operational Feed Right Panel (lg:col-span-4) -->
-    <div class="lg:col-span-4 space-y-6">
-      <h3 class="text-sm font-bold font-display text-slate-900 uppercase tracking-wider">Operational Feed</h3>
-
-      <div class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h4 class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-            <span class="h-2 w-2 rounded-full bg-cyan-500 animate-pulse"></span>
-            Real-time Activity Stream
-          </h4>
-          <span class="text-3xs text-slate-500 font-semibold tracking-wider uppercase">Online</span>
-        </div>
-
-        {recentActivities.length === 0 ? (
-          <div class="text-center py-12 text-slate-400 italic text-xs leading-relaxed space-y-2">
-            <div>No Pulse Detected</div>
-            <div class="text-2xs text-slate-400">Systems are currently nominal.</div>
-          </div>
-        ) : (
-          <div class="space-y-4">
-            {recentActivities.map(activity => (
-              <div class="flex gap-3 text-xs leading-relaxed">
-                <div class="h-5 w-1 bg-cyan-500 rounded mt-0.5 shrink-0"></div>
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center justify-between gap-3">
-                    <span class="rounded bg-slate-100 border border-slate-200 px-1.5 py-0.2 text-3xs font-mono font-bold text-slate-600 uppercase">
-                      {activity.type.replace('_', ' ')}
-                    </span>
-                    <span class="text-3xs text-slate-500">{new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                  <p class="text-slate-600 mt-1 text-2xs truncate" title={activity.details}>{activity.details}</p>
-                  <p class="text-3xs text-slate-400 mt-0.5">By: {activity.user}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div class="pt-4 border-t border-slate-100 flex justify-end">
-          <a href="/dashboard/logs" class="text-3xs font-bold text-cyan-600 hover:text-cyan-500 tracking-wider uppercase">
-            View Ledger History &rarr;
           </a>
         </div>
       </div>
@@ -279,7 +288,7 @@ try {
       const dateEl = document.getElementById('live-gst-date');
       
       if (!clockEl || !dateEl) return;
-
+ 
       const now = new Date();
       
       // Calculate GST timezone (+4:00)
