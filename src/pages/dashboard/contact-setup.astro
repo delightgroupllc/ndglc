@@ -1,141 +1,395 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import PreviewPanel from '../../components/ui/PreviewPanel.astro';
 import { query } from '../../lib/db';
 
-let contactSetup: any = {
+const defaults: any = {
   heroImageUrl: '',
+  images: [],
+  imageEffect: 'fade',
+  imageInterval: 4000,
   mapUrl: '',
-  emails: {
-    press: '',
-    careers: ''
-  },
-  hours: '',
-  socialLinks: {
-    websiteUrl: ''
+  mapMode: 'link',   // 'link' | 'embed'
+  address: 'Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE',
+  phone: '+971 (4) 555-0100',
+  email: 'info@delightgroupllc.ae',
+  hours: 'Monday – Friday: 09:00 – 18:00 GST',
+  emails: { press: '', careers: '', showPress: true, showCareers: true, custom: [] },
+  socialLinks: { websiteUrl: '' },
+  cards: {
+    headquarters: { enabled: true, title: 'Headquarters', mapLinkLabel: 'View On Map' },
+    inquiry:      { enabled: true, title: 'Direct Inquiry' },
+    call:         { enabled: true, title: 'Call Us' }
   }
 };
+
+let contactSetup: any = { ...defaults };
 
 try {
   const res = await query("SELECT value FROM settings WHERE key = 'contact_setup'");
   if (res.rows.length > 0) {
-    contactSetup = { ...contactSetup, ...JSON.parse(res.rows[0].value) };
+    const saved = JSON.parse(res.rows[0].value);
+    contactSetup = {
+      ...defaults,
+      ...saved,
+      emails: { ...defaults.emails, ...(saved.emails || {}) },
+      socialLinks: { ...defaults.socialLinks, ...(saved.socialLinks || {}) },
+      cards: {
+        headquarters: { ...defaults.cards.headquarters, ...(saved.cards?.headquarters || {}) },
+        inquiry:      { ...defaults.cards.inquiry,      ...(saved.cards?.inquiry      || {}) },
+        call:         { ...defaults.cards.call,         ...(saved.cards?.call         || {}) }
+      }
+    };
   }
 } catch (err: any) {
   console.warn('DB offline or settings missing:', err?.message || err);
 }
+
+const customEmails: any[] = contactSetup.emails?.custom || [];
 ---
 
 <DashboardLayout title="Contact Page Setup" activeItem="contact-setup">
-  <div class="max-w-4xl mx-auto space-y-8 pb-16">
-    <header class="flex items-center justify-between border-b border-slate-100 pb-5">
-      <div>
-        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Contact Setup</h1>
-        <p class="text-xs text-slate-500 font-medium">Configure contact hours, press & careers dispatches, map links, and contact images.</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <div id="save-msg" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2"></div>
-        <button id="save-contact" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">Save Changes</button>
-      </div>
-    </header>
+  <div class="h-[calc(100vh-64px)] flex overflow-hidden">
 
-    <form id="contact-form" class="space-y-8">
-      <!-- GENERAL AND HOURS -->
-      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <div class="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
-          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">General Information & Map</h2>
+    <!-- ── Editor Column ──────────────────────────────────── -->
+    <div class="w-[440px] shrink-0 flex flex-col border-r border-slate-200 bg-white overflow-y-auto">
+
+      <!-- Sticky header -->
+      <div class="sticky top-0 z-10 bg-white border-b border-slate-100 px-5 py-3 flex items-center justify-between shrink-0">
+        <div>
+          <h1 class="text-sm font-black text-slate-900 tracking-tight">Contact Setup</h1>
+          <p class="text-[10px] text-slate-400 font-medium">Cards, images, hours & links.</p>
         </div>
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="md:col-span-2">
-            <label class="text-xs font-medium text-slate-600">Google Map URL</label>
-            <input name="mapUrl" value={contactSetup.mapUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600">Contact Hours</label>
-            <input name="hours" value={contactSetup.hours || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="e.g. Monday – Friday: 09:00 – 18:00 GST" />
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600">Main Hero Image URL</label>
-            <input name="heroImageUrl" value={contactSetup.heroImageUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-          </div>
+        <div class="flex items-center gap-2">
+          <div id="save-msg" class="hidden text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1"></div>
+          <button id="save-contact" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all">Save</button>
         </div>
       </div>
 
-      <!-- EMAILS -->
-      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <div class="w-1.5 h-6 bg-teal-500 rounded-full"></div>
-          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Specialized Emails</h2>
-        </div>
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="text-xs font-medium text-slate-600">Press / Media Email</label>
-            <input type="email" name="pressEmail" value={contactSetup.emails?.press || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600">Careers Email</label>
-            <input type="email" name="careersEmail" value={contactSetup.emails?.careers || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
-          </div>
-        </div>
-      </div>
+      <form id="contact-form" class="p-4 space-y-4 flex-1">
 
-      <!-- UTILITY LINKS -->
-      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <div class="w-1.5 h-6 bg-purple-600 rounded-full"></div>
-          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Socials & Utility</h2>
-        </div>
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="md:col-span-2">
-            <label class="text-xs font-medium text-slate-600">Globe Website URL</label>
-            <input name="socialWebsiteUrl" value={contactSetup.socialLinks?.websiteUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-400" />
+        <!-- ── HERO IMAGES ─────────────────────────────────── -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+            <div class="w-1.5 h-5 bg-indigo-600 rounded-full"></div>
+            <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Facade Image(s)</h2>
+          </div>
+          <div class="p-4 space-y-3">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Fallback / Single Image URL</label>
+              <input name="heroImageUrl" value={contactSetup.heroImageUrl || ''} placeholder="https://…/image.jpg"
+                class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-[10px] font-semibold text-slate-500">Slideshow Images</label>
+                <button type="button" id="add-slideshow-img-btn"
+                  class="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 px-2.5 py-0.5 rounded-md transition">+ Add</button>
+              </div>
+              <div id="slideshow-container" class="space-y-1.5" data-images={JSON.stringify(contactSetup.images || [])}></div>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Effect</label>
+                <select name="imageEffect" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                  <option value="fade"  selected={!contactSetup.imageEffect || contactSetup.imageEffect==='fade'}>Fade</option>
+                  <option value="slide" selected={contactSetup.imageEffect==='slide'}>Slide</option>
+                  <option value="zoom"  selected={contactSetup.imageEffect==='zoom'}>Zoom</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Filter</label>
+                <select name="imageFilter" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                  <option value="none"      selected={!contactSetup.imageFilter || contactSetup.imageFilter==='none'}>Color</option>
+                  <option value="grayscale" selected={contactSetup.imageFilter==='grayscale'}>Grayscale</option>
+                  <option value="sepia"     selected={contactSetup.imageFilter==='sepia'}>Sepia</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Interval (s)</label>
+                <input type="number" name="imageInterval" min="2" max="30" step="0.5"
+                  value={Math.round((contactSetup.imageInterval || 4000) / 1000)}
+                  class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </form>
+
+        <!-- ── CARD 1 — HEADQUARTERS ──────────────────────── -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-1.5 h-5 bg-amber-500 rounded-full"></div>
+              <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Card 1 — Headquarters</h2>
+            </div>
+            <label class="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" name="card_hq_enabled" class="rounded accent-amber-500 w-3.5 h-3.5"
+                {... (contactSetup.cards?.headquarters?.enabled !== false ? {checked: true} : {})} />
+              <span class="text-[10px] text-slate-500 font-semibold">Show</span>
+            </label>
+          </div>
+          <div class="p-4 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="text-[10px] font-semibold text-slate-500">Card Title</label>
+                <input name="card_hq_title" value={contactSetup.cards?.headquarters?.title || 'Headquarters'}
+                  class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" /></div>
+              <div><label class="text-[10px] font-semibold text-slate-500">Map Link Label</label>
+                <input name="card_hq_mapLabel" value={contactSetup.cards?.headquarters?.mapLinkLabel || 'View On Map'}
+                  class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" /></div>
+            </div>
+            <div><label class="text-[10px] font-semibold text-slate-500">Address</label>
+              <textarea name="address" rows="2" placeholder="Building, Area, City, Country"
+                class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none">{contactSetup.address || ''}</textarea></div>
+            <div><label class="text-[10px] font-semibold text-slate-500">Google Maps URL</label>
+              <input name="mapUrl" value={contactSetup.mapUrl || ''}
+                class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" /></div>
+            <!-- Map display mode -->
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500 block mb-1">Map Display Mode</label>
+              <div class="flex gap-2">
+                <label class={`flex-1 flex items-center justify-center gap-1.5 border rounded-lg py-1.5 cursor-pointer text-[10px] font-bold transition-all ${contactSetup.mapMode !== 'embed' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-slate-200 text-slate-500'}`}>
+                  <input type="radio" name="mapMode" value="link" class="hidden" checked={contactSetup.mapMode !== 'embed'} /> 🔗 Link Button
+                </label>
+                <label class={`flex-1 flex items-center justify-center gap-1.5 border rounded-lg py-1.5 cursor-pointer text-[10px] font-bold transition-all ${contactSetup.mapMode === 'embed' ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-slate-200 text-slate-500'}`}>
+                  <input type="radio" name="mapMode" value="embed" class="hidden" checked={contactSetup.mapMode === 'embed'} /> 🗺 Embedded Map
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CARD 2 — DIRECT INQUIRY ────────────────────── -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-1.5 h-5 bg-teal-500 rounded-full"></div>
+              <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Card 2 — Inquiry</h2>
+            </div>
+            <label class="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" name="card_inq_enabled" class="rounded accent-teal-500 w-3.5 h-3.5"
+                {... (contactSetup.cards?.inquiry?.enabled !== false ? {checked: true} : {})} />
+              <span class="text-[10px] text-slate-500 font-semibold">Show</span>
+            </label>
+          </div>
+          <div class="p-4 space-y-3">
+            <div><label class="text-[10px] font-semibold text-slate-500">Card Title</label>
+              <input name="card_inq_title" value={contactSetup.cards?.inquiry?.title || 'Direct Inquiry'}
+                class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" /></div>
+
+            <!-- Email rows with individual visibility toggle -->
+            <div class="space-y-2">
+              <label class="text-[10px] font-semibold text-slate-500 block">Email Entries</label>
+
+              <!-- General email -->
+              <div class="flex items-center gap-2 bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-200">
+                <input type="checkbox" name="showGeneralEmail" class="rounded accent-teal-500 w-3 h-3 shrink-0" checked />
+                <span class="text-[10px] font-bold text-slate-500 w-14 shrink-0">General</span>
+                <input type="email" name="email" value={contactSetup.email || ''}
+                  placeholder="info@example.com" class="flex-grow rounded border border-slate-200 px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-teal-400" />
+              </div>
+
+              <!-- Press email -->
+              <div class="flex items-center gap-2 bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-200">
+                <input type="checkbox" name="showPressEmail" class="rounded accent-teal-500 w-3 h-3 shrink-0"
+                  {... (contactSetup.emails?.showPress !== false ? {checked: true} : {})} />
+                <span class="text-[10px] font-bold text-slate-500 w-14 shrink-0">Press</span>
+                <input type="email" name="pressEmail" value={contactSetup.emails?.press || ''}
+                  placeholder="media@example.com" class="flex-grow rounded border border-slate-200 px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-teal-400" />
+              </div>
+
+              <!-- Careers email -->
+              <div class="flex items-center gap-2 bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-200">
+                <input type="checkbox" name="showCareersEmail" class="rounded accent-teal-500 w-3 h-3 shrink-0"
+                  {... (contactSetup.emails?.showCareers !== false ? {checked: true} : {})} />
+                <span class="text-[10px] font-bold text-slate-500 w-14 shrink-0">Careers</span>
+                <input type="email" name="careersEmail" value={contactSetup.emails?.careers || ''}
+                  placeholder="careers@example.com" class="flex-grow rounded border border-slate-200 px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-teal-400" />
+              </div>
+
+              <!-- Custom emails -->
+              <div id="custom-emails-container" class="space-y-1.5" data-emails={JSON.stringify(customEmails)}></div>
+
+              <button type="button" id="add-custom-email"
+                class="w-full flex items-center justify-center gap-1 border border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-50 text-[10px] font-bold text-teal-700 py-1.5 rounded-lg transition">
+                + Add Custom Email Row
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CARD 3 — CALL US ────────────────────────────── -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-1.5 h-5 bg-purple-600 rounded-full"></div>
+              <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Card 3 — Call Us</h2>
+            </div>
+            <label class="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" name="card_call_enabled" class="rounded accent-purple-500 w-3.5 h-3.5"
+                {... (contactSetup.cards?.call?.enabled !== false ? {checked: true} : {})} />
+              <span class="text-[10px] text-slate-500 font-semibold">Show</span>
+            </label>
+          </div>
+          <div class="p-4 space-y-2">
+            <div><label class="text-[10px] font-semibold text-slate-500">Card Title</label>
+              <input name="card_call_title" value={contactSetup.cards?.call?.title || 'Call Us'}
+                class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" /></div>
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="text-[10px] font-semibold text-slate-500">Phone Number</label>
+                <input type="tel" name="phone" value={contactSetup.phone || ''} placeholder="+971 (4) 555-0100"
+                  class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" /></div>
+              <div><label class="text-[10px] font-semibold text-slate-500">Office Hours</label>
+                <input name="hours" value={contactSetup.hours || ''} placeholder="Mon – Fri: 09:00 – 18:00"
+                  class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" /></div>
+            </div>
+            <div><label class="text-[10px] font-semibold text-slate-500">Globe / Website URL</label>
+              <input name="socialWebsiteUrl" value={contactSetup.socialLinks?.websiteUrl || ''}
+                class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" /></div>
+          </div>
+        </div>
+
+      </form>
+    </div><!-- /editor -->
+
+    <!-- ── Preview Column ─────────────────────────────────── -->
+    <div class="flex-1 overflow-hidden p-3">
+      <PreviewPanel src="/contact" iframeId="contact-preview-iframe" refreshBtnId="btn-refresh-contact-preview" />
+    </div>
+
   </div>
 
   <script>
-    const form = document.getElementById('contact-form') as HTMLFormElement;
-    const saveBtn = document.getElementById('save-contact');
-    const saveMsg = document.getElementById('save-msg');
+    const form    = document.getElementById('contact-form') as HTMLFormElement;
+    const saveBtn = document.getElementById('save-contact') as HTMLButtonElement;
+    const saveMsg = document.getElementById('save-msg') as HTMLElement;
 
+    // ── Slideshow images ────────────────────────────────────
+    const slideCont = document.getElementById('slideshow-container') as HTMLElement;
+    let slideImages: string[] = [];
+    try { slideImages = JSON.parse(slideCont.getAttribute('data-images') || '[]'); } catch {}
+
+    const syncSlide = () => {
+      slideImages = Array.from(slideCont.querySelectorAll('.slide-img-input') as NodeListOf<HTMLInputElement>).map(i => i.value);
+    };
+    const renderSlide = () => {
+      slideCont.innerHTML = '';
+      if (!slideImages.length) { slideCont.innerHTML = `<p class="text-[10px] text-slate-400 italic">No slideshow images — fallback shown.</p>`; return; }
+      slideImages.forEach((url, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-1.5';
+        row.innerHTML = `
+          <span class="text-[10px] text-slate-400 w-4 text-center">${idx+1}</span>
+          <input type="text" class="flex-grow rounded-md border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400 slide-img-input"
+            value="${url.replace(/"/g,'&quot;')}" placeholder="https://…/photo.jpg" />
+          <button type="button" class="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 rounded del-slide" data-idx="${idx}">×</button>`;
+        slideCont.appendChild(row);
+      });
+      slideCont.querySelectorAll('.del-slide').forEach(btn => {
+        btn.addEventListener('click', e => { const i = parseInt((e.currentTarget as HTMLElement).dataset.idx||'0'); syncSlide(); slideImages.splice(i,1); renderSlide(); });
+      });
+    };
+    document.getElementById('add-slideshow-img-btn')?.addEventListener('click', () => { syncSlide(); slideImages.push(''); renderSlide(); });
+    renderSlide();
+
+    // ── Custom emails ───────────────────────────────────────
+    const custCont = document.getElementById('custom-emails-container') as HTMLElement;
+    let customEmails: any[] = [];
+    try { customEmails = JSON.parse(custCont.getAttribute('data-emails') || '[]'); } catch {}
+
+    const syncCustom = () => {
+      customEmails = Array.from(custCont.querySelectorAll('.custom-email-row')).map(row => ({
+        label:   (row.querySelector('.ce-label') as HTMLInputElement).value,
+        address: (row.querySelector('.ce-addr') as HTMLInputElement).value,
+        show:    (row.querySelector('.ce-show') as HTMLInputElement).checked
+      }));
+    };
+    const renderCustom = () => {
+      custCont.innerHTML = '';
+      customEmails.forEach((em, idx) => {
+        const row = document.createElement('div');
+        row.className = 'custom-email-row flex items-center gap-2 bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-200';
+        row.innerHTML = `
+          <input type="checkbox" class="ce-show rounded accent-teal-500 w-3 h-3 shrink-0" ${em.show !== false ? 'checked' : ''} />
+          <input type="text" class="ce-label w-16 shrink-0 rounded border border-slate-200 px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-teal-400" value="${(em.label||'').replace(/"/g,'&quot;')}" placeholder="Label" />
+          <input type="email" class="ce-addr flex-grow rounded border border-slate-200 px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-teal-400" value="${(em.address||'').replace(/"/g,'&quot;')}" placeholder="email@…" />
+          <button type="button" class="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 rounded del-ce" data-idx="${idx}">×</button>`;
+        custCont.appendChild(row);
+      });
+      custCont.querySelectorAll('.del-ce').forEach(btn => {
+        btn.addEventListener('click', e => { const i = parseInt((e.currentTarget as HTMLElement).dataset.idx||'0'); syncCustom(); customEmails.splice(i,1); renderCustom(); });
+      });
+    };
+    document.getElementById('add-custom-email')?.addEventListener('click', () => { syncCustom(); customEmails.push({ label:'', address:'', show:true }); renderCustom(); });
+    renderCustom();
+
+    // ── Map mode radio highlight ────────────────────────────
+    document.querySelectorAll('input[name="mapMode"]').forEach(r => {
+      r.addEventListener('change', e => {
+        document.querySelectorAll('input[name="mapMode"]').forEach(rb => {
+          const lbl = rb.closest('label');
+          if ((rb as HTMLInputElement).checked) { lbl?.classList.add('border-amber-400','bg-amber-50','text-amber-700'); lbl?.classList.remove('border-slate-200','text-slate-500'); }
+          else { lbl?.classList.remove('border-amber-400','bg-amber-50','text-amber-700'); lbl?.classList.add('border-slate-200','text-slate-500'); }
+        });
+      });
+    });
+
+    // ── Read form ───────────────────────────────────────────
     const readForm = () => {
       const data = new FormData(form);
+      syncSlide(); syncCustom();
       return {
-        mapUrl: data.get('mapUrl') || '',
-        hours: data.get('hours') || '',
         heroImageUrl: data.get('heroImageUrl') || '',
+        images: slideImages.map(u=>u.trim()).filter(Boolean),
+        imageEffect: data.get('imageEffect') || 'fade',
+        imageFilter: data.get('imageFilter') || 'none',
+        imageInterval: Math.round(parseFloat(data.get('imageInterval') as string||'4') * 1000),
+        mapUrl:   data.get('mapUrl') || '',
+        mapMode:  data.get('mapMode') || 'link',
+        address:  data.get('address') || '',
+        phone:    data.get('phone') || '',
+        email:    data.get('email') || '',
+        hours:    data.get('hours') || '',
         emails: {
-          press: data.get('pressEmail') || '',
-          careers: data.get('careersEmail') || ''
+          press:         data.get('pressEmail') || '',
+          careers:       data.get('careersEmail') || '',
+          showPress:     (form.querySelector('[name="showPressEmail"]') as HTMLInputElement)?.checked ?? true,
+          showCareers:   (form.querySelector('[name="showCareersEmail"]') as HTMLInputElement)?.checked ?? true,
+          showGeneral:   (form.querySelector('[name="showGeneralEmail"]') as HTMLInputElement)?.checked ?? true,
+          custom: customEmails
         },
-        socialLinks: {
-          websiteUrl: data.get('socialWebsiteUrl') || ''
+        socialLinks: { websiteUrl: data.get('socialWebsiteUrl') || '' },
+        cards: {
+          headquarters: {
+            enabled:      (form.querySelector('[name="card_hq_enabled"]') as HTMLInputElement)?.checked ?? true,
+            title:        data.get('card_hq_title') || 'Headquarters',
+            mapLinkLabel: data.get('card_hq_mapLabel') || 'View On Map'
+          },
+          inquiry: {
+            enabled: (form.querySelector('[name="card_inq_enabled"]') as HTMLInputElement)?.checked ?? true,
+            title:   data.get('card_inq_title') || 'Direct Inquiry'
+          },
+          call: {
+            enabled: (form.querySelector('[name="card_call_enabled"]') as HTMLInputElement)?.checked ?? true,
+            title:   data.get('card_call_title') || 'Call Us'
+          }
         }
       };
     };
 
-    saveBtn?.addEventListener('click', async () => {
-      saveBtn.setAttribute('disabled', 'true');
-      saveBtn.textContent = 'Saving...';
+    // ── Save ────────────────────────────────────────────────
+    saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
       try {
-        const payload = { contact_setup: JSON.stringify(readForm()) };
         const res = await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contact_setup: JSON.stringify(readForm()) })
         });
-        if (!res.ok) throw new Error('Failed to save settings');
-        saveMsg!.classList.remove('hidden');
-        saveMsg!.textContent = '✓ Saved successfully';
-        setTimeout(() => { saveMsg!.classList.add('hidden'); }, 2500);
-      } catch (err: any) {
-        alert(err?.message || 'Error saving settings');
-      } finally {
-        saveBtn.removeAttribute('disabled');
-        saveBtn.textContent = 'Save Changes';
-      }
+        if (!res.ok) throw new Error('Failed to save');
+        saveMsg.classList.remove('hidden'); saveMsg.textContent = '✓ Saved';
+        (window as any)['refresh_contact-preview-iframe']?.();
+        setTimeout(() => saveMsg.classList.add('hidden'), 2500);
+      } catch (err: any) { alert(err?.message || 'Error'); }
+      finally { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
     });
   </script>
 </DashboardLayout>

@@ -1,5 +1,6 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import PreviewPanel from '../../components/ui/PreviewPanel.astro';
 import { query } from '../../lib/db';
 import { BookOpen, Edit, PlusCircle, X } from '@lucide/astro';
 
@@ -12,8 +13,22 @@ try {
 }
 ---
 
-<DashboardLayout title="Site Disclaimers | Delight Group LLC">
-  <div class="max-w-7xl mx-auto space-y-8">
+<DashboardLayout title="Site Disclaimers | Delight Group LLC" activeItem="site-disclaimers">
+  <div class="h-[calc(100vh-64px)] flex overflow-hidden">
+    <!-- Editor Column -->
+    <div class="w-[500px] shrink-0 flex flex-col border-r border-slate-200 bg-slate-50 overflow-y-auto">
+      <div class="sticky top-0 z-10 bg-white border-b border-slate-100 px-5 py-3 flex items-center justify-between shrink-0">
+        <div>
+          <h1 class="text-sm font-black text-slate-900 tracking-tight">Legal Artifacts</h1>
+          <p class="text-[10px] text-slate-400 font-medium">Manage public disclaimers and order clauses.</p>
+        </div>
+        <button type="button"
+          onclick="document.dispatchEvent(new CustomEvent('open-artifact-modal', { detail: { artifact: null } }))"
+          class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+          <PlusCircle class="w-3.5 h-3.5" /> New
+        </button>
+      </div>
+      <div class="p-4">
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-black font-display text-slate-900 tracking-tight uppercase">Legal Artifacts</h1>
@@ -57,9 +72,15 @@ try {
         </div>
       ))}
     </div>
-  </div>
+      </div>
+    </div><!-- /editor -->
 
-  <!-- Artifact Modal -->
+    <!-- Preview Column -->
+    <div class="flex-1 overflow-hidden p-3">
+      <PreviewPanel src="/terms" iframeId="disclaimer-preview-iframe" refreshBtnId="btn-refresh-disclaimer-preview" />
+    </div>
+
+  </div>
   <div id="artifact-modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden transform transition-all">
       <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
@@ -211,3 +232,4 @@ try {
     }
   });
 </script>
+</DashboardLayout>

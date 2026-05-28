@@ -1,176 +1,245 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ContactForm from '../components/forms/ContactForm.astro';
-import { Mail, Phone, MapPin, Zap, Globe, Share2, Grid } from '@lucide/astro';
+import { Mail, Phone, MapPin, Globe, Share2, Grid } from '@lucide/astro';
 import { query } from '../lib/db';
 
-let address = 'Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE';
-let phone = '+971 (4) 555-0100';
-let email = 'info@delightgroupllc.ae';
-let contactSetup: any = null;
+const defaults: any = {
+  heroImageUrl: '/about-hero.png',
+  images: [],
+  imageEffect: 'fade',
+  imageFilter: 'none',
+  imageInterval: 4000,
+  mapUrl: 'https://maps.google.com',
+  mapMode: 'link',
+  address: 'Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE',
+  phone: '+971 (4) 555-0100',
+  email: 'info@delightgroupllc.ae',
+  hours: 'Monday – Friday: 09:00 – 18:00 GST',
+  emails: { press: 'media@delightgroupllc.com', careers: 'careers@delightgroupllc.com', showPress: true, showCareers: true, showGeneral: true, custom: [] },
+  socialLinks: { websiteUrl: 'https://delightgroupllc.com' },
+  cards: {
+    headquarters: { enabled: true, title: 'Headquarters', mapLinkLabel: 'View On Map' },
+    inquiry:      { enabled: true, title: 'Direct Inquiry' },
+    call:         { enabled: true, title: 'Call Us' }
+  }
+};
+
+let setup = { ...defaults };
 
 try {
-  const settingsRes = await query(`
-    SELECT key, value 
-    FROM settings 
-    WHERE key IN ('company_address', 'contact_phone', 'contact_email', 'contact_setup')
-  `);
-  
-  settingsRes.rows.forEach(row => {
-    if (row.key === 'company_address') address = row.value;
-    if (row.key === 'contact_phone') phone = row.value;
-    if (row.key === 'contact_email') email = row.value;
-    if (row.key === 'contact_setup') {
-      try {
-        contactSetup = JSON.parse(row.value);
-      } catch (e) {}
-    }
-  });
+  const res = await query(`SELECT value FROM settings WHERE key = 'contact_setup'`);
+  if (res.rows.length > 0) {
+    const saved = JSON.parse(res.rows[0].value);
+    setup = {
+      ...defaults,
+      ...saved,
+      emails: { ...defaults.emails, ...(saved.emails || {}) },
+      socialLinks: { ...defaults.socialLinks, ...(saved.socialLinks || {}) },
+      cards: {
+        headquarters: { ...defaults.cards.headquarters, ...(saved.cards?.headquarters || {}) },
+        inquiry:      { ...defaults.cards.inquiry,      ...(saved.cards?.inquiry      || {}) },
+        call:         { ...defaults.cards.call,         ...(saved.cards?.call         || {}) }
+      }
+    };
+  }
 } catch (err: any) {
   console.warn('Failed to load contact settings from DB:', err.message);
 }
 
-const defaultContactSetup = {
-  heroImageUrl: "/about-hero.png",
-  mapUrl: "https://maps.google.com",
-  emails: {
-    press: "media@delightgroupllc.com",
-    careers: "careers@delightgroupllc.com"
-  },
-  hours: "Monday – Friday: 09:00 – 18:00 GST",
-  socialLinks: {
-    websiteUrl: "https://delightgroupllc.com"
-  }
+// Resolve slide images
+const slideImages: string[] = (setup.images?.length > 0) ? setup.images : (setup.heroImageUrl ? [setup.heroImageUrl] : []);
+const effect: string     = setup.imageEffect || 'fade';
+const imgFilter: string  = setup.imageFilter || 'none';
+const intervalMs: number = setup.imageInterval || 4000;
+const isMulti: boolean   = slideImages.length > 1;
+
+// CSS filter class
+const filterClass = imgFilter === 'grayscale' ? 'grayscale' : imgFilter === 'sepia' ? 'sepia' : '';
+
+// Per-image initial CSS class
+const initClass = (idx: number): string => {
+  if (effect === 'slide')  return idx === 0 ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0';
+  if (effect === 'zoom')   return idx === 0 ? 'opacity-100 scale-100'     : 'opacity-0 scale-110';
+  return idx === 0 ? 'opacity-100' : 'opacity-0';
 };
 
-const setup = contactSetup || defaultContactSetup;
+// Dynamic grid cols based on enabled cards
+const enabledCount = [setup.cards.headquarters.enabled, setup.cards.inquiry.enabled, setup.cards.call.enabled].filter(Boolean).length;
+const gridCols = enabledCount === 1 ? 'md:grid-cols-1 max-w-sm mx-auto' : enabledCount === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3';
 
+// Custom emails list
+const customEmails: any[] = setup.emails?.custom || [];
 ---
 
 <Layout title="Contact Us" description="Start a conversation with Delight Group LLC">
   <div class="min-h-screen bg-[#f3f4f6] py-16 sm:py-24 relative overflow-hidden">
-    <!-- Subtle architectural guidelines background pattern -->
-    <div class="absolute inset-0 z-0 opacity-[0.06] pointer-events-none" style="background-image: radial-gradient(#000000 1px, transparent 1px); background-size: 24px 24px;"></div>
-    
+    <!-- Dot grid -->
+    <div class="absolute inset-0 z-0 opacity-[0.06] pointer-events-none"
+      style="background-image: radial-gradient(#000000 1px, transparent 1px); background-size: 24px 24px;"></div>
+
     <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      
-      <!-- Primary Two-Column Grid Card -->
+
+      <!-- ── Primary Two-Column Card ───────────────────────── -->
       <div class="bg-white rounded-[32px] overflow-hidden shadow-2xl border border-slate-100 grid grid-cols-1 lg:grid-cols-12 gap-0 mb-16 animate-on-scroll">
-             <!-- Left Column: Premium Architectural Facade Image with Frosted Overlay -->
-        <div class="lg:col-span-5 relative min-h-[380px] lg:min-h-[550px] bg-slate-900 overflow-hidden flex flex-col justify-end p-6 sm:p-10">
-          <img 
-            src={setup.heroImageUrl} 
-            alt="Delight Group Luxury Facade Lighting" 
-            class="absolute inset-0 w-full h-full object-cover opacity-85 transition-transform duration-700 hover:scale-105"
-          />
-          <!-- Gentle dark gradient cover -->
-          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/20 to-transparent z-0"></div>
+
+        <!-- Left: Image Panel -->
+        <div class="lg:col-span-5 relative min-h-[380px] lg:min-h-[550px] bg-slate-900 overflow-hidden">
+          <div class="absolute inset-0 w-full h-full overflow-hidden">
+            {slideImages.map((imgUrl: string, idx: number) => (
+              <img
+                src={imgUrl}
+                alt={`Contact Image ${idx + 1}`}
+                class={[
+                  'absolute inset-0 w-full h-full object-cover transition-all duration-1000 ease-in-out slideshow-img',
+                  filterClass,
+                  initClass(idx)
+                ].filter(Boolean).join(' ')}
+                data-index={idx}
+              />
+            ))}
+          </div>
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/20 to-transparent z-10"></div>
         </div>
-        
-        <!-- Right Column: Minimal Underline Project Form -->
+
+        <!-- Right: Form -->
         <div class="lg:col-span-7 bg-white">
           <ContactForm />
         </div>
-        
       </div>
-      
-      <!-- Bottom Detail Cards (Three Column Layout) -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 animate-on-scroll">
-        
+
+      <!-- ── Bottom Cards ──────────────────────────────────── -->
+      <div class={`grid grid-cols-1 ${gridCols} gap-6 sm:gap-8 animate-on-scroll`}>
+
         <!-- Card 1: Headquarters -->
-        <div class="bg-white border border-slate-200/60 shadow-xl shadow-slate-100/50 rounded-2xl p-8 text-left flex flex-col justify-between h-full transition-all duration-300 hover:shadow-2xl hover:border-slate-300">
-          <div class="space-y-6">
-            <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-800 shrink-0">
-              <MapPin class="w-4.5 h-4.5" />
+        {setup.cards.headquarters.enabled && (
+          <div class="bg-white border border-slate-200/60 shadow-xl shadow-slate-100/50 rounded-2xl p-8 text-left flex flex-col justify-between h-full transition-all duration-300 hover:shadow-2xl hover:border-slate-300">
+            <div class="space-y-6">
+              <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-800 shrink-0">
+                <MapPin class="w-4.5 h-4.5" />
+              </div>
+              <div class="space-y-3">
+                <h3 class="text-lg font-serif font-medium text-slate-900">{setup.cards.headquarters.title}</h3>
+                <div class="w-8 h-[1px] bg-slate-300"></div>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed"
+                set:html={setup.address.replace(/,\s*/g, ',<br />')} />
             </div>
-            
-            <div class="space-y-3">
-              <h3 class="text-lg font-serif font-medium text-slate-900">Headquarters</h3>
-              <div class="w-8 h-[1px] bg-slate-300"></div>
-            </div>
-            
-            <p class="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed" set:html={address.replace(/,\s*/g, ',<br />')} />
+
+            <!-- Map display: embed or link -->
+            {setup.mapMode === 'embed' && setup.mapUrl ? (
+              <div class="pt-6">
+                <div class="w-full h-40 rounded-xl overflow-hidden border border-slate-200">
+                  <iframe
+                    src={setup.mapUrl}
+                    width="100%" height="100%"
+                    style="border:0;"
+                    allowfullscreen
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"
+                  ></iframe>
+                </div>
+              </div>
+            ) : (
+              <div class="pt-8">
+                <a href={setup.mapUrl} target="_blank"
+                  class="text-[10px] font-black uppercase tracking-widest text-[#b45309] hover:text-amber-800 transition-colors border-b border-[#b45309]/30 hover:border-amber-700 pb-0.5">
+                  {setup.cards.headquarters.mapLinkLabel}
+                </a>
+              </div>
+            )}
           </div>
-          
-          <div class="pt-8">
-            <a 
-              href={setup.mapUrl} 
-              target="_blank"
-              class="text-[10px] font-black uppercase tracking-widest text-[#b45309] hover:text-amber-800 transition-colors border-b border-[#b45309]/30 hover:border-amber-700 pb-0.5"
-            >
-              View On Map
-            </a>
-          </div>
-        </div>
-        
+        )}
+
         <!-- Card 2: Direct Inquiry -->
-        <div class="bg-white border border-slate-200/60 shadow-xl shadow-slate-100/50 rounded-2xl p-8 text-left flex flex-col justify-between h-full transition-all duration-300 hover:shadow-2xl hover:border-slate-300">
-          <div class="space-y-6">
-            <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-800 shrink-0">
-              <Mail class="w-4.5 h-4.5" />
+        {setup.cards.inquiry.enabled && (
+          <div class="bg-white border border-slate-200/60 shadow-xl shadow-slate-100/50 rounded-2xl p-8 text-left flex flex-col justify-between h-full transition-all duration-300 hover:shadow-2xl hover:border-slate-300">
+            <div class="space-y-6">
+              <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-800 shrink-0">
+                <Mail class="w-4.5 h-4.5" />
+              </div>
+              <div class="space-y-3">
+                <h3 class="text-lg font-serif font-medium text-slate-900">{setup.cards.inquiry.title}</h3>
+                <div class="w-8 h-[1px] bg-slate-300"></div>
+              </div>
+              <div class="space-y-2 text-xs sm:text-sm font-semibold text-slate-500">
+                {setup.emails.showGeneral !== false && (
+                  <p>General: <a href={`mailto:${setup.email}`} class="text-slate-800 hover:text-slate-950 font-bold">{setup.email}</a></p>
+                )}
+                {setup.emails.showPress !== false && setup.emails.press && (
+                  <p>Press: <a href={`mailto:${setup.emails.press}`} class="text-slate-800 hover:text-slate-950 font-bold">{setup.emails.press}</a></p>
+                )}
+                {setup.emails.showCareers !== false && setup.emails.careers && (
+                  <p>Careers: <a href={`mailto:${setup.emails.careers}`} class="text-slate-800 hover:text-slate-950 font-bold">{setup.emails.careers}</a></p>
+                )}
+                {customEmails.filter((e: any) => e.show !== false && e.address).map((ce: any) => (
+                  <p>{ce.label || 'Email'}: <a href={`mailto:${ce.address}`} class="text-slate-800 hover:text-slate-950 font-bold">{ce.address}</a></p>
+                ))}
+              </div>
             </div>
-            
-            <div class="space-y-3">
-              <h3 class="text-lg font-serif font-medium text-slate-900">Direct Inquiry</h3>
-              <div class="w-8 h-[1px] bg-slate-300"></div>
-            </div>
-            
-            <div class="space-y-2 text-xs sm:text-sm font-semibold text-slate-500">
-              <p>General: <a href={`mailto:${email}`} class="text-slate-800 hover:text-slate-950 font-bold">{email}</a></p>
-              <p>Press: <a href={`mailto:${setup.emails.press}`} class="text-slate-800 hover:text-slate-950 font-bold">{setup.emails.press}</a></p>
-              <p>Careers: <a href={`mailto:${setup.emails.careers}`} class="text-slate-800 hover:text-slate-955 font-bold">{setup.emails.careers}</a></p>
-            </div>
+            <div class="pt-8 opacity-0 pointer-events-none select-none h-0"></div>
           </div>
-          
-          <div class="pt-8 opacity-0 pointer-events-none select-none">
-            <span class="text-[10px] font-black uppercase tracking-widest">Spacer</span>
-          </div>
-        </div>
-        
+        )}
+
         <!-- Card 3: Call Us -->
-        <div class="bg-white border border-slate-200/60 shadow-xl shadow-slate-100/50 rounded-2xl p-8 text-left flex flex-col justify-between h-full transition-all duration-300 hover:shadow-2xl hover:border-slate-300">
-          <div class="space-y-6">
-            <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-800 shrink-0">
-              <Phone class="w-4.5 h-4.5" />
+        {setup.cards.call.enabled && (
+          <div class="bg-white border border-slate-200/60 shadow-xl shadow-slate-100/50 rounded-2xl p-8 text-left flex flex-col justify-between h-full transition-all duration-300 hover:shadow-2xl hover:border-slate-300">
+            <div class="space-y-6">
+              <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-800 shrink-0">
+                <Phone class="w-4.5 h-4.5" />
+              </div>
+              <div class="space-y-3">
+                <h3 class="text-lg font-serif font-medium text-slate-900">{setup.cards.call.title}</h3>
+                <div class="w-8 h-[1px] bg-slate-300"></div>
+              </div>
+              <div class="space-y-2 text-xs sm:text-sm font-semibold text-slate-500">
+                <p>{setup.hours}</p>
+                <a href={`tel:${setup.phone.replace(/[() \-]/g, '')}`}
+                  class="text-slate-800 text-base sm:text-lg font-extrabold hover:text-slate-950 transition-colors block mt-2">{setup.phone}</a>
+              </div>
             </div>
-            
-            <div class="space-y-3">
-              <h3 class="text-lg font-serif font-medium text-slate-900">Call Us</h3>
-              <div class="w-8 h-[1px] bg-slate-300"></div>
-            </div>
-            
-            <div class="space-y-2 text-xs sm:text-sm font-semibold text-slate-500">
-              <p>{setup.hours}</p>
-              <a href={`tel:${phone.replace(/[()\s-]/g, '')}`} class="text-slate-800 text-base sm:text-lg font-extrabold hover:text-slate-950 transition-colors block mt-2">
-                {phone}
-              </a>
+            <div class="pt-8 flex items-center gap-2">
+              {setup.socialLinks.websiteUrl && (
+                <a href={setup.socialLinks.websiteUrl} target="_blank"
+                  class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all">
+                  <Globe class="w-3.5 h-3.5" />
+                </a>
+              )}
+              <button class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all"><Share2 class="w-3.5 h-3.5" /></button>
+              <button class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all"><Grid class="w-3.5 h-3.5" /></button>
             </div>
           </div>
-          
-          <!-- Social / Utility Button Row (Mockup replication) -->
-          <div class="pt-8 flex items-center gap-2">
-            <a 
-              href={setup.socialLinks.websiteUrl} 
-              target="_blank"
-              class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-850 hover:bg-slate-50 transition-all"
-            >
-              <Globe class="w-3.5 h-3.5" />
-            </a>
-            <button 
-              class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-850 hover:bg-slate-50 transition-all"
-            >
-              <Share2 class="w-3.5 h-3.5" />
-            </button>
-            <button 
-              class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-850 hover:bg-slate-50 transition-all"
-            >
-              <Grid class="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-        
+        )}
+
       </div>
-      
     </div>
   </div>
+
+  <!-- Slideshow script -->
+  <script define:vars={{ isMulti, intervalMs, effect }}>
+    document.addEventListener('DOMContentLoaded', () => {
+      const imgs = Array.from(document.querySelectorAll('.slideshow-img'));
+      if (!isMulti || imgs.length < 2) return;
+      let cur = 0;
+      const goTo = (next) => {
+        const prev = cur;
+        cur = next % imgs.length;
+        if (effect === 'slide') {
+          imgs[prev].classList.remove('translate-x-0','opacity-100'); imgs[prev].classList.add('-translate-x-full','opacity-0');
+          imgs[cur].classList.remove('translate-x-full','opacity-0'); imgs[cur].classList.add('translate-x-0','opacity-100');
+        } else if (effect === 'zoom') {
+          imgs[prev].classList.remove('opacity-100','scale-100'); imgs[prev].classList.add('opacity-0','scale-110');
+          imgs[cur].classList.remove('opacity-0','scale-110'); imgs[cur].classList.add('opacity-100','scale-100');
+        } else {
+          imgs[prev].classList.remove('opacity-100'); imgs[prev].classList.add('opacity-0');
+          imgs[cur].classList.remove('opacity-0');   imgs[cur].classList.add('opacity-100');
+        }
+      };
+      setInterval(() => goTo(cur + 1), intervalMs);
+    });
+  </script>
+
+  <style>
+    .slideshow-img { transition: opacity 1s ease-in-out, transform 7s ease-in-out; }
+  </style>
 </Layout>

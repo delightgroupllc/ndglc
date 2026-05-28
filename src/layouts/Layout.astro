@@ -149,20 +149,48 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
       h1, h2, h3, h4, h5, h6 {
         font-family: var(--font-display);
       }
+      
+      /* Logo transition and shrink logic */
+      #main-logo-img {
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: top left;
+      }
+      header.scrolled #main-logo-img {
+        height: 4.5rem !important; /* 72px (compact height) */
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+      }
+
+      /* Secondary nav transition on scroll */
+      #secondary-nav-container {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        max-height: 40px;
+        opacity: 1;
+        transform: translateY(0);
+        overflow: hidden;
+      }
+      header.hide-secondary:not(:hover) #secondary-nav-container {
+        max-height: 0 !important;
+        opacity: 0 !important;
+        transform: translateY(-10px) !important;
+        pointer-events: none !important;
+      }
     </style>
   </head>
   <body class="bg-[#fcfdfd] text-slate-900 min-h-screen flex flex-col antialiased selection:bg-blue-500/30 selection:text-blue-900">
     <!-- Sticky Glassmorphism Header -->
     <header class="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-all duration-300">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex h-28 md:h-32 items-center justify-between">
+      <div class={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative ${(isDTL || isDGS) ? 'border-b border-slate-100' : ''}`}>
+        <div class="flex h-16 md:h-20 items-center justify-between">
           <!-- Logo Section -->
-          <div class="flex-none w-64 text-left">
-            <a href={isDTL ? "/delighttechnicallighting" : (isDGS ? "/delightgreenscapes" : "/")} class="inline-flex items-center gap-3 group">
+          <div class="flex-none w-64 text-left relative h-full flex items-center">
+            <a href={isDTL ? "/delighttechnicallighting" : (isDGS ? "/delightgreenscapes" : "/")} class="inline-flex md:absolute md:top-0.5 md:left-0 z-45 group">
               <img 
+                id="main-logo-img"
                 src={logoSrc} 
                 alt={logoAlt} 
-                class="h-24 md:h-28 w-auto group-hover:scale-103 transition-transform duration-300 object-contain" 
+                class="h-12 md:h-32 w-auto group-hover:scale-103 transition-all duration-300 object-contain bg-white px-3 py-3 rounded-b-xl border-x border-b border-slate-200/80 shadow-md" 
               />
             </a>
           </div>
@@ -294,23 +322,26 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
           )}
         </nav>
       </div>
-    </header>
-
-    <!-- Secondary Category Navigation (DTL/DGS only) - Mega Menu -->
-    {(isDTL || isDGS) && (
-      <div class="hidden md:block border-b border-slate-200 bg-white">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
-          <nav class="flex items-center justify-center h-24">
-            <div class="flex items-center justify-between w-full max-w-5xl">
+      
+      <!-- Secondary Category Navigation (DTL/DGS only) - Mega Menu -->
+      {(isDTL || isDGS) && (
+        <div id="secondary-nav-container" class="hidden md:block bg-white">
+          <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
+            <nav class="flex h-10 items-center justify-between w-full">
+              <!-- Left spacer matching logo width -->
+              <div class="flex-none w-64"></div>
               
-              <!-- 1) Products Dropdown -->
-              <div class="group py-5 flex items-center justify-center flex-1 cursor-pointer">
-                <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
-                  Products
-                </span>
+              <!-- Center navigation items (Centered) -->
+              <div class="flex items-center justify-center gap-6 flex-grow">
+                
+                <!-- 1) Products Dropdown -->
+                <div class="group py-2 flex items-center cursor-pointer">
+                  <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+                    Products
+                  </span>
 
-                <!-- Products Mega Menu Dropdown -->
-                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-5xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-6 md:p-8 mt-1 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                  <!-- Products Mega Menu Dropdown -->
+                  <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-5xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-6 md:p-8 mt-0.5 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
                   <div class="grid grid-cols-5 gap-6">
                     {isDTL ? (
                       <>
@@ -417,16 +448,16 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               </div>
 
               <!-- Vertical Divider -->
-              <div class="h-10 w-px bg-slate-200/80"></div>
+              <div class="h-5 w-px bg-slate-200/80"></div>
 
               <!-- 2) Solutions Dropdown -->
-              <div class="relative group py-5 flex items-center justify-center flex-1 cursor-pointer">
+              <div class="relative group py-2 flex items-center cursor-pointer">
                 <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
                   Solutions
                 </span>
 
                 <!-- Solutions Dropdown Menu -->
-                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-96 bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-1 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-96 bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0.5 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
                   <div class="grid grid-cols-2">
                     <div class="border-r border-slate-100 p-4 space-y-1.5 text-left">
                       <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Retail Solutions</a>
@@ -448,40 +479,40 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               </div>
 
               <!-- Vertical Divider -->
-              <div class="h-10 w-px bg-slate-200/80"></div>
+              <div class="h-5 w-px bg-slate-200/80"></div>
 
               <!-- 3) Projects Link -->
-              <a href={isDTL ? "/projects?division=dtl" : (isDGS ? "/projects?division=dgs" : "/projects")} class="group py-5 flex items-center justify-center flex-1 cursor-pointer">
+              <a href={isDTL ? "/projects?division=dtl" : (isDGS ? "/projects?division=dgs" : "/projects")} class="group py-2 flex items-center cursor-pointer">
                 <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
                   Projects
                 </span>
               </a>
 
               <!-- Vertical Divider -->
-              <div class="h-10 w-px bg-slate-200/80"></div>
+              <div class="h-5 w-px bg-slate-200/80"></div>
 
               <!-- 4) Downloads Link -->
-              <a href="/downloads" class="group py-5 flex items-center justify-center flex-1 cursor-pointer">
+              <a href="/downloads" class="group py-2 flex items-center cursor-pointer">
                 <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
                   Downloads
                 </span>
               </a>
 
               <!-- Vertical Divider -->
-              <div class="h-10 w-px bg-slate-200/80"></div>
+              <div class="h-5 w-px bg-slate-200/80"></div>
 
               <!-- 5) All Categories / Grid Link -->
-              <div class="relative group py-5 flex items-center justify-center flex-1 cursor-pointer">
+              <div class="relative group py-2 flex items-center cursor-pointer">
                 <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
                   All Categories
                 </span>
 
                 <!-- Categories Quick Links Menu -->
-                <div class={`absolute right-0 top-full w-64 bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-1 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'} p-4`}>
+                <div class={`absolute right-0 top-full w-64 bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0.5 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'} p-4`}>
                   <div class="text-left font-extrabold text-[10px] uppercase tracking-wider text-slate-400 mb-2.5 px-2">Quick Navigation</div>
                   <div class="space-y-1 text-left">
                     {secondaryNavCategories.filter(cat => cat.divSlug === (isDTL ? 'delighttechnicallighting' : 'delightgreenscapes')).map(cat => (
-                      <a href={`/${cat.divSlug}/${cat.slug}`} class={`block px-3 py-2 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition ${isDTL ? 'hover:text-amber-600' : 'hover:text-emerald-700'}`}>
+                      <a href={`/${cat.divSlug}/${cat.slug}`} class={`block px-3 py-2 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition ${isDTL ? 'hover:text-amber-650' : 'hover:text-emerald-700'}`}>
                         {cat.name}
                       </a>
                     ))}
@@ -490,63 +521,67 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               </div>
 
             </div>
+
+            <!-- Right spacer matching action buttons width -->
+            <div class="flex-none w-64"></div>
           </nav>
         </div>
 
-        <!-- Mobile Row 2 Navigation (Horizontal Scrolling Grid with Top Icons and Small Down Chevrons) -->
-        <div class="block md:hidden overflow-x-auto py-2 bg-slate-50/50 border-t border-slate-100 scrollbar-none">
-          <div class="flex items-center justify-between min-w-[480px] px-4 gap-2">
-            
-            <!-- Products -->
-            <div class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group cursor-pointer">
-              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
-                <Package class="h-4.5 w-4.5" />
+          <!-- Mobile Row 2 Navigation (Horizontal Scrolling Grid with Top Icons and Small Down Chevrons) -->
+          <div class="block md:hidden overflow-x-auto py-2 bg-slate-50/50 border-t border-slate-100 scrollbar-none">
+            <div class="flex items-center justify-between min-w-[480px] px-4 gap-2">
+              
+              <!-- Products -->
+              <div class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group cursor-pointer">
+                <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                  <Package class="h-4.5 w-4.5" />
+                </div>
+                <span class="text-[10px] font-extrabold text-slate-650 mt-1 flex items-center gap-0.5 select-none uppercase tracking-wide">
+                  Products
+                  <ChevronDown class="h-2.5 w-2.5 text-slate-400" />
+                </span>
               </div>
-              <span class="text-[10px] font-extrabold text-slate-650 mt-1 flex items-center gap-0.5 select-none uppercase tracking-wide">
-                Products
-                <ChevronDown class="h-2.5 w-2.5 text-slate-400" />
-              </span>
+
+              <!-- Solutions -->
+              <div class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group cursor-pointer">
+                <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                  <Building2 class="h-4.5 w-4.5" />
+                </div>
+                <span class="text-[10px] font-extrabold text-slate-650 mt-1 flex items-center gap-0.5 select-none uppercase tracking-wide">
+                  Solutions
+                  <ChevronDown class="h-2.5 w-2.5 text-slate-400" />
+                </span>
+              </div>
+
+              <!-- Projects -->
+              <a href={isDTL ? "/projects?division=dtl" : (isDGS ? "/projects?division=dgs" : "/projects")} class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
+                <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                  <Briefcase class="h-4.5 w-4.5" />
+                </div>
+                <span class="text-[10px] font-extrabold text-slate-650 mt-1 uppercase tracking-wide">Projects</span>
+              </a>
+
+              <!-- Downloads -->
+              <a href="/downloads" class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
+                <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                  <DownloadCloud class="h-4.5 w-4.5" />
+                </div>
+                <span class="text-[10px] font-extrabold text-slate-650 mt-1 uppercase tracking-wide">Downloads</span>
+              </a>
+
+              <!-- All -->
+              <a href={`/${isDTL ? 'delighttechnicallighting' : 'delightgreenscapes'}`} class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
+                <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
+                  <LayoutGrid class="h-4.5 w-4.5" />
+                </div>
+                <span class="text-[10px] font-extrabold text-slate-650 mt-1 uppercase tracking-wide">All</span>
+              </a>
+
             </div>
-
-            <!-- Solutions -->
-            <div class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group cursor-pointer">
-              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
-                <Building2 class="h-4.5 w-4.5" />
-              </div>
-              <span class="text-[10px] font-extrabold text-slate-650 mt-1 flex items-center gap-0.5 select-none uppercase tracking-wide">
-                Solutions
-                <ChevronDown class="h-2.5 w-2.5 text-slate-400" />
-              </span>
-            </div>
-
-            <!-- Projects -->
-            <a href={isDTL ? "/projects?division=dtl" : (isDGS ? "/projects?division=dgs" : "/projects")} class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
-              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
-                <Briefcase class="h-4.5 w-4.5" />
-              </div>
-              <span class="text-[10px] font-extrabold text-slate-650 mt-1 uppercase tracking-wide">Projects</span>
-            </a>
-
-            <!-- Downloads -->
-            <a href="/downloads" class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
-              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
-                <DownloadCloud class="h-4.5 w-4.5" />
-              </div>
-              <span class="text-[10px] font-extrabold text-slate-650 mt-1 uppercase tracking-wide">Downloads</span>
-            </a>
-
-            <!-- All -->
-            <a href={`/${isDTL ? 'delighttechnicallighting' : 'delightgreenscapes'}`} class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
-              <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
-                <LayoutGrid class="h-4.5 w-4.5" />
-              </div>
-              <span class="text-[10px] font-extrabold text-slate-650 mt-1 uppercase tracking-wide">All</span>
-            </a>
-
           </div>
         </div>
-      </div>
-    )}
+      )}
+    </header>
 
     <!-- Main Dynamic Content Wrapper -->
     <main class="flex-grow">
@@ -673,6 +708,67 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
           el.classList.add('opacity-0', 'translate-y-8', 'transition-all', 'duration-700', 'ease-out');
           observer.observe(el);
         });
+      });
+
+      // Header scroll shrinking logo badge and direction sensing
+      const headerEl = document.querySelector('header');
+      let lastScrollY = window.scrollY;
+
+      const handleScroll = () => {
+        const currentScrollY = window.scrollY;
+        
+        if (currentScrollY > 25) {
+          headerEl?.classList.add('scrolled');
+          
+          if (currentScrollY > 60 && currentScrollY > lastScrollY) {
+            // Scrolling down - hide secondary nav
+            headerEl?.classList.add('hide-secondary');
+          } else {
+            // Scrolling up - show secondary nav
+            headerEl?.classList.remove('hide-secondary');
+          }
+        } else {
+          headerEl?.classList.remove('scrolled');
+          headerEl?.classList.remove('hide-secondary');
+        }
+        
+        lastScrollY = currentScrollY;
+      };
+      
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      handleScroll(); // Initial check
+
+      // Live side-by-side preview event listener
+      window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'PREVIEW_UPDATE') {
+          const data = event.data.payload;
+          
+          const getNestedValue = (obj: any, path: string) => {
+            return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+          };
+
+          // 1) Replace text content
+          document.querySelectorAll('[data-preview-text]').forEach(el => {
+            const path = el.getAttribute('data-preview-text');
+            if (path) {
+              const val = getNestedValue(data, path);
+              if (val !== undefined && val !== null) {
+                el.textContent = val;
+              }
+            }
+          });
+
+          // 2) Replace image source URLs
+          document.querySelectorAll('[data-preview-src]').forEach(el => {
+            const path = el.getAttribute('data-preview-src');
+            if (path) {
+              const val = getNestedValue(data, path);
+              if (val !== undefined && val !== null) {
+                (el as HTMLImageElement).src = val;
+              }
+            }
+          });
+        }
       });
     </script>
   </body>

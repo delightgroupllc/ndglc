@@ -161,16 +161,38 @@ const selectedProjects = homepageProjectIds
           <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">3</span>
           Our Services Grid Customizer
         </h2>
-        <p class="text-xs text-slate-500 mb-4">Configure the 11 Desert Group Landscape/Trading Services with beautiful titles, text descriptions, and background images.</p>
+        <p class="text-xs text-slate-500 mb-4 font-medium">Configure individual Desert Group Landscape/Trading services. Choose how many columns to display or list all custom services dynamically.</p>
         
-        <div class="space-y-4 divide-y divide-slate-100 max-h-[500px] overflow-y-auto pr-2">
+        <!-- Grid layout selection and Add Button -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 bg-slate-50 border border-slate-100 rounded-xl p-4">
+          <div>
+            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-600 block mb-1">Grid Layout Selection</label>
+            <select name="services_grid_layout" class="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">
+              <option value="3x1" selected={dgsSetup.servicesGridLayout === '3x1'}>3x1 Grid (Show 3)</option>
+              <option value="3x2" selected={dgsSetup.servicesGridLayout === '3x2' || !dgsSetup.servicesGridLayout}>3x2 Grid (Show 6)</option>
+              <option value="3x3" selected={dgsSetup.servicesGridLayout === '3x3'}>3x3 Grid (Show 9)</option>
+              <option value="show_all" selected={dgsSetup.servicesGridLayout === 'show_all'}>Show All Services</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button type="button" id="add-service-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm">
+              + Add New Service
+            </button>
+          </div>
+        </div>
+
+        <div id="services-list" class="space-y-4 divide-y divide-slate-100 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
           {dgsSetup.services?.map((svc: any, index: number) => (
             <div class="pt-4 first:pt-0 svc-row" data-index={index}>
               <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-bold text-emerald-700">Service #{index + 1}: {svc.title}</span>
-                <input type="hidden" class="svc-title" value={svc.title} />
+                <span class="text-xs font-bold text-emerald-700 svc-number-label">Service #{index + 1}</span>
+                <button type="button" class="delete-service-btn text-xs font-bold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
               </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+                <div>
+                  <label class="text-[10px] font-semibold text-slate-500">Service Title</label>
+                  <input class="svc-title w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value={svc.title || ''} placeholder="e.g. Landscape Design" />
+                </div>
                 <div>
                   <label class="text-[10px] font-semibold text-slate-500">Service Description</label>
                   <input class="svc-desc w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value={svc.desc || ''} />
@@ -400,12 +422,37 @@ const selectedProjects = homepageProjectIds
         <button id="add-fact" type="button" class="mt-3 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">+ Add Stat Fact</button>
           </div>
 
+          <!-- ═══ TRUSTED PARTNERS SHOWCASE ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">7</span>
+          Trusted Partners Showcase
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600">Color Mode</label>
+            <select name="partners_color_mode" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">
+              <option value="bw" selected={dgsSetup.partnersColorMode !== 'color'}>Grayscale / Black & White</option>
+              <option value="color" selected={dgsSetup.partnersColorMode === 'color'}>Full Color</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Layout Style</label>
+            <select name="partners_layout" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">
+              <option value="grid" selected={dgsSetup.partnersLayout === 'grid' || !dgsSetup.partnersLayout}>Grid / Wrap</option>
+              <option value="list" selected={dgsSetup.partnersLayout === 'list'}>Vertical List</option>
+              <option value="scrolling" selected={dgsSetup.partnersLayout === 'scrolling'}>Scrolling Animation (Infinite Ticker)</option>
+            </select>
+          </div>
+        </div>
+          </div>
+
           <!-- ═══ CENTRALIZED RESOURCES HUB ═══ -->
           <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mt-6">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div class="space-y-1">
             <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">7</span>
+              <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">8</span>
               Centralized Resources Hub
             </h2>
             <p class="text-xs text-slate-500">The Image Store has been upgraded and migrated to the centralized Resources manager. Search stock images, build local galleries, and copy urls dynamically.</p>
@@ -438,7 +485,7 @@ const selectedProjects = homepageProjectIds
         
         <!-- URL bar -->
         <div class="flex-1 max-w-md bg-slate-900 rounded-md h-7 flex items-center justify-center px-3 relative border border-slate-850">
-          <span class="text-[9px] text-slate-400 font-mono tracking-wider truncate">delightgroup.com/delightscreenscape</span>
+          <span class="text-[9px] text-slate-400 font-mono tracking-wider truncate">delightgroup.com/delightgreenscapes</span>
           <button type="button" id="refresh-preview-btn" class="absolute right-2 text-slate-400 hover:text-white transition-colors" title="Reload Preview">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -473,7 +520,7 @@ const selectedProjects = homepageProjectIds
       <!-- Iframe Canvas -->
       <div class="flex-1 relative bg-slate-950 flex justify-center items-center overflow-hidden p-4">
         <div id="iframe-wrapper" class="w-full h-full mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-0">
-          <iframe id="dgs-preview-frame" src="/delightscreenscape" class="w-full h-full border-0 absolute inset-0 bg-white"></iframe>
+          <iframe id="dgs-preview-frame" src="/delightgreenscapes" class="w-full h-full border-0 absolute inset-0 bg-white"></iframe>
         </div>
         <div id="preview-loader" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-10 transition-opacity">
           <div class="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
@@ -562,6 +609,9 @@ const selectedProjects = homepageProjectIds
             highlight3: data.get('panel_sus_hl3') || ''
           }
         },
+        servicesGridLayout: data.get('services_grid_layout') || '3x2',
+        partnersColorMode: data.get('partners_color_mode') || 'bw',
+        partnersLayout: data.get('partners_layout') || 'grid',
         facts,
       };
     };
@@ -643,6 +693,56 @@ const selectedProjects = homepageProjectIds
     document.getElementById('facts-list')?.addEventListener('click', (e) => {
       const t = e.target as HTMLElement;
       if (t.classList.contains('remove-fact')) t.closest('div')?.remove();
+    });
+
+    // ── DYNAMIC SERVICES DOM ─────────────────────────────────────
+    const servicesList = document.getElementById('services-list');
+    const addServiceBtn = document.getElementById('add-service-btn');
+
+    const renumberServices = () => {
+      const rows = servicesList?.querySelectorAll('.svc-row');
+      rows?.forEach((row, i) => {
+        row.setAttribute('data-index', i.toString());
+        const label = row.querySelector('.svc-number-label');
+        if (label) label.textContent = `Service #${i + 1}`;
+      });
+    };
+
+    addServiceBtn?.addEventListener('click', () => {
+      const index = servicesList?.querySelectorAll('.svc-row').length || 0;
+      const div = document.createElement('div');
+      div.className = 'pt-4 border-t border-slate-100 svc-row';
+      div.setAttribute('data-index', index.toString());
+      div.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-emerald-700 svc-number-label">Service #${index + 1}</span>
+          <button type="button" class="delete-service-btn text-xs font-bold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+          <div>
+            <label class="text-[10px] font-semibold text-slate-500">Service Title</label>
+            <input class="svc-title w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value="" placeholder="Service Name" />
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-500">Service Description</label>
+            <input class="svc-desc w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value="" />
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-500">Background Image URL</label>
+            <input class="svc-imageUrl w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value="" placeholder="https://..." />
+          </div>
+        </div>
+      `;
+      servicesList?.appendChild(div);
+      renumberServices();
+    });
+
+    servicesList?.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      if (t.classList.contains('delete-service-btn')) {
+        t.closest('.svc-row')?.remove();
+        renumberServices();
+      }
     });
 
     // ══════════════════════════════════════════════════════════

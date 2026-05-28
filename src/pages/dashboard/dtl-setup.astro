@@ -324,12 +324,37 @@ const selectedProjects = homepageProjectIds
         </div>
           </div>
 
+          <!-- ═══ TRUSTED PARTNERS SHOWCASE ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">7</span>
+          Trusted Partners Showcase
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600">Color Mode</label>
+            <select name="partners_color_mode" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+              <option value="bw" selected={dtlSetup.partnersColorMode !== 'color'}>Grayscale / Black & White</option>
+              <option value="color" selected={dtlSetup.partnersColorMode === 'color'}>Full Color</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Layout Style</label>
+            <select name="partners_layout" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">
+              <option value="grid" selected={dtlSetup.partnersLayout === 'grid' || !dtlSetup.partnersLayout}>Grid / Wrap</option>
+              <option value="list" selected={dtlSetup.partnersLayout === 'list'}>Vertical List</option>
+              <option value="scrolling" selected={dtlSetup.partnersLayout === 'scrolling'}>Scrolling Animation (Infinite Ticker)</option>
+            </select>
+          </div>
+        </div>
+          </div>
+
           <!-- ═══ CENTRALIZED RESOURCES HUB ═══ -->
           <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mt-6">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div class="space-y-1">
             <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">7</span>
+              <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">8</span>
               Centralized Resources Hub
             </h2>
             <p class="text-xs text-slate-500">The Image Store has been upgraded and migrated to the centralized Resources manager. Search stock images, build local galleries, and copy urls dynamically.</p>
@@ -460,6 +485,8 @@ const selectedProjects = homepageProjectIds
           label: (r.querySelector('.fact-label') as HTMLInputElement)?.value || '',
           value: (r.querySelector('.fact-value') as HTMLInputElement)?.value || ''
         })),
+        partnersColorMode: data.get('partners_color_mode') || 'bw',
+        partnersLayout: data.get('partners_layout') || 'grid',
       };
     };
 

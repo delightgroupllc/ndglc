@@ -166,17 +166,29 @@ if (isDtl) {
     }
   }
 
-  // Fallback: if no projects selected, show 3 most recent active DTL projects
-  if (projects.length === 0) {
+  // Ensure we always have exactly 3 projects for DTL featured section
+  if (projects.length < 3) {
     try {
-      const fallback = await query(
-        `SELECT id, title, description, featured_image, client_name
-         FROM projects WHERE division = 'dtl' AND status = 'active'
-         ORDER BY created_at DESC LIMIT 3`
-      );
-      projects = fallback.rows;
+      const excludeIds = projects.map(p => p.id).filter(Boolean);
+      const limit = 3 - projects.length;
+      let queryStr = `
+        SELECT id, title, description, featured_image, client_name
+        FROM projects 
+        WHERE division = 'dtl' AND status = 'active'
+      `;
+      const queryParams: any[] = [];
+      if (excludeIds.length > 0) {
+        const placeholders = excludeIds.map((_, i) => `$${i + 1}`).join(',');
+        queryStr += ` AND id NOT IN (${placeholders})`;
+        queryParams.push(...excludeIds);
+      }
+      queryStr += ` ORDER BY created_at DESC LIMIT $${queryParams.length + 1}`;
+      queryParams.push(limit);
+
+      const fallback = await query(queryStr, queryParams);
+      projects.push(...fallback.rows);
     } catch (e) {
-      console.warn('Unable to load fallback projects:', e?.message || e);
+      console.warn('Unable to load fallback projects to make up 3:', e?.message || e);
     }
   }
 } else if (isDgs) {
@@ -280,6 +292,16 @@ const servicesArr = (isDgs && dgsSetup?.services) ? dgsSetup.services : [
   { title: 'Tools, Machinery & Supplies', desc: 'Importing leading European landscape tools and smart computerized turf systems.', imageUrl: 'https://images.unsplash.com/photo-1530124560072-aab71eb1483a?auto=format&fit=crop&q=80&w=600' },
   { title: 'Trading', desc: 'Global wholesale supply of premium commercial landscaping raw materials.', imageUrl: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&q=80&w=600' }
 ];
+
+// Determine DGS Services Grid Limit dynamically
+let dgsServicesLimit = 6;
+if (isDgs && dgsSetup) {
+  const layout = dgsSetup.servicesGridLayout || '3x2';
+  if (layout === '3x1') dgsServicesLimit = 3;
+  else if (layout === '3x2') dgsServicesLimit = 6;
+  else if (layout === '3x3') dgsServicesLimit = 9;
+  else if (layout === 'show_all') dgsServicesLimit = servicesArr.length;
+}
 
 const panelsObj = (isDgs && dgsSetup?.panels) ? dgsSetup.panels : {
   golf: { title: 'Building Breathtaking', subtitle: 'DESERT GOLF', description: 'Over 30 years of experience delivering champion-grade golf courses across the GCC with pristine greens, smart irrigation and state-of-the-art turf management.', imageUrl: 'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?auto=format&fit=crop&q=80&w=600', buttonText: 'Read More', buttonUrl: '/portfolio' },
@@ -651,22 +673,77 @@ const discoverRoomItems = isDtl && rooms.length > 0
               <div class="w-12 h-1 bg-amber-500 mx-auto mt-3"></div>
             </div>
             
-            <div class="flex flex-wrap items-center justify-center gap-12 opacity-75 hover:opacity-100 transition-opacity duration-300">
-              {partners.map((p) => (
-                <a 
-                  href={p.website_url || '#'} 
-                  target={p.website_url ? "_blank" : undefined}
-                  class="flex items-center justify-center max-h-16 max-w-[200px] grayscale hover:grayscale-0 transition-all duration-300"
-                  title={p.name}
-                >
-                  {p.logo_url ? (
-                    <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
-                  ) : (
-                    <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-600 uppercase">{p.name}</span>
-                  )}
-                </a>
-              ))}
-            </div>
+            {/* Conditional Layout */}
+            {(() => {
+              const layout = dtlSetup?.partnersLayout || 'grid';
+              const isBW = dtlSetup?.partnersColorMode !== 'color';
+              const grayscaleClass = isBW ? "grayscale hover:grayscale-0" : "";
+              
+              if (layout === 'scrolling') {
+                return (
+                  <div class="overflow-hidden w-full relative py-4 select-none">
+                    <div class="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none"></div>
+                    <div class="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none"></div>
+                    <div class="animate-partners-ticker flex items-center">
+                      {[...partners, ...partners].map((p, idx) => (
+                        <a 
+                          href={p.website_url || '#'} 
+                          target={p.website_url ? "_blank" : undefined}
+                          class={`flex items-center justify-center max-h-16 max-w-[200px] shrink-0 transition-all duration-300 mx-8 ${grayscaleClass}`}
+                          title={p.name}
+                          key={`dtl-partner-scroll-${idx}`}
+                        >
+                          {p.logo_url ? (
+                            <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
+                          ) : (
+                            <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-600 uppercase whitespace-nowrap">{p.name}</span>
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              } else if (layout === 'list') {
+                return (
+                  <div class="flex flex-col items-center justify-center gap-6 max-w-md mx-auto">
+                    {partners.map((p) => (
+                      <a 
+                        href={p.website_url || '#'} 
+                        target={p.website_url ? "_blank" : undefined}
+                        class={`flex items-center justify-center py-3 border-b border-slate-100 last:border-0 w-full transition-all duration-300 ${grayscaleClass}`}
+                        title={p.name}
+                      >
+                        {p.logo_url ? (
+                          <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
+                        ) : (
+                          <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-650 uppercase">{p.name}</span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                );
+              } else {
+                // Default: grid/wrap
+                return (
+                  <div class="flex flex-wrap items-center justify-center gap-12 opacity-75 hover:opacity-100 transition-opacity duration-300">
+                    {partners.map((p) => (
+                      <a 
+                        href={p.website_url || '#'} 
+                        target={p.website_url ? "_blank" : undefined}
+                        class={`flex items-center justify-center max-h-16 max-w-[200px] transition-all duration-305 ${grayscaleClass}`}
+                        title={p.name}
+                      >
+                        {p.logo_url ? (
+                          <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
+                        ) : (
+                          <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-600 uppercase">{p.name}</span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                );
+              }
+            })()}
           </div>
         </section>
       )}
@@ -787,7 +864,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {servicesArr.slice(0, 6).map((svc) => (
+            {servicesArr.slice(0, dgsServicesLimit).map((svc) => (
               <div class="group relative rounded-xl overflow-hidden bg-[#001705] min-h-[300px] flex flex-col justify-end p-6 border border-emerald-950/10 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                 {/* Background Image */}
                 {svc.imageUrl ? (
@@ -1048,22 +1125,77 @@ const discoverRoomItems = isDtl && rooms.length > 0
               <h2 class="text-xl font-bold text-slate-800 font-display mt-1">Our Clients & Master Builders</h2>
             </div>
             
-            <div class="flex flex-wrap items-center justify-center gap-12 opacity-75 hover:opacity-100 transition-opacity duration-300">
-              {partners.map(p => (
-                <a 
-                  href={p.website_url || '#'} 
-                  target={p.website_url ? "_blank" : undefined}
-                  class="flex items-center justify-center max-h-16 max-w-[200px] grayscale hover:grayscale-0 transition-all duration-300"
-                  title={p.name}
-                >
-                  {p.logo_url ? (
-                    <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
-                  ) : (
-                    <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-600 uppercase">{p.name}</span>
-                  )}
-                </a>
-              ))}
-            </div>
+            {/* Conditional Layout */}
+            {(() => {
+              const layout = dgsSetup?.partnersLayout || 'grid';
+              const isBW = dgsSetup?.partnersColorMode !== 'color';
+              const grayscaleClass = isBW ? "grayscale hover:grayscale-0" : "";
+              
+              if (layout === 'scrolling') {
+                return (
+                  <div class="overflow-hidden w-full relative py-4 select-none">
+                    <div class="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+                    <div class="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+                    <div class="animate-partners-ticker flex items-center">
+                      {[...partners, ...partners].map((p, idx) => (
+                        <a 
+                          href={p.website_url || '#'} 
+                          target={p.website_url ? "_blank" : undefined}
+                          class={`flex items-center justify-center max-h-16 max-w-[200px] shrink-0 transition-all duration-300 mx-8 ${grayscaleClass}`}
+                          title={p.name}
+                          key={`dgs-partner-scroll-${idx}`}
+                        >
+                          {p.logo_url ? (
+                            <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
+                          ) : (
+                            <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-600 uppercase whitespace-nowrap">{p.name}</span>
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              } else if (layout === 'list') {
+                return (
+                  <div class="flex flex-col items-center justify-center gap-6 max-w-md mx-auto">
+                    {partners.map((p) => (
+                      <a 
+                        href={p.website_url || '#'} 
+                        target={p.website_url ? "_blank" : undefined}
+                        class={`flex items-center justify-center py-3 border-b border-slate-100 last:border-0 w-full transition-all duration-300 ${grayscaleClass}`}
+                        title={p.name}
+                      >
+                        {p.logo_url ? (
+                          <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
+                        ) : (
+                          <span class="font-extrabold text-sm md:text-base tracking-widest text-[#004712] uppercase">{p.name}</span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                );
+              } else {
+                // Default: grid/wrap
+                return (
+                  <div class="flex flex-wrap items-center justify-center gap-12 opacity-75 hover:opacity-100 transition-opacity duration-300">
+                    {partners.map((p) => (
+                      <a 
+                        href={p.website_url || '#'} 
+                        target={p.website_url ? "_blank" : undefined}
+                        class={`flex items-center justify-center max-h-16 max-w-[200px] transition-all duration-300 ${grayscaleClass}`}
+                        title={p.name}
+                      >
+                        {p.logo_url ? (
+                          <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
+                        ) : (
+                          <span class="font-extrabold text-sm md:text-base tracking-widest text-[#004712] uppercase">{p.name}</span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                );
+              }
+            })()}
           </div>
         </section>
       )}
@@ -1128,3 +1260,16 @@ const discoverRoomItems = isDtl && rooms.length > 0
 
 </Layout>
 
+<style is:global>
+  @keyframes partners-ticker-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .animate-partners-ticker {
+    display: inline-flex;
+    animation: partners-ticker-scroll 25s linear infinite;
+  }
+  .animate-partners-ticker:hover {
+    animation-play-state: paused;
+  }
+</style>

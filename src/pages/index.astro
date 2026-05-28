@@ -160,19 +160,20 @@ if (brands.length === 0) {
 <Layout title="Premium Technical Lighting & Greenscapes UAE" description="Delight Group LLC supplies premium architectural lighting and curated landscape plants across Dubai, Abu Dhabi, and the UAE.">
   
   <!-- Hero Section -->
-  <section class="relative min-h-[100dvh] flex items-center overflow-hidden bg-[#fcf9f8]">
+  <section class="relative min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)] flex items-center overflow-hidden bg-[#fcf9f8]">
     <div class="absolute inset-0 z-0">
       <img 
         alt="Modern villa at dusk with warm exterior lighting and lush landscaping" 
         class="w-full h-full object-cover" 
         src={setup.hero.imageUrl}
+        data-preview-src="hero.imageUrl"
       />
       <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
     </div>
     <div class="relative z-10 px-6 sm:px-16 max-w-[1280px] mx-auto w-full">
       <div class="max-w-3xl text-left animate-on-scroll">
-        <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl text-white mb-8 leading-[1.1] tracking-tight drop-shadow-lg">{setup.hero.title}</h1>
-        <p class="font-sans text-lg text-white/95 mb-10 max-w-xl leading-relaxed drop-shadow-md">
+        <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl text-white mb-8 leading-[1.1] tracking-tight drop-shadow-lg" data-preview-text="hero.title">{setup.hero.title}</h1>
+        <p class="font-sans text-lg text-white/95 mb-10 max-w-xl leading-relaxed drop-shadow-md" data-preview-text="hero.subtitle">
           {setup.hero.subtitle}
         </p>
         <div class="flex items-center space-x-6">

@@ -1,129 +1,308 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import PreviewPanel from '../../components/ui/PreviewPanel.astro';
 import { query } from '../../lib/db';
 
 let downloadsSetup: any = {
   title: '',
   description: '',
-  imageUrl: '',
+  heroImageUrl: '',
+  images: [],
+  imageEffect: 'fade',
+  imageFilter: 'none',
+  imageInterval: 5000,
   ctaTitle: '',
   ctaDescription: '',
   ctaBtnText: '',
-  ctaBtnLink: ''
+  ctaBtnLink: '',
+  fileView: {
+    layout:    'grid',    // grid | list | scroll
+    division:  'all',     // all | dtl | dgs | sidebyside
+    cardStyle: 'expanded' // expanded | compact | minimal
+  }
 };
 
 try {
   const res = await query("SELECT value FROM settings WHERE key = 'downloads_setup'");
   if (res.rows.length > 0) {
-    downloadsSetup = { ...downloadsSetup, ...JSON.parse(res.rows[0].value) };
+    const saved = JSON.parse(res.rows[0].value);
+    downloadsSetup = { ...downloadsSetup, ...saved, fileView: { ...downloadsSetup.fileView, ...(saved.fileView || {}) } };
   }
 } catch (err: any) {
   console.warn('DB offline or settings missing:', err?.message || err);
 }
+
+const fv = downloadsSetup.fileView;
 ---
 
 <DashboardLayout title="Downloads Page Setup" activeItem="downloads-setup">
-  <div class="max-w-4xl mx-auto space-y-8 pb-16">
-    <header class="flex items-center justify-between border-b border-slate-100 pb-5">
-      <div>
-        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Downloads Setup</h1>
-        <p class="text-xs text-slate-500 font-medium">Configure downloads center text description, headers, and specific request banner.</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <div id="save-msg" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2"></div>
-        <button id="save-downloads" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">Save Changes</button>
-      </div>
-    </header>
+  <div class="h-[calc(100vh-64px)] flex overflow-hidden">
 
-    <form id="downloads-form" class="space-y-8">
-      <!-- HEADER -->
-      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <div class="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
-          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Page Header</h2>
+    <!-- ── Editor Column ──────────────────────────────────── -->
+    <div class="w-[420px] shrink-0 flex flex-col border-r border-slate-200 bg-white overflow-y-auto">
+      <!-- Sticky header -->
+      <div class="sticky top-0 z-10 bg-white border-b border-slate-100 px-5 py-3 flex items-center justify-between shrink-0">
+        <div>
+          <h1 class="text-sm font-black text-slate-900 tracking-tight">Downloads Setup</h1>
+          <p class="text-[10px] text-slate-400 font-medium">Hero images, files view & CTA banner.</p>
         </div>
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="md:col-span-2">
-            <label class="text-xs font-medium text-slate-600">Main Title</label>
-            <input name="title" value={downloadsSetup.title || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-          </div>
-          <div class="md:col-span-2">
-            <label class="text-xs font-medium text-slate-600">Description</label>
-            <textarea name="description" rows="3" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">{downloadsSetup.description || ''}</textarea>
-          </div>
-          <div class="md:col-span-2">
-            <label class="text-xs font-medium text-slate-600">Cover Image URL</label>
-            <input name="imageUrl" value={downloadsSetup.imageUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-          </div>
+        <div class="flex items-center gap-2">
+          <div id="save-msg" class="hidden text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1"></div>
+          <button id="save-downloads" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all">Save</button>
         </div>
       </div>
 
-      <!-- CTA REQUIREMENT BANNER -->
-      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
-          <div class="w-1.5 h-6 bg-teal-500 rounded-full"></div>
-          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Specific Requirement Banner</h2>
-        </div>
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="md:col-span-2">
-            <label class="text-xs font-medium text-slate-600">CTA Title</label>
-            <input name="ctaTitle" value={downloadsSetup.ctaTitle || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+      <!-- Form -->
+      <form id="downloads-form" class="p-4 space-y-4 flex-1">
+
+        <!-- PAGE HEADER -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+            <div class="w-1.5 h-5 bg-indigo-600 rounded-full"></div>
+            <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Page Header</h2>
           </div>
-          <div class="md:col-span-2">
-            <label class="text-xs font-medium text-slate-600">CTA Description</label>
-            <textarea name="ctaDescription" rows="3" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400">{downloadsSetup.ctaDescription || ''}</textarea>
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600">CTA Button Text</label>
-            <input name="ctaBtnText" value={downloadsSetup.ctaBtnText || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
-          </div>
-          <div>
-            <label class="text-xs font-medium text-slate-600">CTA Button Link</label>
-            <input name="ctaBtnLink" value={downloadsSetup.ctaBtnLink || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          <div class="p-4 space-y-2">
+            <div><label class="text-[10px] font-semibold text-slate-500">Main Title</label>
+              <input name="title" value={downloadsSetup.title || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400" /></div>
+            <div><label class="text-[10px] font-semibold text-slate-500">Description</label>
+              <textarea name="description" rows="2" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">{downloadsSetup.description || ''}</textarea></div>
           </div>
         </div>
-      </div>
-    </form>
+
+        <!-- HERO IMAGES -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+            <div class="w-1.5 h-5 bg-violet-600 rounded-full"></div>
+            <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Hero Image(s)</h2>
+          </div>
+          <div class="p-4 space-y-3">
+            <div><label class="text-[10px] font-semibold text-slate-500">Fallback / Single Image URL</label>
+              <input name="heroImageUrl" value={downloadsSetup.heroImageUrl || ''} placeholder="https://…/cover.jpg" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400" /></div>
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-[10px] font-semibold text-slate-500">Slideshow Images</label>
+                <button type="button" id="add-dl-img" class="text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 hover:bg-violet-100 px-2.5 py-0.5 rounded-md transition">+ Add</button>
+              </div>
+              <div id="dl-images-container" class="space-y-1.5" data-images={JSON.stringify(downloadsSetup.images || [])}></div>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Effect</label>
+                <select name="imageEffect" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400">
+                  <option value="fade"  selected={!downloadsSetup.imageEffect || downloadsSetup.imageEffect==='fade'}>Fade</option>
+                  <option value="slide" selected={downloadsSetup.imageEffect==='slide'}>Slide</option>
+                  <option value="zoom"  selected={downloadsSetup.imageEffect==='zoom'}>Zoom</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Filter</label>
+                <select name="imageFilter" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400">
+                  <option value="none"      selected={!downloadsSetup.imageFilter || downloadsSetup.imageFilter==='none'}>Color</option>
+                  <option value="grayscale" selected={downloadsSetup.imageFilter==='grayscale'}>Grayscale</option>
+                  <option value="sepia"     selected={downloadsSetup.imageFilter==='sepia'}>Sepia</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Interval (s)</label>
+                <input type="number" name="imageInterval" min="2" max="20" step="0.5"
+                  value={Math.round((downloadsSetup.imageInterval || 5000) / 1000)}
+                  class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FILE VIEW OPTIONS -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+            <div class="w-1.5 h-5 bg-teal-500 rounded-full"></div>
+            <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">File Library View</h2>
+          </div>
+          <div class="p-4 space-y-4">
+
+            <!-- Layout -->
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500 block mb-1.5">File Layout</label>
+              <div class="grid grid-cols-3 gap-1.5">
+                {[
+                  { val: 'grid',   label: 'Grid',   icon: '⊞' },
+                  { val: 'list',   label: 'List',   icon: '≡' },
+                  { val: 'scroll', label: 'Scroll', icon: '↕' }
+                ].map(opt => (
+                  <label class={`flex flex-col items-center gap-1 border rounded-lg py-2 cursor-pointer text-[10px] font-bold transition-all ${fv.layout === opt.val ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                    <input type="radio" name="fileLayout" value={opt.val} class="hidden" checked={fv.layout === opt.val} />
+                    <span class="text-base">{opt.icon}</span>
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <!-- Division filter -->
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500 block mb-1.5">Division Display</label>
+              <div class="grid grid-cols-2 gap-1.5">
+                {[
+                  { val: 'all',        label: 'All Together' },
+                  { val: 'dtl',        label: 'DTL Only' },
+                  { val: 'dgs',        label: 'DGS Only' },
+                  { val: 'sidebyside', label: 'DTL | DGS Side-by-Side' }
+                ].map(opt => (
+                  <label class={`flex items-center gap-1.5 border rounded-lg px-2.5 py-2 cursor-pointer text-[10px] font-bold transition-all ${fv.division === opt.val ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                    <input type="radio" name="fileDivision" value={opt.val} class="hidden" checked={fv.division === opt.val} />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <!-- Card style -->
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500 block mb-1.5">Card Style</label>
+              <div class="grid grid-cols-3 gap-1.5">
+                {[
+                  { val: 'expanded', label: 'Expanded' },
+                  { val: 'compact',  label: 'Compact' },
+                  { val: 'minimal',  label: 'Minimal' }
+                ].map(opt => (
+                  <label class={`flex items-center justify-center border rounded-lg py-2 cursor-pointer text-[10px] font-bold transition-all ${fv.cardStyle === opt.val ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                    <input type="radio" name="fileCardStyle" value={opt.val} class="hidden" checked={fv.cardStyle === opt.val} />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA REQUIREMENT BANNER -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+            <div class="w-1.5 h-5 bg-amber-500 rounded-full"></div>
+            <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Specific Requirement Banner</h2>
+          </div>
+          <div class="p-4 space-y-2">
+            <div><label class="text-[10px] font-semibold text-slate-500">CTA Title</label>
+              <input name="ctaTitle" value={downloadsSetup.ctaTitle || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" /></div>
+            <div><label class="text-[10px] font-semibold text-slate-500">CTA Description</label>
+              <textarea name="ctaDescription" rows="2" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400">{downloadsSetup.ctaDescription || ''}</textarea></div>
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="text-[10px] font-semibold text-slate-500">Button Text</label>
+                <input name="ctaBtnText" value={downloadsSetup.ctaBtnText || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" /></div>
+              <div><label class="text-[10px] font-semibold text-slate-500">Button Link</label>
+                <input name="ctaBtnLink" value={downloadsSetup.ctaBtnLink || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" /></div>
+            </div>
+          </div>
+        </div>
+
+      </form>
+    </div><!-- /editor -->
+
+    <!-- ── Preview Column ─────────────────────────────────── -->
+    <div class="flex-1 overflow-hidden p-3">
+      <PreviewPanel src="/downloads" iframeId="downloads-preview-iframe" refreshBtnId="btn-refresh-downloads-preview" />
+    </div>
+
   </div>
 
   <script>
-    const form = document.getElementById('downloads-form') as HTMLFormElement;
-    const saveBtn = document.getElementById('save-downloads');
-    const saveMsg = document.getElementById('save-msg');
+    const form    = document.getElementById('downloads-form') as HTMLFormElement;
+    const saveBtn = document.getElementById('save-downloads') as HTMLButtonElement;
+    const saveMsg = document.getElementById('save-msg') as HTMLElement;
 
+    // ── Slideshow images list ───────────────────────────────
+    const dlContainer = document.getElementById('dl-images-container') as HTMLElement;
+    let dlImages: string[] = [];
+    try { dlImages = JSON.parse(dlContainer.getAttribute('data-images') || '[]'); } catch {}
+
+    const syncDlImages = () => {
+      const inputs = dlContainer.querySelectorAll('.dl-img-input') as NodeListOf<HTMLInputElement>;
+      dlImages = Array.from(inputs).map(i => i.value);
+    };
+    const renderDlImages = () => {
+      dlContainer.innerHTML = '';
+      if (dlImages.length === 0) {
+        dlContainer.innerHTML = `<p class="text-[10px] text-slate-400 italic">No slideshow images — fallback image used.</p>`;
+        return;
+      }
+      dlImages.forEach((url, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-1.5';
+        row.innerHTML = `
+          <span class="text-[10px] text-slate-400 w-4 text-center">${idx+1}</span>
+          <input type="text" class="flex-grow rounded-md border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400 dl-img-input"
+            value="${url.replace(/"/g,'&quot;')}" placeholder="https://…/photo.jpg" />
+          <button type="button" class="w-6 h-6 flex items-center justify-center text-slate-300 hover:text-red-500 rounded transition del-dl-img" data-idx="${idx}">×</button>
+        `;
+        dlContainer.appendChild(row);
+      });
+      dlContainer.querySelectorAll('.del-dl-img').forEach(btn => {
+        btn.addEventListener('click', e => {
+          const idx = parseInt((e.currentTarget as HTMLElement).getAttribute('data-idx') || '0');
+          syncDlImages(); dlImages.splice(idx, 1); renderDlImages();
+        });
+      });
+    };
+    document.getElementById('add-dl-img')?.addEventListener('click', () => { syncDlImages(); dlImages.push(''); renderDlImages(); });
+    renderDlImages();
+
+    // ── Radio group highlight ───────────────────────────────
+    document.querySelectorAll('input[type="radio"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const input = e.target as HTMLInputElement;
+        const name = input.name;
+        document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+          const label = r.closest('label');
+          if (!label) return;
+          if ((r as HTMLInputElement).checked) {
+            label.classList.add('border-teal-500', 'bg-teal-50', 'text-teal-700');
+            label.classList.remove('border-slate-200', 'text-slate-500');
+          } else {
+            label.classList.remove('border-teal-500', 'bg-teal-50', 'text-teal-700');
+            label.classList.add('border-slate-200', 'text-slate-500');
+          }
+        });
+      });
+    });
+
+    // ── Read form ───────────────────────────────────────────
     const readForm = () => {
       const data = new FormData(form);
+      syncDlImages();
       return {
         title: data.get('title') || '',
         description: data.get('description') || '',
-        imageUrl: data.get('imageUrl') || '',
+        heroImageUrl: data.get('heroImageUrl') || '',
+        images: dlImages.map(u => u.trim()).filter(Boolean),
+        imageEffect: data.get('imageEffect') || 'fade',
+        imageFilter: data.get('imageFilter') || 'none',
+        imageInterval: Math.round(parseFloat(data.get('imageInterval') as string || '5') * 1000),
         ctaTitle: data.get('ctaTitle') || '',
         ctaDescription: data.get('ctaDescription') || '',
         ctaBtnText: data.get('ctaBtnText') || '',
-        ctaBtnLink: data.get('ctaBtnLink') || ''
+        ctaBtnLink: data.get('ctaBtnLink') || '',
+        fileView: {
+          layout:    data.get('fileLayout')    || 'grid',
+          division:  data.get('fileDivision')  || 'all',
+          cardStyle: data.get('fileCardStyle') || 'expanded'
+        }
       };
     };
 
-    saveBtn?.addEventListener('click', async () => {
-      saveBtn.setAttribute('disabled', 'true');
-      saveBtn.textContent = 'Saving...';
+    // ── Save ────────────────────────────────────────────────
+    saveBtn.addEventListener('click', async () => {
+      saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
       try {
-        const payload = { downloads_setup: JSON.stringify(readForm()) };
         const res = await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ downloads_setup: JSON.stringify(readForm()) })
         });
-        if (!res.ok) throw new Error('Failed to save settings');
-        saveMsg!.classList.remove('hidden');
-        saveMsg!.textContent = '✓ Saved successfully';
-        setTimeout(() => { saveMsg!.classList.add('hidden'); }, 2500);
-      } catch (err: any) {
-        alert(err?.message || 'Error saving settings');
-      } finally {
-        saveBtn.removeAttribute('disabled');
-        saveBtn.textContent = 'Save Changes';
-      }
+        if (!res.ok) throw new Error('Failed to save');
+        saveMsg.classList.remove('hidden'); saveMsg.textContent = '✓ Saved';
+        (window as any)['refresh_downloads-preview-iframe']?.();
+        setTimeout(() => saveMsg.classList.add('hidden'), 2500);
+      } catch (err: any) { alert(err?.message || 'Error'); }
+      finally { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
     });
   </script>
 </DashboardLayout>

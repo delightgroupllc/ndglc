@@ -1,5 +1,6 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import PreviewPanel from '../../components/ui/PreviewPanel.astro';
 import { query } from '../../lib/db';
 
 let aboutSetup: any = {
@@ -34,19 +35,21 @@ try {
 ---
 
 <DashboardLayout title="About Us Setup" activeItem="about-setup">
-  <div class="max-w-4xl mx-auto space-y-8 pb-16">
-    <header class="flex items-center justify-between border-b border-slate-100 pb-5">
-      <div>
-        <h1 class="text-2xl font-black text-slate-900 tracking-tight">About Us Setup</h1>
-        <p class="text-xs text-slate-500 font-medium">Configure corporate history, values, testimonials, and founder message.</p>
+  <div class="h-[calc(100vh-64px)] flex overflow-hidden">
+    <!-- Editor Column -->
+    <div class="w-[420px] shrink-0 flex flex-col border-r border-slate-200 bg-white overflow-y-auto">
+      <div class="sticky top-0 z-10 bg-white border-b border-slate-100 px-5 py-3 flex items-center justify-between shrink-0">
+        <div>
+          <h1 class="text-sm font-black text-slate-900 tracking-tight">About Us Setup</h1>
+          <p class="text-[10px] text-slate-400 font-medium">History, values, testimonials, leadership.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div id="save-msg" class="hidden text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1"></div>
+          <button id="save-about" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all">Save</button>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <div id="save-msg" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2"></div>
-        <button id="save-about" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">Save Changes</button>
-      </div>
-    </header>
 
-    <form id="about-form" class="space-y-8">
+    <form id="about-form" class="p-4 space-y-4 flex-1">
       <!-- HEADER -->
       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
@@ -242,6 +245,13 @@ try {
         </div>
       </div>
     </form>
+    </div><!-- /editor -->
+
+    <!-- Preview Column -->
+    <div class="flex-1 overflow-hidden p-3">
+      <PreviewPanel src="/about" iframeId="about-preview-iframe" refreshBtnId="btn-refresh-about-preview" />
+    </div>
+
   </div>
 
   <script>
@@ -304,24 +314,25 @@ try {
 
     saveBtn?.addEventListener('click', async () => {
       saveBtn.setAttribute('disabled', 'true');
-      saveBtn.textContent = 'Saving...';
+      saveBtn.textContent = 'Saving…';
       try {
         const payload = { about_setup: JSON.stringify(readForm()) };
         const res = await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error('Failed to save settings');
         saveMsg!.classList.remove('hidden');
-        saveMsg!.textContent = '✓ Saved successfully';
+        saveMsg!.textContent = '✓ Saved';
+        (window as any)['refresh_about-preview-iframe']?.();
         setTimeout(() => { saveMsg!.classList.add('hidden'); }, 2500);
       } catch (err: any) {
         alert(err?.message || 'Error saving settings');
       } finally {
         saveBtn.removeAttribute('disabled');
-        saveBtn.textContent = 'Save Changes';
+        saveBtn.textContent = 'Save';
       }
     });
+
   </script>
 </DashboardLayout>
