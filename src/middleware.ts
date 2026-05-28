@@ -77,13 +77,18 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
         localUser = insertRes.rows[0];
         console.log(`Synced new Clerk authenticated user: ${name} (${userId})`);
 
-        // Assign the default customer 'user' role
-        const roleRes = await query("SELECT id FROM roles WHERE name = 'user'");
+        // Assign the default customer 'user' role, promoting admin emails automatically
+        const isAdminEmail = email === 'sales@delighgroupllc.com' || email === 'sales@delightgroupllc.com';
+        const roleNameToAssign = isAdminEmail ? 'admin' : 'user';
+        const roleRes = await query("SELECT id FROM roles WHERE name = $1", [roleNameToAssign]);
         if (roleRes.rows[0]) {
           await query(
             'INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
             [userId, roleRes.rows[0].id]
           );
+          if (isAdminEmail) {
+            console.log(`Successfully elevated incoming user ${email} to admin role during session sync.`);
+          }
         }
       }
 

@@ -9,7 +9,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "seed": "tsx src/lib/seed.ts"
+    "seed": "tsx src/lib/seed.ts",
+    "seed:mega": "tsx src/lib/mega_seed.ts"
   },
   "dependencies": {
     "@astrojs/compiler-rs": "^0.2.1",
