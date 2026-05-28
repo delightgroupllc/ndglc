@@ -132,7 +132,7 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
             console.log(`Self-healed Clerk user info for ${userId}: ${email} (${name})`);
 
             // Check if they should be admin
-            const isAdminEmail = email === 'sales@delighgroupllc.com' || email === 'sales@delightgroupllc.com';
+            const isAdminEmail = email === 'sales@delightgroupllc.com' || email === 'sales@delightgroupllc.com';
             if (isAdminEmail) {
               const rolesRes = await query(
                 `SELECT r.name 

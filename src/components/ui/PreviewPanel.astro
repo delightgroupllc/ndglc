@@ -11,7 +11,7 @@ const displayUrl = urlLabel || `delightgroupllc.com${src}`;
 ---
 
 <!-- Full-height preview panel with viewport switcher -->
-<div class="flex flex-col h-[calc(100vh-64px)] bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+<div id={`${iframeId}-container`} class="flex flex-col h-[calc(100vh-32px)] bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
   
   <!-- Browser chrome top bar -->
   <div class="shrink-0 bg-slate-950 px-3 py-2 border-b border-slate-800 flex items-center gap-2">
@@ -83,7 +83,10 @@ const displayUrl = urlLabel || `delightgroupllc.com${src}`;
     const wrapper   = document.getElementById(`${iframeId}-wrapper`);
     const frame     = document.getElementById(iframeId);
     const refreshBtn = document.getElementById(refreshBtnId);
-    const vpBtns    = document.querySelectorAll('.viewport-btn-preview');
+    
+    // Scope button queries to current container to avoid collision
+    const container = document.getElementById(`${iframeId}-container`);
+    const vpBtns    = container ? container.querySelectorAll('.viewport-btn-preview') : [];
 
     // Viewport switcher
     vpBtns.forEach(btn => {
