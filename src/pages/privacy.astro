@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { query } from '../lib/db';
+import { sanitizeHtml } from '../lib/sanitize';
 
 let policy: any = null;
 try {
@@ -24,8 +25,9 @@ const fallbackContent = `
 `;
 
 const title = policy?.title || 'Privacy Policy';
-const content = policy?.content || fallbackContent;
+const content = sanitizeHtml(policy?.content || fallbackContent);
 const updatedAt = policy?.updated_at ? new Date(policy.updated_at).toLocaleDateString('en-AE', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
+
 ---
 
 <Layout title="Privacy Policy" description="Privacy Policy for Delight Group LLC — how we collect, use, and protect your information.">

@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { query } from '../../lib/db';
 import { Calendar, Tag, ArrowLeft, Lightbulb, Flower, Newspaper } from '@lucide/astro';
+import { sanitizeHtml } from '../../lib/sanitize';
 
 const { slug } = Astro.params;
 let article: any = null;
@@ -14,6 +15,11 @@ try {
   dbConnected = false;
   console.error("Database lookup failed for article slug:", slug, err?.message || err);
 }
+
+if (article && article.content) {
+  article.content = sanitizeHtml(article.content);
+}
+
 
 // Redirect back home if article not found
 if (!article) {

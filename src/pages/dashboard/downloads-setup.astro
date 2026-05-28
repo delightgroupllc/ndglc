@@ -1,0 +1,129 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+
+let downloadsSetup: any = {
+  title: '',
+  description: '',
+  imageUrl: '',
+  ctaTitle: '',
+  ctaDescription: '',
+  ctaBtnText: '',
+  ctaBtnLink: ''
+};
+
+try {
+  const res = await query("SELECT value FROM settings WHERE key = 'downloads_setup'");
+  if (res.rows.length > 0) {
+    downloadsSetup = { ...downloadsSetup, ...JSON.parse(res.rows[0].value) };
+  }
+} catch (err: any) {
+  console.warn('DB offline or settings missing:', err?.message || err);
+}
+---
+
+<DashboardLayout title="Downloads Page Setup" activeItem="downloads-setup">
+  <div class="max-w-4xl mx-auto space-y-8 pb-16">
+    <header class="flex items-center justify-between border-b border-slate-100 pb-5">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Downloads Setup</h1>
+        <p class="text-xs text-slate-500 font-medium">Configure downloads center text description, headers, and specific request banner.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div id="save-msg" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2"></div>
+        <button id="save-downloads" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">Save Changes</button>
+      </div>
+    </header>
+
+    <form id="downloads-form" class="space-y-8">
+      <!-- HEADER -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Page Header</h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Main Title</label>
+            <input name="title" value={downloadsSetup.title || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Description</label>
+            <textarea name="description" rows="3" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400">{downloadsSetup.description || ''}</textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Cover Image URL</label>
+            <input name="imageUrl" value={downloadsSetup.imageUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA REQUIREMENT BANNER -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-teal-500 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Specific Requirement Banner</h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">CTA Title</label>
+            <input name="ctaTitle" value={downloadsSetup.ctaTitle || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">CTA Description</label>
+            <textarea name="ctaDescription" rows="3" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400">{downloadsSetup.ctaDescription || ''}</textarea>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA Button Text</label>
+            <input name="ctaBtnText" value={downloadsSetup.ctaBtnText || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA Button Link</label>
+            <input name="ctaBtnLink" value={downloadsSetup.ctaBtnLink || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('downloads-form') as HTMLFormElement;
+    const saveBtn = document.getElementById('save-downloads');
+    const saveMsg = document.getElementById('save-msg');
+
+    const readForm = () => {
+      const data = new FormData(form);
+      return {
+        title: data.get('title') || '',
+        description: data.get('description') || '',
+        imageUrl: data.get('imageUrl') || '',
+        ctaTitle: data.get('ctaTitle') || '',
+        ctaDescription: data.get('ctaDescription') || '',
+        ctaBtnText: data.get('ctaBtnText') || '',
+        ctaBtnLink: data.get('ctaBtnLink') || ''
+      };
+    };
+
+    saveBtn?.addEventListener('click', async () => {
+      saveBtn.setAttribute('disabled', 'true');
+      saveBtn.textContent = 'Saving...';
+      try {
+        const payload = { downloads_setup: JSON.stringify(readForm()) };
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Failed to save settings');
+        saveMsg!.classList.remove('hidden');
+        saveMsg!.textContent = '✓ Saved successfully';
+        setTimeout(() => { saveMsg!.classList.add('hidden'); }, 2500);
+      } catch (err: any) {
+        alert(err?.message || 'Error saving settings');
+      } finally {
+        saveBtn.removeAttribute('disabled');
+        saveBtn.textContent = 'Save Changes';
+      }
+    });
+  </script>
+</DashboardLayout>

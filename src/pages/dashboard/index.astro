@@ -64,7 +64,7 @@ try {
      ORDER BY al.timestamp DESC
      LIMIT 6`
   );
-  recentActivities = logsRes.rows.map(log => ({
+  recentActivities = logsRes.rows.map((log: any) => ({
     id: log.id,
     type: log.action,
     details: log.details,
@@ -143,19 +143,19 @@ try {
             <!-- Total Valuation -->
             <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Valuation</p>
-              <p class="text-2xl font-bold font-display text-slate-900">${metrics.totalValuation.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+              <p class="text-2xl font-bold font-display text-slate-900">AED {metrics.totalValuation.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
             </div>
 
             <!-- Pending Settlements -->
             <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Pending Settlements</p>
-              <p class="text-2xl font-bold font-display text-amber-600">${metrics.pendingSettlements.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+              <p class="text-2xl font-bold font-display text-amber-600">AED {metrics.pendingSettlements.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
             </div>
 
             <!-- Total Revenue -->
             <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Revenue</p>
-              <p class="text-2xl font-bold font-display text-emerald-600">${metrics.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+              <p class="text-2xl font-bold font-display text-emerald-600">AED {metrics.totalRevenue.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
             </div>
 
             <!-- Project Count -->
@@ -188,7 +188,7 @@ try {
             <!-- Awaiting Settlement -->
             <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
               <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Awaiting Settlement</p>
-              <p class="text-2xl font-bold font-display text-amber-600">${metrics.pendingSettlements.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+              <p class="text-2xl font-bold font-display text-amber-600">AED {metrics.pendingSettlements.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
             </div>
 
             <!-- Account Standing -->

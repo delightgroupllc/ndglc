@@ -1,0 +1,294 @@
+---
+interface Project {
+  id: string;
+  title: string;
+  client_name: string;
+  featured_image?: string;
+  description?: string;
+}
+
+interface Props {
+  selectedProjects: Project[];
+  allProjects: Project[];
+  homepageProjectIds: string[];
+  themeColorClass?: string; // 'amber' or 'emerald' or 'indigo'
+  saveButtonId?: string;
+  saveButtonText?: string;
+  settingsKey?: string;
+}
+
+const {
+  selectedProjects = [],
+  allProjects = [],
+  homepageProjectIds = [],
+  themeColorClass = "amber",
+  saveButtonId = "save-projects-btn",
+  saveButtonText = "Save Projects",
+  settingsKey = "homepage_projects"
+} = Astro.props;
+
+const borderSelected = themeColorClass === "emerald" ? "border-emerald-200 bg-emerald-50" : themeColorClass === "indigo" ? "border-indigo-200 bg-indigo-50" : "border-amber-200 bg-amber-50";
+const borderPickActive = themeColorClass === "emerald" ? "border-emerald-300 bg-emerald-50" : themeColorClass === "indigo" ? "border-indigo-300 bg-indigo-50" : "border-amber-300 bg-amber-50";
+const textTheme = themeColorClass === "emerald" ? "text-emerald-600 bg-emerald-100" : themeColorClass === "indigo" ? "text-indigo-600 bg-indigo-100" : "text-amber-600 bg-amber-100";
+const textBtnColor = themeColorClass === "emerald" ? "text-emerald-700" : themeColorClass === "indigo" ? "text-indigo-505" : "text-amber-600";
+const searchRing = themeColorClass === "emerald" ? "focus:ring-emerald-400" : themeColorClass === "indigo" ? "focus:ring-indigo-400" : "focus:ring-amber-400";
+const btnBg = themeColorClass === "emerald" ? "bg-emerald-500 hover:bg-emerald-600" : themeColorClass === "indigo" ? "bg-indigo-600 hover:bg-indigo-700" : "bg-amber-500 hover:bg-amber-600";
+---
+
+<div class="mb-4 pt-4 border-t border-slate-100">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+      <span class={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${textTheme}`}>4</span>
+      Homepage Projects
+    </h2>
+    <button
+      type="button"
+      id={saveButtonId}
+      class={`text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors ${btnBg}`}
+      data-settings-key={settingsKey}
+    >
+      {saveButtonText}
+    </button>
+  </div>
+  <p class="text-xs text-slate-500 mb-4">
+    Select up to <strong>3 projects</strong> to feature in the "Discover Projects" section. Drag to reorder.
+  </p>
+
+  <!-- Selected Projects (shown on homepage) -->
+  <div class="mb-5">
+    <p class="text-xs font-semibold text-slate-700 mb-2">📌 Featured on Homepage <span class="text-slate-400 font-normal">(drag to reorder)</span></p>
+    <div
+      id="selected-projects-list"
+      class="space-y-2 min-h-16 rounded-xl border-2 border-dashed border-slate-200 p-3"
+    >
+      {selectedProjects.length === 0 && (
+        <p class="text-xs text-slate-400 text-center py-3">No projects selected yet — pick from the list below</p>
+      )}
+      {selectedProjects.map((proj, idx) => (
+        <div
+          class={`selected-proj-card flex items-center gap-3 rounded-xl p-3 cursor-grab ${borderSelected}`}
+          draggable="true"
+          data-id={proj.id}
+        >
+          <span class="text-slate-400 text-sm select-none">⠿</span>
+          {proj.featured_image ? (
+            <img src={proj.featured_image} alt={proj.title} class="w-14 h-10 object-cover rounded-lg shrink-0" />
+          ) : (
+            <div class="w-14 h-10 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400 text-xs">No img</div>
+          )}
+          <div class="flex-grow min-w-0">
+            <p class="text-sm font-semibold text-slate-900 truncate">{proj.title}</p>
+            <p class="text-xs text-slate-500 truncate">{proj.client_name}</p>
+          </div>
+          <span class={`proj-rank text-xs font-bold rounded-full px-2 py-0.5 ${textTheme}`}>#{idx + 1}</span>
+          <button type="button" class="remove-proj-btn text-rose-500 hover:text-rose-700 font-bold text-lg leading-none shrink-0">&times;</button>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- All Projects Picker -->
+  <div>
+    <p class="text-xs font-semibold text-slate-700 mb-2">All Active Projects <span class="text-slate-400 font-normal">— click to add</span></p>
+    <input
+      type="text"
+      id="proj-search"
+      placeholder="Search projects..."
+      class={`w-full rounded-lg border border-slate-200 px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-1 ${searchRing}`}
+    />
+    <div id="all-projects-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+      {allProjects.length === 0 ? (
+        <p class="text-xs text-slate-400 text-center py-6">No active projects found.</p>
+      ) : allProjects.map((proj) => {
+        const isSelected = homepageProjectIds.includes(proj.id);
+        return (
+          <div
+            class={`proj-pick-row flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
+              isSelected 
+                ? `${borderPickActive} opacity-50 pointer-events-none` 
+                : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+            data-id={proj.id}
+            data-title={proj.title}
+            data-client={proj.client_name}
+            data-image={proj.featured_image || ''}
+            data-selected={isSelected ? 'true' : 'false'}
+          >
+            {proj.featured_image ? (
+              <img src={proj.featured_image} alt={proj.title} class="w-14 h-10 object-cover rounded-lg shrink-0" loading="lazy" />
+            ) : (
+              <div class="w-14 h-10 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400 text-xs">No img</div>
+            )}
+            <div class="flex-grow min-w-0">
+              <p class="text-sm font-semibold text-slate-900 truncate">{proj.title}</p>
+              <p class="text-xs text-slate-500 truncate">{proj.client_name}</p>
+            </div>
+            {isSelected ? (
+              <span class={`text-xs font-bold shrink-0 ${textBtnColor}`}>✓ Added</span>
+            ) : (
+              <span class="text-xs font-bold text-slate-500 shrink-0">+ Add</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ themeColorClass, borderSelected, borderPickActive, textTheme, textBtnColor }}>
+  // Inline Client-Side Logic
+  const selectedList = document.getElementById('selected-projects-list');
+  const allList = document.getElementById('all-projects-list');
+  const saveProjectsBtn = document.querySelector('[data-settings-key]');
+  const projSearch = document.getElementById('proj-search');
+
+  const getSelectedIds = () =>
+    Array.from(selectedList.querySelectorAll('.selected-proj-card')).map(el => el.getAttribute('data-id') || '');
+
+  const makeSelectedCard = (id, title, client, imageUrl) => {
+    const div = document.createElement('div');
+    div.className = `selected-proj-card flex items-center gap-3 rounded-xl p-3 cursor-grab ${borderSelected}`;
+    div.setAttribute('draggable', 'true');
+    div.setAttribute('data-id', id);
+    div.innerHTML = `
+      <span class="text-slate-400 text-sm select-none">⠿</span>
+      ${imageUrl ? `<img src="${imageUrl}" alt="${title}" class="w-14 h-10 object-cover rounded-lg shrink-0" />` : `<div class="w-14 h-10 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400 text-xs">No img</div>`}
+      <div class="flex-grow min-w-0">
+        <p class="text-sm font-semibold text-slate-900 truncate">${title}</p>
+        <p class="text-xs text-slate-500 truncate">${client}</p>
+      </div>
+      <span class="proj-rank text-xs font-bold rounded-full px-2 py-0.5 ${textTheme}">#1</span>
+      <button type="button" class="remove-proj-btn text-rose-500 hover:text-rose-700 font-bold text-lg leading-none shrink-0">&times;</button>
+    `;
+    return div;
+  };
+
+  const updateRanks = () => {
+    const cards = selectedList.querySelectorAll('.selected-proj-card');
+    const emptyP = selectedList.querySelector('p.text-slate-400');
+    if (cards.length === 0) {
+      if (!emptyP) {
+        const p = document.createElement('p');
+        p.className = 'text-xs text-slate-400 text-center py-3';
+        p.textContent = 'No projects selected yet — pick from the list below';
+        selectedList.appendChild(p);
+      }
+    } else {
+      if (emptyP) emptyP.remove();
+    }
+    cards.forEach((card, i) => {
+      const rank = card.querySelector('.proj-rank');
+      if (rank) rank.textContent = `#${i + 1}`;
+    });
+  };
+
+  const markPickRow = (id, selected) => {
+    const row = allList?.querySelector(`.proj-pick-row[data-id="${id}"]`);
+    if (!row) return;
+    row.setAttribute('data-selected', selected ? 'true' : 'false');
+    if (selected) {
+      row.className = `proj-pick-row flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${borderPickActive} opacity-50 pointer-events-none`;
+      const btn = row.querySelector('span.text-slate-505') || row.querySelector('span.text-slate-500');
+      if (btn) { btn.className = `text-xs font-bold shrink-0 ${textBtnColor}`; btn.textContent = '✓ Added'; }
+    } else {
+      row.className = `proj-pick-row flex items-center gap-3 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50 p-3 cursor-pointer transition-colors`;
+      const btn = row.querySelector('span');
+      if (btn) { btn.className = 'text-xs font-bold text-slate-500 shrink-0'; btn.textContent = '+ Add'; }
+    }
+  };
+
+  allList?.addEventListener('click', (e) => {
+    const row = e.target.closest('.proj-pick-row');
+    if (!row) return;
+    if (row.getAttribute('data-selected') === 'true') return;
+    const currentCount = selectedList.querySelectorAll('.selected-proj-card').length;
+    if (currentCount >= 3) { alert('Maximum 3 projects can be featured. Remove one first.'); return; }
+
+    const id = row.getAttribute('data-id') || '';
+    const title = row.getAttribute('data-title') || '';
+    const client = row.getAttribute('data-client') || '';
+    const image = row.getAttribute('data-image') || '';
+
+    const card = makeSelectedCard(id, title, client, image);
+    attachRemoveListener(card);
+    attachDragListeners(card);
+    selectedList.appendChild(card);
+    markPickRow(id, true);
+    updateRanks();
+  });
+
+  const attachRemoveListener = (card) => {
+    card.querySelector('.remove-proj-btn')?.addEventListener('click', () => {
+      const id = card.getAttribute('data-id') || '';
+      card.remove();
+      markPickRow(id, false);
+      updateRanks();
+    });
+  };
+
+  selectedList.querySelectorAll('.selected-proj-card').forEach(card => {
+    attachRemoveListener(card);
+    attachDragListeners(card);
+  });
+
+  let dragSrc = null;
+  function attachDragListeners(card) {
+    card.addEventListener('dragstart', (e) => {
+      dragSrc = card;
+      e.dataTransfer?.setData('text/plain', card.getAttribute('data-id') || '');
+      card.classList.add('opacity-50');
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('opacity-50');
+      dragSrc = null;
+      updateRanks();
+    });
+  }
+
+  selectedList.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const target = e.target.closest('.selected-proj-card');
+    if (!target || !dragSrc || target === dragSrc) return;
+    const allCards = Array.from(selectedList.querySelectorAll('.selected-proj-card'));
+    const srcIdx = allCards.indexOf(dragSrc);
+    const destIdx = allCards.indexOf(target);
+    if (srcIdx < destIdx) selectedList.insertBefore(dragSrc, target.nextSibling);
+    else selectedList.insertBefore(dragSrc, target);
+  });
+
+  projSearch?.addEventListener('input', () => {
+    const q = projSearch.value.toLowerCase();
+    allList?.querySelectorAll('.proj-pick-row').forEach(row => {
+      const title = row.getAttribute('data-title')?.toLowerCase() || '';
+      const client = row.getAttribute('data-client')?.toLowerCase() || '';
+      row.style.display = (title.includes(q) || client.includes(q)) ? '' : 'none';
+    });
+  });
+
+  saveProjectsBtn?.addEventListener('click', async () => {
+    const ids = getSelectedIds();
+    const key = saveProjectsBtn.getAttribute('data-settings-key');
+    const originalText = saveProjectsBtn.textContent;
+    saveProjectsBtn.disabled = true;
+    saveProjectsBtn.textContent = 'Saving...';
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: JSON.stringify(ids) }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      saveProjectsBtn.textContent = '✓ Saved!';
+      setTimeout(() => {
+        saveProjectsBtn.textContent = originalText;
+        saveProjectsBtn.disabled = false;
+      }, 2000);
+    } catch (err) {
+      alert(err.message || 'Error saving projects');
+      saveProjectsBtn.textContent = originalText;
+      saveProjectsBtn.disabled = false;
+    }
+  });
+
+  updateRanks();
+</script>

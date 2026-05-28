@@ -1,6 +1,96 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Sparkles } from '@lucide/astro';
+import { query } from '../lib/db';
+
+let dbConnected = true;
+let aboutSetup: any = null;
+
+try {
+  const setupRes = await query("SELECT value FROM settings WHERE key = 'about_setup'");
+  if (setupRes.rows.length > 0) {
+    aboutSetup = JSON.parse(setupRes.rows[0].value);
+  }
+} catch (err: any) {
+  dbConnected = false;
+}
+
+const defaultAboutSetup = {
+  header: {
+    title: "Our Story",
+    description: "Greetings from Delight Group LLC. Redefining the supply experience in the UAE.",
+    subtitle: "Greetings from Delight Group LLC",
+    logoUrl: "/dgllclogolarge.png"
+  },
+  definition: {
+    title: "Redefining the supply experience in the UAE.",
+    description1: "We are not engineers or contractors. We are passionate resellers who believe great products — beautiful lighting and thriving plants — should be straightforward to source.",
+    description2: "We work with homeowners, interior designers, fitout contractors, hotel developers, and facility managers who want a dependable supply partner they can count on. As a new company entering the UAE market, our commitment is simple: honest pricing, genuine products, and service that makes you want to come back."
+  },
+  division_dtl: {
+    title: "Delight Technical Lighting",
+    desc: "We supply premium indoor and outdoor lighting fixtures from trusted global brands to homes, offices, hotels, retail spaces, and commercial developments across the UAE. From pendant lights and downlights to architectural outdoor fixtures — if it illuminates a space, we carry it."
+  },
+  division_dgs: {
+    title: "Delight Greenscapes",
+    desc: "We supply curated indoor and outdoor plants, decorative pots, and planters to residences, offices, hotels, and commercial developments. Whether you need a single statement palm for your living room or bulk greenery for a hotel lobby fitout, Greenscapes is your UAE source."
+  },
+  vision: {
+    title: "Our Vision",
+    content: "To become the UAE's most trusted supplier of premium lighting and plants — valued for quality, transparency, and dependable service."
+  },
+  mission: {
+    title: "Our Mission",
+    content: "Make beautiful, high-quality products accessible to every client — from a homeowner redecorating a room to a developer fitting out an entire building."
+  },
+  values: {
+    v1: {
+      title: "Honest about what we are",
+      desc: "Resellers, not engineers. We're clear about what we do best, sourcing and delivering exceptional products."
+    },
+    v2: {
+      title: "Quality products, no compromise",
+      desc: "If we wouldn't put it in our own homes, we won't supply it to yours."
+    },
+    v3: {
+      title: "Straightforward pricing",
+      desc: "Transparent B2B and B2C structures to build dependable long-term relationships."
+    },
+    v4: {
+      title: "UAE-wide delivery commitment",
+      desc: "Reliable logistics infrastructure ensuring your products arrive safely and on schedule."
+    }
+  },
+  testimonials: {
+    t1: {
+      quote: "Delight Technical Lighting has completely transformed our hotel projects. Their luminaire supply capacity and swift response times are unmatched in the UAE.",
+      author: "Lead Architect",
+      company: "Al Habtoor Group • Dubai"
+    },
+    t2: {
+      quote: "The potted monsteras and custom office plants supplied by Delight Greenscapes brought our fitout workspaces to life. Genuinely thriving plants of high caliber.",
+      author: "Interior Design Director",
+      company: "Emaar Properties • Dubai"
+    },
+    t3: {
+      quote: "Finding a supply partner that delivers both high-end light fixtures and curated foliage under straightforward pricing has completely streamlined our procurement.",
+      author: "Procurement Manager",
+      company: "Sobha Realty • Dubai"
+    }
+  },
+  leadership: {
+    title: "Leadership Message",
+    subtitle: "Our goal isn't just to sell products, but to curate environments where people feel truly at home.",
+    description1: "Delight Group LLC was founded on a simple belief: that premium light elements and green flora are key to crafting inspiring environments. We want to remove the complexity from sourcing high-quality architectural components.",
+    description2: "Every product in our catalog is hand-selected. Every client interaction is backed by the personal touch of a small business, backed by the operational safety of a trusted brand. We are proud to contribute to shaping the landscapes of the UAE, one space at a time.",
+    authorTitle: "Founder & CEO",
+    authorCompany: "DELIGHT GROUP LLC",
+    imageUrl: "/about-hero.png"
+  }
+};
+
+const setup = aboutSetup || defaultAboutSetup;
+
 ---
 
 <Layout title="Our Story" description="Redefining the supply experience in the UAE. Greetings from Delight Group LLC.">
@@ -31,20 +121,20 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
           <!-- Text details -->
           <div class="lg:col-span-8 space-y-4 text-left">
             <span class="text-[9px] font-black uppercase tracking-[0.25em] text-[#a34e36] block">
-              Greetings from Delight Group LLC
+              {setup.header.subtitle}
             </span>
             <h1 class="text-4xl sm:text-6xl font-serif text-[#0f2d1d] font-semibold leading-tight tracking-tight">
-              Our Story
+              {setup.header.title}
             </h1>
             <p class="text-slate-600 font-semibold text-sm sm:text-base leading-relaxed max-w-2xl">
-              A UAE-based trading company headquartered in Sharjah. We are the parent organization of two specialist supply divisions — Delight Technical Lighting and Delight Greenscapes.
+              {setup.header.description}
             </p>
           </div>
           <!-- Logo block -->
           <div class="lg:col-span-4 flex justify-start lg:justify-end">
             <div class="w-full max-w-[240px] aspect-square rounded-2xl bg-white border border-slate-200/60 shadow-sm flex items-center justify-center p-6 transition-transform duration-500 hover:scale-105">
               <img 
-                src="/dgllclogolarge.png" 
+                src={setup.header.logoUrl} 
                 alt="Delight Group LLC corporate logo" 
                 class="w-full h-auto max-h-[80%] object-contain"
               />
@@ -58,16 +148,16 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           <div class="lg:col-span-5 text-left">
             <h2 class="text-3xl sm:text-4xl font-serif text-[#0f2d1d] font-semibold leading-tight italic">
-              Redefining the supply experience in the UAE.
+              {setup.definition.title}
             </h2>
             <div class="w-12 h-[1px] bg-[#a34e36] mt-6"></div>
           </div>
           <div class="lg:col-span-7 text-slate-550 font-semibold text-xs sm:text-sm leading-relaxed text-left space-y-6">
             <p>
-              We are not engineers or contractors. We are passionate resellers who believe great products — beautiful lighting and thriving plants — should be straightforward to source.
+              {setup.definition.description1}
             </p>
             <p>
-              We work with homeowners, interior designers, fitout contractors, hotel developers, and facility managers who want a dependable supply partner they can count on. As a new company entering the UAE market, our commitment is simple: honest pricing, genuine products, and service that makes you want to come back.
+              {setup.definition.description2}
             </p>
           </div>
         </div>
@@ -105,11 +195,11 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
                 <div class="flex items-start gap-4">
                   <span class="text-4xl font-serif text-slate-300 font-extrabold leading-none">01</span>
                   <div>
-                    <h3 class="text-2xl font-serif text-[#7f2d1b] font-medium leading-none">Delight Technical Lighting</h3>
+                    <h3 class="text-2xl font-serif text-[#7f2d1b] font-medium leading-none">{setup.division_dtl.title}</h3>
                   </div>
                 </div>
                 <p class="text-slate-555 font-semibold text-xs sm:text-sm leading-relaxed">
-                  We supply premium indoor and outdoor lighting fixtures from trusted global brands to homes, offices, hotels, retail spaces, and commercial developments across the UAE. From pendant lights and downlights to architectural outdoor fixtures — if it illuminates a space, we carry it.
+                  {setup.division_dtl.desc}
                 </p>
                 <!-- Bullets grid -->
                 <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-wider text-slate-800">
@@ -159,11 +249,11 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
                 <div class="flex items-start gap-4">
                   <span class="text-4xl font-serif text-slate-300 font-extrabold leading-none">02</span>
                   <div>
-                    <h3 class="text-2xl font-serif text-[#0f2d1d] font-medium leading-none">Delight Greenscapes</h3>
+                    <h3 class="text-2xl font-serif text-[#0f2d1d] font-medium leading-none">{setup.division_dgs.title}</h3>
                   </div>
                 </div>
                 <p class="text-slate-555 font-semibold text-xs sm:text-sm leading-relaxed">
-                  We supply curated indoor and outdoor plants, decorative pots, and planters to residences, offices, hotels, and commercial developments. Whether you need a single statement palm for your living room or bulk greenery for a hotel lobby fitout, Greenscapes is your UAE source.
+                  {setup.division_dgs.desc}
                 </p>
                 <!-- Bullets grid -->
                 <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-wider text-slate-800">
@@ -207,17 +297,17 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
           <div class="lg:col-span-6 text-left space-y-12">
             <!-- Vision -->
             <div class="space-y-4">
-              <span class="text-[9px] font-black uppercase tracking-[0.2em] text-[#a34e36] block">Our Vision</span>
+              <span class="text-[9px] font-black uppercase tracking-[0.2em] text-[#a34e36] block">{setup.vision.title}</span>
               <h3 class="text-2xl sm:text-3xl font-serif text-[#0f2d1d] leading-snug italic font-medium">
-                To become the UAE's most trusted specialist supplier of premium lighting and plants &mdash; valued for quality, transparency, and dependable service.
+                {setup.vision.content}
               </h3>
             </div>
             
             <!-- Mission -->
             <div class="space-y-3">
-              <span class="text-[9px] font-black uppercase tracking-[0.2em] text-[#a34e36] block">Our Mission</span>
+              <span class="text-[9px] font-black uppercase tracking-[0.2em] text-[#a34e36] block">{setup.mission.title}</span>
               <p class="text-slate-550 font-semibold text-xs sm:text-sm leading-relaxed max-w-xl">
-                Make beautiful, high-quality products accessible to every client &mdash; from a homeowner redecorating a room to a developer fitting out an entire building.
+                {setup.mission.content}
               </p>
             </div>
           </div>
@@ -236,8 +326,8 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
                   <ShieldCheck class="w-4 h-4" />
                 </div>
                 <div class="space-y-1">
-                  <h4 class="text-xs sm:text-sm font-extrabold text-slate-100 uppercase tracking-wider">Honest about what we are</h4>
-                  <p class="text-[11px] sm:text-xs text-slate-350 leading-relaxed font-semibold">Resellers, not engineers. We're clear about what we do best, sourcing and delivering exceptional products.</p>
+                  <h4 class="text-xs sm:text-sm font-extrabold text-slate-100 uppercase tracking-wider">{setup.values.v1.title}</h4>
+                  <p class="text-[11px] sm:text-xs text-slate-350 leading-relaxed font-semibold">{setup.values.v1.desc}</p>
                 </div>
               </div>
               
@@ -247,8 +337,8 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
                   <Heart class="w-4 h-4" />
                 </div>
                 <div class="space-y-1">
-                  <h4 class="text-xs sm:text-sm font-extrabold text-slate-100 uppercase tracking-wider">Quality products, no compromise</h4>
-                  <p class="text-[11px] sm:text-xs text-slate-355 leading-relaxed font-semibold">If we wouldn't put it in our own homes, we won't supply it to yours.</p>
+                  <h4 class="text-xs sm:text-sm font-extrabold text-slate-100 uppercase tracking-wider">{setup.values.v2.title}</h4>
+                  <p class="text-[11px] sm:text-xs text-slate-355 leading-relaxed font-semibold">{setup.values.v2.desc}</p>
                 </div>
               </div>
 
@@ -258,8 +348,8 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
                   <Scale class="w-4 h-4" />
                 </div>
                 <div class="space-y-1">
-                  <h4 class="text-xs sm:text-sm font-extrabold text-slate-100 uppercase tracking-wider">Straightforward pricing</h4>
-                  <p class="text-[11px] sm:text-xs text-slate-355 leading-relaxed font-semibold">Transparent B2B and B2C structures to build dependable long-term relationships.</p>
+                  <h4 class="text-xs sm:text-sm font-extrabold text-slate-100 uppercase tracking-wider">{setup.values.v3.title}</h4>
+                  <p class="text-[11px] sm:text-xs text-slate-355 leading-relaxed font-semibold">{setup.values.v3.desc}</p>
                 </div>
               </div>
 
@@ -269,8 +359,8 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
                   <Truck class="w-4 h-4" />
                 </div>
                 <div class="space-y-1">
-                  <h4 class="text-xs sm:text-sm font-extrabold text-slate-100 uppercase tracking-wider">UAE-wide delivery commitment</h4>
-                  <p class="text-[11px] sm:text-xs text-slate-355 leading-relaxed font-semibold">Reliable logistics infrastructure ensuring your products arrive safely and on schedule.</p>
+                  <h4 class="text-xs sm:text-sm font-extrabold text-slate-100 uppercase tracking-wider">{setup.values.v4.title}</h4>
+                  <p class="text-[11px] sm:text-xs text-slate-355 leading-relaxed font-semibold">{setup.values.v4.desc}</p>
                 </div>
               </div>
             </div>
@@ -298,11 +388,11 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
             <div class="space-y-4 border-l border-[#7f2d1b]/40 pl-6">
               <span class="text-xs font-black uppercase tracking-wider text-[#7f2d1b] block">Delight Lighting Client</span>
               <p class="text-slate-650 font-semibold text-xs sm:text-sm leading-relaxed italic">
-                "Delight Technical Lighting has completely transformed our hotel projects. Their luminaire supply capacity and swift response times are unmatched in the UAE."
+                "{setup.testimonials.t1.quote}"
               </p>
               <div class="pt-2">
-                <strong class="text-xs font-extrabold text-slate-800 block">Lead Architect</strong>
-                <span class="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Al Habtoor Group &bull; Dubai</span>
+                <strong class="text-xs font-extrabold text-slate-800 block">{setup.testimonials.t1.author}</strong>
+                <span class="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">{setup.testimonials.t1.company}</span>
               </div>
             </div>
 
@@ -310,11 +400,11 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
             <div class="space-y-4 border-l border-[#0f2d1d]/40 pl-6">
               <span class="text-xs font-black uppercase tracking-wider text-[#0f2d1d] block">Delight Greenscapes Client</span>
               <p class="text-slate-650 font-semibold text-xs sm:text-sm leading-relaxed italic">
-                "The potted monsteras and custom office plants supplied by Delight Greenscapes brought our fitout workspaces to life. Genuinely thriving plants of high caliber."
+                "{setup.testimonials.t2.quote}"
               </p>
               <div class="pt-2">
-                <strong class="text-xs font-extrabold text-slate-800 block">Interior Design Director</strong>
-                <span class="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Emaar Properties &bull; Dubai</span>
+                <strong class="text-xs font-extrabold text-slate-800 block">{setup.testimonials.t2.author}</strong>
+                <span class="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">{setup.testimonials.t2.company}</span>
               </div>
             </div>
 
@@ -322,11 +412,11 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
             <div class="space-y-4 border-l border-slate-350 pl-6">
               <span class="text-xs font-black uppercase tracking-wider text-slate-700 block">Corporate Partner</span>
               <p class="text-slate-650 font-semibold text-xs sm:text-sm leading-relaxed italic">
-                "Finding a supply partner that delivers both high-end light fixtures and curated foliage under straightforward pricing has completely streamlined our procurement."
+                "{setup.testimonials.t3.quote}"
               </p>
               <div class="pt-2">
-                <strong class="text-xs font-extrabold text-slate-800 block">Procurement Manager</strong>
-                <span class="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">Sobha Realty &bull; Dubai</span>
+                <strong class="text-xs font-extrabold text-slate-800 block">{setup.testimonials.t3.author}</strong>
+                <span class="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">{setup.testimonials.t3.company}</span>
               </div>
             </div>
 
@@ -341,7 +431,7 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
           <div class="lg:col-span-5">
             <div class="w-full aspect-square max-w-[280px] mx-auto rounded-2xl overflow-hidden relative group shadow-sm">
               <img 
-                src="/about-hero.png" 
+                src={setup.leadership.imageUrl} 
                 alt="Delight Group Director leadership workspace" 
                 class="w-full h-full object-cover filter grayscale contrast-125 transition-transform duration-750 group-hover:scale-105"
               />
@@ -350,24 +440,24 @@ import { Mail, Phone, MapPin, ShieldCheck, Heart, Scale, Truck, ArrowRight, Spar
           
           <!-- Quote Details -->
           <div class="lg:col-span-7 text-left space-y-6">
-            <span class="text-[9px] font-black uppercase tracking-[0.2em] text-[#a34e36] block">Leadership Message</span>
+            <span class="text-[9px] font-black uppercase tracking-[0.2em] text-[#a34e36] block">{setup.leadership.title}</span>
             
             <h3 class="text-2xl sm:text-3xl font-serif text-[#0f2d1d] font-medium leading-snug italic">
-              "Our goal isn't just to sell products, but to curate environments where people feel truly at home."
+              "{setup.leadership.subtitle}"
             </h3>
             
             <div class="space-y-4 text-slate-550 font-semibold text-xs sm:text-sm leading-relaxed">
               <p>
-                Delight Group LLC was founded on a simple belief: that premium light elements and green flora are key to crafting inspiring environments. We want to remove the complexity from sourcing high-quality architectural components.
+                {setup.leadership.description1}
               </p>
               <p>
-                Every product in our catalog is hand-selected. Every client interaction is backed by the personal touch of a small business, backed by the operational safety of a trusted brand. We are proud to contribute to shaping the landscapes of the UAE, one space at a time.
+                {setup.leadership.description2}
               </p>
             </div>
 
             <div class="pt-2">
-              <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Founder & CEO</span>
-              <strong class="text-sm font-extrabold text-slate-800 block mt-0.5">DELIGHT GROUP LLC</strong>
+              <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">{setup.leadership.authorTitle}</span>
+              <strong class="text-sm font-extrabold text-slate-800 block mt-0.5">{setup.leadership.authorCompany}</strong>
             </div>
           </div>
         </div>

@@ -16,7 +16,7 @@ try {
      JOIN products p ON p.id = i.product_id
      ORDER BY p.name ASC`
   );
-  inventoryItems = invRes.rows.map(item => ({
+  inventoryItems = invRes.rows.map((item: any) => ({
     ...item,
     isLow: item.stock_level <= item.low_stock_threshold
   }));
@@ -41,7 +41,7 @@ try {
     { id: 'inv-2', product_name: 'CPX-500 Heavy-Duty Centrifugal Pump', sku: 'SKU-DTL-PUMP-002', stock_level: 12, warehouse_location: 'Warehouse Beta', low_stock_threshold: 15 },
     { id: 'inv-3', product_name: 'Vortex Cloud-Native Backup Storage Suite', sku: 'SKU-DGS-CLOUD-001', stock_level: 120, warehouse_location: 'Cloud Region East-1', low_stock_threshold: 20 },
     { id: 'inv-4', product_name: 'IronWall Industrial Firewall Appliance v4', sku: 'SKU-DGS-SEC-002', stock_level: 28, warehouse_location: 'Warehouse Delta', low_stock_threshold: 10 }
-  ].map(item => ({
+  ].map((item: any) => ({
     ...item,
     isLow: item.stock_level <= item.low_stock_threshold
   }));

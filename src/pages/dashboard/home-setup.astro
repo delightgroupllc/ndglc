@@ -1,0 +1,281 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import PageHeroForm from '../../components/forms/PageHeroForm.astro';
+import { query } from '../../lib/db';
+
+let homeSetup: any = {
+  hero: { title: '', subtitle: '', imageUrl: '', ctaText: '', ctaUrl: '' },
+  dtl_banner: { title: '', subtitle: '', description: '', imageUrl: '', ctaText: '', ctaUrl: '' },
+  dgs_banner: { title: '', subtitle: '', description: '', imageUrl: '', ctaText: '', ctaUrl: '' },
+  sectors: {
+    residential: { title: '', desc: '', imageUrl: '', link: '' },
+    commercial: { title: '', desc: '', imageUrl: '', link: '' },
+    hospitality: { title: '', desc: '', imageUrl: '', link: '' },
+    procurement: { title: '', desc: '', imageUrl: '', link: '' }
+  },
+  cta: { title: '', description: '', btn1Text: '', btn1Url: '', btn2Text: '', btn2Url: '' }
+};
+
+try {
+  const res = await query("SELECT value FROM settings WHERE key = 'home_setup'");
+  if (res.rows.length > 0) {
+    homeSetup = { ...homeSetup, ...JSON.parse(res.rows[0].value) };
+  }
+} catch (err: any) {
+  console.warn('DB offline or settings missing:', err?.message || err);
+}
+---
+
+<DashboardLayout title="Home Page Setup" activeItem="home-setup">
+  <div class="max-w-4xl mx-auto space-y-8 pb-16">
+    <header class="flex items-center justify-between border-b border-slate-100 pb-5">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Home Setup</h1>
+        <p class="text-xs text-slate-500 font-medium">Configure corporate portal hero banners, divisions, and sectors.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div id="save-msg" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2"></div>
+        <button id="save-home" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">Save Changes</button>
+      </div>
+    </header>
+
+    <form id="home-form" class="space-y-8">
+      <!-- HERO -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Hero Section</h2>
+        </div>
+        <div class="p-6">
+          <PageHeroForm hero={homeSetup.hero} ringColorClass="focus:ring-indigo-400" />
+        </div>
+      </div>
+
+      <!-- DTL DIVISION BANNER -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-amber-500 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Delight Technical Lighting (DTL) Division</h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-medium text-slate-600">Title</label>
+            <input name="dtl_title" value={homeSetup.dtl_banner?.title || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Subtitle</label>
+            <input name="dtl_subtitle" value={homeSetup.dtl_banner?.subtitle || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Description</label>
+            <textarea name="dtl_description" rows="3" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400">{homeSetup.dtl_banner?.description || ''}</textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Division Image URL</label>
+            <input name="dtl_imageUrl" value={homeSetup.dtl_banner?.imageUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA Text</label>
+            <input name="dtl_ctaText" value={homeSetup.dtl_banner?.ctaText || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA URL</label>
+            <input name="dtl_ctaUrl" value={homeSetup.dtl_banner?.ctaUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400" />
+          </div>
+        </div>
+      </div>
+
+      <!-- DGS DIVISION BANNER -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-emerald-600 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Delight Greenscapes (DGS) Division</h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-medium text-slate-600">Title</label>
+            <input name="dgs_title" value={homeSetup.dgs_banner?.title || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Subtitle</label>
+            <input name="dgs_subtitle" value={homeSetup.dgs_banner?.subtitle || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Description</label>
+            <textarea name="dgs_description" rows="3" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">{homeSetup.dgs_banner?.description || ''}</textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Division Image URL</label>
+            <input name="dgs_imageUrl" value={homeSetup.dgs_banner?.imageUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA Text</label>
+            <input name="dgs_ctaText" value={homeSetup.dgs_banner?.ctaText || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA URL</label>
+            <input name="dgs_ctaUrl" value={homeSetup.dgs_banner?.ctaUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTORS WE SERVE -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-rose-500 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Sectors We Serve</h2>
+        </div>
+        <div class="p-6 space-y-6">
+          {Object.entries(homeSetup.sectors).map(([key, sector]: [string, any]) => (
+            <div class="border-b border-slate-100 pb-6 last:border-b-0 last:pb-0">
+              <h3 class="text-xs font-black text-slate-800 uppercase tracking-wide mb-3">{key.toUpperCase()} Sector</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="text-xs font-medium text-slate-600">Title</label>
+                  <input name={`sector_${key}_title`} value={sector.title} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rose-450" />
+                </div>
+                <div>
+                  <label class="text-xs font-medium text-slate-600">Link URL</label>
+                  <input name={`sector_${key}_link`} value={sector.link} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rose-450" />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="text-xs font-medium text-slate-600">Description</label>
+                  <textarea name={`sector_${key}_desc`} rows="2" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rose-450">{sector.desc}</textarea>
+                </div>
+                <div class="md:col-span-2">
+                  <label class="text-xs font-medium text-slate-600">Image URL</label>
+                  <input name={`sector_${key}_imageUrl`} value={sector.imageUrl} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rose-450" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <!-- FOOTER CTA -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-teal-500 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">CTA Banner Section</h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Banner Title</label>
+            <input name="cta_title" value={homeSetup.cta?.title || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Description</label>
+            <textarea name="cta_description" rows="2" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400">{homeSetup.cta?.description || ''}</textarea>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Button 1 Text</label>
+            <input name="cta_btn1Text" value={homeSetup.cta?.btn1Text || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Button 1 URL</label>
+            <input name="cta_btn1Url" value={homeSetup.cta?.btn1Url || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Button 2 Text</label>
+            <input name="cta_btn2Text" value={homeSetup.cta?.btn2Text || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Button 2 URL</label>
+            <input name="cta_btn2Url" value={homeSetup.cta?.btn2Url || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('home-form') as HTMLFormElement;
+    const saveBtn = document.getElementById('save-home');
+    const saveMsg = document.getElementById('save-msg');
+
+    const readForm = () => {
+      const data = new FormData(form);
+      return {
+        hero: {
+          title: data.get('hero_title') || '',
+          subtitle: data.get('hero_subtitle') || '',
+          imageUrl: data.get('hero_imageUrl') || '',
+          ctaText: data.get('hero_ctaText') || '',
+          ctaUrl: data.get('hero_ctaUrl') || ''
+        },
+        dtl_banner: {
+          title: data.get('dtl_title') || '',
+          subtitle: data.get('dtl_subtitle') || '',
+          description: data.get('dtl_description') || '',
+          imageUrl: data.get('dtl_imageUrl') || '',
+          ctaText: data.get('dtl_ctaText') || '',
+          ctaUrl: data.get('dtl_ctaUrl') || ''
+        },
+        dgs_banner: {
+          title: data.get('dgs_title') || '',
+          subtitle: data.get('dgs_subtitle') || '',
+          description: data.get('dgs_description') || '',
+          imageUrl: data.get('dgs_imageUrl') || '',
+          ctaText: data.get('dgs_ctaText') || '',
+          ctaUrl: data.get('dgs_ctaUrl') || ''
+        },
+        sectors: {
+          residential: {
+            title: data.get('sector_residential_title') || '',
+            link: data.get('sector_residential_link') || '',
+            desc: data.get('sector_residential_desc') || '',
+            imageUrl: data.get('sector_residential_imageUrl') || ''
+          },
+          commercial: {
+            title: data.get('sector_commercial_title') || '',
+            link: data.get('sector_commercial_link') || '',
+            desc: data.get('sector_commercial_desc') || '',
+            imageUrl: data.get('sector_commercial_imageUrl') || ''
+          },
+          hospitality: {
+            title: data.get('sector_hospitality_title') || '',
+            link: data.get('sector_hospitality_link') || '',
+            desc: data.get('sector_hospitality_desc') || '',
+            imageUrl: data.get('sector_hospitality_imageUrl') || ''
+          },
+          procurement: {
+            title: data.get('sector_procurement_title') || '',
+            link: data.get('sector_procurement_link') || '',
+            desc: data.get('sector_procurement_desc') || '',
+            imageUrl: data.get('sector_procurement_imageUrl') || ''
+          }
+        },
+        cta: {
+          title: data.get('cta_title') || '',
+          description: data.get('cta_description') || '',
+          btn1Text: data.get('cta_btn1Text') || '',
+          btn1Url: data.get('cta_btn1Url') || '',
+          btn2Text: data.get('cta_btn2Text') || '',
+          btn2Url: data.get('cta_btn2Url') || ''
+        }
+      };
+    };
+
+    saveBtn?.addEventListener('click', async () => {
+      saveBtn.setAttribute('disabled', 'true');
+      saveBtn.textContent = 'Saving...';
+      try {
+        const payload = { home_setup: JSON.stringify(readForm()) };
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Failed to save settings');
+        saveMsg!.classList.remove('hidden');
+        saveMsg!.textContent = '✓ Saved successfully';
+        setTimeout(() => { saveMsg!.classList.add('hidden'); }, 2500);
+      } catch (err: any) {
+        alert(err?.message || 'Error saving settings');
+      } finally {
+        saveBtn.removeAttribute('disabled');
+        saveBtn.textContent = 'Save Changes';
+      }
+    });
+  </script>
+</DashboardLayout>

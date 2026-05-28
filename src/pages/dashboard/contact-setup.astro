@@ -1,0 +1,141 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+
+let contactSetup: any = {
+  heroImageUrl: '',
+  mapUrl: '',
+  emails: {
+    press: '',
+    careers: ''
+  },
+  hours: '',
+  socialLinks: {
+    websiteUrl: ''
+  }
+};
+
+try {
+  const res = await query("SELECT value FROM settings WHERE key = 'contact_setup'");
+  if (res.rows.length > 0) {
+    contactSetup = { ...contactSetup, ...JSON.parse(res.rows[0].value) };
+  }
+} catch (err: any) {
+  console.warn('DB offline or settings missing:', err?.message || err);
+}
+---
+
+<DashboardLayout title="Contact Page Setup" activeItem="contact-setup">
+  <div class="max-w-4xl mx-auto space-y-8 pb-16">
+    <header class="flex items-center justify-between border-b border-slate-100 pb-5">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Contact Setup</h1>
+        <p class="text-xs text-slate-500 font-medium">Configure contact hours, press & careers dispatches, map links, and contact images.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div id="save-msg" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2"></div>
+        <button id="save-contact" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">Save Changes</button>
+      </div>
+    </header>
+
+    <form id="contact-form" class="space-y-8">
+      <!-- GENERAL AND HOURS -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-indigo-600 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">General Information & Map</h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Google Map URL</label>
+            <input name="mapUrl" value={contactSetup.mapUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Contact Hours</label>
+            <input name="hours" value={contactSetup.hours || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="e.g. Monday – Friday: 09:00 – 18:00 GST" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Main Hero Image URL</label>
+            <input name="heroImageUrl" value={contactSetup.heroImageUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          </div>
+        </div>
+      </div>
+
+      <!-- EMAILS -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-teal-500 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Specialized Emails</h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-medium text-slate-600">Press / Media Email</label>
+            <input type="email" name="pressEmail" value={contactSetup.emails?.press || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Careers Email</label>
+            <input type="email" name="careersEmail" value={contactSetup.emails?.careers || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-teal-400" />
+          </div>
+        </div>
+      </div>
+
+      <!-- UTILITY LINKS -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <div class="w-1.5 h-6 bg-purple-600 rounded-full"></div>
+          <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Socials & Utility</h2>
+        </div>
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Globe Website URL</label>
+            <input name="socialWebsiteUrl" value={contactSetup.socialLinks?.websiteUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-400" />
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('contact-form') as HTMLFormElement;
+    const saveBtn = document.getElementById('save-contact');
+    const saveMsg = document.getElementById('save-msg');
+
+    const readForm = () => {
+      const data = new FormData(form);
+      return {
+        mapUrl: data.get('mapUrl') || '',
+        hours: data.get('hours') || '',
+        heroImageUrl: data.get('heroImageUrl') || '',
+        emails: {
+          press: data.get('pressEmail') || '',
+          careers: data.get('careersEmail') || ''
+        },
+        socialLinks: {
+          websiteUrl: data.get('socialWebsiteUrl') || ''
+        }
+      };
+    };
+
+    saveBtn?.addEventListener('click', async () => {
+      saveBtn.setAttribute('disabled', 'true');
+      saveBtn.textContent = 'Saving...';
+      try {
+        const payload = { contact_setup: JSON.stringify(readForm()) };
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Failed to save settings');
+        saveMsg!.classList.remove('hidden');
+        saveMsg!.textContent = '✓ Saved successfully';
+        setTimeout(() => { saveMsg!.classList.add('hidden'); }, 2500);
+      } catch (err: any) {
+        alert(err?.message || 'Error saving settings');
+      } finally {
+        saveBtn.removeAttribute('disabled');
+        saveBtn.textContent = 'Save Changes';
+      }
+    });
+  </script>
+</DashboardLayout>

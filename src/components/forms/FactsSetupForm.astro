@@ -1,0 +1,53 @@
+---
+interface Fact {
+  label: string;
+  value: string;
+}
+
+interface Props {
+  facts?: Fact[];
+  ringColorClass?: string;
+  buttonColorClass?: string;
+}
+
+const { 
+  facts = [], 
+  ringColorClass = "focus:ring-indigo-400", 
+  buttonColorClass = "bg-indigo-600 hover:bg-indigo-700" 
+} = Astro.props;
+---
+
+<div class="space-y-4">
+  <div id="facts-list" class="space-y-2">
+    {facts.map((f) => (
+      <div class="flex gap-2 items-center fact-row">
+        <input class={`fact-label rounded-md border border-slate-200 px-3 py-2 text-sm w-48 focus:outline-none focus:ring-1 ${ringColorClass}`} value={f.label} placeholder="Label e.g. Projects" />
+        <input class={`fact-value rounded-md border border-slate-200 px-3 py-2 text-sm w-32 focus:outline-none focus:ring-1 ${ringColorClass}`} value={f.value} placeholder="e.g. 800+" />
+        <button type="button" class="remove-fact bg-red-50 hover:bg-red-100 text-red-500 px-2 py-1 rounded text-xs font-bold">&times; Remove</button>
+      </div>
+    ))}
+  </div>
+  <button id="add-fact" type="button" class="mt-3 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">+ Add Stat</button>
+</div>
+
+<script is:inline>
+  document.getElementById('add-fact')?.addEventListener('click', () => {
+    const wrapper = document.getElementById('facts-list');
+    if (!wrapper) return;
+    const node = document.createElement('div');
+    node.className = 'flex gap-2 items-center fact-row';
+    node.innerHTML = `
+      <input class="fact-label rounded-md border border-slate-200 px-3 py-2 text-sm w-48 focus:outline-none" placeholder="Label" value="" />
+      <input class="fact-value rounded-md border border-slate-200 px-3 py-2 text-sm w-32 focus:outline-none" placeholder="e.g. 800+" value="" />
+      <button type="button" class="remove-fact bg-red-50 text-red-500 px-2 py-1 rounded text-xs font-bold">&times; Remove</button>
+    `;
+    wrapper.appendChild(node);
+  });
+
+  document.getElementById('facts-list')?.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t && t.classList.contains('remove-fact')) {
+      t.closest('.fact-row')?.remove();
+    }
+  });
+</script>

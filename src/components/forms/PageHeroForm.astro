@@ -1,0 +1,37 @@
+---
+interface Props {
+  hero: {
+    title?: string;
+    subtitle?: string;
+    imageUrl?: string;
+    ctaText?: string;
+    ctaUrl?: string;
+  };
+  ringColorClass?: string;
+}
+
+const { hero = {}, ringColorClass = "focus:ring-indigo-400" } = Astro.props;
+---
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+  <div class="md:col-span-2">
+    <label class="text-xs font-medium text-slate-600">Title</label>
+    <textarea name="hero_title" rows="2" class={`w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 ${ringColorClass}`}>{hero.title || ''}</textarea>
+  </div>
+  <div class="md:col-span-2">
+    <label class="text-xs font-medium text-slate-600">Subtitle</label>
+    <input name="hero_subtitle" value={hero.subtitle || ''} class={`w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 ${ringColorClass}`} />
+  </div>
+  <div class="md:col-span-2">
+    <label class="text-xs font-medium text-slate-600">Hero Image URL</label>
+    <input name="hero_imageUrl" value={hero.imageUrl || ''} class={`w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 ${ringColorClass}`} placeholder="https://..." />
+  </div>
+  <div>
+    <label class="text-xs font-medium text-slate-600">CTA Button Text</label>
+    <input name="hero_ctaText" value={hero.ctaText || ''} class={`w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 ${ringColorClass}`} />
+  </div>
+  <div>
+    <label class="text-xs font-medium text-slate-600">CTA URL</label>
+    <input name="hero_ctaUrl" value={hero.ctaUrl || ''} class={`w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 ${ringColorClass}`} placeholder="/products" />
+  </div>
+</div>

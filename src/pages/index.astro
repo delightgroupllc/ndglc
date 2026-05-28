@@ -7,6 +7,7 @@ let latestProjects: any[] = [];
 let brands: any[] = [];
 let articles: any[] = [];
 let dbConnected = true;
+let homeSetup: any = null;
 
 try {
   // Query featured projects
@@ -20,9 +21,77 @@ try {
   // Query partners from the database
   const partnersRes = await query("SELECT name FROM trusted_partners WHERE status = 'active' ORDER BY name ASC");
   brands = partnersRes.rows.map(r => r.name);
+
+  // Query home_setup settings
+  const setupRes = await query("SELECT value FROM settings WHERE key = 'home_setup'");
+  if (setupRes.rows.length > 0) {
+    homeSetup = JSON.parse(setupRes.rows[0].value);
+  }
 } catch (err: any) {
   dbConnected = false;
 }
+
+const defaultHomeSetup = {
+  hero: {
+    title: "Luminous Nature: Harmonizing Light & Life.",
+    subtitle: "Where technical lighting precision meets organic landscape vitality. We engineer atmospheres that synchronize human circadian rhythms with the vibrant soul of the natural world.",
+    imageUrl: "/2screen.png",
+    ctaText: "Explore Divisions",
+    ctaUrl: "#divisions"
+  },
+  dtl_banner: {
+    title: "Technical Lighting",
+    subtitle: "Architectural Precision",
+    description: "Precision-engineered illumination that transforms architectural volumes. We specialize in circadian-aligned systems and museum-grade technical lighting for the world's most demanding environments, ensuring perfect clarity and atmospheric control.",
+    imageUrl: "/3screen.png",
+    ctaText: "Explore DTL Division",
+    ctaUrl: "/delighttechnicallighting"
+  },
+  dgs_banner: {
+    title: "Greenscapes",
+    subtitle: "Organic Serenity",
+    description: "Curated biophilic experiences that breathe life into the built environment. From vertical gardens to exotic landscape ecosystems, we design living architecture that evolves with time, fostering a deep connection between urban dwellers and the natural world.",
+    imageUrl: "/1screen.png",
+    ctaText: "Explore DGS Division",
+    ctaUrl: "/delightgreenscapes"
+  },
+  sectors: {
+    residential: {
+      title: "Residential",
+      desc: "Individual Houses, Villas, and private estates tailored for personal wellness.",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDKzpmZidP2wrFcJyW8Lsfa-46IwJ_ofH6_cLB_g2pCXDeoZUlVQG1Jd2RQbD5iuRp8tyTVQNqpsYqoOkRgMhWPgnjwOxJZVmv7NFQc8yccF63VN3PNzKq2thOWuGHiSFZeoXXabJ5Jd4dhGPoRfiXr-goFkYKHIGxG66Q9dut2QZftzVxda3dLswNO7EAyDezFdJAF8IJoJ6XJcmDsysGNx53GKYiXNeRhTjJWM6lm3Thp1ZS9gAghfzAlunkNFzmiLUppkPgFZw8",
+      link: "/portfolio?sector=residential"
+    },
+    commercial: {
+      title: "Commercial",
+      desc: "Commercial spaces and retail locations tailored for professional impact.",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuBixLKPHKgXt131Z4yztKrDxoddfna7VJIlNInz9ePdOZblArS_GJJ5tHO1f_StEC0kalUDShHXkgk_DWXfEll4gOPLpGBbh_WNlbztmPLWWxyJl3awnm9yP2Xu_lQJkSYMAXamcp155pvLuwx69Iz_LviErccNSy1CQjYExwtYFfzonuUwqO5KOVvR4M_btDvqYgix9TydUNAN_rE2vqGwZf3rM3P-jBrIUp91q46ZO2FI5LEWEO0zIO0GSK4cldl4RmGIb0Jifr4",
+      link: "/portfolio?sector=commercial"
+    },
+    hospitality: {
+      title: "Hospitality",
+      desc: "Luxury hotels and resorts where ambience is key.",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAMx1j_FCvrJtX9CaD6c3KgMaZCisZEmzZpaN_gYZTZ_wjpros1ZrWHeo0eBK7iYZSdi_xQsiD05RavSG2LygkPRuE69C_B1JijZyrXI2D3JvjqzMM2vGFZkx8Cb4UXjnpBwDK1zr0_ArVHEVDY58CqM-c6YUjCCQf_0iDF8cHO_kAI-JoYdXUneS-V__iLArbGxDnCyAOb70B4ur49InnUaRewyD1BgRmBHEyCaw-HL1Qz9iUXrkQC18V_01g-8U3iXu10IU2aHrk",
+      link: "/portfolio?sector=hospitality"
+    },
+    procurement: {
+      title: "B2B & Procurement",
+      desc: "Volume-scale supply, technical specifications, and logistics.",
+      imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuArzukkQe74HgIm92FnG3-sCZ-j0fHmv-kwwSws7u1yiSen96IHxJbd-MJLZX_CaNUzyhJhlmmZEx4cJUqUfYEoazhxeB5qnadct4xwJQxcXOUINJUsjU80-Ltb1PmkqjbcyZ222OFEq-dahQJaTDpLdi10-JkaxPrG69kJObYR8QwIKbaXmhgZGhCKapbZbQYD8wQAy5KetzliYsUP-BhpuS9x61NvpXSON_g_OrH6SKt8Ilc65qD5_osbEEEUuiQxp1-LZl38xXY",
+      link: "/contact"
+    }
+  },
+  cta: {
+    title: "Ready to harmonize your space?",
+    description: "Whether it's technical lighting precision or organic landscape vitality, let's collaborate to create an environment that breathes with life and light.",
+    btn1Text: "Start a Project",
+    btn1Url: "/contact",
+    btn2Text: "Request Division Catalog",
+    btn2Url: "/downloads"
+  }
+};
+
+const setup = homeSetup || defaultHomeSetup;
 
 // Fallback high-fidelity UAE landmark projects mock
 if (latestProjects.length === 0) {
@@ -96,22 +165,22 @@ if (brands.length === 0) {
       <img 
         alt="Modern villa at dusk with warm exterior lighting and lush landscaping" 
         class="w-full h-full object-cover" 
-        src="/2screen.png"
+        src={setup.hero.imageUrl}
       />
       <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
     </div>
     <div class="relative z-10 px-6 sm:px-16 max-w-[1280px] mx-auto w-full">
       <div class="max-w-3xl text-left animate-on-scroll">
-        <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl text-white mb-8 leading-[1.1] tracking-tight drop-shadow-lg">Luminous Nature: Harmonizing Light & Life.</h1>
+        <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl text-white mb-8 leading-[1.1] tracking-tight drop-shadow-lg">{setup.hero.title}</h1>
         <p class="font-sans text-lg text-white/95 mb-10 max-w-xl leading-relaxed drop-shadow-md">
-          Where technical lighting precision meets organic landscape vitality. We engineer atmospheres that synchronize human circadian rhythms with the vibrant soul of the natural world.
+          {setup.hero.subtitle}
         </p>
         <div class="flex items-center space-x-6">
           <a 
-            href="#divisions" 
+            href={setup.hero.ctaUrl} 
             class="bg-[#805612] text-white px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#ffddb4] hover:text-[#291800] transition-all duration-300"
           >
-            Explore Divisions
+            {setup.hero.ctaText}
           </a>
           <a 
             href="/about" 
@@ -142,16 +211,16 @@ if (brands.length === 0) {
     <div class="flex flex-col lg:flex-row min-h-[600px] bg-[#1a3c34]">
       <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#83a69c] text-left animate-on-scroll">
         <div class="max-w-xl mx-auto lg:ml-auto lg:mr-12">
-          <span class="text-xs font-black text-[#aacec3] uppercase tracking-[0.3em] mb-4 block">Architectural Precision</span>
-          <h2 class="font-serif text-4xl sm:text-5xl text-white mb-6 leading-tight tracking-tight">Technical Lighting</h2>
+          <span class="text-xs font-black text-[#aacec3] uppercase tracking-[0.3em] mb-4 block">{setup.dtl_banner.subtitle}</span>
+          <h2 class="font-serif text-4xl sm:text-5xl text-white mb-6 leading-tight tracking-tight">{setup.dtl_banner.title}</h2>
           <p class="font-sans text-md sm:text-lg mb-10 text-white/90 leading-relaxed">
-            Precision-engineered illumination that transforms architectural volumes. We specialize in circadian-aligned systems and museum-grade technical lighting for the world's most demanding environments, ensuring perfect clarity and atmospheric control.
+            {setup.dtl_banner.description}
           </p>
           <a 
-            href="/delighttechnicallighting" 
+            href={setup.dtl_banner.ctaUrl} 
             class="inline-block bg-white text-[#01261f] px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#c5eadf] transition-all duration-300"
           >
-            Explore DTL Division
+            {setup.dtl_banner.ctaText}
           </a>
         </div>
       </div>
@@ -159,7 +228,7 @@ if (brands.length === 0) {
         <img 
           alt="High-end architectural lighting showroom" 
           class="w-full h-full object-cover" 
-          src="/3screen.png"
+          src={setup.dtl_banner.imageUrl}
         />
       </div>
     </div>
@@ -168,16 +237,16 @@ if (brands.length === 0) {
     <div class="flex flex-col lg:flex-row-reverse min-h-[600px] bg-[#fcf9f8]">
       <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#1c1b1b] text-left animate-on-scroll">
         <div class="max-w-xl mx-auto lg:mr-auto lg:ml-12">
-          <span class="text-xs font-black text-[#805612] uppercase tracking-[0.3em] mb-4 block">Organic Serenity</span>
-          <h2 class="font-serif text-4xl sm:text-5xl text-[#01261f] mb-6 leading-tight tracking-tight">Greenscapes</h2>
+          <span class="text-xs font-black text-[#805612] uppercase tracking-[0.3em] mb-4 block">{setup.dgs_banner.subtitle}</span>
+          <h2 class="font-serif text-4xl sm:text-5xl text-[#01261f] mb-6 leading-tight tracking-tight">{setup.dgs_banner.title}</h2>
           <p class="font-sans text-md sm:text-lg mb-10 text-[#414846] leading-relaxed">
-            Curated biophilic experiences that breathe life into the built environment. From vertical gardens to exotic landscape ecosystems, we design living architecture that evolves with time, fostering a deep connection between urban dwellers and the natural world.
+            {setup.dgs_banner.description}
           </p>
           <a 
-            href="/delightgreenscapes" 
+            href={setup.dgs_banner.ctaUrl} 
             class="inline-block bg-[#01261f] text-white px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#1a3c34] transition-all duration-300"
           >
-            Explore DGS Division
+            {setup.dgs_banner.ctaText}
           </a>
         </div>
       </div>
@@ -185,7 +254,7 @@ if (brands.length === 0) {
         <img 
           alt="Lush indoor biophilic garden" 
           class="w-full h-full object-cover" 
-          src="/1screen.png"
+          src={setup.dgs_banner.imageUrl}
         />
       </div>
     </div>
@@ -208,16 +277,16 @@ if (brands.length === 0) {
               <img 
                 alt="Luxury villa interior with elegant lighting" 
                 class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKzpmZidP2wrFcJyW8Lsfa-46IwJ_ofH6_cLB_g2pCXDeoZUlVQG1Jd2RQbD5iuRp8tyTVQNqpsYqoOkRgMhWPgnjwOxJZVmv7NFQc8yccF63VN3PNzKq2thOWuGHiSFZeoXXabJ5Jd4dhGPoRfiXr-goFkYKHIGxG66Q9dut2QZftzVxda3dLswNO7EAyDezFdJAF8IJoJ6XJcmDsysGNx53GKYiXNeRhTjJWM6lm3Thp1ZS9gAghfzAlunkNFzmiLUppkPgFZw8"
+                src={setup.sectors.residential.imageUrl}
               />
             </div>
             <div class="p-8 text-center">
-              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">Residential</h3>
-              <p class="text-[#414846] text-xs font-semibold leading-relaxed">Individual Houses, Villas, and private estates tailored for personal wellness.</p>
+              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">{setup.sectors.residential.title}</h3>
+              <p class="text-[#414846] text-xs font-semibold leading-relaxed">{setup.sectors.residential.desc}</p>
             </div>
           </div>
           <div class="px-8 pb-8 text-center">
-            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/portfolio?sector=residential">View Details</a>
+            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href={setup.sectors.residential.link}>View Details</a>
           </div>
         </div>
 
@@ -228,16 +297,16 @@ if (brands.length === 0) {
               <img 
                 alt="Modern office space with integrated greenery" 
                 class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBixLKPHKgXt131Z4yztKrDxoddfna7VJIlNInz9ePdOZblArS_GJJ5tHO1f_StEC0kalUDShHXkgk_DWXfEll4gOPLpGBbh_WNlbztmPLWWxyJl3awnm9yP2Xu_lQJkSYMAXamcp155pvLuwx69Iz_LviErccNSy1CQjYExwtYFfzonuUwqO5KOVvR4M_btDvqYgix9TydUNAN_rE2vqGwZf3rM3P-jBrIUp91q46ZO2FI5LEWEO0zIO0GSK4cldl4RmGIb0Jifr4"
+                src={setup.sectors.commercial.imageUrl}
               />
             </div>
             <div class="p-8 text-center">
-              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">Commercial</h3>
-              <p class="text-[#414846] text-xs font-semibold leading-relaxed">Productive Office Spaces and immersive Retail environments designed for impact.</p>
+              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">{setup.sectors.commercial.title}</h3>
+              <p class="text-[#414846] text-xs font-semibold leading-relaxed">{setup.sectors.commercial.desc}</p>
             </div>
           </div>
           <div class="px-8 pb-8 text-center">
-            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/portfolio?sector=commercial">View Details</a>
+            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href={setup.sectors.commercial.link}>View Details</a>
           </div>
         </div>
 
@@ -248,16 +317,16 @@ if (brands.length === 0) {
               <img 
                 alt="High-end resort pool area at night" 
                 class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMx1j_FCvrJtX9CaD6c3KgMaZCisZEmzZpaN_gYZTZ_wjpros1ZrWHeo0eBK7iYZSdi_xQsiD05RavSG2LygkPRuE69C_B1JijZyrXI2D3JvjqzMM2vGFZkx8Cb4UXjnpBwDK1zr0_ArVHEVDY58CqM-c6YUjCCQf_0iDF8cHO_kAI-JoYdXUneS-V__iLArbGxDnCyAOb70B4ur49InnUaRewyD1BgRmBHEyCaw-HL1Qz9iUXrkQC18V_01g-8U3iXu10IU2aHrk"
+                src={setup.sectors.hospitality.imageUrl}
               />
             </div>
             <div class="p-8 text-center">
-              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">Hospitality</h3>
-              <p class="text-[#414846] text-xs font-semibold leading-relaxed">Luxury Hotels and Resorts where atmosphere is the defining guest experience.</p>
+              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">{setup.sectors.hospitality.title}</h3>
+              <p class="text-[#414846] text-xs font-semibold leading-relaxed">{setup.sectors.hospitality.desc}</p>
             </div>
           </div>
           <div class="px-8 pb-8 text-center">
-            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/portfolio?sector=hospitality">View Details</a>
+            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href={setup.sectors.hospitality.link}>View Details</a>
           </div>
         </div>
 
@@ -268,16 +337,16 @@ if (brands.length === 0) {
               <img 
                 alt="B2B volume scale shipping and procurement logistics" 
                 class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuArzukkQe74HgIm92FnG3-sCZ-j0fHmv-kwwSws7u1yiSen96IHxJbd-MJLZX_CaNUzyhJhlmmZEx4cJUqUfYEoazhxeB5qnadct4xwJQxcXOUINJUsjU80-Ltb1PmkqjbcyZ222OFEq-dahQJaTDpLdi10-JkaxPrG69kJObYR8QwIKbaXmhgZGhCKapbZbQYD8wQAy5KetzliYsUP-BhpuS9x61NvpXSON_g_OrH6SKt8Ilc65qD5_osbEEEUuiQxp1-LZl38xXY"
+                src={setup.sectors.procurement.imageUrl}
               />
             </div>
             <div class="p-8 text-center">
-              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">B2B & Procurement</h3>
-              <p class="text-[#414846] text-xs font-semibold leading-relaxed">Volume-scale supply, technical specifications, and strict SLA dispatch tracking.</p>
+              <h3 class="font-serif text-xl font-semibold text-[#01261f] mb-3">{setup.sectors.procurement.title}</h3>
+              <p class="text-[#414846] text-xs font-semibold leading-relaxed">{setup.sectors.procurement.desc}</p>
             </div>
           </div>
           <div class="px-8 pb-8 text-center">
-            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/contact">Inquire Logistics</a>
+            <a class="inline-block font-sans text-[10px] font-black text-[#805612] uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href={setup.sectors.procurement.link}>Inquire Logistics</a>
           </div>
         </div>
       </div>
@@ -381,22 +450,22 @@ if (brands.length === 0) {
   <!-- CTA Section -->
   <section class="py-24 bg-[#ffddb4] animate-on-scroll">
     <div class="px-6 sm:px-16 max-w-[1280px] mx-auto text-center space-y-8">
-      <h2 class="font-serif text-4xl sm:text-5xl text-[#291800] leading-tight tracking-tight">Ready to harmonize your space?</h2>
+      <h2 class="font-serif text-4xl sm:text-5xl text-[#291800] leading-tight tracking-tight">{setup.cta.title}</h2>
       <p class="font-sans text-md sm:text-lg text-[#633f00] max-w-2xl mx-auto mb-12">
-        Whether it's technical lighting precision or organic landscape vitality, let's collaborate to create an environment that breathes with life and light.
+        {setup.cta.description}
       </p>
       <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
         <a 
-          href="/contact" 
+          href={setup.cta.btn1Url} 
           class="bg-[#01261f] text-white px-12 py-5 text-xs font-black uppercase tracking-widest hover:bg-[#1a3c34] transition-all shadow-lg inline-block"
         >
-          Start a Project
+          {setup.cta.btn1Text}
         </a>
         <a 
-          href="/downloads" 
+          href={setup.cta.btn2Url} 
           class="border border-[#01261f] text-[#01261f] px-12 py-5 text-xs font-black uppercase tracking-widest hover:bg-[#01261f]/5 transition-all inline-block"
         >
-          Request Division Catalog
+          {setup.cta.btn2Text}
         </a>
       </div>
     </div>

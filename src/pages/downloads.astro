@@ -5,8 +5,10 @@ import { FileText, PenTool, Leaf, Compass, Layers, BookOpen, Download, ArrowRigh
 
 let dtlDownloads: any[] = [];
 let dgsDownloads: any[] = [];
+let downloadsSetup: any = null;
 
 try {
+  // Query downloads
   const res = await query(`
     SELECT *
     FROM downloads
@@ -39,9 +41,28 @@ try {
       dgsDownloads.push(item);
     }
   });
+
+  // Query downloads_setup settings
+  const setupRes = await query("SELECT value FROM settings WHERE key = 'downloads_setup'");
+  if (setupRes.rows.length > 0) {
+    downloadsSetup = JSON.parse(setupRes.rows[0].value);
+  }
 } catch (err: any) {
   console.warn('Database offline, running high-fidelity mock downloads catalog:', err.message);
 }
+
+const defaultDownloadsSetup = {
+  title: "Download Center",
+  description: "Access technical specifications, brand assets, and sustainability reports for our core divisions. Designed for precision and ease of integration into your architectural workflows.",
+  imageUrl: "/about-hero.png",
+  ctaTitle: "Have a specific requirement?",
+  ctaDescription: "Our technical team is available for deep-dive consultations regarding custom specifications, large-scale integrations, and material compliance for your unique project needs.",
+  ctaBtnText: "Contact Our Team",
+  ctaBtnLink: "/contact"
+};
+
+const setup = downloadsSetup || defaultDownloadsSetup;
+
 
 // Fallback to match mockup exact data structure
 if (dtlDownloads.length === 0) {
@@ -85,17 +106,17 @@ if (dgsDownloads.length === 0) {
         <!-- Left text column -->
         <div class="md:col-span-8 space-y-4 text-left">
           <h1 class="text-4xl sm:text-6xl font-serif text-[#0f2d1d] font-semibold leading-tight tracking-tight">
-            Download Center
+            {setup.title}
           </h1>
           <p class="text-slate-600 font-semibold text-sm sm:text-base leading-relaxed max-w-2xl">
-            Access technical specifications, brand assets, and sustainability reports for our core divisions. Designed for precision and ease of integration into your architectural workflows.
+            {setup.description}
           </p>
         </div>
         <!-- Right Image Column -->
         <div class="md:col-span-4 flex justify-end">
           <div class="w-full max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-slate-100 relative group">
             <img 
-              src="/about-hero.png" 
+              src={setup.imageUrl} 
               alt="Architectural Abstract Geometric Facade" 
               class="w-full h-full object-cover filter grayscale contrast-125 transition-transform duration-700 group-hover:scale-105"
             />
@@ -206,18 +227,18 @@ if (dgsDownloads.length === 0) {
       <div class="bg-[#f4f2eb] rounded-[24px] p-8 sm:p-12 border border-slate-200/40 grid grid-cols-1 md:grid-cols-12 gap-8 items-center transition-all duration-300 hover:shadow-xl animate-on-scroll">
         <!-- Text -->
         <div class="md:col-span-8 space-y-4 text-left">
-          <h2 class="text-3xl font-serif text-slate-900 font-medium">Have a specific requirement?</h2>
+          <h2 class="text-3xl font-serif text-slate-900 font-medium">{setup.ctaTitle}</h2>
           <p class="text-slate-650 font-semibold text-xs sm:text-sm leading-relaxed max-w-2xl">
-            Our technical team is available for deep-dive consultations regarding custom specifications, large-scale integrations, and material compliance for your unique project needs.
+            {setup.ctaDescription}
           </p>
         </div>
         <!-- Button -->
         <div class="md:col-span-4 flex justify-start md:justify-end">
           <a 
-            href="/contact" 
+            href={setup.ctaBtnLink} 
             class="px-8 py-4 bg-[#0f2d1d] hover:bg-[#071b11] text-white font-extrabold text-xs uppercase tracking-widest rounded-md transition-colors shadow-md inline-block text-center"
           >
-            Contact Our Team
+            {setup.ctaBtnText}
           </a>
         </div>
       </div>

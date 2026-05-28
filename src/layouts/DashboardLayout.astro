@@ -35,6 +35,18 @@ const navGroups = [
     ]
   },
   {
+    label: 'Pages',
+    items: [
+      { id: 'home-setup', name: 'Home Setup', href: '/dashboard/home-setup', icon: Image, show: isAdmin },
+      { id: 'about-setup', name: 'About Us Setup', href: '/dashboard/about-setup', icon: Image, show: isAdmin },
+      { id: 'contact-setup', name: 'Contact Us Setup', href: '/dashboard/contact-setup', icon: Image, show: isAdmin },
+      { id: 'downloads-setup', name: 'Downloads Setup', href: '/dashboard/downloads-setup', icon: Image, show: isAdmin },
+      { id: 'dtl-setup', name: 'DTL Setup', href: '/dashboard/dtl-setup', icon: Image, show: isAdmin },
+      { id: 'dgs-setup', name: 'DGS Setup', href: '/dashboard/dgs-setup', icon: Image, show: isAdmin },
+      { id: 'site-disclaimers', name: 'Site Disclaimers', href: '/dashboard/site-disclaimers', icon: ScrollText, show: isAdmin },
+    ]
+  },
+  {
     label: 'Operations',
     items: [
       { id: 'messages', name: 'Messages', href: '/dashboard/communications', icon: Inbox, show: isAdmin },
@@ -57,9 +69,6 @@ const navGroups = [
   {
     label: 'Administration',
     items: [
-      { id: 'site-disclaimers', name: 'Site Disclaimers', href: '/dashboard/site-disclaimers', icon: ScrollText, show: isAdmin },
-      { id: 'dtl-setup', name: 'DTL Setup', href: '/dashboard/dtl-setup', icon: Image, show: isAdmin },
-      { id: 'dgs-setup', name: 'DGS Setup', href: '/dashboard/dgs-setup', icon: Image, show: isAdmin },
       { id: 'finance-legal', name: 'Finance & Legal', href: '/dashboard/finance-legal', icon: FileSpreadsheet, show: isAdmin },
       { id: 'identity', name: 'Identity', href: '/dashboard/users', icon: Users2, show: isAdmin },
       { id: 'permissions', name: 'Permission Matrix', href: '/dashboard/permissions', icon: ShieldAlert, show: isAdmin },

@@ -7,22 +7,44 @@ import { query } from '../lib/db';
 let address = 'Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE';
 let phone = '+971 (4) 555-0100';
 let email = 'info@delightgroupllc.ae';
+let contactSetup: any = null;
 
 try {
   const settingsRes = await query(`
     SELECT key, value 
     FROM settings 
-    WHERE key IN ('company_address', 'contact_phone', 'contact_email')
+    WHERE key IN ('company_address', 'contact_phone', 'contact_email', 'contact_setup')
   `);
   
   settingsRes.rows.forEach(row => {
     if (row.key === 'company_address') address = row.value;
     if (row.key === 'contact_phone') phone = row.value;
     if (row.key === 'contact_email') email = row.value;
+    if (row.key === 'contact_setup') {
+      try {
+        contactSetup = JSON.parse(row.value);
+      } catch (e) {}
+    }
   });
 } catch (err: any) {
   console.warn('Failed to load contact settings from DB:', err.message);
 }
+
+const defaultContactSetup = {
+  heroImageUrl: "/about-hero.png",
+  mapUrl: "https://maps.google.com",
+  emails: {
+    press: "media@delightgroupllc.com",
+    careers: "careers@delightgroupllc.com"
+  },
+  hours: "Monday – Friday: 09:00 – 18:00 GST",
+  socialLinks: {
+    websiteUrl: "https://delightgroupllc.com"
+  }
+};
+
+const setup = contactSetup || defaultContactSetup;
+
 ---
 
 <Layout title="Contact Us" description="Start a conversation with Delight Group LLC">
@@ -34,11 +56,10 @@ try {
       
       <!-- Primary Two-Column Grid Card -->
       <div class="bg-white rounded-[32px] overflow-hidden shadow-2xl border border-slate-100 grid grid-cols-1 lg:grid-cols-12 gap-0 mb-16 animate-on-scroll">
-        
-        <!-- Left Column: Premium Architectural Facade Image with Frosted Overlay -->
+             <!-- Left Column: Premium Architectural Facade Image with Frosted Overlay -->
         <div class="lg:col-span-5 relative min-h-[380px] lg:min-h-[550px] bg-slate-900 overflow-hidden flex flex-col justify-end p-6 sm:p-10">
           <img 
-            src="/about-hero.png" 
+            src={setup.heroImageUrl} 
             alt="Delight Group Luxury Facade Lighting" 
             class="absolute inset-0 w-full h-full object-cover opacity-85 transition-transform duration-700 hover:scale-105"
           />
@@ -73,7 +94,7 @@ try {
           
           <div class="pt-8">
             <a 
-              href="https://maps.google.com" 
+              href={setup.mapUrl} 
               target="_blank"
               class="text-[10px] font-black uppercase tracking-widest text-[#b45309] hover:text-amber-800 transition-colors border-b border-[#b45309]/30 hover:border-amber-700 pb-0.5"
             >
@@ -96,8 +117,8 @@ try {
             
             <div class="space-y-2 text-xs sm:text-sm font-semibold text-slate-500">
               <p>General: <a href={`mailto:${email}`} class="text-slate-800 hover:text-slate-950 font-bold">{email}</a></p>
-              <p>Press: <a href="mailto:media@delightgroupllc.com" class="text-slate-800 hover:text-slate-950 font-bold">media@delightgroupllc.com</a></p>
-              <p>Careers: <a href="mailto:careers@delightgroupllc.com" class="text-slate-800 hover:text-slate-950 font-bold">careers@delightgroupllc.com</a></p>
+              <p>Press: <a href={`mailto:${setup.emails.press}`} class="text-slate-800 hover:text-slate-950 font-bold">{setup.emails.press}</a></p>
+              <p>Careers: <a href={`mailto:${setup.emails.careers}`} class="text-slate-800 hover:text-slate-955 font-bold">{setup.emails.careers}</a></p>
             </div>
           </div>
           
@@ -119,7 +140,7 @@ try {
             </div>
             
             <div class="space-y-2 text-xs sm:text-sm font-semibold text-slate-500">
-              <p>Monday – Friday: 09:00 – 18:00 GST</p>
+              <p>{setup.hours}</p>
               <a href={`tel:${phone.replace(/[()\s-]/g, '')}`} class="text-slate-800 text-base sm:text-lg font-extrabold hover:text-slate-950 transition-colors block mt-2">
                 {phone}
               </a>
@@ -129,7 +150,7 @@ try {
           <!-- Social / Utility Button Row (Mockup replication) -->
           <div class="pt-8 flex items-center gap-2">
             <a 
-              href="https://delightgroupllc.com" 
+              href={setup.socialLinks.websiteUrl} 
               target="_blank"
               class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-850 hover:bg-slate-50 transition-all"
             >

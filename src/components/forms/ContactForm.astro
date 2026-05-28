@@ -49,6 +49,14 @@
       <textarea id="message" name="message" required rows="2" class="w-full bg-transparent outline-none py-1 text-sm font-semibold text-slate-800 placeholder-slate-355 resize-none" placeholder="Share a brief overview..."></textarea>
     </div>
 
+    <!-- Consent Checkbox -->
+    <div class="flex items-start gap-3 pt-2">
+      <input type="checkbox" id="consent" name="consent" required class="mt-0.5 w-4 h-4 rounded border-slate-300 text-[#b45309] focus:ring-[#b45309] cursor-pointer" />
+      <label for="consent" class="text-[11px] text-slate-500 font-semibold leading-relaxed cursor-pointer select-none">
+        I consent to the collection and processing of my personal details as outlined in the <a href="/privacy" target="_blank" class="text-[#b45309] hover:underline font-bold">Privacy Policy</a>.
+      </label>
+    </div>
+
     <div id="form-message" class="hidden p-4 rounded-xl text-sm font-semibold"></div>
 
     <!-- Button -->

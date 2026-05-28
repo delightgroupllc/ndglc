@@ -1,0 +1,53 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Home, ArrowRight, HelpCircle } from '@lucide/astro';
+---
+
+<Layout title="Page Not Found" description="The page you are looking for does not exist. Redirecting back to Delight Group LLC.">
+  <div class="min-h-screen bg-[#fbfaf7] relative overflow-hidden flex items-center justify-center py-20 px-4">
+    <!-- Subtle blueprint dot grid pattern -->
+    <div class="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(#000000 1.5px, transparent 1.5px); background-size: 32px 32px;"></div>
+    
+    <!-- Decorative background elements -->
+    <div class="absolute top-[10%] left-[5%] z-0 w-72 h-72 rounded-full bg-[#fec577]/10 blur-3xl pointer-events-none"></div>
+    <div class="absolute bottom-[10%] right-[5%] z-0 w-96 h-96 rounded-full bg-[#83a69c]/10 blur-3xl pointer-events-none"></div>
+
+    <div class="relative z-10 max-w-xl w-full text-center space-y-8 bg-white/40 backdrop-blur-md border border-slate-200/50 p-8 sm:p-12 rounded-[32px] shadow-xl">
+      <!-- Icon Indicator -->
+      <div class="flex justify-center">
+        <div class="w-20 h-20 rounded-full bg-[#ffddb4]/60 border border-[#fec577]/30 flex items-center justify-center text-[#805612] animate-bounce">
+          <HelpCircle class="w-10 h-10" />
+        </div>
+      </div>
+
+      <!-- Error details -->
+      <div class="space-y-4">
+        <span class="text-xs font-black text-[#805612] uppercase tracking-[0.25em] block">Error 404</span>
+        <h1 class="font-serif text-4xl sm:text-5xl text-[#01261f] font-semibold tracking-tight leading-tight">Page Not Found</h1>
+        <p class="text-[#414846] text-sm leading-relaxed max-w-md mx-auto font-semibold">
+          The requested address is invalid or the resource has been relocated. Let's redirect you to the main gateway or a specialist division.
+        </p>
+      </div>
+
+      <div class="w-16 h-1 bg-[#fec577] mx-auto my-6"></div>
+
+      <!-- Navigation buttons -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <a 
+          href="/" 
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#01261f] text-white px-8 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#1a3c34] transition-all shadow-md"
+        >
+          <Home class="w-4 h-4" />
+          <span>Go to Home</span>
+        </a>
+        <a 
+          href="/contact" 
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-[#01261f]/20 text-[#01261f] px-8 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#01261f]/5 transition-all"
+        >
+          <span>Contact Support</span>
+          <ArrowRight class="w-4 h-4" />
+        </a>
+      </div>
+    </div>
+  </div>
+</Layout>

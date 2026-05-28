@@ -115,11 +115,17 @@ let homepageProjectIds: string[] = [];
 if (isDtl) {
   try {
     const settingsRes = await query(
-      `SELECT key, value FROM settings WHERE key IN ('dtl_setup', 'dtl_homepage_projects', 'rooms')`
+      `SELECT key, value FROM settings WHERE key IN ('dtl_setup', 'dtl_instagram_block', 'dtl_homepage_projects', 'rooms')`
     );
     for (const row of settingsRes.rows) {
       if (row.key === 'dtl_setup') {
         try { dtlSetup = JSON.parse(row.value); } catch {}
+      }
+      if (row.key === 'dtl_instagram_block') {
+        try {
+          if (!dtlSetup) dtlSetup = {};
+          dtlSetup.instagram = JSON.parse(row.value);
+        } catch {}
       }
       if (row.key === 'dtl_homepage_projects') {
         try { homepageProjectIds = JSON.parse(row.value); } catch {}
@@ -308,7 +314,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
       ========================================== */}
   {isDtl && (
     <>
-      <!-- Hero Section with Image Overlay -->
+      {/* Hero Section with Image Overlay */}
       <section class="relative h-96 md:h-screen bg-slate-900 overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-r from-black/70 to-black/30"></div>
         <div class="absolute inset-0" style={`background-image: url('${heroObj.imageUrl}'); background-size: cover; background-position: center;`}></div>
@@ -325,7 +331,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- Discover by Rooms/Categories - Category Grid with Images -->
+      {/* Discover by Rooms/Categories - Category Grid with Images */}
       <section class="py-16 bg-white border-b border-slate-100">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 class="text-3xl font-black font-display text-slate-900 mb-10">
@@ -382,7 +388,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- Featured Products Section (New Arrivals & Trending) -->
+      {/* Featured Products Section (New Arrivals & Trending) */}
       {trendingObj.enabled !== false ? (
         trendingItems && trendingItems.length > 0 ? (
           <section class="py-16 bg-white border-b border-slate-100">
@@ -441,7 +447,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         )
       ) : null}
 
-      <!-- Stats Section (Facts) -->
+      {/* Stats Section (Facts) */}
       <section class="py-16 bg-slate-50 border-b border-slate-100">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 class="text-3xl font-black font-display text-slate-900 mb-10">Facts</h2>
@@ -456,7 +462,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- Category List (browse all categories) -->
+      {/* Category List (browse all categories) */}
       <section class="py-16 bg-white border-b border-slate-100">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 class="text-3xl font-black font-display text-slate-900 mb-10">Browse Categories</h2>
@@ -500,7 +506,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- Projects Section (Discover Projects) — Arrco-style 3-card layout -->
+      {/* Projects Section (Discover Projects) — Arrco-style 3-card layout */}
       {projects.length > 0 && (
         <section class="py-16 bg-white border-b border-slate-100">
           <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -580,7 +586,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </section>
       )}
 
-      <!-- Dynamic Press Releases & News Section -->
+      {/* Dynamic Press Releases & News Section */}
       {articles.length > 0 && (
         <section class="py-16 bg-white border-b border-slate-100">
           <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -635,7 +641,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </section>
       )}
 
-      <!-- Dynamic Clients & Partners scrolling logos -->
+      {/* Dynamic Clients & Partners scrolling logos */}
       {partners.length > 0 && (
         <section class="py-16 bg-slate-50 border-b border-slate-100">
           <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -665,7 +671,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </section>
       )}
 
-      <!-- Instagram Block -->
+      {/* Instagram Block */}
       {instagramObj && instagramObj.enabled ? (
         <section class="py-16 bg-white border-b border-slate-100">
           <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -705,9 +711,9 @@ const discoverRoomItems = isDtl && rooms.length > 0
   {isDgs && (
     <div class="bg-[#fcfdfd]">
       
-      <!-- Premium Hero Section -->
+      {/* Premium Hero Section */}
       <section class="relative h-screen bg-[#002208] overflow-hidden flex items-center justify-center">
-        <!-- Forest Green Subtle Vignette -->
+        {/* Forest Green Subtle Vignette */}
         <div class="absolute inset-0 bg-gradient-to-b from-[#001705]/80 via-transparent to-[#002208]/90 z-10"></div>
         
         {/* Dynamic Slide Background */}
@@ -738,7 +744,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
           )}
         </div>
 
-        <!-- Decorative Bottom Wave / Arch Shape -->
+        {/* Decorative Bottom Wave / Arch Shape */}
         <div class="absolute bottom-0 left-0 w-full overflow-hidden leading-none z-10">
           <svg class="relative block w-full h-[60px]" viewBox="0 0 1200 120" preserveAspectRatio="none">
             <path d="M0,0V120H1200V0C924,96,276,96,0,0Z" class="fill-[#fcfdfd]"></path>
@@ -746,7 +752,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- 2. Accreditation & UAE Heritage Banner -->
+      {/* 2. Accreditation & UAE Heritage Banner */}
       {accredObj.enabled && (
         <section class="py-10 bg-white border-b border-slate-100 text-center">
           <div class="max-w-4xl mx-auto px-4 space-y-4">
@@ -766,7 +772,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </section>
       )}
 
-      <!-- 3. Desert Group Services Grid -->
+      {/* 3. Desert Group Services Grid */}
       <section id="services" class="py-20 bg-[#F8F9F8]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
@@ -783,7 +789,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {servicesArr.slice(0, 6).map((svc) => (
               <div class="group relative rounded-xl overflow-hidden bg-[#001705] min-h-[300px] flex flex-col justify-end p-6 border border-emerald-950/10 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-                <!-- Background Image -->
+                {/* Background Image */}
                 {svc.imageUrl ? (
                   <img 
                     src={svc.imageUrl} 
@@ -795,10 +801,10 @@ const discoverRoomItems = isDtl && rooms.length > 0
                   <div class="absolute inset-0 bg-gradient-to-br from-[#00360d] to-[#001705] opacity-80"></div>
                 )}
                 
-                <!-- Overlay Gradient -->
+                {/* Overlay Gradient */}
                 <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
                 
-                <!-- Text Container -->
+                {/* Text Container */}
                 <div class="relative z-10 space-y-2 text-left">
                   <h3 class="text-lg font-bold text-white font-display group-hover:text-[#BE854C] transition-colors leading-snug">
                     {svc.title}
@@ -817,7 +823,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- 4. Highlight Banner A: Desert Golf -->
+      {/* 4. Highlight Banner A: Desert Golf */}
       <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -854,10 +860,10 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- 5. Highlight Banner B: Wide Plant Nursery -->
+      {/* 5. Highlight Banner B: Wide Plant Nursery */}
       <section class="relative py-28 bg-[#001705] overflow-hidden flex items-center justify-end">
         <div class="absolute inset-0 bg-cover bg-center opacity-50" style={`background-image: url('${panelsObj.nursery.imageUrl}');`}></div>
-        <!-- Forest green left-to-right fade gradient -->
+        {/* Forest green left-to-right fade gradient */}
         <div class="absolute inset-0 bg-gradient-to-r from-[#001705] via-[#001705]/60 to-transparent"></div>
         
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10 flex justify-start">
@@ -879,7 +885,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- 6. Highlight Banner C: Sustainable Landscape Section -->
+      {/* 6. Highlight Banner C: Sustainable Landscape Section */}
       <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -905,7 +911,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
                 {panelsObj.sustainable.description}
               </p>
               
-              <!-- Checklist of custom points -->
+              {/* Checklist of custom points */}
               <div class="space-y-3 pt-2">
                 {panelsObj.sustainable.highlight1 && (
                   <div class="flex items-start gap-3">
@@ -932,7 +938,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- 7. Arrco-style 3-card Featured Projects Selector -->
+      {/* 7. Arrco-style 3-card Featured Projects Selector */}
       {projects.length > 0 && (
         <section id="projects" class="py-20 bg-[#F8F9F8]">
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1018,7 +1024,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </section>
       )}
 
-      <!-- 8. Stats Fact Banner -->
+      {/* 8. Stats Fact Banner */}
       <section class="py-16 bg-[#004712] text-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -1033,7 +1039,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
-      <!-- 9. Dynamic Clients & Partners scrolling logos -->
+      {/* 9. Dynamic Clients & Partners scrolling logos */}
       {partners.length > 0 && (
         <section class="py-16 bg-white border-b border-slate-100">
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1062,7 +1068,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </section>
       )}
 
-      <!-- 10. Dynamic Press Releases & Events -->
+      {/* 10. Dynamic Press Releases & Events */}
       {articles.length > 0 && (
         <section class="py-20 bg-white border-b border-slate-100">
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
