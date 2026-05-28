@@ -1,14 +1,12 @@
 import { defineConfig } from 'astro/config';
-import node from '@astrojs/node';
+import vercel from '@astrojs/vercel';
 import clerk from '@clerk/astro';
 import tailwindcss from '@tailwindcss/vite'; // 1. Import Tailwind's native Vite plugin
 
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
-  adapter: node({
-    mode: 'standalone'
-  }),
+  adapter: vercel(),
   integrations: [
     clerk() // 2. Keep Clerk here
   ],
