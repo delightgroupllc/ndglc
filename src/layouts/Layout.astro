@@ -2,6 +2,7 @@
 import { UserButton, SignInButton } from '@clerk/astro/components';
 import { Menu, X, ChevronDown, Cpu, Shield, Database, Activity, PhoneCall, ArrowRight, Package, Briefcase, DownloadCloud, LayoutGrid, Search, User, Building2 } from '@lucide/astro';
 import { query } from '../lib/db';
+import Analytics from '@vercel/analytics/astro';
 
 interface Props {
   title: string;
@@ -136,6 +137,9 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
       // Initialize Speed Insights (Web Analytics configured via adapter)
       injectSpeedInsights();
     </script>
+
+    <!-- Vercel Web Analytics -->
+    <Analytics />
 
     <style is:global>
       :root {
