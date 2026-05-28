@@ -12,6 +12,10 @@
     "seed": "tsx src/lib/seed.ts",
     "seed:mega": "tsx src/lib/mega_seed.ts"
   },
+  "overrides": {
+    "path-to-regexp": "^6.3.0",
+    "yaml": "^2.8.3"
+  },
   "dependencies": {
     "@astrojs/compiler-rs": "^0.2.1",
     "@astrojs/vercel": "^10.0.7",
@@ -31,11 +35,12 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.9",
     "@tailwindcss/vite": "^4.3.0",
     "@types/node": "^20.12.7",
     "@types/pg": "^8.20.0",
     "tailwindcss": "^4.3.0",
     "tsx": "^4.22.3",
-    "typescript": "^5.4.5"
+    "typescript": "^5.9.3"
   }
 }

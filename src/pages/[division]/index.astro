@@ -462,7 +462,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
           <h2 class="text-3xl font-black font-display text-slate-900 mb-10">Browse Categories</h2>
           
           <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {categories.map((c) => (
+            {categories.slice(0, 3).map((c) => (
               <a href={`/${divSlug}/${c.slug}`} class="group relative rounded-xl border p-6 md:p-8 hover:shadow-lg transition-all flex flex-col justify-between min-h-64 bg-gradient-to-br from-amber-50 to-amber-50/50 border-amber-200 hover:border-amber-400">
                 <div class="space-y-4">
                   <div class="flex items-center justify-between">
@@ -489,6 +489,14 @@ const discoverRoomItems = isDtl && rooms.length > 0
               </a>
             ))}
           </div>
+          
+          {categories.length > 3 && (
+            <div class="mt-12 text-center">
+              <a href={`/projects?division=dtl`} class="inline-flex items-center gap-2 border-2 border-amber-500 text-amber-600 hover:bg-amber-500 hover:text-white px-8 py-3 font-bold text-xs uppercase tracking-wider rounded transition-colors">
+                View All Categories
+              </a>
+            </div>
+          )}
         </div>
       </section>
 
@@ -496,7 +504,13 @@ const discoverRoomItems = isDtl && rooms.length > 0
       {projects.length > 0 && (
         <section class="py-16 bg-white border-b border-slate-100">
           <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-black font-display text-slate-900 mb-10">Discover Projects</h2>
+            <div class="flex items-center justify-between mb-10">
+              <h2 class="text-3xl font-black font-display text-slate-900">Discover Projects</h2>
+              <a href="/projects?division=dtl" class="hidden sm:inline-flex items-center gap-1.5 text-sm font-bold text-amber-600 hover:text-amber-700 transition-colors uppercase tracking-wider">
+                View all Projects
+                <ArrowRight class="h-4 w-4" />
+              </a>
+            </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* First card — large with text overlay */}
@@ -554,11 +568,10 @@ const discoverRoomItems = isDtl && rooms.length > 0
               ))}
             </div>
 
-            <div class="text-right mt-6">
-              <a
-                href="/projects?division=dtl"
-                class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
-              >
+            </div>
+
+            <div class="mt-8 text-center sm:hidden">
+              <a href="/projects?division=dtl" class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors uppercase tracking-wider">
                 View all Projects
                 <ArrowRight class="h-4 w-4" />
               </a>
@@ -637,11 +650,11 @@ const discoverRoomItems = isDtl && rooms.length > 0
                 <a 
                   href={p.website_url || '#'} 
                   target={p.website_url ? "_blank" : undefined}
-                  class="flex items-center justify-center max-h-12 max-w-[150px] grayscale hover:grayscale-0 transition-all duration-300"
+                  class="flex items-center justify-center max-h-16 max-w-[200px] grayscale hover:grayscale-0 transition-all duration-300"
                   title={p.name}
                 >
                   {p.logo_url ? (
-                    <img src={p.logo_url} alt={p.name} class="max-h-10 object-contain" />
+                    <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
                   ) : (
                     <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-600 uppercase">{p.name}</span>
                   )}
@@ -661,7 +674,6 @@ const discoverRoomItems = isDtl && rooms.length > 0
                 <h3 class="text-xl font-bold">{instagramObj.title}</h3>
                 <p class="text-sm text-slate-500">{instagramObj.subtitle}</p>
               </div>
-              <a href={instagramObj.ctaUrl} class="text-sm font-bold text-amber-600">{instagramObj.ctaText || 'Follow'}</a>
             </div>
 
             {(!Array.isArray(instagramObj.posts) || instagramObj.posts.length === 0) ? (
@@ -675,6 +687,12 @@ const discoverRoomItems = isDtl && rooms.length > 0
                 ))}
               </div>
             )}
+            
+            <div class="mt-10 text-center">
+              <a href={instagramObj.ctaUrl} target="_blank" class="inline-flex items-center gap-2 bg-amber-600 text-white hover:bg-amber-700 px-6 py-3 font-bold text-xs uppercase tracking-wider rounded transition-colors shadow-md">
+                {instagramObj.ctaText || 'Follow DTL'}
+              </a>
+            </div>
           </div>
         </section>
       ) : null}
@@ -744,25 +762,6 @@ const discoverRoomItems = isDtl && rooms.length > 0
             <p class="text-sm text-slate-500 max-w-2xl mx-auto leading-relaxed">
               {accredObj.subtitle}
             </p>
-            
-            {/* Accreditation Logos Badge Container */}
-            <div class="flex items-center justify-center gap-8 pt-4 opacity-75">
-              <div class="flex items-center gap-2 text-slate-400">
-                <Trophy class="h-8 w-8 text-[#BE854C]" />
-                <div class="text-left leading-none">
-                  <span class="text-xs font-bold text-slate-700 block">BALI MEMBER</span>
-                  <span class="text-[9px] text-slate-450 block">Registered Landscaper UK</span>
-                </div>
-              </div>
-              <div class="w-px h-8 bg-slate-200"></div>
-              <div class="flex items-center gap-2 text-slate-400">
-                <Users class="h-8 w-8 text-[#BE854C]" />
-                <div class="text-left leading-none">
-                  <span class="text-xs font-bold text-slate-700 block">ESTABLISHED</span>
-                  <span class="text-[9px] text-slate-450 block">Pioneering in UAE Since 1988</span>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
       )}
@@ -782,7 +781,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {servicesArr.map((svc) => (
+            {servicesArr.slice(0, 6).map((svc) => (
               <div class="group relative rounded-xl overflow-hidden bg-[#001705] min-h-[300px] flex flex-col justify-end p-6 border border-emerald-950/10 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                 <!-- Background Image -->
                 {svc.imageUrl ? (
@@ -1048,11 +1047,11 @@ const discoverRoomItems = isDtl && rooms.length > 0
                 <a 
                   href={p.website_url || '#'} 
                   target={p.website_url ? "_blank" : undefined}
-                  class="flex items-center justify-center max-h-12 max-w-[150px] grayscale hover:grayscale-0 transition-all duration-300"
+                  class="flex items-center justify-center max-h-16 max-w-[200px] grayscale hover:grayscale-0 transition-all duration-300"
                   title={p.name}
                 >
                   {p.logo_url ? (
-                    <img src={p.logo_url} alt={p.name} class="max-h-10 object-contain" />
+                    <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
                   ) : (
                     <span class="font-extrabold text-sm md:text-base tracking-widest text-slate-600 uppercase">{p.name}</span>
                   )}

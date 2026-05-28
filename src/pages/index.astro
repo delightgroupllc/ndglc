@@ -5,12 +5,17 @@ import { Search, ArrowRight, Lightbulb, Flower, ShieldCheck, Heart, Scale, Truck
 
 let latestProjects: any[] = [];
 let brands: any[] = [];
+let articles: any[] = [];
 let dbConnected = true;
 
 try {
-  // Query projects if they exist (we can query products or default projects)
-  const res = await query('SELECT * FROM products WHERE featured = true LIMIT 4');
+  // Query featured projects
+  const res = await query('SELECT * FROM projects WHERE featured = true LIMIT 4');
   latestProjects = res.rows;
+
+  // Query latest news/articles
+  const articlesRes = await query("SELECT * FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 2");
+  articles = articlesRes.rows;
 
   // Query partners from the database
   const partnersRes = await query("SELECT name FROM trusted_partners WHERE status = 'active' ORDER BY name ASC");
@@ -24,31 +29,55 @@ if (latestProjects.length === 0) {
   latestProjects = [
     {
       id: 'proj-1',
-      name: "Modern Desert Villa",
+      title: "Modern Desert Villa",
+      client_name: "Lootah Premium Developments",
       description: "Integrated biodynamic facade lighting and custom specimen biophilic fitouts for a luxury private estate in Jumeirah.",
-      image_url: "https://lh3.googleusercontent.com/aida/ADBb0ug_vCupwao6cvGT_3Lp5FWyAJp36SIFy_IwJEEnztO-t7GuOp9QmYdkZUvk5XAKgZZhaPjlbePklZlT4i6H12LAswxt8jHoF2Ldo2EldVy-zKS5tfblh0sKZbgJQGhdBena31UI4Ok3Yc3dGgjHBS_dGIUlLkAcl62ZnLI0eKO2IQIR_VPgK8pVHNDBE7YgKTqnAOlMOEcvePjpsARuHkeb73yZZR47CdyWDMThsTLFmdfYFkBlAeOT180",
-      tag: "Residential"
+      featured_image: "https://lh3.googleusercontent.com/aida/ADBb0ug_vCupwao6cvGT_3Lp5FWyAJp36SIFy_IwJEEnztO-t7GuOp9QmYdkZUvk5XAKgZZhaPjlbePklZlT4i6H12LAswxt8jHoF2Ldo2EldVy-zKS5tfblh0sKZbgJQGhdBena31UI4Ok3Yc3dGgjHBS_dGIUlLkAcl62ZnLI0eKO2IQIR_VPgK8pVHNDBE7YgKTqnAOlMOEcvePjpsARuHkeb73yZZR47CdyWDMThsTLFmdfYFkBlAeOT180",
+      division: "dtl"
     },
     {
       id: 'proj-2',
-      name: "Luminous Office Plaza",
+      title: "Luminous Office Plaza",
+      client_name: "Emaar Properties PJSC",
       description: "Human-centric circadian track systems and automated clean-air plant partitions for DIFC corporate suites.",
-      image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD7nsYOrT4ZujveZ2gaCNLNjtjZaRD2VWcnHtn6VQ894_SPJNlzZJ-aKe7XH-aYOyiDqLxrDKMJtgYGFpo6UkPoP7QMNbZw5nyytRt_hdGf0xT1JGR5Q6e4FVRc8iBBgjniVAsKqtqS27UaZhtSX8myI-dEdebMrfksPbi1O-19l7iUNYWT0LpVG0CIFyfs5LH5F94dZp4uivWHCEapIc694gvs_EEzjq3DWOYIYPwpBF2pbMpT-djVVvdF0RtIibGr2WY0O2NzXvI",
-      tag: "Commercial"
+      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuD7nsYOrT4ZujveZ2gaCNLNjtjZaRD2VWcnHtn6VQ894_SPJNlzZJ-aKe7XH-aYOyiDqLxrDKMJtgYGFpo6UkPoP7QMNbZw5nyytRt_hdGf0xT1JGR5Q6e4FVRc8iBBgjniVAsKqtqS27UaZhtSX8myI-dEdebMrfksPbi1O-19l7iUNYWT0LpVG0CIFyfs5LH5F94dZp4uivWHCEapIc694gvs_EEzjq3DWOYIYPwpBF2pbMpT-djVVvdF0RtIibGr2WY0O2NzXvI",
+      division: "dtl"
     },
     {
       id: 'proj-3',
-      name: "Sustainable Resort Garden",
+      title: "Sustainable Resort Garden",
+      client_name: "H.E. Al Maktoum Family Office",
       description: "High-efficiency low-voltage accent lighting and xeriscape specimens designed for local climate resiliency in Abu Dhabi.",
-      image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuD9rzXaLwkdm6_vzUsundUtnEWJa75zIeMYfwD487NnRtw9Y7vugJNH_uZxouwmGlPwpa5CdhdI61ReIyhgl0HJz38MKHMZRHNV72kS6wclydWPI4z6UhOFYq7lViqiNmNo2W9oJQUzHzHl5K5yvZdHkDhafV4kU7Xj4zfCeO_dalChIKT4Cwdx3zgWEiaux1Cz2XoclQvgHq4rR6MgqCo8fVrlYSVchdIP09aAiWip5zceFnu6i4XWzjKbakEiQSIoo5IxZNsrqoc",
-      tag: "Hospitality"
+      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuD9rzXaLwkdm6_vzUsundUtnEWJa75zIeMYfwD487NnRtw9Y7vugJNH_uZxouwmGlPwpa5CdhdI61ReIyhgl0HJz38MKHMZRHNV72kS6wclydWPI4z6UhOFYq7lViqiNmNo2W9oJQUzHzHl5K5yvZdHkDhafV4kU7Xj4zfCeO_dalChIKT4Cwdx3zgWEiaux1Cz2XoclQvgHq4rR6MgqCo8fVrlYSVchdIP09aAiWip5zceFnu6i4XWzjKbakEiQSIoo5IxZNsrqoc",
+      division: "dgs"
     },
     {
       id: 'proj-4',
-      name: "Urban Botanical Hub",
+      title: "Urban Botanical Hub",
+      client_name: "Dubai Municipality",
       description: "Atmospheric evening uplighting and specimen foliage installations for a premium wellness retreat in Sharjah.",
-      image_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCnR0aAcmNwGS0LlfoaZRwJP20UOuqZgl63bU6HKnQ_KJR9t6pLryqgemhzIC2cMMgfWrsUIhuK4_bfDxz0-89gSkh2LYvSH-G2V76w2RmvQbXp8Ziv3zSI2AXt7PDkzFTkwM-AB_CMW40UytVn03QvPbsU-6tXpXZFK4O3JQPFWbBeTbWpRiAigCd7XpByzZqTR8lbBvuJaogJcZ1jH-MO1tOetnhgJo02RnOX5Xig238w-Wo9q64dID3P5vd1NSP9nWIQCUK5WME",
-      tag: "Wellness"
+      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCnR0aAcmNwGS0LlfoaZRwJP20UOuqZgl63bU6HKnQ_KJR9t6pLryqgemhzIC2cMMgfWrsUIhuK4_bfDxz0-89gSkh2LYvSH-G2V76w2RmvQbXp8Ziv3zSI2AXt7PDkzFTkwM-AB_CMW40UytVn03QvPbsU-6tXpXZFK4O3JQPFWbBeTbWpRiAigCd7XpByzZqTR8lbBvuJaogJcZ1jH-MO1tOetnhgJo02RnOX5Xig238w-Wo9q64dID3P5vd1NSP9nWIQCUK5WME",
+      division: "dgs"
+    }
+  ];
+}
+
+// Fallback mock articles
+if (articles.length === 0) {
+  articles = [
+    {
+      title: "The Psychology of Light: Circadian Harmony",
+      slug: "psychology-of-light",
+      summary: "How tuned-spectrum lighting influences mood, productivity, and the biological clock in modern residential architecture.",
+      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuA0XeE0sAka_CBFwwD40sz98D0o4Jdn8AQnkCYIw892qrBOzOmpqMyOWzvRA09E-yaDm1rVG-rDXm5nBLMkD2OStlrujTcTCKIId0K9PoXVt3aoSIFsm1Eikdl3AfKTRtPxayirQUeYWuDNEOGX6Or9TbjXzdHHuLXb5GtvRtqDrBNzQhnoGQUWbW9Y3sGzhbd-MnjnEH8Jufo3Ar95cqVYOQ5CznTSsskHmRfrMoKLxDGta6zUpY6faLj6xask2_DBXrt8N8BFAAY",
+      division: "dtl"
+    },
+    {
+      title: "Sustainable Biophilia: Living Skin Walls",
+      slug: "sustainable-biophilia",
+      summary: "The evolution of vertical gardens from aesthetic features to functional air-purification systems for luxury developments.",
+      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBsA92pa18473lfcBjE7BoHkF_gf2wRUG8mqLy62apv9hEGoXv-XqrDJLz2PMyW9FphFEQzx6Rge5TAPP6v1986le2k9EnjCa0A_BmPZN9j2tQcaX0dj1WJB01l5R7Qrk3d-XnGjo6-cxHFfM2Cq8Ce12cKI6dwFed-6DxsFYpnDUZJSk0euYp3A8wbiI8ZGT8hO8rDCU415pfQWRzROWNHR03MEBfUd4t_KAh91VsGYW5gyWj04ycj9aT2gPGaEpnKuAe7fMxmrZw",
+      division: "dgs"
     }
   ];
 }
@@ -62,7 +91,7 @@ if (brands.length === 0) {
 <Layout title="Premium Technical Lighting & Greenscapes UAE" description="Delight Group LLC supplies premium architectural lighting and curated landscape plants across Dubai, Abu Dhabi, and the UAE.">
   
   <!-- Hero Section -->
-  <section class="relative h-screen flex items-center overflow-hidden bg-[#fcf9f8]">
+  <section class="relative min-h-[100dvh] flex items-center overflow-hidden bg-[#fcf9f8]">
     <div class="absolute inset-0 z-0">
       <img 
         alt="Modern villa at dusk with warm exterior lighting and lush landscaping" 
@@ -72,8 +101,7 @@ if (brands.length === 0) {
       <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
     </div>
     <div class="relative z-10 px-6 sm:px-16 max-w-[1280px] mx-auto w-full">
-      <div class="max-w-3xl text-left">
-        <span class="inline-block font-sans text-sm text-[#ffddb4] uppercase tracking-[0.3em] mb-6 drop-shadow-sm">DTL & DGS Synergy</span>
+      <div class="max-w-3xl text-left animate-on-scroll">
         <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl text-white mb-8 leading-[1.1] tracking-tight drop-shadow-lg">Luminous Nature: Harmonizing Light & Life.</h1>
         <p class="font-sans text-lg text-white/95 mb-10 max-w-xl leading-relaxed drop-shadow-md">
           Where technical lighting precision meets organic landscape vitality. We engineer atmospheres that synchronize human circadian rhythms with the vibrant soul of the natural world.
@@ -112,7 +140,7 @@ if (brands.length === 0) {
   <section id="divisions" class="w-full">
     <!-- DTL Division Row (Text Left / Image Right) -->
     <div class="flex flex-col lg:flex-row min-h-[600px] bg-[#1a3c34]">
-      <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#83a69c] text-left">
+      <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#83a69c] text-left animate-on-scroll">
         <div class="max-w-xl mx-auto lg:ml-auto lg:mr-12">
           <span class="text-xs font-black text-[#aacec3] uppercase tracking-[0.3em] mb-4 block">Architectural Precision</span>
           <h2 class="font-serif text-4xl sm:text-5xl text-white mb-6 leading-tight tracking-tight">Technical Lighting</h2>
@@ -138,7 +166,7 @@ if (brands.length === 0) {
 
     <!-- DGS Division Row (Image Left / Text Right) -->
     <div class="flex flex-col lg:flex-row-reverse min-h-[600px] bg-[#fcf9f8]">
-      <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#1c1b1b] text-left">
+      <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#1c1b1b] text-left animate-on-scroll">
         <div class="max-w-xl mx-auto lg:mr-auto lg:ml-12">
           <span class="text-xs font-black text-[#805612] uppercase tracking-[0.3em] mb-4 block">Organic Serenity</span>
           <h2 class="font-serif text-4xl sm:text-5xl text-[#01261f] mb-6 leading-tight tracking-tight">Greenscapes</h2>
@@ -165,7 +193,7 @@ if (brands.length === 0) {
 
   <!-- Sectors We Serve Section -->
   <section class="py-24 bg-[#f6f3f2] border-y border-slate-200/40">
-    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto">
+    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto animate-on-scroll">
       <div class="flex flex-col items-center text-center mb-16">
         <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-2">Expertise</span>
         <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight">Sectors We Serve</h2>
@@ -258,7 +286,7 @@ if (brands.length === 0) {
 
   <!-- Featured Projects Section -->
   <section class="py-24 bg-[#fcf9f8]">
-    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto">
+    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto animate-on-scroll">
       <div class="flex flex-col items-center text-center mb-16">
         <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-2">Showcase</span>
         <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight">Featured Projects</h2>
@@ -271,13 +299,13 @@ if (brands.length === 0) {
           <div class="group cursor-pointer text-left">
             <div class="aspect-square overflow-hidden mb-6 rounded-lg">
               <img 
-                alt={proj.name} 
+                alt={proj.title} 
                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                src={proj.image_url}
+                src={proj.featured_image || "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80"}
               />
             </div>
-            <h4 class="font-serif text-md font-semibold text-[#01261f] mb-2 group-hover:text-[#805612] transition-colors">{proj.name}</h4>
-            <a class="inline-flex items-center space-x-2 text-[#805612] text-[10px] font-black uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href="/portfolio">
+            <h4 class="font-serif text-md font-semibold text-[#01261f] mb-2 group-hover:text-[#805612] transition-colors line-clamp-2">{proj.title}</h4>
+            <a class="inline-flex items-center space-x-2 text-[#805612] text-[10px] font-black uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href={`/portfolio?division=${proj.division || 'dtl'}`}>
               <span>View Project</span>
               <ArrowRight class="w-3.5 h-3.5" />
             </a>
@@ -289,7 +317,7 @@ if (brands.length === 0) {
 
   <!-- News & Articles Section -->
   <section class="py-24 bg-[#f6f3f2] border-t border-slate-200/40">
-    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto">
+    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto animate-on-scroll">
       <div class="text-center mb-16">
         <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-4 block">Insights</span>
         <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight mb-4">News & Articles</h2>
@@ -297,41 +325,28 @@ if (brands.length === 0) {
       </div>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-        <!-- Article 1 -->
-        <a href="/news" class="group cursor-pointer text-left">
-          <div class="aspect-[16/9] overflow-hidden mb-6 border border-[#01261f]/10 rounded-lg">
-            <img 
-              alt="Abstract light patterns" 
-              class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0XeE0sAka_CBFwwD40sz98D0o4Jdn8AQnkCYIw892qrBOzOmpqMyOWzvRA09E-yaDm1rVG-rDXm5nBLMkD2OStlrujTcTCKIId0K9PoXVt3aoSIFsm1Eikdl3AfKTRtPxayirQUeYWuDNEOGX6Or9TbjXzdHHuLXb5GtvRtqDrBNzQhnoGQUWbW9Y3sGzhbd-MnjnEH8Jufo3Ar95cqVYOQ5CznTSsskHmRfrMoKLxDGta6zUpY6faLj6xask2_DBXrt8N8BFAAY"
-            />
-          </div>
-          <span class="text-[10px] font-black text-[#805612] uppercase tracking-[0.2em] block mb-3">DTL Insight</span>
-          <h4 class="font-serif text-lg font-semibold text-[#01261f] mb-4 group-hover:text-[#805612] transition-colors">The Psychology of Light: Circadian Harmony</h4>
-          <p class="text-[#414846] mb-6 text-xs font-semibold leading-relaxed line-clamp-2">How tuned-spectrum lighting influences mood, productivity, and the biological clock in modern residential architecture.</p>
-          <div class="inline-flex items-center space-x-2 text-[#01261f] text-[10px] font-black uppercase tracking-widest border-b border-[#01261f]/20 pb-1 group-hover:border-[#805612] transition-all">
-            <span>Read More</span>
-            <ArrowRight class="w-3.5 h-3.5" />
-          </div>
-        </a>
-        
-        <!-- Article 2 -->
-        <a href="/news" class="group cursor-pointer text-left">
-          <div class="aspect-[16/9] overflow-hidden mb-6 border border-[#01261f]/10 rounded-lg">
-            <img 
-              alt="Green architecture concept" 
-              class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsA92pa18473lfcBjE7BoHkF_gf2wRUG8mqLy62apv9hEGoXv-XqrDJLz2PMyW9FphFEQzx6Rge5TAPP6v1986le2k9EnjCa0A_BmPZN9j2tQcaX0dj1WJB01l5R7Qrk3d-XnGjo6-cxHFfM2Cq8Ce12cKI6dwFed-6DxsFYpnDUZJSk0euYp3A8wbiI8ZGT8hO8rDCU415pfQWRzROWNHR03MEBfUd4t_KAh91VsGYW5gyWj04ycj9aT2gPGaEpnKuAe7fMxmrZw"
-            />
-          </div>
-          <span class="text-[10px] font-black text-[#805612] uppercase tracking-[0.2em] block mb-3">DGS Insight</span>
-          <h4 class="font-serif text-lg font-semibold text-[#01261f] mb-4 group-hover:text-[#805612] transition-colors">Sustainable Biophilia: Living Skin Walls</h4>
-          <p class="text-[#414846] mb-6 text-xs font-semibold leading-relaxed line-clamp-2">The evolution of vertical gardens from aesthetic features to functional air-purification systems for luxury developments.</p>
-          <div class="inline-flex items-center space-x-2 text-[#01261f] text-[10px] font-black uppercase tracking-widest border-b border-[#01261f]/20 pb-1 group-hover:border-[#805612] transition-all">
-            <span>Read More</span>
-            <ArrowRight class="w-3.5 h-3.5" />
-          </div>
-        </a>
+        {articles.map((article) => (
+          <a href={`/news/${article.slug}`} class="group cursor-pointer text-left">
+            <div class="aspect-[16/9] overflow-hidden mb-6 border border-[#01261f]/10 rounded-lg bg-white">
+              {article.featured_image ? (
+                <img 
+                  alt={article.title} 
+                  class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
+                  src={article.featured_image}
+                />
+              ) : (
+                <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">News</div>
+              )}
+            </div>
+            <span class="text-[10px] font-black text-[#805612] uppercase tracking-[0.2em] block mb-3">{article.division === 'dgs' ? 'DGS Insight' : 'DTL Insight'}</span>
+            <h4 class="font-serif text-lg font-semibold text-[#01261f] mb-4 group-hover:text-[#805612] transition-colors">{article.title}</h4>
+            <p class="text-[#414846] mb-6 text-xs font-semibold leading-relaxed line-clamp-2">{article.summary}</p>
+            <div class="inline-flex items-center space-x-2 text-[#01261f] text-[10px] font-black uppercase tracking-widest border-b border-[#01261f]/20 pb-1 group-hover:border-[#805612] transition-all">
+              <span>Read More</span>
+              <ArrowRight class="w-3.5 h-3.5" />
+            </div>
+          </a>
+        ))}
       </div>
     </div>
   </section>
@@ -364,7 +379,7 @@ if (brands.length === 0) {
   </section>
 
   <!-- CTA Section -->
-  <section class="py-24 bg-[#ffddb4]">
+  <section class="py-24 bg-[#ffddb4] animate-on-scroll">
     <div class="px-6 sm:px-16 max-w-[1280px] mx-auto text-center space-y-8">
       <h2 class="font-serif text-4xl sm:text-5xl text-[#291800] leading-tight tracking-tight">Ready to harmonize your space?</h2>
       <p class="font-sans text-md sm:text-lg text-[#633f00] max-w-2xl mx-auto mb-12">
@@ -386,5 +401,24 @@ if (brands.length === 0) {
       </div>
     </div>
   </section>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('opacity-100', 'translate-y-0');
+            entry.target.classList.remove('opacity-0', 'translate-y-8');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
+
+      document.querySelectorAll('.animate-on-scroll').forEach((el) => {
+        el.classList.add('opacity-0', 'translate-y-8', 'transition-all', 'duration-700', 'ease-out');
+        observer.observe(el);
+      });
+    });
+  </script>
 
 </Layout>
