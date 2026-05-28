@@ -51,7 +51,7 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
   log.timestamps.push(now);
 
   const { userId, sessionClaims } = auth();
-  
+
   // Initialize default locals
   context.locals.user = null;
   context.locals.roles = [];
@@ -96,7 +96,7 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
         console.log(`Synced new Clerk authenticated user: ${name} (${userId})`);
 
         // Assign the default customer 'user' role, promoting admin emails automatically
-        const isAdminEmail = email === 'sales@delighgroupllc.com' || email === 'sales@delightgroupllc.com';
+        const isAdminEmail = email === 'sales@delightgroupllc.com' || email === 'sales@delightgroupllc.com';
         const roleNameToAssign = isAdminEmail ? 'admin' : 'user';
         const roleRes = await query("SELECT id FROM roles WHERE name = $1", [roleNameToAssign]);
         if (roleRes.rows[0]) {
@@ -119,7 +119,7 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
           const clerkUser = await clerk.users.getUser(userId);
           const email = clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress || '';
           const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || email.split('@')[0] || 'New User';
-          
+
           if (email || name) {
             const updateRes = await query(
               `UPDATE users 
