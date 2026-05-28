@@ -6,6 +6,7 @@ import {
   Menu, X, ChevronLeft, LogOut, ExternalLink, Activity, Handshake, Image, Settings2
 } from '@lucide/astro';
 import ResourcePicker from '../components/ui/ResourcePicker.astro';
+import SpeedInsights from '@vercel/speed-insights/astro';
 
 
 interface Props {
@@ -90,6 +91,17 @@ const navItems = navGroups.flatMap(g => g.items);
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <!-- NProgress for page loading -->
     <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css" />
+
+    <!-- Vercel Analytics Integration -->
+    <script>
+      import { inject } from '@vercel/analytics';
+
+      // Initialize privacy-friendly client telemetry
+      inject();
+    </script>
+
+    <!-- Vercel Speed Insights Component -->
+    <SpeedInsights />
     <style is:global>
       :root {
         --font-sans: 'Inter', sans-serif;
