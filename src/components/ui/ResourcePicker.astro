@@ -131,7 +131,7 @@ import { Search, Image, X, Globe } from '@lucide/astro';
         data-url="${img.image_url}"
       >
         <div class="h-28 bg-slate-950 relative overflow-hidden flex items-center justify-center">
-          <img src="${img.image_url}" alt="${img.alt_text}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='/noimage.jpg'" />
+          <img src="${img.image_url}" alt="${img.alt_text}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null; this.src='/noimage.jpg'" />
           <span class="absolute top-1 left-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-600/90 text-white">
             ${img.division.toUpperCase()}
           </span>

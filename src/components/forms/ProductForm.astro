@@ -132,9 +132,9 @@ const specs = product?.specifications ? (typeof product.specifications === 'stri
       <div class="w-12 h-12 rounded-lg bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
         <img 
           id="product-image-preview" 
-          src={product?.image_url || 'https://via.placeholder.com/150?text=No+Image'} 
+          src={product?.image_url || '/noimage.jpg'} 
           class="max-h-full max-w-full object-contain" 
-          onerror="this.src='https://via.placeholder.com/150?text=No+Image'" 
+          onerror="this.onerror=null; this.src='/noimage.jpg'" 
         />
       </div>
       <div class="text-[10px] text-slate-500" id="product-image-size-info">

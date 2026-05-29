@@ -104,6 +104,11 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
           name = email ? email.split('@')[0] : 'New User';
         }
 
+        // Handle unique constraint on email if old seed/user data exists
+        if (email) {
+          await query('DELETE FROM users WHERE email = $1', [email]);
+        }
+
         // Synchronize and insert user
         const insertRes = await query(
           'INSERT INTO users (id, email, name) VALUES ($1, $2, $3) RETURNING *',

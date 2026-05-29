@@ -39,7 +39,7 @@ const isEdit = !!category;
     <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Category Image URL</label>
     <input type="text" name="image_url" id="category-image-url" value={category?.image_url || ''} placeholder="https://images.unsplash.com/photo-..." class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
     <div class="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 flex items-center justify-center h-24 overflow-hidden shadow-inner">
-      <img id="category-image-preview" src={category?.image_url || '/noimage.jpg'} class="h-full object-contain" alt="Category Preview" onerror="this.src='/noimage.jpg'" />
+      <img id="category-image-preview" src={category?.image_url || '/noimage.jpg'} class="h-full object-contain" alt="Category Preview" onerror="this.onerror=null; this.src='/noimage.jpg'" />
     </div>
   </div>
 

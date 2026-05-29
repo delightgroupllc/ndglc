@@ -1,0 +1,20 @@
+[
+  {
+    "name": "HP-200 Stainless Steel Ball Valve",
+    "sku": "SKU-DTL-VALVE-002",
+    "division_slug": "dtl",
+    "category_slug": "valves-actuators",
+    "description": "Premium 316 stainless steel high-pressure flow valve.",
+    "status": "active",
+    "featured": true
+  },
+  {
+    "name": "Fiddle Leaf Fig Premium Plant",
+    "sku": "SKU-DGS-PLANT-080",
+    "division_slug": "dgs",
+    "category_slug": "indoor-plants",
+    "description": "High-fidelity indoor decorative office plant.",
+    "status": "active",
+    "featured": false
+  }
+]

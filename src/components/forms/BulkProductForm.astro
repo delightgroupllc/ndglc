@@ -1,89 +1,164 @@
 ---
-const jsonFormatExample = `[
-  {
-    "name": "HP-100 High-Pressure Valve",
-    "sku": "SKU-DTL-VALVE-001",
-    "slug": "hp100-ball-valve",
-    "division_slug": "dtl",
-    "category_slug": "valves-actuators",
-    "description": "Optional desc...",
-    "status": "active",
-    "featured": false,
-    "specifications": [
-      { "key": "Pressure", "value": "6,000 PSI" }
-    ]
-  }
-]`;
+interface Props {
+  categories: any[];
+  divisions: any[];
+  products?: any[];
+}
+const { categories = [], divisions = [], products = [] } = Astro.props;
+const existingSkus = products.map(p => p.sku.toLowerCase());
 ---
-<div id="bulk-modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all">
+<div id="bulk-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-4" data-categories={JSON.stringify(categories)} data-divisions={JSON.stringify(divisions)} data-products={JSON.stringify(existingSkus)}>
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col transform transition-all">
+    
+    <!-- Header -->
     <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
       <div>
         <h3 class="text-lg font-bold text-slate-900">Mass Product Adder</h3>
-        <p class="text-xs text-slate-500 mt-1">Copy and paste rows directly from Excel or Google Sheets.</p>
+        <p class="text-xs text-slate-500 mt-1">Import, analyze, group-edit, and bulk-save items from Excel, CSV, or JSON.</p>
       </div>
-      <button id="close-bulk-modal" class="text-slate-400 hover:text-slate-600 transition-colors">
+      <button id="close-bulk-modal" class="text-slate-400 hover:text-slate-650 transition-colors">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
     </div>
     
-    <div class="p-6 flex-grow overflow-y-auto">
-      <form id="bulk-product-form" class="space-y-6">
+    <div class="p-6 flex-grow overflow-y-auto space-y-6">
+      
+      <!-- STEP 1: Upload (Drag & Drop Zone) -->
+      <div id="step-upload" class="space-y-4">
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Drag and Drop Product Sheet</label>
+        <div 
+          id="bulk-drop-zone" 
+          class="flex flex-col items-center justify-center w-full h-44 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100/70 transition-all"
+        >
+          <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+            <svg class="w-10 h-10 mb-3 text-cyan-600 animate-pulse-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <p class="mb-1 text-sm text-slate-600 font-bold">Drag & Drop your product file here</p>
+            <p class="text-xs text-slate-450 font-semibold mb-2">or click to browse local computer</p>
+            <span class="rounded-full bg-slate-200/80 px-3 py-1 text-[10px] font-black text-slate-600 uppercase tracking-wider">
+              Accepts CSV, XLSX, XLS, JSON
+            </span>
+          </div>
+          <input id="bulk-file-upload" type="file" class="hidden" accept=".csv, .xlsx, .xls, .json" />
+        </div>
+        <div class="flex justify-end">
+          <button type="button" id="download-template-btn" class="inline-flex items-center gap-1.5 text-xs text-cyan-600 hover:text-cyan-700 font-bold transition-colors cursor-pointer bg-transparent border-0 p-0">
+            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Download CSV Template
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: File Selected & Analyze Trigger -->
+      <div id="step-analyze" class="hidden space-y-4 bg-slate-50 border border-slate-200 rounded-xl p-6">
+        <div class="flex items-center gap-3">
+          <div class="p-3 bg-cyan-50 border border-cyan-200 rounded-xl text-cyan-650 shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h4 class="text-sm font-bold text-slate-800 truncate" id="analyze-file-name">file_name.xlsx</h4>
+            <p class="text-xs text-slate-500 font-semibold mt-0.5" id="analyze-file-size">0.0 KB</p>
+          </div>
+        </div>
         
-        <div class="space-y-4">
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Upload Bulk File</label>
-          <div class="flex items-center justify-center w-full">
-            <label for="bulk-file-upload" class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
-              <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg class="w-8 h-8 mb-3 text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                </svg>
-                <p class="mb-2 text-sm text-slate-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
-                <p class="text-xs text-slate-500">CSV, Excel (XLSX/XLS), or JSON files accepted.</p>
-              </div>
-              <input id="bulk-file-upload" type="file" class="hidden" accept=".csv, .xlsx, .xls, .json" />
-            </label>
-          </div>
-          <div id="bulk-file-name" class="hidden p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-indigo-700 font-semibold flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span id="bulk-file-name-text"></span>
-          </div>
+        <div class="pt-4 border-t border-slate-200 flex gap-3">
+          <button type="button" id="reset-upload-btn" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-all shadow-3xs cursor-pointer">
+            Select Different File
+          </button>
+          <button type="button" id="start-analyze-btn" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            Analyze File & Map Columns
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2.5: Column Mapping UI -->
+      <div id="step-mapping" class="hidden space-y-4 bg-slate-50 border border-slate-200 rounded-xl p-6">
+        <div>
+          <h4 class="text-sm font-bold text-slate-900">Map File Columns</h4>
+          <p class="text-xs text-slate-500 mt-1">Review how columns from your file match the required database fields. You can also specify default values.</p>
+        </div>
+        <div class="border-t border-slate-200 pt-4 space-y-3" id="mapping-fields-container">
+          <!-- Dynamically populated rows -->
+        </div>
+        <div class="pt-4 border-t border-slate-200 flex gap-3">
+          <button type="button" id="mapping-cancel-btn" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-all shadow-3xs cursor-pointer">
+            Back
+          </button>
+          <button type="button" id="mapping-generate-btn" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+            Generate Review Table
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Progress State (Used for both analysis and import) -->
+      <div id="step-progress" class="hidden space-y-4 bg-slate-50 border border-slate-200 rounded-xl p-8 text-center">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-650 mb-2"></div>
+        <h4 id="progress-title" class="text-sm font-bold text-slate-800">Processing file rows...</h4>
+        
+        <div class="w-full bg-slate-200 rounded-full h-3 max-w-md mx-auto overflow-hidden">
+          <div id="progress-bar-fill" class="bg-cyan-600 h-3 rounded-full transition-all duration-150" style="width: 0%;"></div>
+        </div>
+        <p id="progress-status" class="text-xs text-slate-500 font-bold">0% Completed</p>
+      </div>
+
+      <!-- STEP 4: Review / Group Edit Table -->
+      <div id="step-review" class="hidden space-y-4">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-black text-slate-700 uppercase tracking-wider">Group Edit Mapped Products (<span id="review-count">0</span> rows)</h4>
+          <span class="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-250 px-2 py-0.5 rounded font-black uppercase">Columns Auto-Mapped</span>
         </div>
 
-        <div id="bulk-guidelines-flat" class="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800 space-y-2">
-          <p class="font-bold">Intelligent Column Mapping enabled!</p>
-          <p class="text-xs">We automatically match columns like "Product Name", "Title", "SKU", "Item Code", "Division", etc.</p>
+        <!-- Bulk Actions Bar -->
+        <div class="flex flex-wrap items-center gap-3 bg-slate-100/70 border border-slate-205 rounded-xl p-3 text-xs">
+          <span class="font-bold text-slate-700 uppercase text-[10px]">Bulk Actions:</span>
+          <select id="bulk-division-select" class="rounded border border-slate-250 bg-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-bold text-slate-700 text-xs">
+            <option value="">-- Apply Division --</option>
+          </select>
+          <select id="bulk-category-select" class="rounded border border-slate-250 bg-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-650 font-semibold text-xs">
+            <option value="">-- Apply Category --</option>
+          </select>
+          <button type="button" id="bulk-apply-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3.5 py-1 rounded font-bold transition-all shadow-3xs cursor-pointer text-xs">
+            Apply to Checked
+          </button>
         </div>
-
-        <div id="bulk-preview-container" class="hidden">
-          <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Parsed Preview (<span id="parsed-count">0</span> rows)</h4>
-          <div class="overflow-x-auto border border-slate-200 rounded-lg max-h-48">
-            <table class="w-full text-left border-collapse text-xs">
-              <thead class="bg-slate-50 sticky top-0">
-                <tr>
-                  <th class="p-2 border-b font-bold text-slate-600">Name</th>
-                  <th class="p-2 border-b font-bold text-slate-600">SKU</th>
-                  <th class="p-2 border-b font-bold text-slate-600">Slug</th>
-                  <th class="p-2 border-b font-bold text-slate-600">Div</th>
-                  <th class="p-2 border-b font-bold text-slate-600">Cat</th>
-                </tr>
-              </thead>
-              <tbody id="bulk-preview-body"></tbody>
-            </table>
-          </div>
+        
+        <div class="overflow-x-auto border border-slate-200 rounded-xl max-h-96 shadow-inner bg-slate-50">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-white border-b border-slate-200 sticky top-0 z-10">
+              <tr class="text-slate-500 uppercase text-[10px] tracking-wider">
+                <th class="p-3 w-8 text-center">
+                  <input type="checkbox" id="review-select-all" class="rounded border-slate-350 text-cyan-650 focus:ring-cyan-500 cursor-pointer" checked title="Toggle all" />
+                </th>
+                <th class="p-3 font-black">Product Name *</th>
+                <th class="p-3 font-black">SKU Code *</th>
+                <th class="p-3 font-black text-center">Import Action</th>
+                <th class="p-3 font-black">Slug Path</th>
+                <th class="p-3 font-black">Division *</th>
+                <th class="p-3 font-black">Category *</th>
+                <th class="p-3 font-black">Description</th>
+              </tr>
+            </thead>
+            <tbody id="review-table-body" class="divide-y divide-slate-200 bg-white">
+              <!-- JS will render input rows dynamically -->
+            </tbody>
+          </table>
         </div>
 
         <div id="bulk-form-msg" class="hidden p-4 rounded-lg text-sm font-semibold"></div>
 
-        <div class="pt-2 flex gap-4">
-          <button type="button" id="cancel-bulk-btn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-sm font-bold transition-colors">
+        <div class="pt-4 border-t border-slate-200 flex gap-4">
+          <button type="button" id="review-cancel-btn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-sm font-bold transition-colors cursor-pointer">
             Cancel
           </button>
-          <button type="submit" id="bulk-submit-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-sm hidden">
-            Confirm & Import
+          <button type="button" id="review-submit-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5">
+            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2v-3M9 9L20 9M20 9L16 5M20 9L16 13"></path></svg>
+            Confirm & Save to Catalog
           </button>
         </div>
-      </form>
+      </div>
+
     </div>
   </div>
 </div>
@@ -91,176 +166,698 @@ const jsonFormatExample = `[
 <script>
   import * as XLSX from 'xlsx';
 
+  let rawDataArray: any[] = [];
+  let fileHeaders: string[] = [];
   let parsedProducts: any[] = [];
+  let currentFile: File | null = null;
 
-  const intelligentMapper = (data: any[]) => {
-    return data.map((row) => {
-      const mapped: any = {};
-      const keys = Object.keys(row);
-      
-      const findValue = (aliases: string[], defaultValue = '') => {
-        for (const key of keys) {
-          const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (aliases.some(alias => normalizedKey.includes(alias))) {
-            return row[key] || defaultValue;
-          }
-        }
-        return defaultValue;
-      };
+  const getDbData = () => {
+    const modal = document.getElementById('bulk-modal-backdrop');
+    const categories = JSON.parse(modal?.getAttribute('data-categories') || '[]');
+    const divisions = JSON.parse(modal?.getAttribute('data-divisions') || '[]');
+    const products = JSON.parse(modal?.getAttribute('data-products') || '[]');
+    return { categories, divisions, products };
+  };
 
-      mapped.name = findValue(['name', 'title', 'product', 'itemname'], '');
-      mapped.sku = findValue(['sku', 'code', 'itemcode', 'id', 'productid'], '');
-      mapped.slug = findValue(['slug', 'url', 'handle'], '');
-      mapped.division_slug = findValue(['division', 'div', 'brand'], 'dtl').toLowerCase();
-      mapped.category_slug = findValue(['category', 'cat', 'type'], '');
-      mapped.description = findValue(['description', 'desc', 'details', 'summary'], '');
-      mapped.status = findValue(['status', 'state', 'active'], 'active').toLowerCase();
-      
-      let featuredVal = findValue(['featured', 'star', 'highlight'], 'false');
-      mapped.featured = String(featuredVal).toLowerCase() === 'true' || String(featuredVal) === '1';
+  const targetFields = [
+    { key: 'name', label: 'Product Name *', aliases: ['name', 'title', 'product', 'itemname'], required: true },
+    { key: 'sku', label: 'SKU Code *', aliases: ['sku', 'code', 'itemcode', 'id', 'productid'], required: true },
+    { key: 'slug', label: 'Slug Path', aliases: ['slug', 'url', 'handle'], required: false },
+    { key: 'division_slug', label: 'Division *', aliases: ['division', 'div', 'brand'], required: true, isSelect: 'division' },
+    { key: 'category_slug', label: 'Category *', aliases: ['category', 'cat', 'type'], required: true, isSelect: 'category' },
+    { key: 'description', label: 'Description', aliases: ['description', 'desc', 'details', 'summary'], required: false },
+    { key: 'image_url', label: 'Image URL', aliases: ['image', 'img', 'url', 'photo', 'picture'], required: false }
+  ];
 
-      if (!mapped.slug && mapped.name) {
-        mapped.slug = mapped.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  const findBestHeaderMatch = (headers: string[], aliases: string[]) => {
+    for (const header of headers) {
+      const normalized = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (aliases.some(alias => normalized.includes(alias))) {
+        return header;
       }
+    }
+    return '';
+  };
 
-      return mapped;
-    }).filter((p: any) => p.name && p.sku && p.slug);
+  const getColumnPreview = (colName: string) => {
+    if (!colName || colName === '__constant__') return '';
+    const samples = rawDataArray
+      .map(row => row[colName])
+      .filter(val => val !== undefined && val !== null && String(val).trim() !== '')
+      .slice(0, 3)
+      .map(val => `"${String(val).substring(0, 15)}"`);
+    if (samples.length === 0) return 'No data';
+    return `Preview: ${samples.join(', ')}`;
   };
 
   const setupBulkForm = () => {
     const modal = document.getElementById('bulk-modal-backdrop');
-    const form = document.getElementById('bulk-product-form') as HTMLFormElement;
-    const fileInput = document.getElementById('bulk-file-upload') as HTMLInputElement;
-    const fileNameDiv = document.getElementById('bulk-file-name');
-    const fileNameText = document.getElementById('bulk-file-name-text');
-    const previewContainer = document.getElementById('bulk-preview-container');
-    const previewBody = document.getElementById('bulk-preview-body');
-    const submitBtn = document.getElementById('bulk-submit-btn');
-    const msg = document.getElementById('bulk-form-msg');
+    const dropZone = document.getElementById('bulk-drop-zone');
+    const fileInput = document.getElementById('bulk-file-upload') as HTMLInputElement | null;
     
-    if (!modal || !form || !fileInput) return;
+    // Step Panels
+    const panelUpload = document.getElementById('step-upload');
+    const panelAnalyze = document.getElementById('step-analyze');
+    const panelMapping = document.getElementById('step-mapping');
+    const panelProgress = document.getElementById('step-progress');
+    const panelReview = document.getElementById('step-review');
+
+    // UI Nodes
+    const analyzeFileName = document.getElementById('analyze-file-name');
+    const analyzeFileSize = document.getElementById('analyze-file-size');
+    const startAnalyzeBtn = document.getElementById('start-analyze-btn');
+    const resetUploadBtn = document.getElementById('reset-upload-btn');
+    const progressBarFill = document.getElementById('progress-bar-fill');
+    const progressTitle = document.getElementById('progress-title');
+    const progressStatus = document.getElementById('progress-status');
+    
+    const mappingFieldsContainer = document.getElementById('mapping-fields-container');
+    const mappingCancelBtn = document.getElementById('mapping-cancel-btn');
+    const mappingGenerateBtn = document.getElementById('mapping-generate-btn');
+
+    const reviewTableBody = document.getElementById('review-table-body');
+    const reviewCount = document.getElementById('review-count');
+    const reviewSelectAll = document.getElementById('review-select-all') as HTMLInputElement | null;
+    const reviewSubmitBtn = document.getElementById('review-submit-btn');
+    const msgBox = document.getElementById('bulk-form-msg');
+
+    // Bulk action elements
+    const bulkDivSelect = document.getElementById('bulk-division-select') as HTMLSelectElement | null;
+    const bulkCatSelect = document.getElementById('bulk-category-select') as HTMLSelectElement | null;
+    const bulkApplyBtn = document.getElementById('bulk-apply-btn');
+
+    if (!modal || !dropZone || !fileInput) return;
+
+    // Populate bulk action selector dropdowns on load
+    const { categories, divisions } = getDbData();
+    if (bulkDivSelect && bulkDivSelect.options.length <= 1) {
+      divisions.forEach((d: any) => {
+        const opt = document.createElement('option');
+        opt.value = d.slug;
+        opt.textContent = d.name;
+        bulkDivSelect.appendChild(opt);
+      });
+    }
+    if (bulkCatSelect && bulkCatSelect.options.length <= 1) {
+      categories.forEach((c: any) => {
+        const opt = document.createElement('option');
+        opt.value = c.slug;
+        opt.textContent = c.name;
+        bulkCatSelect.appendChild(opt);
+      });
+    }
 
     const closeModal = () => {
       modal.classList.add('hidden');
       modal.classList.remove('flex');
-      form.reset();
+      fileInput.value = '';
+      currentFile = null;
+      rawDataArray = [];
+      fileHeaders = [];
       parsedProducts = [];
-      if (fileNameDiv) fileNameDiv.classList.add('hidden');
-      if (previewContainer) previewContainer.classList.add('hidden');
-      if (submitBtn) submitBtn.classList.add('hidden');
-      if (msg) msg.classList.add('hidden');
+      
+      // Reset view states
+      panelUpload?.classList.remove('hidden');
+      panelAnalyze?.classList.add('hidden');
+      panelMapping?.classList.add('hidden');
+      panelProgress?.classList.add('hidden');
+      panelReview?.classList.add('hidden');
+      if (msgBox) msgBox.classList.add('hidden');
     };
 
     document.getElementById('close-bulk-modal')?.addEventListener('click', closeModal);
-    document.getElementById('cancel-bulk-btn')?.addEventListener('click', closeModal);
-    
+    document.getElementById('review-cancel-btn')?.addEventListener('click', closeModal);
+    resetUploadBtn?.addEventListener('click', closeModal);
+    mappingCancelBtn?.addEventListener('click', () => {
+      panelMapping?.classList.add('hidden');
+      panelAnalyze?.classList.remove('hidden');
+    });
+
     document.addEventListener('open-bulk-modal', () => {
       modal.classList.remove('hidden');
       modal.classList.add('flex');
     });
 
-    const processFile = async (file: File) => {
-      if (fileNameDiv && fileNameText) {
-        fileNameDiv.classList.remove('hidden');
-        fileNameText.textContent = file.name;
-      }
+    // ── DOWNLOAD CSV TEMPLATE ───────────────────────────────────────
+    const downloadTemplateBtn = document.getElementById('download-template-btn');
+    downloadTemplateBtn?.addEventListener('click', () => {
+      const headers = ['Product Name', 'SKU Code', 'Slug Path', 'Division', 'Category', 'Description', 'Image URL'];
+      const sampleRows = [
+        headers.join(','),
+        'CPX-900 Hydraulic Submersible Pump,SKU-DTL-PUMP-900,cpx-900-pump,delighttechnicallighting,outdoor-lighting,Submersible hydraulic fluid transfer pump.,https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80',
+        'Modern Fiberstone Planter Pot,SKU-DGS-POT-003,modern-fiberstone-pot,delightgreenscapes,planters-pots,Lightweight architectural fiberglass plant container.,https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80'
+      ];
+      const blob = new Blob([sampleRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "bulk_product_import_template.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // ── DRAG & DROP EVENTS ──────────────────────────────────────────
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-cyan-500', 'bg-cyan-50/50');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-cyan-500', 'bg-cyan-50/50');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const file = dt?.files[0];
+      if (file) handleFileSelected(file);
+    });
+
+    dropZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files?.[0];
+      if (file) handleFileSelected(file);
+    });
+
+    const handleFileSelected = (file: File) => {
+      currentFile = file;
+      panelUpload?.classList.add('hidden');
+      panelAnalyze?.classList.remove('hidden');
+
+      if (analyzeFileName) analyzeFileName.textContent = file.name;
+      if (analyzeFileSize) analyzeFileSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+    };
+
+    // ── ANALYZE STEP (Extract headers and setup Mapping UI) ──────────
+    startAnalyzeBtn?.addEventListener('click', async () => {
+      if (!currentFile) return;
+      
+      panelAnalyze?.classList.add('hidden');
+      panelProgress?.classList.remove('hidden');
+      if (progressTitle) progressTitle.textContent = 'Analyzing file structure...';
+      if (progressBarFill) progressBarFill.style.width = '20%';
+      if (progressStatus) progressStatus.textContent = 'Reading data...';
 
       try {
-        if (file.name.endsWith('.json')) {
-          const text = await file.text();
+        if (currentFile.name.endsWith('.json')) {
+          const text = await currentFile.text();
           const parsed = JSON.parse(text);
-          const list = Array.isArray(parsed) ? parsed : [parsed];
-          parsedProducts = intelligentMapper(list);
+          rawDataArray = Array.isArray(parsed) ? parsed : [parsed];
         } else {
-          // Process Excel / CSV using XLSX
-          const arrayBuffer = await file.arrayBuffer();
+          const arrayBuffer = await currentFile.arrayBuffer();
           const workbook = XLSX.read(arrayBuffer, { type: 'array' });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          const rawData = XLSX.utils.sheet_to_json(worksheet);
-          parsedProducts = intelligentMapper(rawData);
+          rawDataArray = XLSX.utils.sheet_to_json(worksheet);
         }
 
-        if (parsedProducts.length > 0) {
-          if (previewBody) {
-            previewBody.innerHTML = parsedProducts.slice(0, 50).map((p: any) => `
-              <tr class="border-b border-slate-100 last:border-0">
-                <td class="p-2 font-medium truncate max-w-[150px]" title="${p.name}">${p.name}</td>
-                <td class="p-2 text-slate-500">${p.sku}</td>
-                <td class="p-2 text-slate-500 truncate max-w-[100px]">${p.slug}</td>
-                <td class="p-2 text-slate-500">${p.division_slug}</td>
-                <td class="p-2 text-slate-500">${p.category_slug}</td>
-              </tr>
-            `).join('');
-            
-            if (parsedProducts.length > 50) {
-              previewBody.innerHTML += `
-                <tr>
-                  <td colspan="5" class="p-2 text-center text-xs text-slate-400 italic border-t border-slate-200">
-                    + ${parsedProducts.length - 50} more rows mapped successfully.
-                  </td>
-                </tr>`;
+        if (rawDataArray.length === 0) {
+          throw new Error('The file contains no records.');
+        }
+
+        // Collect all unique keys from all rows (to handle disjoint json / csv records)
+        const headerSet = new Set<string>();
+        rawDataArray.forEach(row => {
+          Object.keys(row).forEach(k => headerSet.add(k));
+        });
+        fileHeaders = Array.from(headerSet);
+
+        // Transition to Mapping Step
+        setTimeout(() => {
+          panelProgress?.classList.add('hidden');
+          panelMapping?.classList.remove('hidden');
+          renderMappingFields();
+        }, 500);
+
+      } catch (err: any) {
+        panelProgress?.classList.add('hidden');
+        panelAnalyze?.classList.remove('hidden');
+        alert(err.message || 'File analysis failed.');
+      }
+    });
+
+    // ── RENDER MAPPING ROWS WITH INLINE PREVIEWS ─────────────────────
+    const renderMappingFields = () => {
+      if (!mappingFieldsContainer) return;
+      
+      const { categories, divisions } = getDbData();
+
+      mappingFieldsContainer.innerHTML = targetFields.map(field => {
+        const bestMatch = findBestHeaderMatch(fileHeaders, field.aliases);
+        
+        // Options for the column dropdown selector
+        const headerOpts = fileHeaders.map(h => 
+          `<option value="${h}" ${h === bestMatch ? 'selected' : ''}>Column: "${h}"</option>`
+        ).join('');
+
+        // Division constant fallback options
+        const divOpts = divisions.map((d: any) => 
+          `<option value="${d.slug}">${d.name}</option>`
+        ).join('');
+
+        // Category constant fallback options
+        const catOpts = categories.map((c: any) => 
+          `<option value="${c.slug}">${c.name}</option>`
+        ).join('');
+
+        let fallbackInput = '';
+        if (field.isSelect === 'division') {
+          fallbackInput = `
+            <select class="mapping-fallback border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800 font-semibold bg-white ${bestMatch ? 'hidden' : ''}">
+              ${divOpts}
+            </select>
+          `;
+        } else if (field.isSelect === 'category') {
+          fallbackInput = `
+            <select class="mapping-fallback border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-800 font-semibold bg-white ${bestMatch ? 'hidden' : ''}">
+              <option value="">-- Select Default Category --</option>
+              ${catOpts}
+            </select>
+          `;
+        } else {
+          fallbackInput = `
+            <input type="text" class="mapping-fallback border border-slate-300 rounded px-2.5 py-1 text-xs placeholder-slate-400 bg-white ${bestMatch ? 'hidden' : ''}" placeholder="Enter default value..." />
+          `;
+        }
+
+        return `
+          <div class="grid grid-cols-1 sm:grid-cols-3 items-center gap-3 bg-white p-3 rounded-lg border border-slate-200" data-field="${field.key}">
+            <div class="text-xs font-bold text-slate-800">
+              ${field.label}
+            </div>
+            <div>
+              <select class="mapping-selector w-full border border-slate-300 rounded px-2.5 py-1 text-xs text-slate-700 bg-slate-50 font-semibold font-sans">
+                <option value="__constant__" ${!bestMatch ? 'selected' : ''}>-- Set Constant / Default --</option>
+                ${headerOpts}
+              </select>
+            </div>
+            <div class="flex flex-col">
+              ${fallbackInput}
+              <div class="mapping-preview text-[10px] text-slate-400 font-bold italic mt-1 pl-1">
+                ${getColumnPreview(bestMatch)}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Toggle constant input visibility and update preview when dropdown changes
+      document.querySelectorAll('.mapping-selector').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const val = (e.target as HTMLSelectElement).value;
+          const container = (e.target as HTMLElement).closest('[data-field]');
+          const fallback = container?.querySelector('.mapping-fallback') as HTMLElement | null;
+          const preview = container?.querySelector('.mapping-preview') as HTMLElement | null;
+          
+          if (fallback) {
+            if (val === '__constant__') {
+              fallback.classList.remove('hidden');
+              if (preview) preview.textContent = '';
+            } else {
+              fallback.classList.add('hidden');
+              if (preview) preview.textContent = getColumnPreview(val);
             }
           }
-          document.getElementById('parsed-count')!.textContent = parsedProducts.length.toString();
-          if (previewContainer) previewContainer.classList.remove('hidden');
-          if (submitBtn) submitBtn.classList.remove('hidden');
-        } else {
-          throw new Error('No valid products found. Ensure files have Name and SKU columns.');
-        }
-      } catch (e: any) {
-        console.error("File Parse Error", e);
-        if (previewContainer) previewContainer.classList.add('hidden');
-        if (submitBtn) submitBtn.classList.add('hidden');
-        if (msg) {
-          msg.classList.remove('hidden');
-          msg.className = 'p-4 rounded-lg text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200 block mt-4';
-          msg.textContent = `Parse Error: ${e.message}`;
-        }
-      }
+        });
+      });
     };
 
-    fileInput.addEventListener('change', (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) processFile(file);
+    // ── PROCESS DATA (Pre-Import Duplicate SKU Detection) ────────────
+    mappingGenerateBtn?.addEventListener('click', () => {
+      const { categories, divisions, products } = getDbData();
+      const mappings: Record<string, { col: string; fallback: string }> = {};
+
+      document.querySelectorAll('[data-field]').forEach(row => {
+        const fieldKey = row.getAttribute('data-field') || '';
+        const col = (row.querySelector('.mapping-selector') as HTMLSelectElement).value;
+        const fallbackEl = row.querySelector('.mapping-fallback') as HTMLSelectElement | HTMLInputElement;
+        const fallback = fallbackEl ? fallbackEl.value.trim() : '';
+        mappings[fieldKey] = { col, fallback };
+      });
+
+      // Parse records
+      parsedProducts = rawDataArray.map(row => {
+        const getFieldVal = (key: string) => {
+          const cfg = mappings[key];
+          if (!cfg) return '';
+          if (cfg.col === '__constant__') return cfg.fallback;
+          return row[cfg.col] !== undefined ? String(row[cfg.col]).trim() : cfg.fallback;
+        };
+
+        const name = getFieldVal('name');
+        const sku = getFieldVal('sku');
+        let slug = getFieldVal('slug');
+        if (!slug && name) {
+          slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        }
+
+        // Fuzzy match division value to a database division slug
+        let rawDiv = getFieldVal('division_slug').toLowerCase();
+        let matchedDiv = '';
+        const foundDiv = divisions.find((d: any) => 
+          d.slug.toLowerCase() === rawDiv || d.name.toLowerCase().includes(rawDiv) || rawDiv.includes(d.slug.toLowerCase())
+        );
+        if (foundDiv) matchedDiv = foundDiv.slug;
+
+        // Fuzzy match category value to a database category slug
+        let rawCat = getFieldVal('category_slug').toLowerCase();
+        let matchedCat = '';
+        const foundCat = categories.find((c: any) => 
+          c.slug.toLowerCase() === rawCat || c.name.toLowerCase().includes(rawCat) || rawCat.includes(c.slug.toLowerCase())
+        );
+        if (foundCat) matchedCat = foundCat.slug;
+
+        const isDuplicate = products.includes(sku.toLowerCase());
+
+        return {
+          name,
+          sku,
+          slug,
+          division_slug: matchedDiv || rawDiv, // fallback to raw so validation highlights it
+          category_slug: matchedCat || rawCat,
+          description: getFieldVal('description'),
+          image_url: getFieldVal('image_url'),
+          isDuplicate,
+          import_mode: isDuplicate ? 'update' : 'insert'
+        };
+      }).filter(p => p.name || p.sku);
+
+      // Render table & view transition
+      panelMapping?.classList.add('hidden');
+      panelReview?.classList.remove('hidden');
+      renderReviewTable();
     });
 
-    const newForm = form.cloneNode(true) as HTMLFormElement;
-    form.parentNode?.replaceChild(newForm, form);
+    // ── RENDER REVIEW / GROUP EDIT INTERFACE ─────────────────────────
+    const renderReviewTable = () => {
+      if (!reviewTableBody || !reviewCount) return;
+      
+      const { categories, divisions } = getDbData();
+      reviewCount.textContent = parsedProducts.length.toString();
 
-    newForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('bulk-submit-btn');
-      const msgBox = document.getElementById('bulk-form-msg');
-      if (!btn || !msgBox || parsedProducts.length === 0) return;
+      reviewTableBody.innerHTML = parsedProducts.map((p, idx) => {
+        const isDivValid = divisions.some((d: any) => d.slug === p.division_slug);
+        const isCatValid = categories.some((c: any) => c.slug === p.category_slug);
 
-      btn.setAttribute('disabled', 'true');
-      btn.textContent = 'Importing...';
-      msgBox.classList.add('hidden');
+        const divSelectOpts = divisions.map((d: any) => 
+          `<option value="${d.slug}" ${p.division_slug === d.slug ? 'selected' : ''}>${d.name}</option>`
+        ).join('');
 
-      try {
-        const res = await fetch('/api/products/bulk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(parsedProducts)
+        const catSelectOpts = categories.map((c: any) => 
+          `<option value="${c.slug}" ${p.category_slug === c.slug ? 'selected' : ''}>${c.name}</option>`
+        ).join('');
+
+        return `
+          <tr class="review-row text-xs" data-idx="${idx}">
+            <td class="p-3 text-center border-b border-slate-100">
+              <input type="checkbox" class="row-checkbox rounded border-slate-350 text-cyan-650 focus:ring-cyan-500 cursor-pointer" checked />
+            </td>
+            <td class="p-2.5 border-b border-slate-100">
+              <input type="text" class="row-name w-full rounded border border-slate-250 bg-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-800 font-semibold" value="${p.name || ''}" placeholder="Product name" />
+            </td>
+            <td class="p-2.5 border-b border-slate-100">
+              <input type="text" class="row-sku w-full rounded border border-slate-250 bg-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-550 font-mono" value="${p.sku || ''}" placeholder="SKU" />
+            </td>
+            <td class="p-2 border-b border-slate-100 text-center">
+              <select class="row-action rounded border ${p.isDuplicate ? 'border-amber-500 bg-amber-50 text-amber-800 font-bold' : 'border-slate-250 text-slate-650'} text-[10px] px-1.5 py-0.5 focus:outline-none">
+                <option value="insert" ${p.import_mode === 'insert' ? 'selected' : ''}>Insert (New)</option>
+                <option value="update" ${p.import_mode === 'update' ? 'selected' : ''}>Merge (Update)</option>
+                <option value="skip" ${p.import_mode === 'skip' ? 'selected' : ''}>Skip Row</option>
+              </select>
+              ${p.isDuplicate ? '<div class="text-[9px] text-amber-600 font-bold mt-0.5">Duplicate SKU</div>' : ''}
+            </td>
+            <td class="p-2.5 border-b border-slate-100">
+              <input type="text" class="row-slug w-full rounded border border-slate-250 bg-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-500 font-mono" value="${p.slug || ''}" placeholder="Slug" />
+            </td>
+            <td class="p-2.5 border-b border-slate-100">
+              <select class="row-division w-full rounded border ${isDivValid ? 'border-slate-250' : 'border-rose-500 bg-rose-50'} px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-bold text-slate-700">
+                <option value="">-- Select Division --</option>
+                ${divSelectOpts}
+              </select>
+            </td>
+            <td class="p-2.5 border-b border-slate-100">
+              <select class="row-category w-full rounded border ${isCatValid ? 'border-slate-250' : 'border-rose-500 bg-rose-50'} px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-650 font-semibold">
+                <option value="">-- Choose Category --</option>
+                ${catSelectOpts}
+              </select>
+            </td>
+            <td class="p-2.5 border-b border-slate-100">
+              <input type="text" class="row-desc w-full rounded border border-slate-250 bg-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500" value="${p.description || ''}" placeholder="Optional details..." />
+            </td>
+            <!-- Keep image URL in cell element state for quick reading -->
+            <input type="hidden" class="row-image" value="${p.image_url || ''}" />
+          </tr>
+        `;
+      }).join('');
+
+      // Add real-time change listener to remove red borders on manual selection
+      document.querySelectorAll('.row-division, .row-category').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+          const el = e.target as HTMLSelectElement;
+          if (el.value) {
+            el.classList.remove('border-rose-500', 'bg-rose-50');
+            el.classList.add('border-slate-250');
+          } else {
+            el.classList.add('border-rose-500', 'bg-rose-50');
+            el.classList.remove('border-slate-250');
+          }
         });
+      });
 
-        const result = await res.json();
-        
-        if (res.ok) {
-          msgBox.className = 'p-4 rounded-lg text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 block';
-          msgBox.textContent = `Successfully imported ${result.count} products!`;
-          setTimeout(() => window.location.reload(), 1000);
-        } else {
-          throw new Error(result.error || 'Failed to import products');
+      // Add live change listener to SKU fields to clear duplicate warning dynamically if resolved
+      document.querySelectorAll('.row-sku').forEach(skuInput => {
+        skuInput.addEventListener('input', (e) => {
+          const input = e.target as HTMLInputElement;
+          const skuVal = input.value.trim().toLowerCase();
+          const row = input.closest('.review-row') as HTMLElement;
+          const actionSel = row.querySelector('.row-action') as HTMLSelectElement;
+          const { products } = getDbData();
+          const isDup = products.includes(skuVal);
+          
+          const oldLabel = actionSel.parentNode?.querySelector('.text-amber-600');
+          if (oldLabel) oldLabel.remove();
+
+          if (isDup) {
+            actionSel.value = 'update';
+            actionSel.className = "row-action rounded border border-amber-500 bg-amber-50 text-amber-800 font-bold text-2xs px-1.5 py-0.5 focus:outline-none";
+            const label = document.createElement('div');
+            label.className = "text-[9px] text-amber-600 font-bold mt-0.5";
+            label.textContent = "Duplicate SKU";
+            actionSel.parentNode?.appendChild(label);
+          } else {
+            actionSel.value = 'insert';
+            actionSel.className = "row-action rounded border border-slate-250 text-slate-650 text-2xs px-1.5 py-0.5 focus:outline-none";
+          }
+        });
+      });
+    };
+
+    // Toggle Review Checkboxes
+    reviewSelectAll?.addEventListener('change', () => {
+      const checks = document.querySelectorAll('.row-checkbox');
+      checks.forEach((c: any) => c.checked = reviewSelectAll.checked);
+    });
+
+    // ── BULK APPLY ACTIONS ───────────────────────────────────────────
+    bulkApplyBtn?.addEventListener('click', () => {
+      const targetDiv = bulkDivSelect?.value;
+      const targetCat = bulkCatSelect?.value;
+
+      if (!targetDiv && !targetCat) {
+        alert('Please select a division or category to apply.');
+        return;
+      }
+
+      const rows = document.querySelectorAll('.review-row');
+      let appliedCount = 0;
+
+      rows.forEach(row => {
+        const checkbox = row.querySelector('.row-checkbox') as HTMLInputElement | null;
+        if (checkbox && checkbox.checked) {
+          if (targetDiv) {
+            const divSel = row.querySelector('.row-division') as HTMLSelectElement | null;
+            if (divSel) {
+              divSel.value = targetDiv;
+              divSel.classList.remove('border-rose-500', 'bg-rose-50');
+              divSel.classList.add('border-slate-250');
+            }
+          }
+          if (targetCat) {
+            const catSel = row.querySelector('.row-category') as HTMLSelectElement | null;
+            if (catSel) {
+              catSel.value = targetCat;
+              catSel.classList.remove('border-rose-500', 'bg-rose-50');
+              catSel.classList.add('border-slate-250');
+            }
+          }
+          appliedCount++;
         }
-      } catch (err: any) {
-        msgBox.className = 'p-4 rounded-lg text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200 block';
-        msgBox.textContent = err.message || 'Error during import';
-        btn.removeAttribute('disabled');
-        btn.textContent = 'Confirm & Import';
+      });
+
+      if (appliedCount === 0) {
+        alert('No rows are selected/checked. Check the rows you want to edit.');
+      } else {
+        if (bulkDivSelect) bulkDivSelect.value = '';
+        if (bulkCatSelect) bulkCatSelect.value = '';
       }
     });
+
+    // ── SUBMIT / CONFIRM & REAL-TIME IMPORT PROGRESSION ─────────────
+    reviewSubmitBtn?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      
+      const rows = Array.from(document.querySelectorAll('.review-row'));
+      const activeProducts: any[] = [];
+      let missingFieldsFound = false;
+
+      // Collect only checked and edited values from review inputs
+      rows.forEach((row: any) => {
+        const checked = (row.querySelector('.row-checkbox') as HTMLInputElement).checked;
+        if (!checked) return;
+
+        const name = (row.querySelector('.row-name') as HTMLInputElement).value.trim();
+        const sku = (row.querySelector('.row-sku') as HTMLInputElement).value.trim();
+        const import_mode = (row.querySelector('.row-action') as HTMLSelectElement).value;
+        const slug = (row.querySelector('.row-slug') as HTMLInputElement).value.trim();
+        const division_slug = (row.querySelector('.row-division') as HTMLSelectElement).value;
+        const category_slug = (row.querySelector('.row-category') as HTMLSelectElement).value;
+        const description = (row.querySelector('.row-desc') as HTMLInputElement).value.trim();
+        const image_url = (row.querySelector('.row-image') as HTMLInputElement).value;
+
+        // Perform client-side validation
+        if (import_mode !== 'skip') {
+          if (!name || !sku || !division_slug || !category_slug) {
+            missingFieldsFound = true;
+            if (!division_slug) {
+              row.querySelector('.row-division').classList.add('border-rose-500', 'bg-rose-50');
+            }
+            if (!category_slug) {
+              row.querySelector('.row-category').classList.add('border-rose-500', 'bg-rose-50');
+            }
+          }
+        }
+
+        if (name && sku) {
+          activeProducts.push({
+            name,
+            sku,
+            slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+            division_slug,
+            category_slug,
+            description,
+            image_url: image_url || undefined,
+            status: 'active',
+            featured: false,
+            import_mode
+          });
+        }
+      });
+
+      if (missingFieldsFound) {
+        alert('Some fields are missing. Please fill in the highlighted division/category dropdowns before saving.');
+        return;
+      }
+
+      if (activeProducts.length === 0) {
+        alert('Please select at least one valid product row to import.');
+        return;
+      }
+
+      panelReview?.classList.add('hidden');
+      panelProgress?.classList.remove('hidden');
+      if (progressTitle) progressTitle.textContent = 'Importing products to database...';
+
+      if (progressBarFill) progressBarFill.style.width = '0%';
+      if (progressStatus) progressStatus.textContent = '0% Completed';
+      if (msgBox) msgBox.classList.add('hidden');
+
+      // Loop to import them and update the progress bar incrementally
+      let insertedCount = 0;
+      let mergedCount = 0;
+      let skippedCount = 0;
+      let failedRows: { name: string; sku: string; error: string }[] = [];
+
+      for (let i = 0; i < activeProducts.length; i++) {
+        const prod = activeProducts[i];
+        if (prod.import_mode === 'skip') {
+          skippedCount++;
+          continue;
+        }
+        
+        try {
+          // Send single or batch API request
+          const res = await fetch('/api/products/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify([prod]) // POST as array
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            insertedCount += (data.inserted || 0);
+            mergedCount += (data.updated || 0);
+          } else {
+            const data = await res.json();
+            let errStr = data.error || 'Import failed';
+            if (data.details) {
+              errStr += ": " + data.details.map((d: any) => `${d.path.join('.')}: ${d.message}`).join(', ');
+            }
+            failedRows.push({ name: prod.name, sku: prod.sku, error: errStr });
+          }
+        } catch (err: any) {
+          failedRows.push({ name: prod.name, sku: prod.sku, error: err.message || 'Connection failure' });
+        }
+
+        // Update progress
+        const percent = Math.round(((i + 1) / activeProducts.length) * 100);
+        if (progressBarFill) progressBarFill.style.width = `${percent}%`;
+        if (progressStatus) progressStatus.textContent = `Saving product ${i+1} of ${activeProducts.length} (${percent}%)`;
+      }
+
+      // Final result
+      panelProgress?.classList.add('hidden');
+      panelReview?.classList.remove('hidden');
+
+      if (msgBox) {
+        msgBox.classList.remove('hidden');
+        if (failedRows.length === 0) {
+          msgBox.className = 'p-4 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-250 block';
+          msgBox.innerHTML = `
+            <div class="font-bold text-base mb-1">Import Completed Successfully!</div>
+            <ul class="list-disc list-inside text-xs space-y-1 mt-2">
+              <li><strong>${insertedCount}</strong> new products inserted.</li>
+              <li><strong>${mergedCount}</strong> existing products merged/updated.</li>
+              ${skippedCount > 0 ? `<li><strong>${skippedCount}</strong> products skipped.</li>` : ''}
+            </ul>
+            <div class="text-[10px] text-emerald-600 mt-2 font-bold uppercase tracking-wider">Reloading page...</div>
+          `;
+          setTimeout(() => window.location.reload(), 2000);
+        } else {
+          msgBox.className = 'p-4 rounded-xl text-sm font-semibold bg-rose-50 text-rose-800 border border-rose-250 block';
+          
+          const failedList = failedRows.map(fr => 
+            `<li class="text-xs"><strong>${fr.name}</strong> (${fr.sku}): <span class="text-rose-600">${fr.error}</span></li>`
+          ).join('');
+
+          msgBox.innerHTML = `
+            <div class="font-bold text-base mb-1 text-rose-900">Import Finished with Errors</div>
+            <div class="text-xs mb-2">Successes: <strong>${insertedCount}</strong> new, <strong>${mergedCount}</strong> merged, <strong>${skippedCount}</strong> skipped. Failed: <strong>${failedRows.length}</strong>.</div>
+            <ul class="list-decimal list-inside space-y-1.5 border-t border-rose-200 pt-2.5 mt-2">
+              ${failedList}
+            </ul>
+          `;
+        }
+      }
+    });
+
   };
 
   setupBulkForm();

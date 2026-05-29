@@ -11,7 +11,9 @@ const bulkProductSchema = z.array(z.object({
   description: z.string().optional().default(''),
   specifications: z.union([z.array(z.any()), z.record(z.any())]).optional(),
   status: z.enum(['active', 'inactive', 'draft']).default('active'),
-  featured: z.boolean().default(false)
+  featured: z.boolean().default(false),
+  image_url: z.string().optional(),
+  import_mode: z.enum(['insert', 'update', 'skip']).default('insert')
 }));
 
 export const POST: APIRoute = async ({ request }) => {
@@ -28,7 +30,11 @@ export const POST: APIRoute = async ({ request }) => {
       await client.query('BEGIN');
       
       let inserted = 0;
+      let updated = 0;
+
       for (const p of parsed) {
+        if (p.import_mode === 'skip') continue;
+
         // Resolve UUIDs from slugs
         const divRes = await client.query('SELECT id FROM divisions WHERE slug = $1', [p.division_slug]);
         const catRes = await client.query('SELECT id FROM categories WHERE slug = $1', [p.category_slug]);
@@ -41,23 +47,58 @@ export const POST: APIRoute = async ({ request }) => {
 
         const specsJson = p.specifications ? JSON.stringify(p.specifications) : '[]';
 
+        if (p.import_mode === 'update') {
+          // Check if SKU exists
+          const existRes = await client.query('SELECT id FROM products WHERE sku = $1', [p.sku]);
+          if (existRes.rowCount > 0) {
+            const prodId = existRes.rows[0].id;
+            await client.query(
+              `UPDATE products 
+               SET category_id = $1, division_id = $2, name = $3, slug = $4, description = $5, specifications = $6, featured = $7, status = $8, updated_at = NOW()
+               WHERE id = $9`,
+              [catId, divId, p.name, p.slug, p.description, specsJson, p.featured, p.status, prodId]
+            );
+
+            if (p.image_url) {
+              const imgCheck = await client.query('SELECT id FROM product_images WHERE product_id = $1 AND is_primary = true', [prodId]);
+              if (imgCheck.rowCount > 0) {
+                await client.query('UPDATE product_images SET url = $1 WHERE id = $2', [p.image_url, imgCheck.rows[0].id]);
+              } else {
+                await client.query('INSERT INTO product_images (product_id, url, is_primary) VALUES ($1, $2, true)', [prodId, p.image_url]);
+              }
+            }
+            updated++;
+            continue;
+          }
+        }
+
+        // Default Insert mode
         const prodRes = await client.query(
           `INSERT INTO products (category_id, division_id, name, sku, slug, description, specifications, featured, status)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
           [catId, divId, p.name, p.sku, p.slug, p.description, specsJson, p.featured, p.status]
         );
+        const newProdId = prodRes.rows[0].id;
         
         await client.query(
           `INSERT INTO inventory (product_id, stock_level, warehouse_location, low_stock_threshold)
            VALUES ($1, 0, 'Warehouse A', 10)`,
-          [prodRes.rows[0].id]
+          [newProdId]
         );
+
+        if (p.image_url) {
+          await client.query(
+            `INSERT INTO product_images (product_id, url, is_primary)
+             VALUES ($1, $2, true)`,
+            [newProdId, p.image_url]
+          );
+        }
 
         inserted++;
       }
 
       await client.query('COMMIT');
-      return new Response(JSON.stringify({ success: true, count: inserted }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ success: true, inserted, updated }), { status: 201, headers: { 'Content-Type': 'application/json' } });
     } catch (e: any) {
       await client.query('ROLLBACK');
       throw e;

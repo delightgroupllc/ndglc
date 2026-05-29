@@ -98,8 +98,9 @@ connectionStatuses.vercel.environment = process.env.NODE_ENV === 'production' ? 
 
 <DashboardLayout title="Overview" activeItem="dashboard">
 
+  <div class="p-6 lg:p-8 space-y-8">
   <!-- Real-Time Command Center Header -->
-  <div class="rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-white p-6 md:p-8 mb-8 backdrop-blur-xl relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm">
+  <div class="rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-white p-6 md:p-8 backdrop-blur-xl relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm">
     <div class="space-y-2">
       <span class="text-xs font-semibold text-cyan-600 uppercase tracking-widest flex items-center gap-1.5">
         <span class="h-2 w-2 rounded-full bg-cyan-500 animate-pulse"></span>
@@ -312,5 +313,6 @@ connectionStatuses.vercel.environment = process.env.NODE_ENV === 'production' ? 
     updateGSTClock();
     setInterval(updateGSTClock, 1000);
   </script>
+  </div>
 
 </DashboardLayout>

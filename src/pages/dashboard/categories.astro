@@ -97,7 +97,7 @@ const normalizedRooms = rooms.map((r, idx) => {
     </div>
   )}
 
-  <div class="space-y-6 max-w-7xl mx-auto">
+  <div class="space-y-6 max-w-7xl mx-auto p-6 lg:p-8">
     
     <!-- Workspace Title -->
     <div class="flex items-center justify-between border-b border-slate-200 pb-3">
@@ -196,7 +196,7 @@ const normalizedRooms = rooms.map((r, idx) => {
                       src={c.image_url || '/noimage.jpg'} 
                       alt={c.name} 
                       class="w-full h-full object-cover" 
-                      onerror="this.src='/noimage.jpg'" 
+                      onerror="this.onerror=null; this.src='/noimage.jpg'" 
                     />
                   </div>
                 </td>
@@ -289,7 +289,7 @@ const normalizedRooms = rooms.map((r, idx) => {
                         src={r.iconUrl || '/noimage.jpg'} 
                         alt={r.name} 
                         class="w-full h-full object-cover" 
-                        onerror="this.src='/noimage.jpg'" 
+                        onerror="this.onerror=null; this.src='/noimage.jpg'" 
                       />
                     </div>
                   </td>
@@ -387,7 +387,7 @@ const normalizedRooms = rooms.map((r, idx) => {
             class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-xs focus:border-cyan-500 focus:outline-none" 
           />
           <div class="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 flex items-center justify-center h-32 overflow-hidden shadow-inner">
-            <img id="form-room-preview" src="/noimage.jpg" class="h-full object-contain" alt="Room Cover Preview" onerror="this.src='/noimage.jpg'" />
+            <img id="form-room-preview" src="/noimage.jpg" class="h-full object-contain" alt="Room Cover Preview" onerror="this.onerror=null; this.src='/noimage.jpg'" />
           </div>
         </div>
 

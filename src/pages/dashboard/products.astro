@@ -1,7 +1,7 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
-import { Package, Search, PlusCircle, Trash, ExternalLink, Settings, AlertTriangle, Eye, ToggleLeft, Tag, CheckSquare, List, LayoutGrid } from '@lucide/astro';
+import { Package, Search, PlusCircle, Eye, Tag, List, LayoutGrid } from '@lucide/astro';
 
 let products: any[] = [];
 let categories: any[] = [];
@@ -10,7 +10,6 @@ let rooms: any[] = [];
 let dbConnected = true;
 import ProductForm from '../../components/forms/ProductForm.astro';
 import BulkProductForm from '../../components/forms/BulkProductForm.astro';
-import AIScanModal from '../../components/forms/AIScanModal.astro';
 
 try {
   const prodRes = await query(
@@ -72,7 +71,7 @@ try {
 
 <DashboardLayout title="Products Catalog" activeItem="products">
 
-  <div class="space-y-6 max-w-7xl mx-auto">
+  <div class="space-y-6 max-w-7xl mx-auto p-6 lg:p-8">
 
     <!-- Header Bar & Advanced Filters -->
     <div class="flex flex-col gap-4 border-b border-slate-200 pb-5">
@@ -91,14 +90,16 @@ try {
             <Tag class="h-4 w-4" />
             Rename Selected (<span id="selected-count">0</span>)
           </button>
+
           <button
             type="button"
-            onclick="document.dispatchEvent(new CustomEvent('open-ai-modal'))"
-            class="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm"
+            id="export-catalog-btn"
+            class="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-750 border border-slate-250 px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm cursor-pointer"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            AI Scan
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Export CSV
           </button>
+
           <button
             type="button"
             onclick="document.dispatchEvent(new CustomEvent('open-bulk-modal'))"
@@ -301,6 +302,24 @@ try {
         </div>
       ))}
     </div>
+
+    <!-- Pagination Controls -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm mt-6">
+      <div class="flex items-center gap-2 text-xs text-slate-500 font-bold">
+        <span>Show</span>
+        <select id="pagination-limit" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none">
+          <option value="10" selected>10 products</option>
+          <option value="25">25 products</option>
+        </select>
+        <span>per page</span>
+      </div>
+      <div class="text-xs text-slate-500 font-semibold">
+        Showing <span id="pagination-start" class="text-slate-900 font-bold">1</span> to <span id="pagination-end" class="text-slate-900 font-bold">10</span> of <span id="pagination-total" class="text-slate-900 font-bold">0</span> products
+      </div>
+      <div class="flex items-center gap-1.5" id="pagination-buttons">
+        <!-- Buttons will be dynamically inserted here -->
+      </div>
+    </div>
   </div>
 
   <!-- ===== Product Add/Edit Modal ===== -->
@@ -361,8 +380,7 @@ try {
     </div>
   </div>
 
-  <BulkProductForm />
-  <AIScanModal />
+  <BulkProductForm categories={categories} divisions={divisions} products={products} />
 
   <script>
     // ============================================================
@@ -415,16 +433,39 @@ try {
     const tableBody = document.getElementById('admin-products-table');
     const gridView = document.getElementById('products-grid-view');
 
-    function filterAndSortProducts() {
+    // Pagination State
+    let currentPage = 1;
+    let itemsPerPage = 10;
+
+    const limitSelect = document.getElementById('pagination-limit') as HTMLSelectElement | null;
+    if (limitSelect) {
+      limitSelect.addEventListener('change', () => {
+        itemsPerPage = parseInt(limitSelect.value) || 10;
+        currentPage = 1;
+        filterAndSortProducts(false);
+      });
+    }
+
+    function filterAndSortProducts(resetPage = false) {
+      if (resetPage) {
+        currentPage = 1;
+      }
+
       const q = searchInput?.value.toLowerCase().trim() || '';
       const divFilter = divFilterSelect?.value || '';
       const catFilter = catFilterSelect?.value || '';
       const statusFilter = statusFilterSelect?.value || '';
       const sortVal = sortSelect?.value || 'newest';
 
-      // Filter Rows
+      // Hide all by default
       const rows = Array.from(document.querySelectorAll('.admin-product-row'));
-      rows.forEach(row => {
+      const cards = Array.from(document.querySelectorAll('.admin-product-card'));
+
+      rows.forEach(r => (r as HTMLElement).style.display = 'none');
+      cards.forEach(c => (c as HTMLElement).classList.add('hidden'));
+
+      // Filter Rows
+      const matchingRows = rows.filter(row => {
         const name = row.getAttribute('data-name')?.toLowerCase() || '';
         const sku = row.getAttribute('data-sku')?.toLowerCase() || '';
         const desc = row.getAttribute('data-desc')?.toLowerCase() || '';
@@ -437,16 +478,11 @@ try {
         const matchesCat = !catFilter || rowCat === catFilter;
         const matchesStatus = !statusFilter || rowStatus === statusFilter;
 
-        if (matchesSearch && matchesDiv && matchesCat && matchesStatus) {
-          (row as HTMLElement).style.display = '';
-        } else {
-          (row as HTMLElement).style.display = 'none';
-        }
+        return matchesSearch && matchesDiv && matchesCat && matchesStatus;
       });
 
       // Filter Cards
-      const cards = Array.from(document.querySelectorAll('.admin-product-card'));
-      cards.forEach(card => {
+      const matchingCards = cards.filter(card => {
         const name = card.getAttribute('data-name')?.toLowerCase() || '';
         const sku = card.getAttribute('data-sku')?.toLowerCase() || '';
         const desc = card.getAttribute('data-desc')?.toLowerCase() || '';
@@ -459,55 +495,138 @@ try {
         const matchesCat = !catFilter || cardCat === catFilter;
         const matchesStatus = !statusFilter || cardStatus === statusFilter;
 
-        if (matchesSearch && matchesDiv && matchesCat && matchesStatus) {
-          (card as HTMLElement).classList.remove('hidden');
-        } else {
-          (card as HTMLElement).classList.add('hidden');
+        return matchesSearch && matchesDiv && matchesCat && matchesStatus;
+      });
+
+      // Sort matching rows
+      matchingRows.sort((a, b) => {
+        const nameA = a.getAttribute('data-name')?.toLowerCase() || '';
+        const nameB = b.getAttribute('data-name')?.toLowerCase() || '';
+        const skuA = a.getAttribute('data-sku')?.toLowerCase() || '';
+        const skuB = b.getAttribute('data-sku')?.toLowerCase() || '';
+        const idA = a.getAttribute('data-id') || '';
+        const idB = b.getAttribute('data-id') || '';
+
+        if (sortVal === 'name-asc') return nameA.localeCompare(nameB);
+        if (sortVal === 'name-desc') return nameB.localeCompare(nameA);
+        if (sortVal === 'sku-asc') return skuA.localeCompare(skuB);
+        if (sortVal === 'newest') return idB.localeCompare(idA);
+        if (sortVal === 'oldest') return idA.localeCompare(idB);
+        return 0;
+      });
+      matchingRows.forEach(r => tableBody?.appendChild(r));
+
+      // Sort matching cards
+      matchingCards.sort((a, b) => {
+        const nameA = a.getAttribute('data-name')?.toLowerCase() || '';
+        const nameB = b.getAttribute('data-name')?.toLowerCase() || '';
+        const skuA = a.getAttribute('data-sku')?.toLowerCase() || '';
+        const skuB = b.getAttribute('data-sku')?.toLowerCase() || '';
+        const idA = a.getAttribute('data-id') || '';
+        const idB = b.getAttribute('data-id') || '';
+
+        if (sortVal === 'name-asc') return nameA.localeCompare(nameB);
+        if (sortVal === 'name-desc') return nameB.localeCompare(nameA);
+        if (sortVal === 'sku-asc') return skuA.localeCompare(skuB);
+        if (sortVal === 'newest') return idB.localeCompare(idA);
+        if (sortVal === 'oldest') return idA.localeCompare(idB);
+        return 0;
+      });
+      matchingCards.forEach(c => gridView?.appendChild(c));
+
+      // Apply Pagination on the matching items
+      const totalItems = matchingRows.length; // rows and cards matching counts will be identical
+      const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+      
+      if (currentPage > totalPages) {
+        currentPage = totalPages;
+      }
+
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
+      // Show matching items inside target page slice
+      matchingRows.slice(startIndex, endIndex).forEach(row => {
+        (row as HTMLElement).style.display = '';
+      });
+
+      matchingCards.slice(startIndex, endIndex).forEach(card => {
+        (card as HTMLElement).classList.remove('hidden');
+      });
+
+      // Update Pagination Stats UI
+      const startEl = document.getElementById('pagination-start');
+      const endEl = document.getElementById('pagination-end');
+      const totalEl = document.getElementById('pagination-total');
+      if (startEl) startEl.textContent = String(totalItems === 0 ? 0 : startIndex + 1);
+      if (endEl) endEl.textContent = String(endIndex);
+      if (totalEl) totalEl.textContent = String(totalItems);
+
+      // Render Pagination Buttons
+      const buttonsContainer = document.getElementById('pagination-buttons');
+      if (buttonsContainer) {
+        buttonsContainer.innerHTML = '';
+
+        // Prev Button
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold ${currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
+        prevBtn.innerHTML = '&larr; Prev';
+        prevBtn.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            filterAndSortProducts(false);
+          }
+        });
+        buttonsContainer.appendChild(prevBtn);
+
+        // Page Numbers
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage + 1 < maxVisiblePages) {
+          startPage = Math.max(1, endPage - maxVisiblePages + 1);
         }
-      });
 
-      // Sort table rows
-      const sortedRows = rows.sort((a, b) => {
-        const nameA = a.getAttribute('data-name')?.toLowerCase() || '';
-        const nameB = b.getAttribute('data-name')?.toLowerCase() || '';
-        const skuA = a.getAttribute('data-sku')?.toLowerCase() || '';
-        const skuB = b.getAttribute('data-sku')?.toLowerCase() || '';
-        const idA = a.getAttribute('data-id') || '';
-        const idB = b.getAttribute('data-id') || '';
+        for (let i = startPage; i <= endPage; i++) {
+          const pageBtn = document.createElement('button');
+          pageBtn.type = 'button';
+          pageBtn.className = `px-3 py-1.5 rounded-lg border text-xs font-semibold ${currentPage === i ? 'bg-cyan-600 border-cyan-600 text-white font-bold' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors'}`;
+          pageBtn.textContent = String(i);
+          pageBtn.addEventListener('click', () => {
+            currentPage = i;
+            filterAndSortProducts(false);
+          });
+          buttonsContainer.appendChild(pageBtn);
+        }
 
-        if (sortVal === 'name-asc') return nameA.localeCompare(nameB);
-        if (sortVal === 'name-desc') return nameB.localeCompare(nameA);
-        if (sortVal === 'sku-asc') return skuA.localeCompare(skuB);
-        if (sortVal === 'newest') return idB.localeCompare(idA);
-        if (sortVal === 'oldest') return idA.localeCompare(idB);
-        return 0;
-      });
-      sortedRows.forEach(r => tableBody?.appendChild(r));
-
-      // Sort grid cards
-      const sortedCards = cards.sort((a, b) => {
-        const nameA = a.getAttribute('data-name')?.toLowerCase() || '';
-        const nameB = b.getAttribute('data-name')?.toLowerCase() || '';
-        const skuA = a.getAttribute('data-sku')?.toLowerCase() || '';
-        const skuB = b.getAttribute('data-sku')?.toLowerCase() || '';
-        const idA = a.getAttribute('data-id') || '';
-        const idB = b.getAttribute('data-id') || '';
-
-        if (sortVal === 'name-asc') return nameA.localeCompare(nameB);
-        if (sortVal === 'name-desc') return nameB.localeCompare(nameA);
-        if (sortVal === 'sku-asc') return skuA.localeCompare(skuB);
-        if (sortVal === 'newest') return idB.localeCompare(idA);
-        if (sortVal === 'oldest') return idA.localeCompare(idB);
-        return 0;
-      });
-      sortedCards.forEach(c => gridView?.appendChild(c));
+        // Next Button
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
+        nextBtn.innerHTML = 'Next &rarr;';
+        nextBtn.addEventListener('click', () => {
+          if (currentPage < totalPages) {
+            currentPage++;
+            filterAndSortProducts(false);
+          }
+        });
+        buttonsContainer.appendChild(nextBtn);
+      }
     }
 
-    searchInput?.addEventListener('input', filterAndSortProducts);
-    divFilterSelect?.addEventListener('change', filterAndSortProducts);
-    catFilterSelect?.addEventListener('change', filterAndSortProducts);
-    statusFilterSelect?.addEventListener('change', filterAndSortProducts);
-    sortSelect?.addEventListener('change', filterAndSortProducts);
+    // Trigger filter update on filter change with resetting to first page
+    searchInput?.addEventListener('input', () => filterAndSortProducts(true));
+    divFilterSelect?.addEventListener('change', () => filterAndSortProducts(true));
+    catFilterSelect?.addEventListener('change', () => filterAndSortProducts(true));
+    statusFilterSelect?.addEventListener('change', () => filterAndSortProducts(true));
+    sortSelect?.addEventListener('change', () => filterAndSortProducts(true));
+
+    // Run initial pagination rendering
+    filterAndSortProducts(true);
 
     // View Switcher logic
     const tableBtn = document.getElementById('view-mode-table');
@@ -783,6 +902,75 @@ try {
           alert('Error deleting product.');
         }
       });
+    });
+
+    // ============================================================
+    // EXPORT FILTERED CATALOG TO CSV
+    // ============================================================
+    const exportBtn = document.getElementById('export-catalog-btn');
+    exportBtn?.addEventListener('click', () => {
+      const rows = Array.from(document.querySelectorAll('.admin-product-row'));
+      
+      const searchInput = document.getElementById('admin-search-products') as HTMLInputElement | null;
+      const divFilterSelect = document.getElementById('filter-product-division') as HTMLSelectElement | null;
+      const catFilterSelect = document.getElementById('filter-product-category') as HTMLSelectElement | null;
+      const statusFilterSelect = document.getElementById('filter-product-status') as HTMLSelectElement | null;
+
+      const q = searchInput?.value.toLowerCase().trim() || '';
+      const divFilter = divFilterSelect?.value || '';
+      const catFilter = catFilterSelect?.value || '';
+      const statusFilter = statusFilterSelect?.value || '';
+
+      const matchingRows = rows.filter(row => {
+        const name = row.getAttribute('data-name')?.toLowerCase() || '';
+        const sku = row.getAttribute('data-sku')?.toLowerCase() || '';
+        const desc = row.getAttribute('data-desc')?.toLowerCase() || '';
+        const rowDiv = row.getAttribute('data-division') || '';
+        const rowCat = row.getAttribute('data-category') || '';
+        const rowStatus = row.getAttribute('data-status') || '';
+
+        const matchesSearch = !q || name.includes(q) || sku.includes(q) || desc.includes(q);
+        const matchesDiv = !divFilter || rowDiv === divFilter;
+        const matchesCat = !catFilter || rowCat === catFilter;
+        const matchesStatus = !statusFilter || rowStatus === statusFilter;
+
+        return matchesSearch && matchesDiv && matchesCat && matchesStatus;
+      });
+
+      if (matchingRows.length === 0) {
+        alert('No products matching current filters to export.');
+        return;
+      }
+
+      const headers = ['Product Name', 'SKU', 'Slug', 'Description', 'Status', 'Featured'];
+      const csvRows = [headers.join(',')];
+
+      matchingRows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        const sku = row.getAttribute('data-sku') || '';
+        const slug = row.getAttribute('data-slug') || '';
+        const desc = row.getAttribute('data-desc') || '';
+        const status = row.getAttribute('data-status') || '';
+        const featured = row.getAttribute('data-featured') || 'false';
+
+        const line = [name, sku, slug, desc, status, featured].map(val => {
+          let cleanVal = val.replace(/"/g, '""');
+          if (cleanVal.includes(',') || cleanVal.includes('\n') || cleanVal.includes('"')) {
+            cleanVal = `"${cleanVal}"`;
+          }
+          return cleanVal;
+        }).join(',');
+        csvRows.push(line);
+      });
+
+      const blob = new Blob([csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `products_export_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     });
   </script>
 </DashboardLayout>

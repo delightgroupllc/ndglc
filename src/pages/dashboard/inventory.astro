@@ -75,7 +75,7 @@ try {
         const isLow = item.isLow;
         
         return (
-          <div class={`rounded-xl border p-5 flex flex-col justify-between min-h-[180px] transition-all shadow-sm ${
+          <div class={`inventory-card rounded-xl border p-5 flex flex-col justify-between min-h-[180px] transition-all shadow-sm ${
             isLow 
               ? 'border-rose-400/30 bg-white hover:border-rose-400/50' 
               : 'border-slate-200 bg-white hover:border-slate-300'
@@ -119,6 +119,24 @@ try {
           </div>
         );
       })}
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm mt-6">
+      <div class="flex items-center gap-2 text-xs text-slate-500 font-bold">
+        <span>Show</span>
+        <select id="pagination-limit" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none">
+          <option value="10" selected>10 items</option>
+          <option value="25">25 items</option>
+        </select>
+        <span>per page</span>
+      </div>
+      <div class="text-xs text-slate-500 font-semibold">
+        Showing <span id="pagination-start" class="text-slate-900 font-bold">1</span> to <span id="pagination-end" class="text-slate-900 font-bold">10</span> of <span id="pagination-total" class="text-slate-900 font-bold">0</span> items
+      </div>
+      <div class="flex items-center gap-1.5" id="pagination-buttons">
+        <!-- Buttons will be dynamically inserted here -->
+      </div>
     </div>
   </div>
 
@@ -175,11 +193,113 @@ try {
   </div>
 
   <script>
+    // Bind modal triggers
     document.querySelectorAll('.open-modal-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const invId = (e.currentTarget as HTMLElement).getAttribute('data-inventory-id');
         document.dispatchEvent(new CustomEvent('open-inventory-modal', { detail: { inventoryId: invId } }));
       });
     });
+
+    // Pagination Logic for Stock Cards
+    const cards = Array.from(document.querySelectorAll('.inventory-card'));
+    const limitSelect = document.getElementById('pagination-limit') as HTMLSelectElement | null;
+
+    let currentPage = 1;
+    let itemsPerPage = 10;
+
+    if (limitSelect) {
+      limitSelect.addEventListener('change', () => {
+        itemsPerPage = parseInt(limitSelect.value) || 10;
+        currentPage = 1;
+        paginateStockCards();
+      });
+    }
+
+    function paginateStockCards() {
+      // Hide all first
+      cards.forEach(c => (c as HTMLElement).classList.add('hidden'));
+
+      const totalItems = cards.length;
+      const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+      if (currentPage > totalPages) {
+        currentPage = totalPages;
+      }
+
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
+      // Show cards in target page slice
+      cards.slice(startIndex, endIndex).forEach(card => {
+        (card as HTMLElement).classList.remove('hidden');
+      });
+
+      // Update Pagination Stats UI
+      const startEl = document.getElementById('pagination-start');
+      const endEl = document.getElementById('pagination-end');
+      const totalEl = document.getElementById('pagination-total');
+      if (startEl) startEl.textContent = String(totalItems === 0 ? 0 : startIndex + 1);
+      if (endEl) endEl.textContent = String(endIndex);
+      if (totalEl) totalEl.textContent = String(totalItems);
+
+      // Render buttons
+      const buttonsContainer = document.getElementById('pagination-buttons');
+      if (buttonsContainer) {
+        buttonsContainer.innerHTML = '';
+
+        // Prev Button
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold ${currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
+        prevBtn.innerHTML = '&larr; Prev';
+        prevBtn.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            paginateStockCards();
+          }
+        });
+        buttonsContainer.appendChild(prevBtn);
+
+        // Page numbers
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage + 1 < maxVisiblePages) {
+          startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+          const pageBtn = document.createElement('button');
+          pageBtn.type = 'button';
+          pageBtn.className = `px-3 py-1.5 rounded-lg border text-xs font-semibold ${currentPage === i ? 'bg-cyan-600 border-cyan-600 text-white font-bold' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors'}`;
+          pageBtn.textContent = String(i);
+          pageBtn.addEventListener('click', () => {
+            currentPage = i;
+            paginateStockCards();
+          });
+          buttonsContainer.appendChild(pageBtn);
+        }
+
+        // Next Button
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
+        nextBtn.innerHTML = 'Next &rarr;';
+        nextBtn.addEventListener('click', () => {
+          if (currentPage < totalPages) {
+            currentPage++;
+            paginateStockCards();
+          }
+        });
+        buttonsContainer.appendChild(nextBtn);
+      }
+    }
+
+    // Initial load pagination
+    paginateStockCards();
   </script>
 </DashboardLayout>

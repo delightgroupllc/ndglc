@@ -248,35 +248,151 @@ try {
             </div>
           ))}
         </div>
+
+        <!-- Pagination Controls -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm mt-8">
+          <div class="flex items-center gap-2 text-xs text-slate-500 font-bold">
+            <span>Show</span>
+            <select id="pagination-limit" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none">
+              <option value="10" selected>10 products</option>
+              <option value="25">25 products</option>
+            </select>
+            <span>per page</span>
+          </div>
+          <div class="text-xs text-slate-500 font-semibold">
+            Showing <span id="pagination-start" class="text-slate-900 font-bold">1</span> to <span id="pagination-end" class="text-slate-900 font-bold">10</span> of <span id="pagination-total" class="text-slate-900 font-bold">0</span> products
+          </div>
+          <div class="flex items-center gap-1.5" id="pagination-buttons">
+            <!-- Buttons will be dynamically inserted here -->
+          </div>
+        </div>
       )}
     </div>
   </section>
 
-  <!-- Client-Side Instant Filtering Script -->
+  <!-- Client-Side Instant Filtering & Pagination Script -->
   <script>
     const searchInput = document.getElementById('product-search') as HTMLInputElement | null;
-    const cards = document.querySelectorAll('.product-card');
+    const cards = Array.from(document.querySelectorAll('.product-card'));
     const filteredCount = document.getElementById('filtered-count');
+    const limitSelect = document.getElementById('pagination-limit') as HTMLSelectElement | null;
 
-    searchInput?.addEventListener('input', (e) => {
-      const query = (e.target as HTMLInputElement).value.toLowerCase();
-      let matchCount = 0;
+    let currentPage = 1;
+    let itemsPerPage = 10;
 
-      cards.forEach((card) => {
+    if (limitSelect) {
+      limitSelect.addEventListener('change', () => {
+        itemsPerPage = parseInt(limitSelect.value) || 10;
+        currentPage = 1;
+        updateView(false);
+      });
+    }
+
+    function updateView(resetPage = false) {
+      if (resetPage) {
+        currentPage = 1;
+      }
+
+      const query = searchInput?.value.toLowerCase().trim() || '';
+      
+      // Filter
+      const matchingCards = cards.filter((card) => {
         const name = card.getAttribute('data-name') || '';
         const sku = card.getAttribute('data-sku') || '';
+        const isMatch = name.includes(query) || sku.includes(query);
         
-        if (name.includes(query) || sku.includes(query)) {
-          (card as HTMLElement).classList.remove('hidden');
-          matchCount++;
-        } else {
-          (card as HTMLElement).classList.add('hidden');
-        }
+        (card as HTMLElement).classList.add('hidden'); // Hide all first
+        return isMatch;
       });
 
+      // Update filtered count indicator
       if (filteredCount) {
-        filteredCount.textContent = matchCount.toString();
+        filteredCount.textContent = matchingCards.length.toString();
       }
-    });
+
+      // Paginate
+      const totalItems = matchingCards.length;
+      const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+      if (currentPage > totalPages) {
+        currentPage = totalPages;
+      }
+
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
+      // Show items in slice
+      matchingCards.slice(startIndex, endIndex).forEach(card => {
+        (card as HTMLElement).classList.remove('hidden');
+      });
+
+      // Update Pagination Stats UI
+      const startEl = document.getElementById('pagination-start');
+      const endEl = document.getElementById('pagination-end');
+      const totalEl = document.getElementById('pagination-total');
+      if (startEl) startEl.textContent = String(totalItems === 0 ? 0 : startIndex + 1);
+      if (endEl) endEl.textContent = String(endIndex);
+      if (totalEl) totalEl.textContent = String(totalItems);
+
+      // Render Buttons
+      const buttonsContainer = document.getElementById('pagination-buttons');
+      if (buttonsContainer) {
+        buttonsContainer.innerHTML = '';
+
+        // Prev Button
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold ${currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
+        prevBtn.innerHTML = '&larr; Prev';
+        prevBtn.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            updateView(false);
+          }
+        });
+        buttonsContainer.appendChild(prevBtn);
+
+        // Page Numbers
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage + 1 < maxVisiblePages) {
+          startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+          const pageBtn = document.createElement('button');
+          pageBtn.type = 'button';
+          pageBtn.className = `px-3 py-1.5 rounded-lg border text-xs font-semibold ${currentPage === i ? 'bg-cyan-600 border-cyan-600 text-white font-bold' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors'}`;
+          pageBtn.textContent = String(i);
+          pageBtn.addEventListener('click', () => {
+            currentPage = i;
+            updateView(false);
+          });
+          buttonsContainer.appendChild(pageBtn);
+        }
+
+        // Next Button
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
+        nextBtn.innerHTML = 'Next &rarr;';
+        nextBtn.addEventListener('click', () => {
+          if (currentPage < totalPages) {
+            currentPage++;
+            updateView(false);
+          }
+        });
+        buttonsContainer.appendChild(nextBtn);
+      }
+    }
+
+    searchInput?.addEventListener('input', () => updateView(true));
+    
+    // Initial load
+    updateView(true);
   </script>
 </Layout>
