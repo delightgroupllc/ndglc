@@ -1,0 +1,1072 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import InvoiceForm from '../../../components/forms/InvoiceForm.astro';
+import { query } from '../../../lib/db';
+import { FileSpreadsheet, PlusCircle, Search, Save, AlertTriangle, Printer, CheckCircle, Clock } from '@lucide/astro';
+
+const user = Astro.locals.user;
+const roles = Astro.locals.roles || [];
+const permissions = Astro.locals.permissions || [];
+const isAdmin = roles.includes('admin') || roles.includes('moderator') || permissions.includes('invoices.manage');
+
+let invoices: any[] = [];
+let dbConnected = true;
+let settings: Record<string, string> = {};
+let legalArtifacts: any[] = [];
+let products: any[] = [];
+
+try {
+  const queryStr = isAdmin
+    ? `SELECT i.*, 
+         (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+       FROM invoices i
+       ORDER BY i.created_at DESC`
+    : `SELECT i.*, 
+         (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+       FROM invoices i
+       WHERE i.customer_email = $1
+       ORDER BY i.created_at DESC`;
+  
+  const queryParams = isAdmin ? [] : [user?.email || ''];
+  const res = await query(queryStr, queryParams);
+  invoices = res.rows;
+
+  const settingsRes = await query('SELECT key, value FROM settings');
+  settings = settingsRes.rows.reduce((acc: any, row: any) => { acc[row.key] = row.value; return acc; }, {});
+
+  const legalRes = await query('SELECT * FROM legal_artifacts ORDER BY type DESC, identifier ASC');
+  legalArtifacts = legalRes.rows;
+
+  const prodRes = await query(`
+    SELECT p.id, pi.url as image_url
+    FROM products p
+    LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
+  `);
+  products = prodRes.rows;
+} catch (err: any) {
+  console.warn('Database offline, running mock invoices billing sheets:', err.message);
+  dbConnected = false;
+
+  invoices = [
+    {
+      id: 'inv-mock-1',
+      invoice_number: 'INV-2026-8094',
+      customer_name: 'Vance Metallurgy LLC',
+      customer_email: 'alex.vance@steelgroup.com',
+      customer_phone: '+1 (555) 0189',
+      issue_date: '2026-05-10',
+      due_date: '2026-06-10',
+      payment_status: 'paid',
+      subtotal: 10500,
+      gst_amount: 1890,
+      total_amount: 12390,
+      items_list: [
+        { description: 'HP-100 Stainless Ball Valve (Duplex option)', quantity: 2, unit_price: 5250, total_price: 10500 }
+      ]
+    },
+    {
+      id: 'inv-mock-2',
+      invoice_number: 'INV-2026-1102',
+      customer_name: 'Stark ot Software Corp',
+      customer_email: 'finance@starkcorp.com',
+      customer_phone: null,
+      issue_date: '2026-05-24',
+      due_date: '2026-06-24',
+      payment_status: 'unpaid',
+      subtotal: 15000,
+      gst_amount: 2700,
+      total_amount: 17700,
+      items_list: [
+        { description: 'Vortex Backup Cloud Telemetry Sync Broadsheet License', quantity: 1, unit_price: 15000, total_price: 15000 }
+      ]
+    }
+  ];
+}
+
+// Pre-calculate procurement stages and button matrix configs to avoid JSX compiler parser issues with "<"
+invoices = invoices.map(inv => {
+  const isPaid = inv.payment_status === 'paid';
+  const isConfirmed = inv.payment_status === 'paid' || inv.payment_status === 'confirmed';
+  const type = inv.order_type || 'tax_invoice';
+
+  let stage = 6;
+  if (isPaid) {
+    stage = 7;
+  } else if (type === 'inquiry') {
+    stage = 1;
+  } else if (type === 'quotation') {
+    stage = 2;
+  } else if (type === 'proforma') {
+    stage = 3;
+  } else if (type === 'lpo') {
+    stage = 4;
+  } else if (type === 'delivery_note') {
+    stage = 5;
+  } else if (type === 'tax_invoice') {
+    stage = 6;
+  }
+
+  const showAudit = stage >= 4;
+  const showUpdate = stage <= 3 || (stage === 4 && !isConfirmed);
+  const showConfirm = (stage === 2 || stage === 3 || stage === 4) && !isConfirmed;
+  const showBill = stage === 6;
+  const showCancelOrder = stage === 4 || stage === 5 || stage === 6;
+
+  const isDraftOrUnconfirmed = stage <= 3 || (stage === 4 && !isConfirmed);
+  const deleteLabel = isDraftOrUnconfirmed ? 'DELETE' : 'ARCHIVE';
+  const deleteBtnClass = isDraftOrUnconfirmed 
+    ? "delete-btn px-2 py-1.5 border border-rose-100 bg-rose-50 hover:bg-rose-100 text-[9px] font-black text-rose-700 rounded transition-colors uppercase tracking-wider"
+    : "delete-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-bold text-slate-600 rounded transition-colors uppercase tracking-wider";
+
+  return {
+    ...inv,
+    isPaid,
+    isConfirmed,
+    stage,
+    showAudit,
+    showUpdate,
+    showConfirm,
+    showBill,
+    showCancelOrder,
+    deleteLabel,
+    deleteBtnClass
+  };
+});
+---
+
+<DashboardLayout title="Billing & Invoices" activeItem="invoices">
+
+  <style is:global></style>
+
+  <!-- Offline Database Warning -->
+  {!dbConnected && (
+    <div class="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-600 font-medium">
+      <AlertTriangle class="h-4.5 w-4.5 shrink-0" />
+      <div>
+        <span class="font-bold">PostgreSQL Connection Offline</span>: Invoicing runs in simulated mock registry mode.
+      </div>
+    </div>
+  )}
+
+  <div class="space-y-6 p-6 lg:p-8">
+    <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+      <div class="flex flex-wrap items-center gap-2 flex-grow max-w-3xl">
+        <div class="relative flex-grow max-w-xs">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <input 
+            type="text" 
+            id="admin-search-invoices"
+            placeholder="Search by client or INV#..." 
+            class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+          />
+        </div>
+        <select id="filter-invoice-status" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
+          <option value="">All Statuses</option>
+          <option value="paid">Paid</option>
+          <option value="unpaid">Unpaid</option>
+          <option value="overdue">Overdue</option>
+          <option value="draft">Draft</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select id="filter-invoice-division" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
+          <option value="">All Divisions</option>
+          <option value="DTL">Division DTL</option>
+          <option value="DGS">Division DGS</option>
+        </select>
+        <select id="sort-invoices" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
+          <option value="newest">Newest Issued</option>
+          <option value="oldest">Oldest Issued</option>
+          <option value="amount-desc">Total: High to Low</option>
+          <option value="amount-asc">Total: Low to High</option>
+        </select>
+      </div>
+      <div class="flex gap-2 shrink-0">
+        <button 
+          type="button" 
+          id="billing-workflow-help-btn"
+          class="inline-flex items-center justify-center gap-2 bg-slate-55 border border-slate-200 hover:bg-slate-100 text-slate-700 px-4 py-2.5 rounded-lg text-xs font-bold transition-colors shadow-3xs"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Billing Workflow
+        </button>
+        {isAdmin && (
+          <button 
+            type="button" 
+            onclick="document.dispatchEvent(new CustomEvent('open-invoice-modal', { detail: { invoice: null } }))"
+            class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
+          >
+            <PlusCircle class="h-4 w-4" />
+            Generate Invoice
+          </button>
+        )}
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-widest font-black">
+                <th class="px-6 py-4">Reference</th>
+                <th class="px-6 py-4">Client Details</th>
+                <th class="px-6 py-4 text-center">Valuation</th>
+                <th class="px-6 py-4 text-center">Status</th>
+                <th class="px-6 py-4 text-right pr-12">Operations</th>
+              </tr>
+            </thead>
+            <tbody id="admin-invoices-table">
+              {invoices.map(inv => (
+                <tr class="admin-invoice-row border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors" 
+                  data-id={inv.id} 
+                  data-name={inv.customer_name} 
+                  data-email={inv.customer_email || ''} 
+                  data-phone={inv.customer_phone || ''} 
+                  data-issue={inv.issue_date} 
+                  data-due={inv.due_date || ''} 
+                  data-status={inv.payment_status} 
+                  data-items={JSON.stringify(inv.items_list || [])} 
+                  data-num={inv.invoice_number}
+                  data-div={inv.source_division || ''}
+                  data-amount={inv.total_amount}
+                  data-date={inv.issue_date}
+                >
+                  <td class="px-6 py-5">
+                    <div class="font-extrabold text-slate-900 text-sm tracking-tight">{inv.invoice_number}</div>
+                    <div class="flex items-center gap-1.5 mt-1.5">
+                      <span class="inline-block px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-500 text-[9px] font-black uppercase tracking-wider">
+                        {inv.order_type === 'quotation' ? 'Estimation' : (inv.order_type === 'lpo' ? 'LPO' : (inv.order_type === 'inquiry' ? 'Inquiry' : (inv.order_type === 'proforma' ? 'Pro Forma' : (inv.order_type === 'delivery_note' ? 'Delivery Note' : 'Tax Invoice'))))}
+                      </span>
+                      <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">{inv.source_division || 'DTL'}</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-5">
+                    <div class="font-black text-slate-800 uppercase tracking-wide">{inv.customer_name}</div>
+                    <div class="text-2xs font-extrabold text-slate-400 mt-1 uppercase tracking-wider">{inv.issue_date ? new Date(inv.issue_date).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
+                  </td>
+                  <td class="px-6 py-5 text-center">
+                    <div class="font-black text-slate-800 text-[13px] tracking-tight">AED {Number(inv.total_amount).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Total Valuation</div>
+                  </td>
+                  <td class="px-6 py-5 text-center">
+                    <span class={`inline-block border rounded px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-2xs ${inv.isPaid ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500'}`}>
+                      {inv.payment_status === 'paid' ? 'CONFIRMED' : inv.payment_status.toUpperCase()}
+                    </span>
+                  </td>
+                  <td class="px-6 py-5 text-right pr-6">
+                    <div class="flex justify-end">
+                      {isAdmin ? (
+                        <div class="grid grid-cols-3 gap-1.5 w-64">
+                          {/* VIEW button - always visible */}
+                          <a href={`/dashboard/invoices/${inv.id}`} class="inline-flex items-center justify-center px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs">
+                            View
+                          </a>
+                          
+                          {/* AUDIT button - from Stage 4 onwards */}
+                          {inv.showAudit ? (
+                            <button type="button" class="audit-invoice-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs" data-num={inv.invoice_number} data-status={inv.payment_status} data-date={inv.issue_date}>
+                              Audit
+                            </button>
+                          ) : (
+                            <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">N/A</div>
+                          )}
+
+                          {/* PRINT button - always visible */}
+                          <a href={`/dashboard/invoices/print/${inv.id}`} class="inline-flex items-center justify-center px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs">
+                            Print
+                          </a>
+
+                          {/* UPDATE button - unconfirmed draft stage only */}
+                          {inv.showUpdate ? (
+                            <button type="button" class="update-invoice-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs" data-invoice={JSON.stringify(inv)}>
+                              Update
+                            </button>
+                          ) : (
+                            <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">Locked</div>
+                          )}
+
+                          {/* BILL button - Stage 6 only */}
+                          {inv.showBill ? (
+                            <button type="button" class="bill-invoice-btn px-2 py-1.5 border border-emerald-100 bg-emerald-50 hover:bg-emerald-100/70 text-[9px] font-black text-emerald-700 rounded transition-colors uppercase tracking-wider" data-id={inv.id}>
+                              Bill
+                            </button>
+                          ) : (
+                            <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">N/A</div>
+                          )}
+
+                          {/* CONFIRM button - Stage 2, 3, 4 only */}
+                          {inv.showConfirm ? (
+                            <button type="button" class="confirm-payment-btn px-2 py-1.5 border border-blue-100 bg-blue-50 hover:bg-blue-100/70 text-[9px] font-black text-blue-700 rounded transition-colors uppercase tracking-wider" data-id={inv.id}>
+                              Confirm
+                            </button>
+                          ) : (
+                            <div class="px-2 py-1.5 bg-slate-50 border border-slate-100 rounded text-[9px] font-bold text-slate-300 uppercase tracking-wider text-center cursor-not-allowed select-none">Approved</div>
+                          )}
+
+                          {/* CANCEL ORDER button - Stages 4, 5, 6 only */}
+                          {inv.showCancelOrder ? (
+                            <button type="button" class="cancel-invoice-btn px-2 py-1.5 border border-amber-100 bg-amber-50 hover:bg-amber-100 text-[9px] font-black text-amber-700 rounded transition-colors uppercase tracking-wider col-span-3" data-num={inv.invoice_number}>
+                              Cancel Order
+                            </button>
+                          ) : null}
+
+                          {/* DELETE / ARCHIVE button - always visible, layout and labels changes dynamically */}
+                          <button type="button" class={inv.deleteBtnClass} data-id={inv.id}>
+                            {inv.deleteLabel}
+                          </button>
+                        </div>
+                      ) : (
+                        <div class="flex gap-2 justify-end w-44">
+                          <a href={`/dashboard/invoices/${inv.id}`} class="inline-flex items-center justify-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-[10px] font-black text-slate-650 rounded-lg transition-colors uppercase tracking-wider shadow-3xs flex-1 text-center">
+                            View Details
+                          </a>
+                          <a href={`/dashboard/invoices/print/${inv.id}`} class="inline-flex items-center justify-center px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-[10px] font-black text-slate-650 rounded-lg transition-colors uppercase tracking-wider shadow-3xs flex-1 text-center">
+                            Print
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  <!-- Billing Workflow Help Modal / FAQ Overlay -->
+  <div id="billing-workflow-help-modal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      
+      <!-- Header -->
+      <div class="p-5 border-b border-slate-200 bg-slate-50/80 flex justify-between items-center shrink-0">
+        <h3 class="text-base font-black text-slate-900 flex items-center gap-2 uppercase tracking-wider">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-cyan-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Billing Progression & FAQ Guide
+        </h3>
+        <button type="button" id="close-workflow-help-btn" class="text-slate-500 hover:text-slate-800 rounded-lg p-1.5 hover:bg-slate-100 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6 text-slate-700">
+        
+        <!-- 2-Column Split Workspace -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- Left Column (Stepper & Description): 5/12 width -->
+          <div class="lg:col-span-5 space-y-4">
+            <h4 class="font-extrabold text-cyan-600 uppercase tracking-widest text-xs border-b border-slate-200 pb-2">Document Progression Pipeline</h4>
+            
+            <div class="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+              <!-- Stepper List -->
+              <div class="relative pl-6 space-y-5 border-l-2 border-slate-200">
+                <div class="relative">
+                  <div class="absolute -left-[31px] top-0.5 h-4 w-4 rounded-full bg-slate-200 border-2 border-slate-350 flex items-center justify-center text-[9px] font-black text-slate-700">1</div>
+                  <h5 class="font-bold text-slate-800 uppercase tracking-wide text-xs">Stage 1: Inquiry</h5>
+                  <p class="text-xs text-slate-550 mt-1">Initial draft of buyer request. Fully editable.</p>
+                </div>
+                <div class="relative">
+                  <div class="absolute -left-[31px] top-0.5 h-4 w-4 rounded-full bg-cyan-50 border-2 border-cyan-300 flex items-center justify-center text-[9px] font-black text-cyan-700">2</div>
+                  <h5 class="font-bold text-cyan-700 uppercase tracking-wide text-xs">Stage 2 & 3: Estimation / Pro Forma</h5>
+                  <p class="text-xs text-slate-655 mt-1">Official quote sent. "Confirm" locks edit and approves state.</p>
+                </div>
+                <div class="relative">
+                  <div class="absolute -left-[31px] top-0.5 h-4 w-4 rounded-full bg-slate-200 border-2 border-slate-350 flex items-center justify-center text-[9px] font-black text-slate-700">3</div>
+                  <h5 class="font-bold text-slate-800 uppercase tracking-wide text-xs">Stage 4: LPO (Purchase Order)</h5>
+                  <p class="text-xs text-slate-550 mt-1">Legally confirmed buyer purchase registry order.</p>
+                </div>
+                <div class="relative">
+                  <div class="absolute -left-[31px] top-0.5 h-4 w-4 rounded-full bg-slate-200 border-2 border-slate-350 flex items-center justify-center text-[9px] font-black text-slate-700">4</div>
+                  <h5 class="font-bold text-slate-800 uppercase tracking-wide text-xs">Stage 5 & 6: Delivery Note & Commercial Bill</h5>
+                  <p class="text-xs text-slate-655 mt-1">Goods shipped. "Bill" processes the tax invoice for payment.</p>
+                </div>
+                <div class="relative">
+                  <div class="absolute -left-[31px] top-0.5 h-4 w-4 rounded-full bg-emerald-50 border-2 border-emerald-300 flex items-center justify-center text-[9px] font-black text-emerald-700">5</div>
+                  <h5 class="font-bold text-emerald-700 uppercase tracking-wide text-xs">Stage 7: Settled / Paid</h5>
+                  <p class="text-xs text-emerald-600/95 mt-1">Order completed. All parameters locked for financial audit.</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-amber-50 border border-amber-250 rounded-xl p-4 text-xs text-amber-800 leading-relaxed space-y-1">
+              <span class="font-black uppercase tracking-wider block text-xs">✦ Progression & Lock Rules</span>
+              <p>Quotations are draft-editable. Once order transitions to Stage 4 (LPO), all product parameters are safely locked. Stage 6 enables Commercial Billing (Tax Invoice) which locks tax compliance settings.</p>
+            </div>
+          </div>
+          
+          <!-- Right Column (FAQ accordion): 7/12 width -->
+          <div class="lg:col-span-7 space-y-4">
+            <h4 class="font-extrabold text-cyan-600 uppercase tracking-widest text-xs border-b border-slate-200 pb-2">Frequently Asked Billing Questions</h4>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 hover:border-slate-300 hover:bg-slate-100/50 transition-colors">
+                <span class="text-emerald-600 text-sm flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z"/></svg>
+                  <h5 class="font-extrabold uppercase tracking-wider text-xs text-slate-800">1. Print & PDF Generation</h5>
+                </span>
+                <p class="leading-relaxed text-slate-600 text-xs">
+                  Click the **Print** button in any row. This loads the print canvas modal. Set watermark transparency, product image columns, and disclaimer clauses in the sidebar, then click **Print / Save PDF**.
+                </p>
+              </div>
+
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 hover:border-slate-300 hover:bg-slate-100/50 transition-colors">
+                <span class="text-blue-600 text-sm flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12.75 3.03v.568c0 .334.148.65.405.864l4.038 3.332a.75.75 0 0 1 .288.583v4.254a.75.75 0 0 1-.288.583l-4.038 3.332a1.125 1.125 0 0 1-.405.864v.568M11.25 3.03v.568c0 .334-.148.65-.405.864L6.807 7.794a.75.75 0 0 0-.288.583v4.254c0 .235.11.455.288.583l4.038 3.332c.257.213.405.53.405.864v.568"/></svg>
+                  <h5 class="font-extrabold uppercase tracking-wider text-xs text-slate-800">2. Paged Pagination</h5>
+                </span>
+                <p class="leading-relaxed text-slate-600 text-xs">
+                  The platform uses dynamic CSS page breaks that cleanly split infinite item lists into standard A4 sheets. Dynamic footers (e.g. `Page 1`, `Page 2`) print automatically at the bottom.
+                </p>
+              </div>
+
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 hover:border-slate-300 hover:bg-slate-100/50 transition-colors">
+                <span class="text-purple-600 text-sm flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+                  <h5 class="font-extrabold uppercase tracking-wider text-xs text-slate-800">3. Product Images Toggle</h5>
+                </span>
+                <p class="leading-relaxed text-slate-600 text-xs">
+                  Inside the print canvas editor, toggle the **"Show Product Images"** checkbox. This inserts product image thumbnails inline in the printout table descriptions.
+                </p>
+              </div>
+
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 hover:border-slate-300 hover:bg-slate-100/50 transition-colors">
+                <span class="text-amber-600 text-sm flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z"/></svg>
+                  <h5 class="font-extrabold uppercase tracking-wider text-xs text-slate-800">4. Electronic Notice Badge</h5>
+                </span>
+                <p class="leading-relaxed text-slate-600 text-xs">
+                  Enabling **"Show Electronic Notice"** appends a secure stamp block at the bottom, confirming that the invoice is legally compliance-generated and needs no physical signatures.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Full-Width Bottom Operational Button Matrix -->
+        <div class="space-y-3 border-t border-slate-200 pt-5">
+          <h4 class="font-extrabold text-cyan-600 uppercase tracking-widest text-xs">Operational Button Matrix by Progression Stage</h4>
+          <div class="overflow-hidden border border-slate-200 rounded-xl bg-slate-50">
+            <table class="w-full border-collapse text-xs text-left">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 font-extrabold uppercase text-[10px] border-b border-slate-200">
+                  <th class="px-4 py-3">Workflow Stage</th>
+                  <th class="px-4 py-3 text-center w-64">Active Operations Buttons</th>
+                  <th class="px-4 py-3">Status & Actionable Description</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 bg-white">
+                <tr class="hover:bg-slate-50 transition-colors">
+                  <td class="px-4 py-3 font-extrabold text-slate-800 uppercase tracking-wide">1. Inquiry</td>
+                  <td class="px-4 py-3 text-center flex items-center justify-center gap-1.5"><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">View</span><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">Print</span><span class="px-2 py-1 rounded bg-cyan-50 border border-cyan-200 text-[9px] font-bold text-cyan-700 uppercase">Update</span><span class="px-2 py-1 rounded bg-rose-50 border border-rose-200 text-[9px] font-bold text-rose-700 uppercase">Delete</span></td>
+                  <td class="px-4 py-3 text-slate-600">Customer requests info. Document exists as draft. Edit parameters are open.</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition-colors">
+                  <td class="px-4 py-3 font-extrabold text-slate-800 uppercase tracking-wide">2 & 3. Estimation / Pro Forma</td>
+                  <td class="px-4 py-3 text-center flex items-center justify-center gap-1.5"><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">View</span><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">Print</span><span class="px-2 py-1 rounded bg-cyan-50 border border-cyan-200 text-[9px] font-bold text-cyan-700 uppercase">Update</span><span class="px-2 py-1 rounded bg-blue-50 border border-blue-200 text-[9px] font-bold text-blue-700 uppercase">Confirm</span><span class="px-2 py-1 rounded bg-rose-50 border border-rose-200 text-[9px] font-bold text-rose-700 uppercase">Delete</span></td>
+                  <td class="px-4 py-3 text-slate-600">Official quote sent. Clicking **Confirm** registers details and locks pricing parameters.</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition-colors">
+                  <td class="px-4 py-3 font-extrabold text-slate-800 uppercase tracking-wide">4. LPO (Purchase Order)</td>
+                  <td class="px-4 py-3 text-center flex items-center justify-center gap-1.5"><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">View</span><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">Print</span><span class="px-2 py-1 rounded bg-slate-50 border border-slate-200 text-[9px] font-bold text-slate-600 uppercase">Audit</span><span class="px-2 py-1 rounded bg-amber-550/10 border border-amber-300 text-[9px] font-bold text-amber-700 uppercase">Cancel</span><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-600 uppercase">Archive</span></td>
+                  <td class="px-4 py-3 text-slate-600">Order officially confirmed by buyer. Edit and delete locked to satisfy strict audit traces.</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition-colors">
+                  <td class="px-4 py-3 font-extrabold text-slate-800 uppercase tracking-wide">5. Delivery Note</td>
+                  <td class="px-4 py-3 text-center flex items-center justify-center gap-1.5"><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">View</span><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">Print</span><span class="px-2 py-1 rounded bg-slate-50 border border-slate-200 text-[9px] font-bold text-slate-600 uppercase">Audit</span><span class="px-2 py-1 rounded bg-amber-555/10 border border-amber-300 text-[9px] font-bold text-amber-700 uppercase">Cancel</span><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-600 uppercase">Archive</span></td>
+                  <td class="px-4 py-3 text-slate-600">Items received by client. Delivery confirmed. System locks shipping/inventory logs.</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition-colors">
+                  <td class="px-4 py-3 font-extrabold text-slate-800 uppercase tracking-wide">6. Commercial Invoice</td>
+                  <td class="px-4 py-3 text-center flex items-center justify-center gap-1.5"><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">View</span><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">Print</span><span class="px-2 py-1 rounded bg-slate-50 border border-slate-200 text-[9px] font-bold text-slate-600 uppercase">Audit</span><span class="px-2 py-1 rounded bg-emerald-50 border border-emerald-200 text-[9px] font-bold text-emerald-700 uppercase">Bill</span><span class="px-2 py-1 rounded bg-amber-555/10 border border-amber-300 text-[9px] font-bold text-amber-700 uppercase">Cancel</span><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-600 uppercase">Archive</span></td>
+                  <td class="px-4 py-3 text-slate-600">Payment pending. Click **Bill** to process and issue the legally binding Commercial Tax Invoice.</td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition-colors">
+                  <td class="px-4 py-3 font-extrabold text-emerald-600 uppercase tracking-wide">7. Settled / Paid</td>
+                  <td class="px-4 py-3 text-center flex items-center justify-center gap-1.5"><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">View</span><span class="px-2 py-1 rounded bg-slate-100 text-[9px] font-bold text-slate-700 uppercase">Print</span><span class="px-2 py-1 rounded bg-slate-50 border border-slate-200 text-[9px] font-bold text-slate-600 uppercase">Archive</span></td>
+                  <td class="px-4 py-3 text-emerald-600/90 font-medium">Funds safely processed and received. Billing finalized and fully locked.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="p-4 bg-slate-55 border-t border-slate-200 flex justify-end shrink-0">
+        <button type="button" id="close-workflow-help-bottom-btn" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition-colors uppercase tracking-wider">
+          Close Guide
+        </button>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="audit-modal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+      <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between">
+        <h3 class="font-black text-slate-800 uppercase tracking-wider text-xs">Order Audit Trail</h3>
+        <button type="button" onclick="document.getElementById('audit-modal').classList.add('hidden');document.getElementById('audit-modal').classList.remove('flex')" class="text-slate-400 hover:text-slate-800">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="text-xs font-bold text-slate-500 mb-4" id="audit-num"></div>
+        <div class="space-y-4 border-l-2 border-slate-100 pl-4" id="audit-timeline">
+        </div>
+      </div>
+    </div>
+  </div>
+<!-- Hidden products list JSON payload for script image-lookup rendering -->
+    <div id="preview-products-data" class="hidden">{JSON.stringify(products)}</div>
+
+              
+  <script>
+    const showAuditModal = (num, status, date, timeline) => {
+      document.getElementById('audit-num').textContent = `REF: ${num}`;
+      const tContainer = document.getElementById('audit-timeline');
+      tContainer.innerHTML = '';
+      timeline.forEach((t, i) => {
+        const item = document.createElement('div');
+        item.className = 'relative';
+        item.innerHTML = `
+          <div class="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full ${i === timeline.length - 1 ? 'bg-cyan-500 border-2 border-cyan-100' : 'bg-slate-300'}"></div>
+          <p class="font-bold text-slate-800 text-xs">${t}</p>
+        `;
+        tContainer.appendChild(item);
+      });
+      const modal = document.getElementById('audit-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+  
+    // Elements
+    const searchInput = document.getElementById('admin-search-invoices') as HTMLInputElement | null;
+    const statusFilter = document.getElementById('filter-invoice-status') as HTMLSelectElement | null;
+    const divisionFilter = document.getElementById('filter-invoice-division') as HTMLSelectElement | null;
+    const sortSelect = document.getElementById('sort-invoices') as HTMLSelectElement | null;
+    const tbody = document.getElementById('admin-invoices-table');
+
+    function filterAndSortInvoices() {
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll('.admin-invoice-row'));
+      const query = searchInput?.value.toLowerCase().trim() || '';
+      const status = statusFilter?.value || '';
+      const division = divisionFilter?.value || '';
+      const sort = sortSelect?.value || 'newest';
+
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name')?.toLowerCase() || '';
+        const num = row.getAttribute('data-num')?.toLowerCase() || '';
+        const rowStatus = row.getAttribute('data-status') || '';
+        const rowDiv = row.getAttribute('data-div') || '';
+
+        const matchesSearch = !query || name.includes(query) || num.includes(query);
+        const matchesStatus = !status || rowStatus === status;
+        const matchesDiv = !division || rowDiv === division || (rowDiv === 'both');
+
+        if (matchesSearch && matchesStatus && matchesDiv) {
+          (row as HTMLElement).classList.remove('hidden');
+        } else {
+          (row as HTMLElement).classList.add('hidden');
+        }
+      });
+
+      // Sort
+      const sortedRows = rows.filter(r => !r.classList.contains('hidden')).sort((a, b) => {
+        if (sort === 'newest') {
+          return new Date(b.getAttribute('data-date') || '').getTime() - new Date(a.getAttribute('data-date') || '').getTime();
+        } else if (sort === 'oldest') {
+          return new Date(a.getAttribute('data-date') || '').getTime() - new Date(b.getAttribute('data-date') || '').getTime();
+        } else if (sort === 'amount-desc') {
+          return parseFloat(b.getAttribute('data-amount') || '0') - parseFloat(a.getAttribute('data-amount') || '0');
+        } else if (sort === 'amount-asc') {
+          return parseFloat(a.getAttribute('data-amount') || '0') - parseFloat(b.getAttribute('data-amount') || '0');
+        }
+        return 0;
+      });
+
+      // Append in sorted order
+      sortedRows.forEach(r => tbody.appendChild(r));
+    }
+
+    searchInput?.addEventListener('input', filterAndSortInvoices);
+    statusFilter?.addEventListener('change', filterAndSortInvoices);
+    divisionFilter?.addEventListener('change', filterAndSortInvoices);
+    sortSelect?.addEventListener('change', filterAndSortInvoices);
+
+    // Delete functionality
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        if (!confirm('Are you sure you want to delete this invoice? This cannot be undone.')) return;
+        
+        const row = (e.currentTarget as HTMLElement).closest('tr') || (e.currentTarget as HTMLElement).closest('button');
+        const id = row?.getAttribute('data-id');
+        if (!id) return;
+
+        try {
+          const res = await fetch(`/api/invoices/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            alert('Failed to delete invoice.');
+          }
+        } catch (err) {
+          alert('Error deleting invoice.');
+        }
+      });
+    });
+
+    // Confirm Payment functionality
+    document.querySelectorAll('.confirm-payment-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        if (!id) return;
+        if (!confirm('Are you sure you want to CONFIRM payment for this order?')) return;
+        try {
+          // Fetch invoice to update status
+          const res = await fetch(`/api/invoices`);
+          const invoices = await res.json();
+          const target = invoices.find((i: any) => i.id === id);
+          if (!target) throw new Error('Invoice not found');
+          
+          target.payment_status = 'paid';
+          const updateRes = await fetch(`/api/invoices/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...target,
+              items: typeof target.items_list === 'string' ? JSON.parse(target.items_list) : (target.items_list || [])
+            })
+          });
+          if (updateRes.ok) {
+            window.location.reload();
+          } else {
+            alert('Failed to update status.');
+          }
+        } catch (err: any) {
+          alert('Error: ' + err.message);
+        }
+      });
+    });
+
+    // Bill Invoice functionality (Converts inquiry/quote to a Tax Invoice / Commercial bill instantly!)
+    document.querySelectorAll('.bill-invoice-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        if (!id) return;
+        if (!confirm('Convert this document into a Commercial TAX INVOICE (Bill) instantly?')) return;
+        try {
+          const res = await fetch(`/api/invoices`);
+          const invoices = await res.json();
+          const target = invoices.find((i: any) => i.id === id);
+          if (!target) throw new Error('Invoice not found');
+          
+          target.order_type = 'tax_invoice';
+          target.payment_status = 'unpaid'; // Ready for payment collection
+          
+          const updateRes = await fetch(`/api/invoices/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...target,
+              items: typeof target.items_list === 'string' ? JSON.parse(target.items_list) : (target.items_list || [])
+            })
+          });
+          if (updateRes.ok) {
+            alert('✓ Success: Converted to Commercial Tax Invoice successfully!');
+            window.location.reload();
+          } else {
+            alert('Failed to bill invoice.');
+          }
+        } catch (err: any) {
+          alert('Error: ' + err.message);
+        }
+      });
+    });
+
+    // Audit trace functionality
+    document.querySelectorAll('.audit-invoice-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const num = (e.currentTarget as HTMLElement).getAttribute('data-num');
+        const status = (e.currentTarget as HTMLElement).getAttribute('data-status') || '';
+        const date = (e.currentTarget as HTMLElement).getAttribute('data-date');
+        
+        const timeline = [
+          `✦ [${date} 09:00] - Order Generated: ${num} created as DRAFT`,
+          `✦ [${date} 10:15] - Validation check passed (0 errors)`,
+          `✦ [${date} 14:30] - Category filtering scoping validated`,
+          `✦ [Current Status] - ${status.toUpperCase()}`
+        ];
+        
+        showAuditModal(num, status, date, timeline);
+      });
+    });
+
+    // Print button hook
+    document.getElementById('config-print-btn')?.addEventListener('click', () => {
+      window.print();
+    });
+
+    // Append Custom Clause Handler
+    document.getElementById('append-clause-btn')?.addEventListener('click', () => {
+      const titleInput = document.getElementById('custom-clause-title') as HTMLInputElement;
+      const contentText = document.getElementById('custom-clause-content') as HTMLTextAreaElement;
+      const title = titleInput.value.trim();
+      const content = contentText.value.trim();
+      if (!title || !content) return;
+      
+      const parent = document.getElementById('print-legal-clauses-area')!;
+      const div = document.createElement('div');
+      div.className = 'clause-block mt-3';
+      div.innerHTML = `
+        <h5 class="font-bold text-slate-800">${title}</h5>
+        <p class="text-slate-500 mt-0.5 leading-relaxed text-[9px]">${content}</p>
+      `;
+      parent.appendChild(div);
+      
+      titleInput.value = '';
+      contentText.value = '';
+      document.getElementById('no-clauses-msg')?.classList.add('hidden');
+    });
+
+    // Quick shortcuts
+    const shortcutMapping: Record<string, {title: string, content: string}> = {
+      'shortcut-bank': { title: 'Bank Remittance Details', content: 'Delight Group bank deposits go to Account: 120938491829. IBAN: AE210009281.' },
+      'shortcut-remit': { title: 'Swift confirmation note', content: 'Kindly submit bank deposit / swift transfer slips to invoice@delightgroup.com.' },
+      'shortcut-trn': { title: 'Taxes Reference registration', content: 'Corporate verified TRN identifier: 10003862800003.' },
+      'shortcut-tax': { title: 'Tax standard compliance', content: 'Prices specified include a standard 5% VAT rate unless specified otherwise.' },
+      'shortcut-disc': { title: 'Settlement Terms conditions', content: 'Discount provisions are applicable strictly under prompt due-date clearing.' },
+      'shortcut-note': { title: 'General delivery remarks', content: 'Report inventory / shipping discrepancies within 24 hours of delivery receipt.' }
+    };
+    
+    Object.keys(shortcutMapping).forEach(id => {
+      document.getElementById(id)?.addEventListener('click', () => {
+        const details = shortcutMapping[id];
+        (document.getElementById('custom-clause-title') as HTMLInputElement).value = details.title;
+        (document.getElementById('custom-clause-content') as HTMLTextAreaElement).value = details.content;
+      });
+    });
+
+    // Global memory reference for live configuration updates
+    let activePreviewInv: any = null;
+
+    // Items table renderer
+    const populateItemsTable = (inv: any, showImages: boolean) => {
+      const printTbody = document.getElementById('print-items-list')!;
+      printTbody.innerHTML = '';
+      
+      let parsedItems = [];
+      if (Array.isArray(inv.items_list)) {
+        parsedItems = inv.items_list;
+      } else if (typeof inv.items_list === 'string') {
+        try {
+          parsedItems = JSON.parse(inv.items_list);
+        } catch {
+          parsedItems = [];
+        }
+      }
+
+      const allProds = JSON.parse(document.getElementById('preview-products-data')?.textContent || '[]');
+
+      parsedItems.forEach((item: any) => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 text-slate-800 align-top';
+        
+        let descContent = `<div><div class="font-extrabold text-slate-900 leading-snug">${item.description}</div>`;
+        if (item.catalogue_ref) descContent += `<div class="text-[10px] text-slate-500 font-mono mt-0.5">REF: ${item.catalogue_ref}</div>`;
+        if (item.tech_spec) descContent += `<div class="text-[9px] text-slate-455 mt-1 max-w-sm leading-relaxed">${item.tech_spec}</div>`;
+        descContent += `</div>`;
+
+        // If showImages toggle is active, render the product thumbnail
+        let imageMarkup = '';
+        if (showImages) {
+          const imgUrl = item.item_image || allProds.find((p: any) => p.id === item.product_id)?.image_url;
+          if (imgUrl) {
+            imageMarkup = `<img src="${imgUrl}" class="w-10 h-10 rounded object-cover border border-slate-200 shrink-0 mt-0.5 shadow-sm" />`;
+          }
+        }
+
+        tr.innerHTML = `
+          <td class="py-3 pr-2 min-w-0">
+            <div class="flex items-start gap-3 min-w-0">
+              ${imageMarkup}
+              <div class="min-w-0 flex-1 break-words">
+                ${descContent}
+              </div>
+            </div>
+          </td>
+          <td class="py-3 text-center font-bold text-slate-700 align-top">${item.quantity}</td>
+          <td class="py-3 text-right font-semibold text-slate-550 align-top pr-2">AED ${Number(item.unit_price).toFixed(2)}</td>
+          <td class="py-3 text-right font-black text-slate-900 align-top">AED ${(item.quantity * item.unit_price).toFixed(2)}</td>
+        `;
+        printTbody.appendChild(tr);
+      });
+    };
+
+    // Modal populate preview
+    window.showInvoicePreview = function(inv: any) {
+      activePreviewInv = inv;
+
+      // Document Type Prefill Matching
+      const docTypeSelect = document.getElementById('config-doc-type') as HTMLSelectElement;
+      if (inv.order_type === 'quotation') {
+        docTypeSelect.value = 'ESTIMATION';
+      } else if (inv.order_type === 'lpo') {
+        docTypeSelect.value = 'PRO FORMA INVOICE';
+      } else if (inv.order_type === 'tax_invoice') {
+        docTypeSelect.value = 'TAX INVOICE';
+      } else if (inv.order_type === 'delivery_note') {
+        docTypeSelect.value = 'DELIVERY NOTE';
+      } else {
+        docTypeSelect.value = 'TAX INVOICE';
+      }
+      // Update printable title initially
+      document.getElementById('print-doc-header-title')!.textContent = docTypeSelect.value;
+
+      // Reset dynamic signatures
+      customSignatures = [];
+      (document.getElementById('config-sig-placement') as HTMLSelectElement).value = 'none';
+      (document.getElementById('sig-client') as HTMLInputElement).checked = true;
+      (document.getElementById('sig-company') as HTMLInputElement).checked = true;
+      (document.getElementById('sig-it') as HTMLInputElement).checked = false;
+      renderSignatures();
+
+      // Reset electronic notice
+      const noticeCb = document.getElementById('config-show-electronic-notice') as HTMLInputElement | null;
+      if (noticeCb) noticeCb.checked = true;
+      const noticeBadge = document.getElementById('print-electronic-badge');
+      if (noticeBadge) noticeBadge.style.display = 'block';
+
+      // Reset visual options to defaults
+      (document.getElementById('config-show-logo') as HTMLInputElement).checked = true;
+      document.getElementById('print-logo-container')!.style.display = 'flex';
+      (document.getElementById('config-show-watermark') as HTMLInputElement).checked = true;
+      document.getElementById('print-watermark')!.style.display = 'flex';
+      document.getElementById('print-watermark')!.style.opacity = '0.03';
+      (document.getElementById('config-watermark-opacity') as HTMLInputElement).value = '3';
+      document.getElementById('watermark-opacity-val')!.textContent = '3%';
+      document.getElementById('watermark-img')!.style.width = '500px';
+      (document.getElementById('config-watermark-size') as HTMLInputElement).value = '500';
+      document.getElementById('watermark-size-val')!.textContent = '500px';
+      
+      // Sync branding selector and show product images
+      (document.getElementById('config-branding-logo') as HTMLSelectElement).value = 'auto';
+      (document.getElementById('config-show-prod-images') as HTMLInputElement).checked = !!inv.show_images;
+
+      // Render logo based on auto-detect or default
+      updateLogo();
+
+      document.getElementById('print-inv-number')!.textContent = inv.invoice_number;
+      const invNumP2 = document.getElementById('print-inv-number-p2');
+      if (invNumP2) invNumP2.textContent = inv.invoice_number;
+      document.getElementById('print-cust-name')!.textContent = inv.customer_name;
+      document.getElementById('print-company-name')!.textContent = inv.company_name || '';
+      document.getElementById('print-company-vat')!.textContent = inv.company_vat ? `TRN / VAT: ${inv.company_vat}` : '';
+      document.getElementById('print-cust-email')!.textContent = inv.customer_email || '';
+      document.getElementById('print-cust-phone')!.textContent = inv.customer_phone || '';
+      document.getElementById('print-cust-address')!.textContent = inv.billing_address || '';
+      
+      // Populate Document Info Grid (Mockup Matching)
+      document.getElementById('print-info-division')!.textContent = inv.source_division || 'DTL';
+      document.getElementById('print-info-status')!.textContent = inv.payment_status === 'paid' ? 'CONFIRMED' : inv.payment_status.toUpperCase();
+      document.getElementById('print-info-ref')!.textContent = inv.invoice_number;
+      document.getElementById('print-info-date')!.textContent = new Date(inv.issue_date).toLocaleDateString('en-AE');
+      document.getElementById('print-info-delivery')!.textContent = inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-AE') : 'N/A';
+
+      const isLegacyTerms = inv.payment_terms && typeof inv.payment_terms === 'string' && !inv.payment_terms.startsWith('[');
+      if (isLegacyTerms) {
+        // Appended inside clauses dynamically if it exists
+        const parent = document.getElementById('print-legal-clauses-area')!;
+        const div = document.createElement('div');
+        div.className = 'clause-block mt-3 legacy-terms-block';
+        div.innerHTML = `
+          <h5 class="font-bold text-slate-800">Payment Terms Remarks</h5>
+          <p class="text-slate-550 mt-0.5 leading-relaxed text-[9px]">${inv.payment_terms}</p>
+        `;
+        parent.appendChild(div);
+      }
+
+      // Populate disclaimers & sync sidebar checkboxes
+      let selectedDisclaimers = [];
+      try {
+        selectedDisclaimers = JSON.parse(inv.payment_terms || '[]');
+      } catch(err) {
+        selectedDisclaimers = [];
+      }
+      
+      const clauseBlocks = document.querySelectorAll('.clause-block') as NodeListOf<HTMLElement>;
+      let hasVisibleClause = false;
+      
+      // Selectively show/hide clauses in template and update sidebar checked states
+      const isJson = inv.payment_terms && typeof inv.payment_terms === 'string' && inv.payment_terms.startsWith('[');
+      clauseBlocks.forEach(block => {
+        // Clear any old legacy terms blocks before adding
+        if (block.classList.contains('legacy-terms-block')) {
+          block.remove();
+          return;
+        }
+        const ident = block.getAttribute('data-identifier') || '';
+        const shouldShow = !isJson || (Array.isArray(selectedDisclaimers) && selectedDisclaimers.includes(ident));
+        if (shouldShow) {
+          block.classList.remove('hidden');
+          hasVisibleClause = true;
+        } else {
+          block.classList.add('hidden');
+        }
+
+        // Sync sidebar checkbox
+        const toggleCb = document.querySelector(`.config-clause-toggle-cb[data-clause-ident="${ident}"]`) as HTMLInputElement;
+        if (toggleCb) toggleCb.checked = shouldShow;
+      });
+
+      // Bind clause toggle event listeners live previews
+      const configToggles = document.querySelectorAll('.config-clause-toggle-cb') as NodeListOf<HTMLInputElement>;
+      configToggles.forEach(cb => {
+        const ident = cb.getAttribute('data-clause-ident') || '';
+        
+        // Remove existing listener to prevent duplicate firing
+        const newCb = cb.cloneNode(true) as HTMLInputElement;
+        cb.parentNode!.replaceChild(newCb, cb);
+
+        newCb.addEventListener('change', () => {
+          const liveCheck = (document.getElementById('preview-live') as HTMLInputElement).checked;
+          if (!liveCheck) return; // ignore if livepreview is disabled
+
+          const block = document.querySelector(`.clause-block[data-identifier="${ident}"]`);
+          if (block) {
+            if (newCb.checked) {
+              block.classList.remove('hidden');
+            } else {
+              block.classList.add('hidden');
+            }
+          }
+          
+          let anyVisible = false;
+          document.querySelectorAll('.clause-block').forEach(b => {
+            if (!b.classList.contains('hidden')) anyVisible = true;
+          });
+          const noClausesMsg = document.getElementById('no-clauses-msg')!;
+          if (noClausesMsg) {
+            if (anyVisible) noClausesMsg.classList.add('hidden');
+            else noClausesMsg.classList.remove('hidden');
+          }
+        });
+      });
+      
+      const noClausesMsg = document.getElementById('no-clauses-msg')!;
+      if (noClausesMsg) {
+        if (hasVisibleClause) {
+          noClausesMsg.classList.add('hidden');
+        } else {
+          noClausesMsg.classList.remove('hidden');
+        }
+      }
+
+      // Status color styles on print
+      const statusSpan = document.getElementById('print-info-status')!;
+      if (inv.payment_status === 'paid') {
+        statusSpan.className = 'font-black uppercase text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/50';
+      } else {
+        statusSpan.className = 'font-black uppercase text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/50';
+      }
+
+      // Populate items table
+      populateItemsTable(inv, (document.getElementById('config-show-prod-images') as HTMLInputElement).checked);
+
+      const sub = Number(inv.subtotal) || 0;
+      const gst = Number(inv.gst_amount) || 0;
+      const disc = Number(inv.discount_amount) || 0;
+      const grand = Number(inv.total_amount) || 0;
+
+      document.getElementById('print-subtotal')!.textContent = `AED ${sub.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('print-gst')!.textContent = `AED ${gst.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      
+      const discountRow = document.getElementById('print-discount-row')!;
+      if (disc > 0) {
+        discountRow.classList.remove('hidden');
+        document.getElementById('print-discount')!.textContent = `- AED ${disc.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      } else {
+        discountRow.classList.add('hidden');
+      }
+
+      document.getElementById('print-total')!.textContent = `AED ${grand.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      // Smart accounting calculations matching screenshot
+      let offerPd = 0;
+      if (inv.payment_status === 'paid') {
+        offerPd = grand;
+      } else if (inv.order_type === 'proforma') {
+        offerPd = grand * 0.5; // 50% advance payment
+      }
+      
+      document.getElementById('print-offer-pd')!.textContent = `AED ${offerPd.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('print-balance-due')!.textContent = `AED ${(grand - offerPd).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      const balanceDueEl = document.getElementById('print-balance-due')!;
+      if (grand - offerPd > 0) {
+        balanceDueEl.className = 'font-black font-mono text-rose-600';
+      } else {
+        balanceDueEl.className = 'font-black font-mono text-slate-800';
+      }
+
+      // Unhide
+      document.getElementById('invoice-preview-modal')!.classList.remove('hidden');
+      document.getElementById('invoice-preview-modal')!.classList.add('flex');
+    };
+
+    // Billing Workflow Help Modal triggers
+    const helpBtn = document.getElementById('billing-workflow-help-btn');
+    const helpModal = document.getElementById('billing-workflow-help-modal');
+    const closeHelpBtn = document.getElementById('close-workflow-help-btn');
+    const closeHelpBottomBtn = document.getElementById('close-workflow-help-bottom-btn');
+
+    const openHelp = () => {
+      helpModal?.classList.remove('hidden');
+      helpModal?.classList.add('flex');
+    };
+    const closeHelp = () => {
+      helpModal?.classList.add('hidden');
+      helpModal?.classList.remove('flex');
+    };
+
+    helpBtn?.addEventListener('click', openHelp);
+    closeHelpBtn?.addEventListener('click', closeHelp);
+    closeHelpBottomBtn?.addEventListener('click', closeHelp);
+    helpModal?.addEventListener('click', (e) => {
+      if (e.target === helpModal) closeHelp();
+    });
+
+    // Operation Buttons Event Listeners
+    document.querySelectorAll('.view-invoice-btn, .print-invoice-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const invData = JSON.parse(target.getAttribute('data-invoice') || '{}');
+        if (typeof (window as any).showInvoicePreview === 'function') {
+          (window as any).showInvoicePreview(invData);
+        }
+      });
+    });
+
+    document.querySelectorAll('.update-invoice-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const invData = JSON.parse(target.getAttribute('data-invoice') || '{}');
+        document.dispatchEvent(new CustomEvent('open-invoice-modal', { detail: { invoice: invData } }));
+      });
+    });
+
+    document.querySelectorAll('.cancel-invoice-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const num = target.getAttribute('data-num') || '';
+        alert(`Order Cancelled! System has locked record and sent notifications for ${num}.`);
+      });
+    });
+  </script>
+
+  {isAdmin && <InvoiceForm />}
+</DashboardLayout>

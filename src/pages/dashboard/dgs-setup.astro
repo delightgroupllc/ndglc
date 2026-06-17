@@ -1,0 +1,978 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+
+let dgsSetup: any = {
+  hero: { imageUrl: 'https://images.unsplash.com/photo-1558904541-efa8c1a68fb6?auto=format&fit=crop&q=80&w=1600', title: 'Building Breathtaking Green Spaces', subtitle: 'Pioneering sustainable landscape architecture since 1988', ctaText: 'Explore Projects', ctaUrl: '#projects' },
+  accreditation: { enabled: true, title: "An Accredited Member of UK's leading landscaping Trade Association", subtitle: "We uphold the highest standard of international landscaping, sports turf management, and horticulture design." },
+  services: [
+    { title: 'Landscape Design', desc: 'Crafting sustainable, artistic master plans blending nature, architecture, and lifestyle.', imageUrl: '' },
+    { title: 'Landscape Construction', desc: 'Bringing designs to life with top-grade civil works, softscaping, and smart drainage.', imageUrl: '' },
+    { title: 'Golf Course Construction & Maintenance', desc: 'Pioneering world-class golf links across the UAE with championship-grade specifications.', imageUrl: '' },
+    { title: 'Landscape Maintenance', desc: 'Expert biological and technical upkeep keeping architectural gardens lush year-round.', imageUrl: '' },
+    { title: 'Sports Turf Construction & Maintenance', desc: 'Professional turf care for soccer stadiums, race tracks, and public arenas.', imageUrl: '' },
+    { title: 'Plant Nursery (Wahat Al Sahraa)', desc: 'Cultivating acclimated arid-zone trees, desert shrubs, and exotic ornamental blooms.', imageUrl: '' },
+    { title: 'Pools & Waterscape', desc: 'Stunning luxury pools, bio-ponds, custom fountains and architectural water features.', imageUrl: '' },
+    { title: 'Indoor Plants', desc: 'Premium living office arrangements, green walls, and custom design planters.', imageUrl: '' },
+    { title: 'Soils, Fertilizers & Pest Control', desc: 'Eco-friendly custom organic substrates and botanical crop nutrition.', imageUrl: '' },
+    { title: 'Tools, Machinery & Supplies', desc: 'Importing leading European landscape tools and smart computerized turf systems.', imageUrl: '' },
+    { title: 'Trading', desc: 'Global wholesale supply of premium commercial landscaping raw materials.', imageUrl: '' }
+  ],
+  panels: {
+    golf: { title: 'Building Breathtaking', subtitle: 'DESERT GOLF', description: 'Over 30 years of experience delivering champion-grade golf courses across the GCC with pristine greens, smart irrigation and state-of-the-art turf management.', imageUrl: '', buttonText: 'Read More', buttonUrl: '/portfolio' },
+    nursery: { title: 'Native & Adaptive', subtitle: 'PLANT NURSERY', description: 'Acres of locally acclimated shrubs, flowers, and mature trees curated for the arid Middle Eastern climate.', imageUrl: '', buttonText: 'Explore Nursery', buttonUrl: '/portfolio' },
+    sustainable: { title: 'Sustainable Landscape', subtitle: 'Green Heritage', description: 'Leveraging smart water conservation, indigenous flora, and organic soil enhancement to craft landscapes that thrive naturally and responsibly.', imageUrl: '', highlight1: 'Smart Graywater Recycling Integration', highlight2: 'Arid-Adaptive Flora Selection', highlight3: 'Zero Chemical Runoff Philosophy' }
+  },
+  facts: [
+    { label: 'Years of UAE Heritage', value: '35+' },
+    { label: 'Championship Golf Courses', value: '12' },
+    { label: 'Nursery Acres Active', value: '400+' },
+    { label: 'Premium Projects Completed', value: '5,000+' }
+  ],
+  imageStore: [],
+};
+
+// Load all DGS projects for the picker
+let allDgsProjects: any[] = [];
+// Load currently saved homepage project IDs
+let homepageProjectIds: string[] = [];
+
+try {
+  const res = await query("SELECT key, value FROM settings WHERE key IN ('dgs_setup','dgs_homepage_projects')");
+  for (const row of res.rows) {
+    if (row.key === 'dgs_setup') {
+      try { dgsSetup = { ...dgsSetup, ...JSON.parse(row.value) }; } catch {}
+    }
+    if (row.key === 'dgs_homepage_projects') {
+      try { homepageProjectIds = JSON.parse(row.value); } catch {}
+    }
+  }
+} catch (err: any) {
+  console.warn('DB offline or DGS settings missing:', err?.message || err);
+}
+
+// Fetch all active DGS projects for the project picker
+try {
+  const projRes = await query(
+    `SELECT id, title, client_name, featured_image, description
+     FROM projects
+     WHERE division = 'dgs' AND status = 'active'
+     ORDER BY created_at DESC`
+  );
+  allDgsProjects = projRes.rows;
+} catch (e: any) {
+  console.warn('Unable to load DGS projects:', e?.message || e);
+}
+
+// Build an ordered list of selected projects (maintain order from homepageProjectIds)
+const selectedProjects = homepageProjectIds
+  .map(id => allDgsProjects.find(p => p.id === id))
+  .filter(Boolean);
+
+---
+
+<DashboardLayout title="DGS Setup" activeItem="dgs-setup">
+<!-- Tabs Switcher (Visible only on mobile/tablet) -->
+  <div class="flex border-b border-slate-200 bg-white p-1 rounded-xl shadow-3xs lg:hidden shrink-0 mb-4 select-none">
+    <button type="button" id="tab-toggle-form" class="flex-1 text-center py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all bg-emerald-50 text-emerald-700">
+      Configuration
+    </button>
+    <button type="button" id="tab-toggle-preview" class="flex-1 text-center py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all text-slate-500 hover:text-slate-800">
+      Live Preview
+    </button>
+  </div>
+
+  <div class="min-h-[calc(100vh-120px)] lg:h-[calc(100vh-120px)] flex flex-col lg:flex-row gap-6 lg:overflow-hidden w-full">
+    <!-- LEFT: Configuration Form -->
+    <div id="dgs-form-column" class="w-full lg:w-2/5 flex flex-col min-h-0 bg-white border border-slate-200 rounded-2xl shadow-sm">
+      
+      <header class="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
+        <div>
+          <h1 class="text-lg font-black text-slate-900 tracking-tight">DGS Setup</h1>
+          <p class="text-[11px] text-slate-500 font-medium">Configure Hero, Services, Panels & Projects</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div id="save-msg" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1.5"></div>
+          <button id="save-dgs" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">Save</button>
+        </div>
+      </header>
+
+      <div class="overflow-y-auto p-5 flex-1 custom-scrollbar">
+        <form id="dgs-form" class="space-y-6">
+
+          <!-- ═══ 1. HERO ═══ -->
+          <div class="mb-4">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">1</span>
+          Hero Banner Slider
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Banner Title</label>
+            <textarea name="hero_title" rows="2" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">{dgsSetup.hero?.title || ''}</textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Banner Subtitle</label>
+            <input name="hero_subtitle" value={dgsSetup.hero?.subtitle || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Hero Background Image URL</label>
+            <input name="hero_imageUrl" value={dgsSetup.hero?.imageUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="https://..." />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA Button Text</label>
+            <input name="hero_ctaText" value={dgsSetup.hero?.ctaText || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">CTA Button URL</label>
+            <input name="hero_ctaUrl" value={dgsSetup.hero?.ctaUrl || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+          </div>
+        </div>
+          </div>
+
+          <!-- ═══ 2. ACCREDITATION BANNER ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">2</span>
+          Accreditation Banner
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="md:col-span-2">
+            <label class="text-xs font-medium text-slate-600">Accreditation Title</label>
+            <input name="accred_title" value={dgsSetup.accreditation?.title || ''} class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Enabled</label>
+            <select name="accred_enabled" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">
+              <option value="true" selected={dgsSetup.accreditation?.enabled !== false}>Enabled</option>
+              <option value="false" selected={dgsSetup.accreditation?.enabled === false}>Disabled</option>
+            </select>
+          </div>
+          <div class="md:col-span-3">
+            <label class="text-xs font-medium text-slate-600">Accreditation Description/Subtitle</label>
+            <textarea name="accred_subtitle" rows="2" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">{dgsSetup.accreditation?.subtitle || ''}</textarea>
+          </div>
+        </div>
+          </div>
+
+          <!-- ═══ 3. DGS SERVICES GRID ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">3</span>
+          Our Services Grid Customizer
+        </h2>
+        <p class="text-xs text-slate-500 mb-4 font-medium">Configure individual Desert Group Landscape/Trading services. Choose how many columns to display or list all custom services dynamically.</p>
+        
+        <!-- Grid layout selection and Add Button -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 bg-slate-50 border border-slate-100 rounded-xl p-4">
+          <div>
+            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-600 block mb-1">Grid Layout Selection</label>
+            <select name="services_grid_layout" class="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">
+              <option value="3x1" selected={dgsSetup.servicesGridLayout === '3x1'}>3x1 Grid (Show 3)</option>
+              <option value="3x2" selected={dgsSetup.servicesGridLayout === '3x2' || !dgsSetup.servicesGridLayout}>3x2 Grid (Show 6)</option>
+              <option value="3x3" selected={dgsSetup.servicesGridLayout === '3x3'}>3x3 Grid (Show 9)</option>
+              <option value="show_all" selected={dgsSetup.servicesGridLayout === 'show_all'}>Show All Services</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button type="button" id="add-service-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm">
+              + Add New Service
+            </button>
+          </div>
+        </div>
+
+        <div id="services-list" class="space-y-4 divide-y divide-slate-100 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+          {dgsSetup.services?.map((svc: any, index: number) => (
+            <div class="pt-4 first:pt-0 svc-row" data-index={index}>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-emerald-700 svc-number-label">Service #{index + 1}</span>
+                <button type="button" class="delete-service-btn text-xs font-bold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+                <div>
+                  <label class="text-[10px] font-semibold text-slate-500">Service Title</label>
+                  <input class="svc-title w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value={svc.title || ''} placeholder="e.g. Landscape Design" />
+                </div>
+                <div>
+                  <label class="text-[10px] font-semibold text-slate-500">Service Description</label>
+                  <input class="svc-desc w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value={svc.desc || ''} />
+                </div>
+                <div>
+                  <label class="text-[10px] font-semibold text-slate-500">Background Image URL</label>
+                  <input class="svc-imageUrl w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value={svc.imageUrl || ''} placeholder="https://..." />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+          </div>
+
+          <!-- ═══ 4. LANDSCAPE SPLIT PANELS ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">4</span>
+          Highlights & Landscape Showcase Panels
+        </h2>
+        
+        <!-- Desert Golf -->
+        <div class="border-b border-slate-150 pb-4 mb-4">
+          <h3 class="text-xs font-bold text-emerald-800 mb-3">Module A: Desert Golf Course Showcase</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Supertitle (e.g. DESERT GOLF)</label>
+              <input name="panel_golf_subtitle" value={dgsSetup.panels?.golf?.subtitle || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Main Title (e.g. Building Breathtaking)</label>
+              <input name="panel_golf_title" value={dgsSetup.panels?.golf?.title || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-[10px] font-semibold text-slate-500">Description</label>
+              <textarea name="panel_golf_desc" rows="2" class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400">{dgsSetup.panels?.golf?.description || ''}</textarea>
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Golf Image URL</label>
+              <input name="panel_golf_image" value={dgsSetup.panels?.golf?.imageUrl || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="https://..." />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Button Text</label>
+                <input name="panel_golf_btnText" value={dgsSetup.panels?.golf?.buttonText || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Button URL</label>
+                <input name="panel_golf_btnUrl" value={dgsSetup.panels?.golf?.buttonUrl || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Plant Nursery -->
+        <div class="border-b border-slate-150 pb-4 mb-4">
+          <h3 class="text-xs font-bold text-emerald-800 mb-3">Module B: Plant Nursery Wide Banner</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Supertitle (e.g. PLANT NURSERY)</label>
+              <input name="panel_nursery_subtitle" value={dgsSetup.panels?.nursery?.subtitle || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Main Title (e.g. Native & Adaptive Plants)</label>
+              <input name="panel_nursery_title" value={dgsSetup.panels?.nursery?.title || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Nursery Background Image URL</label>
+              <input name="panel_nursery_image" value={dgsSetup.panels?.nursery?.imageUrl || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="https://..." />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Button Text</label>
+                <input name="panel_nursery_btnText" value={dgsSetup.panels?.nursery?.buttonText || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Button URL</label>
+                <input name="panel_nursery_btnUrl" value={dgsSetup.panels?.nursery?.buttonUrl || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sustainable Landscape -->
+        <div>
+          <h3 class="text-xs font-bold text-emerald-800 mb-3">Module C: Sustainable Landscape Split Section</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Supertitle (e.g. Green Heritage)</label>
+              <input name="panel_sus_subtitle" value={dgsSetup.panels?.sustainable?.subtitle || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Main Title (e.g. Sustainable Landscape)</label>
+              <input name="panel_sus_title" value={dgsSetup.panels?.sustainable?.title || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-[10px] font-semibold text-slate-500">Description Text</label>
+              <textarea name="panel_sus_desc" rows="2" class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400">{dgsSetup.panels?.sustainable?.description || ''}</textarea>
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Showcase Image URL</label>
+              <input name="panel_sus_image" value={dgsSetup.panels?.sustainable?.imageUrl || ''} class="w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="https://..." />
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-semibold text-slate-500">Highlights Checklist (3 items)</label>
+              <input name="panel_sus_hl1" value={dgsSetup.panels?.sustainable?.highlight1 || ''} class="w-full rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="Checklist point 1" />
+              <input name="panel_sus_hl2" value={dgsSetup.panels?.sustainable?.highlight2 || ''} class="w-full rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="Checklist point 2" />
+              <input name="panel_sus_hl3" value={dgsSetup.panels?.sustainable?.highlight3 || ''} class="w-full rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="Checklist point 3" />
+            </div>
+          </div>
+        </div>
+
+          </div>
+
+          <!-- ═══ 5. FEATURED PROJECTS ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">5</span>
+            Homepage Featured Projects
+          </h2>
+          <button
+            type="button"
+            id="save-projects-btn"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
+          >
+            Save Projects
+          </button>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">
+          Select exactly <strong>3 Delight Greenscapes projects</strong> to feature dynamically on the DGS Homepage. Drag and drop rows to reorder.
+        </p>
+
+        <!-- Selected Projects (shown on homepage) -->
+        <div class="mb-5">
+          <p class="text-xs font-semibold text-slate-700 mb-2">📌 Selected Featured Projects <span class="text-slate-400 font-normal">(drag to reorder)</span></p>
+          <div
+            id="selected-projects-list"
+            class="space-y-2 min-h-16 rounded-xl border-2 border-dashed border-slate-200 p-3 bg-slate-50/50"
+            data-empty-text="No projects selected yet — pick from the list below"
+          >
+            {selectedProjects.length === 0 && (
+              <p class="text-xs text-slate-400 text-center py-3">No projects selected yet — pick from the list below</p>
+            )}
+            {selectedProjects.map((proj: any, idx: number) => (
+              <div
+                class="selected-proj-card flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 cursor-grab"
+                draggable="true"
+                data-id={proj.id}
+              >
+                <span class="text-slate-400 text-sm select-none">⠿</span>
+                {proj.featured_image ? (
+                  <img src={proj.featured_image} alt={proj.title} class="w-14 h-10 object-cover rounded-lg shrink-0" />
+                ) : (
+                  <div class="w-14 h-10 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400 text-xs">No img</div>
+                )}
+                <div class="flex-grow min-w-0">
+                  <p class="text-sm font-semibold text-slate-900 truncate">{proj.title}</p>
+                  <p class="text-xs text-slate-500 truncate">{proj.client_name}</p>
+                </div>
+                <span class="proj-rank text-xs font-bold text-emerald-700 bg-emerald-100 rounded-full px-2 py-0.5">#{idx + 1}</span>
+                <button type="button" class="remove-proj-btn text-rose-500 hover:text-rose-700 font-bold text-lg leading-none shrink-0">&times;</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- All DGS Projects picker -->
+        <div>
+          <p class="text-xs font-semibold text-slate-700 mb-2">All DGS Projects <span class="text-slate-400 font-normal">— click to add</span></p>
+          <input
+            type="text"
+            id="proj-search"
+            placeholder="Search active DGS projects..."
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+          />
+          <div id="all-projects-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {allDgsProjects.length === 0 ? (
+              <p class="text-xs text-slate-400 text-center py-6">No active DGS projects found. Please add DGS projects first.</p>
+            ) : allDgsProjects.map((proj: any) => {
+              const isSelected = homepageProjectIds.includes(proj.id);
+              return (
+                <div
+                  class={`proj-pick-row flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${isSelected ? 'border-emerald-300 bg-emerald-50 opacity-50 pointer-events-none' : 'border-slate-100 hover:border-emerald-300 hover:bg-emerald-50'}`}
+                  data-id={proj.id}
+                  data-title={proj.title}
+                  data-client={proj.client_name}
+                  data-image={proj.featured_image || ''}
+                  data-selected={isSelected ? 'true' : 'false'}
+                >
+                  {proj.featured_image ? (
+                    <img src={proj.featured_image} alt={proj.title} class="w-14 h-10 object-cover rounded-lg shrink-0" loading="lazy" />
+                  ) : (
+                    <div class="w-14 h-10 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400 text-xs">No img</div>
+                  )}
+                  <div class="flex-grow min-w-0">
+                    <p class="text-sm font-semibold text-slate-900 truncate">{proj.title}</p>
+                    <p class="text-xs text-slate-500 truncate">{proj.client_name}</p>
+                  </div>
+                  {isSelected ? (
+                    <span class="text-xs font-bold text-emerald-700 shrink-0">✓ Added</span>
+                  ) : (
+                    <span class="text-xs font-bold text-indigo-500 shrink-0">+ Add</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+          </div>
+
+          <!-- ═══ 6. FACTS / STATISTICS ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">6</span>
+          Stats & Corporate Heritage Facts
+        </h2>
+        <div id="facts-list" class="space-y-2">
+          {dgsSetup.facts?.map((f: any, i: number) => (
+            <div class="flex gap-2 items-center">
+              <input class="fact-label rounded-md border border-slate-200 px-3 py-2 text-sm w-48 focus:outline-none focus:ring-1 focus:ring-emerald-400" value={f.label} placeholder="Label e.g. Nursery Acres" />
+              <input class="fact-value rounded-md border border-slate-200 px-3 py-2 text-sm w-32 focus:outline-none focus:ring-1 focus:ring-emerald-400" value={f.value} placeholder="e.g. 400+" />
+              <button type="button" class="remove-fact bg-red-50 hover:bg-red-100 text-red-500 px-2 py-1 rounded text-xs font-bold">&times; Remove</button>
+            </div>
+          ))}
+        </div>
+        <button id="add-fact" type="button" class="mt-3 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">+ Add Stat Fact</button>
+          </div>
+
+          <!-- ═══ TRUSTED PARTNERS SHOWCASE ═══ -->
+          <div class="mb-4 pt-4 border-t border-slate-100">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">7</span>
+          Trusted Partners Showcase
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-slate-600">Color Mode</label>
+            <select name="partners_color_mode" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">
+              <option value="bw" selected={dgsSetup.partnersColorMode !== 'color'}>Grayscale / Black & White</option>
+              <option value="color" selected={dgsSetup.partnersColorMode === 'color'}>Full Color</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-600">Layout Style</label>
+            <select name="partners_layout" class="w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400">
+              <option value="grid" selected={dgsSetup.partnersLayout === 'grid' || !dgsSetup.partnersLayout}>Grid / Wrap</option>
+              <option value="list" selected={dgsSetup.partnersLayout === 'list'}>Vertical List</option>
+              <option value="scrolling" selected={dgsSetup.partnersLayout === 'scrolling'}>Scrolling Animation (Infinite Ticker)</option>
+            </select>
+          </div>
+        </div>
+          </div>
+
+          <!-- ═══ CENTRALIZED RESOURCES HUB ═══ -->
+          <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mt-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">8</span>
+              Centralized Resources Hub
+            </h2>
+            <p class="text-xs text-slate-500">The Image Store has been upgraded and migrated to the centralized Resources manager. Search stock images, build local galleries, and copy urls dynamically.</p>
+          </div>
+          <a
+            href="/dashboard/resources"
+            class="inline-flex items-center justify-center gap-1.5 bg-emerald-650 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-sm shrink-0 uppercase tracking-wider"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Open Resources
+          </a>
+        </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- RIGHT: Live Preview (Centered and Scalable Viewport) -->
+    <div id="dgs-preview-column" class="hidden lg:flex flex-col flex-1 bg-slate-950 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden min-h-0">
+      
+      <!-- Browser Chrome Mockup -->
+      <div class="h-12 bg-slate-800 flex items-center px-4 gap-4 shrink-0 border-b border-slate-900 print-hidden select-none">
+        <div class="flex items-center gap-1.5 shrink-0">
+          <div class="w-3 h-3 rounded-full bg-rose-500"></div>
+          <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+          <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+        </div>
+        
+        <!-- URL bar -->
+        <div class="flex-1 max-w-md bg-slate-900 rounded-md h-7 flex items-center justify-center px-3 relative border border-slate-850">
+          <span class="text-[9px] text-slate-400 font-mono tracking-wider truncate">delightgroup.com/delightgreenscapes</span>
+          <button type="button" id="refresh-preview-btn" class="absolute right-2 text-slate-400 hover:text-white transition-colors" title="Reload Preview">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Viewport Switcher Toolbar -->
+        <div class="flex items-center bg-slate-900 border border-slate-850 rounded-lg p-0.5 ml-auto">
+          <button type="button" class="viewport-btn active px-2 py-1 rounded text-cyan-400 hover:text-white transition-all" data-viewport="desktop" title="Desktop View (100%)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+          </button>
+          <button type="button" class="viewport-btn px-2 py-1 rounded text-slate-550 hover:text-white transition-all" data-viewport="tablet" title="Tablet View (768px)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <rect x="4" y="2" width="16" height="20" rx="2" />
+              <circle cx="12" cy="18" r="1" />
+            </svg>
+          </button>
+          <button type="button" class="viewport-btn px-2 py-1 rounded text-slate-555 hover:text-white transition-all" data-viewport="mobile" title="Mobile View (375px)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <rect x="5" y="2" width="14" height="20" rx="2" />
+              <line x1="11" y1="18" x2="13" y2="18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Iframe Canvas -->
+      <div class="flex-1 relative bg-slate-950 flex justify-center items-center overflow-hidden p-4">
+        <div id="iframe-wrapper" class="w-full h-full mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-0">
+          <iframe id="dgs-preview-frame" src="/delightgreenscapes" class="w-full h-full border-0 absolute inset-0 bg-white"></iframe>
+        </div>
+        <div id="preview-loader" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-10 transition-opacity">
+          <div class="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 10px;
+    }
+    .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+      background-color: #94a3b8;
+    }
+  </style>
+
+  <script>
+    const form = document.getElementById('dgs-form') as HTMLFormElement;
+    const saveBtn = document.getElementById('save-dgs');
+    const saveMsg = document.getElementById('save-msg');
+
+    // ── READ FORM VALUES ─────────────────────────────────────────
+    const readForm = () => {
+      const data = new FormData(form);
+      
+      // Read services grid inputs
+      const services = Array.from(document.querySelectorAll('.svc-row')).map(row => {
+        return {
+          title: (row.querySelector('.svc-title') as HTMLInputElement)?.value || '',
+          desc: (row.querySelector('.svc-desc') as HTMLInputElement)?.value || '',
+          imageUrl: (row.querySelector('.svc-imageUrl') as HTMLInputElement)?.value || ''
+        };
+      });
+
+      // Read custom facts
+      const facts = Array.from(document.querySelectorAll('#facts-list > div')).map(row => ({
+        label: (row.querySelector('.fact-label') as HTMLInputElement)?.value || '',
+        value: (row.querySelector('.fact-value') as HTMLInputElement)?.value || ''
+      }));
+
+      return {
+        hero: {
+          title: data.get('hero_title') || '',
+          subtitle: data.get('hero_subtitle') || '',
+          imageUrl: data.get('hero_imageUrl') || '',
+          ctaText: data.get('hero_ctaText') || '',
+          ctaUrl: data.get('hero_ctaUrl') || ''
+        },
+        accreditation: {
+          enabled: data.get('accred_enabled') !== 'false',
+          title: data.get('accred_title') || '',
+          subtitle: data.get('accred_subtitle') || ''
+        },
+        services,
+        panels: {
+          golf: {
+            title: data.get('panel_golf_title') || '',
+            subtitle: data.get('panel_golf_subtitle') || '',
+            description: data.get('panel_golf_desc') || '',
+            imageUrl: data.get('panel_golf_image') || '',
+            buttonText: data.get('panel_golf_btnText') || '',
+            buttonUrl: data.get('panel_golf_btnUrl') || ''
+          },
+          nursery: {
+            title: data.get('panel_nursery_title') || '',
+            subtitle: data.get('panel_nursery_subtitle') || '',
+            imageUrl: data.get('panel_nursery_image') || '',
+            buttonText: data.get('panel_nursery_btnText') || '',
+            buttonUrl: data.get('panel_nursery_btnUrl') || ''
+          },
+          sustainable: {
+            title: data.get('panel_sus_title') || '',
+            subtitle: data.get('panel_sus_subtitle') || '',
+            description: data.get('panel_sus_desc') || '',
+            imageUrl: data.get('panel_sus_image') || '',
+            highlight1: data.get('panel_sus_hl1') || '',
+            highlight2: data.get('panel_sus_hl2') || '',
+            highlight3: data.get('panel_sus_hl3') || ''
+          }
+        },
+        servicesGridLayout: data.get('services_grid_layout') || '3x2',
+        partnersColorMode: data.get('partners_color_mode') || 'bw',
+        partnersLayout: data.get('partners_layout') || 'grid',
+        facts,
+      };
+    };
+
+    // ── SAVE MAIN CONFIG ─────────────────────────────────────────
+    saveBtn?.addEventListener('click', async () => {
+      const config = readForm();
+      const payload: any = {
+        dgs_setup: JSON.stringify(config)
+      };
+
+      try {
+        saveBtn.setAttribute('disabled', 'true');
+        (saveBtn as HTMLButtonElement).textContent = 'Saving Settings...';
+        
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        
+        if (!res.ok) throw new Error('Failed to save settings via API');
+        
+        saveMsg!.classList.remove('hidden');
+        saveMsg!.textContent = '✓ DGS Settings Saved';
+        
+        // Refresh Preview automatically
+        refreshPreview();
+
+        setTimeout(() => { saveMsg!.classList.add('hidden'); }, 2500);
+      } catch (err: any) {
+        alert(err?.message || 'Error saving DGS settings');
+      } finally {
+        saveBtn.removeAttribute('disabled');
+        (saveBtn as HTMLButtonElement).textContent = 'Save';
+      }
+    });
+
+    // ── REFRESH PREVIEW ─────────────────────────────────────────
+    const refreshPreviewBtn = document.getElementById('refresh-preview-btn');
+    const iframe = document.getElementById('dgs-preview-frame') as HTMLIFrameElement;
+    const previewLoader = document.getElementById('preview-loader');
+
+    const refreshPreview = () => {
+      if (!iframe) return;
+      if (previewLoader) {
+        previewLoader.classList.remove('hidden');
+        previewLoader.classList.add('flex');
+      }
+      // Force reload by appending timestamp
+      const currentSrc = iframe.src.split('?')[0];
+      iframe.src = `${currentSrc}?t=${Date.now()}`;
+    };
+
+    refreshPreviewBtn?.addEventListener('click', refreshPreview);
+    
+    if (iframe) {
+      iframe.addEventListener('load', () => {
+        if (previewLoader) {
+          previewLoader.classList.add('hidden');
+          previewLoader.classList.remove('flex');
+        }
+      });
+    }
+
+    // ── STATS FACTS DYNAMIC DOM ─────────────────────────────────
+    document.getElementById('add-fact')?.addEventListener('click', () => {
+      const wrapper = document.getElementById('facts-list');
+      const node = document.createElement('div');
+      node.className = 'flex gap-2 items-center';
+      node.innerHTML = `
+        <input class="fact-label rounded-md border border-slate-200 px-3 py-2 text-sm w-48 focus:outline-none" placeholder="Label" value="" />
+        <input class="fact-value rounded-md border border-slate-200 px-3 py-2 text-sm w-32 focus:outline-none" placeholder="e.g. 5,000+" value="" />
+        <button type="button" class="remove-fact bg-red-50 text-red-500 px-2 py-1 rounded text-xs font-bold">&times; Remove</button>
+      `;
+      wrapper?.appendChild(node);
+    });
+
+    document.getElementById('facts-list')?.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      if (t.classList.contains('remove-fact')) t.closest('div')?.remove();
+    });
+
+    // ── DYNAMIC SERVICES DOM ─────────────────────────────────────
+    const servicesList = document.getElementById('services-list');
+    const addServiceBtn = document.getElementById('add-service-btn');
+
+    const renumberServices = () => {
+      const rows = servicesList?.querySelectorAll('.svc-row');
+      rows?.forEach((row, i) => {
+        row.setAttribute('data-index', i.toString());
+        const label = row.querySelector('.svc-number-label');
+        if (label) label.textContent = `Service #${i + 1}`;
+      });
+    };
+
+    addServiceBtn?.addEventListener('click', () => {
+      const index = servicesList?.querySelectorAll('.svc-row').length || 0;
+      const div = document.createElement('div');
+      div.className = 'pt-4 border-t border-slate-100 svc-row';
+      div.setAttribute('data-index', index.toString());
+      div.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-emerald-700 svc-number-label">Service #${index + 1}</span>
+          <button type="button" class="delete-service-btn text-xs font-bold text-rose-600 hover:text-rose-800 transition-colors">Delete</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+          <div>
+            <label class="text-[10px] font-semibold text-slate-500">Service Title</label>
+            <input class="svc-title w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value="" placeholder="Service Name" />
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-500">Service Description</label>
+            <input class="svc-desc w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value="" />
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-500">Background Image URL</label>
+            <input class="svc-imageUrl w-full mt-0.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" value="" placeholder="https://..." />
+          </div>
+        </div>
+      `;
+      servicesList?.appendChild(div);
+      renumberServices();
+    });
+
+    servicesList?.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      if (t.classList.contains('delete-service-btn')) {
+        t.closest('.svc-row')?.remove();
+        renumberServices();
+      }
+    });
+
+    // ══════════════════════════════════════════════════════════
+    // HOMEPAGE PROJECTS PICKER LOGIC
+    // ══════════════════════════════════════════════════════════
+    const selectedList = document.getElementById('selected-projects-list');
+    const allList = document.getElementById('all-projects-list');
+    const saveProjectsBtn = document.getElementById('save-projects-btn');
+    const projSearch = document.getElementById('proj-search') as HTMLInputElement;
+
+    const getSelectedIds = () =>
+      Array.from(selectedList!.querySelectorAll('.selected-proj-card')).map(el => el.getAttribute('data-id') || '');
+
+    const makeSelectedCard = (id: string, title: string, client: string, imageUrl: string) => {
+      const div = document.createElement('div');
+      div.className = 'selected-proj-card flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 cursor-grab';
+      div.setAttribute('draggable', 'true');
+      div.setAttribute('data-id', id);
+      div.innerHTML = `
+        <span class="text-slate-400 text-sm select-none">⠿</span>
+        ${imageUrl ? `<img src="${imageUrl}" alt="${title}" class="w-14 h-10 object-cover rounded-lg shrink-0" />` : `<div class="w-14 h-10 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400 text-xs">No img</div>`}
+        <div class="flex-grow min-w-0">
+          <p class="text-sm font-semibold text-slate-900 truncate">${title}</p>
+          <p class="text-xs text-slate-500 truncate">${client}</p>
+        </div>
+        <span class="proj-rank text-xs font-bold text-emerald-700 bg-emerald-100 rounded-full px-2 py-0.5">#1</span>
+        <button type="button" class="remove-proj-btn text-rose-500 hover:text-rose-700 font-bold text-lg leading-none shrink-0">&times;</button>
+      `;
+      return div;
+    };
+
+    const updateRanks = () => {
+      const cards = selectedList!.querySelectorAll('.selected-proj-card');
+      const emptyP = selectedList!.querySelector('p.text-slate-400');
+      if (cards.length === 0) {
+        if (!emptyP) {
+          const p = document.createElement('p');
+          p.className = 'text-xs text-slate-400 text-center py-3';
+          p.textContent = 'No projects selected yet — pick from the list below';
+          selectedList!.appendChild(p);
+        }
+      } else {
+        if (emptyP) emptyP.remove();
+      }
+      cards.forEach((card, i) => {
+        const rank = card.querySelector('.proj-rank');
+        if (rank) rank.textContent = `#${i + 1}`;
+      });
+    };
+
+    const markPickRow = (id: string, selected: boolean) => {
+      const row = allList?.querySelector(`.proj-pick-row[data-id="${id}"]`) as HTMLElement | null;
+      if (!row) return;
+      row.setAttribute('data-selected', selected ? 'true' : 'false');
+      if (selected) {
+        row.classList.add('border-emerald-300', 'bg-emerald-50', 'opacity-50', 'pointer-events-none');
+        row.classList.remove('border-slate-100', 'hover:border-emerald-300', 'hover:bg-emerald-50');
+        const addSpan = row.querySelector('span.text-indigo-500');
+        if (addSpan) { addSpan.className = 'text-xs font-bold text-emerald-700 shrink-0'; addSpan.textContent = '✓ Added'; }
+      } else {
+        row.classList.remove('border-emerald-300', 'bg-emerald-50', 'opacity-50', 'pointer-events-none');
+        row.classList.add('border-slate-100', 'hover:border-emerald-300', 'hover:bg-emerald-50');
+        const addedSpan = row.querySelector('span.text-emerald-600');
+        if (addedSpan) { addedSpan.className = 'text-xs font-bold text-indigo-500 shrink-0'; addedSpan.textContent = '+ Add'; }
+      }
+    };
+
+    allList?.addEventListener('click', (e) => {
+      const row = (e.target as HTMLElement).closest('.proj-pick-row') as HTMLElement | null;
+      if (!row) return;
+      if (row.getAttribute('data-selected') === 'true') return;
+      const currentCount = selectedList!.querySelectorAll('.selected-proj-card').length;
+      if (currentCount >= 3) { alert('Maximum 3 featured projects can be set on the homepage.'); return; }
+
+      const id = row.getAttribute('data-id') || '';
+      const title = row.getAttribute('data-title') || '';
+      const client = row.getAttribute('data-client') || '';
+      const image = row.getAttribute('data-image') || '';
+
+      const card = makeSelectedCard(id, title, client, image);
+      attachRemoveListener(card);
+      attachDragListeners(card);
+      selectedList!.appendChild(card);
+      markPickRow(id, true);
+      updateRanks();
+    });
+
+    const attachRemoveListener = (card: HTMLElement) => {
+      card.querySelector('.remove-proj-btn')?.addEventListener('click', () => {
+        const id = card.getAttribute('data-id') || '';
+        card.remove();
+        markPickRow(id, false);
+        updateRanks();
+      });
+    };
+
+    selectedList?.querySelectorAll('.selected-proj-card').forEach(card => {
+      attachRemoveListener(card as HTMLElement);
+    });
+
+    // ── DRAG REORDER ──────────────────────────────────────────
+    let dragSrc: HTMLElement | null = null;
+    const attachDragListeners = (card: HTMLElement) => {
+      card.addEventListener('dragstart', (e) => {
+        dragSrc = card;
+        e.dataTransfer?.setData('text/plain', card.getAttribute('data-id') || '');
+        card.classList.add('opacity-50');
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('opacity-50');
+        dragSrc = null;
+        updateRanks();
+      });
+    };
+
+    selectedList?.querySelectorAll('.selected-proj-card').forEach(card => {
+      attachDragListeners(card as HTMLElement);
+    });
+
+    selectedList?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const target = (e.target as HTMLElement).closest('.selected-proj-card') as HTMLElement | null;
+      if (!target || !dragSrc || target === dragSrc) return;
+      const allCards = Array.from(selectedList.querySelectorAll('.selected-proj-card'));
+      const srcIdx = allCards.indexOf(dragSrc);
+      const destIdx = allCards.indexOf(target);
+      if (srcIdx < destIdx) selectedList.insertBefore(dragSrc, target.nextSibling);
+      else selectedList.insertBefore(dragSrc, target);
+    });
+
+    // ── SEARCH ────────────────────────────────────────────────
+    projSearch?.addEventListener('input', () => {
+      const q = projSearch.value.toLowerCase();
+      allList?.querySelectorAll('.proj-pick-row').forEach(row => {
+        const title = row.getAttribute('data-title')?.toLowerCase() || '';
+        const client = row.getAttribute('data-client')?.toLowerCase() || '';
+        (row as HTMLElement).style.display = (title.includes(q) || client.includes(q)) ? '' : 'none';
+      });
+    });
+
+    // ── SAVE HOMEPAGE PROJECTS ARRAY ──────────────────────────
+    saveProjectsBtn?.addEventListener('click', async () => {
+      const ids = getSelectedIds();
+      const btn = saveProjectsBtn as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dgs_homepage_projects: JSON.stringify(ids) }),
+        });
+        if (!res.ok) throw new Error('Failed to save featured projects');
+        btn.textContent = '✓ Saved Projects';
+        btn.className = btn.className.replace('bg-emerald-600', 'bg-teal-600').replace('hover:bg-emerald-700', 'hover:bg-teal-700');
+        
+        refreshPreview();
+
+        setTimeout(() => {
+          btn.textContent = 'Save Projects';
+          btn.className = btn.className.replace('bg-teal-600', 'bg-emerald-600').replace('hover:bg-teal-700', 'hover:bg-emerald-700');
+        }, 2000);
+      } catch (err: any) {
+        alert(err?.message || 'Error saving projects');
+        btn.textContent = 'Save Projects';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ── MOBILE TABS TOGGLE ──────────────────────────────────────
+    const formColumn = document.getElementById('dgs-form-column');
+    const previewColumn = document.getElementById('dgs-preview-column');
+    const tabFormBtn = document.getElementById('tab-toggle-form');
+    const tabPreviewBtn = document.getElementById('tab-toggle-preview');
+
+    tabFormBtn?.addEventListener('click', () => {
+      formColumn?.classList.remove('hidden');
+      previewColumn?.classList.add('hidden');
+      previewColumn?.classList.remove('flex');
+      
+      tabFormBtn.className = tabFormBtn.className.replace('text-slate-500', 'bg-emerald-50 text-emerald-700').replace('hover:text-slate-800', '');
+      if (tabPreviewBtn) {
+        tabPreviewBtn.className = tabPreviewBtn.className.replace('bg-emerald-50 text-emerald-700', 'text-slate-500 hover:text-slate-800');
+      }
+    });
+
+    tabPreviewBtn?.addEventListener('click', () => {
+      formColumn?.classList.add('hidden');
+      previewColumn?.classList.remove('hidden');
+      previewColumn?.classList.add('flex');
+      
+      tabPreviewBtn.className = tabPreviewBtn.className.replace('text-slate-550', 'bg-emerald-50 text-emerald-700').replace('text-slate-500', 'bg-emerald-50 text-emerald-700').replace('hover:text-slate-800', '');
+      if (tabFormBtn) {
+        tabFormBtn.className = tabFormBtn.className.replace('bg-emerald-50 text-emerald-700', 'text-slate-500 hover:text-slate-800');
+      }
+      
+      // Auto trigger resize on show
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    // ── VIEWPORT SIMULATOR SWITCHER ─────────────────────────────
+    const viewportBtns = document.querySelectorAll('.viewport-btn');
+    const iframeWrapper = document.getElementById('iframe-wrapper');
+
+    viewportBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        viewportBtns.forEach(b => {
+          b.classList.remove('active', 'text-cyan-400');
+          b.classList.add('text-slate-500');
+        });
+        
+        const target = e.currentTarget as HTMLButtonElement;
+        target.classList.add('active', 'text-cyan-400');
+        target.classList.remove('text-slate-500');
+        
+        const mode = target.getAttribute('data-viewport');
+        if (iframeWrapper) {
+          if (mode === 'desktop') {
+            iframeWrapper.className = 'w-full h-full mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-0';
+          } else if (mode === 'tablet') {
+            iframeWrapper.className = 'w-[768px] max-w-full h-[95%] mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-x border-y border-slate-700 rounded-lg';
+          } else if (mode === 'mobile') {
+            iframeWrapper.className = 'w-[375px] max-w-full h-[85%] mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-x border-y border-slate-700 rounded-2xl';
+          }
+        }
+      });
+    });
+
+    updateRanks();
+  </script>
+
+</DashboardLayout>
