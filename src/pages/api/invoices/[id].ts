@@ -26,7 +26,7 @@ const invoiceSchema = z.object({
   source_division: z.enum(['DTL', 'DGS', 'both']).optional().nullable(),
   issue_date: z.string().min(1, 'Issue date is required'),
   due_date: z.string().optional(),
-  payment_status: z.enum(['paid', 'unpaid', 'overdue', 'cancelled', 'draft']),
+  payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']),
   discount_type: z.enum(['percentage', 'fixed']).default('fixed'),
   discount_value: z.number().min(0).default(0),
   internal_notes: z.string().optional(),
@@ -171,6 +171,21 @@ export const PUT: APIRoute = async ({ params, request }) => {
     if (error instanceof z.ZodError) {
       return new Response(JSON.stringify({ error: 'Validation failed', details: error.errors }), { status: 400 });
     }
+    return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { status: 500 });
+  }
+};
+
+export const PATCH: APIRoute = async ({ params, request }) => {
+  try {
+    const id = params.id;
+    if (!id) return new Response(JSON.stringify({ error: 'ID required' }), { status: 400 });
+    const data = await request.json();
+    if (data.order_type) {
+      await query('UPDATE invoices SET order_type = $1, updated_at = NOW() WHERE id = $2', [data.order_type, id]);
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({ error: 'Field not provided' }), { status: 400 });
+  } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { status: 500 });
   }
 };

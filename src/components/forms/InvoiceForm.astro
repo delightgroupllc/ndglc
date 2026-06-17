@@ -299,6 +299,37 @@ const disclaimersJson = JSON.stringify(disclaimers);
   </div>
 </div>
 
+<!-- SUCCESS DIALOG MODAL -->
+<div id="invoice-success-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 text-center space-y-4">
+    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+    <h3 class="text-lg font-black text-slate-900 uppercase tracking-tight">Order Saved Successfully!</h3>
+    <p class="text-sm text-slate-500 font-medium">Order <span id="success-invoice-num" class="font-bold text-slate-800"></span> has been successfully saved. What would you like to do next?</p>
+    
+    <div class="flex flex-col gap-2 pt-2">
+      <a id="success-print-link" href="#" target="_blank" class="w-full inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        Print Order
+      </a>
+      <a id="success-pdf-link" href="#" target="_blank" class="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download PDF
+      </a>
+      <a id="success-view-link" href="#" class="w-full inline-flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all">
+        View Order Details
+      </a>
+      <button type="button" id="success-close-btn" class="w-full inline-flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700 text-xs font-bold transition-all pt-2 cursor-pointer">
+        Close & Reload Page
+      </button>
+    </div>
+  </div>
+</div>
+
+
 <script>
   // Parse global products and categories datasets
   const allProducts: any[] = JSON.parse(document.getElementById('invoice-form-products-data')?.textContent || '[]');
@@ -854,7 +885,38 @@ const disclaimersJson = JSON.stringify(disclaimers);
           msg.className = 'p-4 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
           msg.textContent = isDraft ? '✓ Draft saved.' : `✓ Invoice ${result.invoice_number || ''} generated successfully!`;
           msg.classList.remove('hidden');
-          setTimeout(() => window.location.reload(), 900);
+
+          if (isDraft) {
+            setTimeout(() => window.location.reload(), 900);
+          } else {
+            // Hide main modal and show success modal
+            const invoiceModal = document.getElementById('invoice-modal-backdrop');
+            if (invoiceModal) invoiceModal.classList.add('hidden');
+            
+            const successModal = document.getElementById('invoice-success-modal');
+            const successNum = document.getElementById('success-invoice-num');
+            const successPrint = document.getElementById('success-print-link') as HTMLAnchorElement;
+            const successPdf = document.getElementById('success-pdf-link') as HTMLAnchorElement;
+            const successView = document.getElementById('success-view-link') as HTMLAnchorElement;
+            const successClose = document.getElementById('success-close-btn');
+
+            if (successModal && successNum) {
+              successNum.textContent = result.invoice_number || '';
+              if (successPrint) successPrint.href = `/dashboard/invoices/print/${result.id}?autoprint=true`;
+              if (successPdf) successPdf.href = `/dashboard/invoices/print/${result.id}?download=true`;
+              if (successView) successView.href = `/dashboard/invoices/${result.id}`;
+              
+              successClose?.addEventListener('click', () => {
+                successModal.classList.add('hidden');
+                window.location.reload();
+              });
+
+              successModal.classList.remove('hidden');
+              successModal.classList.add('flex');
+            } else {
+              setTimeout(() => window.location.reload(), 900);
+            }
+          }
         } else {
           const errMsg = result.details?.map((d: any) => d.message).join(', ') || result.error || 'Unknown error';
           throw new Error(errMsg);

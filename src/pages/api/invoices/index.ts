@@ -26,7 +26,7 @@ const invoiceSchema = z.object({
   source_division: z.enum(['DTL', 'DGS', 'both']).optional().nullable(),
   issue_date: z.string().min(1, 'Issue date is required'),
   due_date: z.string().optional(),
-  payment_status: z.enum(['paid', 'unpaid', 'overdue', 'cancelled', 'draft']).default('unpaid'),
+  payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']).default('unpaid'),
   discount_type: z.enum(['percentage', 'fixed']).default('fixed'),
   discount_value: z.number().min(0).default(0),
   internal_notes: z.string().optional(),
