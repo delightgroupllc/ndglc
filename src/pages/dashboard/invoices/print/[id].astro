@@ -1,5 +1,7 @@
 ---
 import { query } from '../../../../lib/db';
+import StandardPrintLayout from '../../../../components/print/StandardPrintLayout.astro';
+import ModernGridPrintLayout from '../../../../components/print/ModernGridPrintLayout.astro';
 
 const { id } = Astro.params;
 
@@ -59,6 +61,49 @@ const documentTitle = inv.order_type === 'quotation' ? 'QUOTATION / ESTIMATE' :
                       inv.order_type === 'delivery_note' ? 'DELIVERY NOTE' : 
                       inv.order_type === 'inquiry' ? 'INQUIRY' :
                       showTaxInvoice ? 'TAX INVOICE' : 'COMMERCIAL INVOICE';
+
+// Number to Words converter (compliant with AED Dirhams and Fils)
+function numberToWords(num: number): string {
+  const a = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+  const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  
+  function convert(n: number): string {
+    if (n < 20) return a[n];
+    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? ' ' + a[n % 10] : '');
+    if (n < 1000) return a[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' and ' + convert(n % 100) : '');
+    if (n < 1000000) return convert(Math.floor(n / 1000)) + ' thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
+    return '';
+  }
+
+  const parts = num.toFixed(2).split('.');
+  const dirhams = parseInt(parts[0]);
+  const fils = parseInt(parts[1]);
+
+  let result = '';
+  if (dirhams > 0) {
+    result += convert(dirhams) + ' Dirham';
+    if (dirhams > 1) result += 's';
+  } else {
+    result += 'Zero Dirhams';
+  }
+
+  if (fils > 0) {
+    result += ' and ' + convert(fils) + ' fils';
+  }
+  result += ' Only';
+  
+  return result.charAt(0).toUpperCase() + result.slice(1);
+}
+
+const amountInWords = numberToWords(inv.total_amount);
+const totalQty = items.reduce((sum, item) => sum + Number(item.quantity), 0);
+
+// Division branding
+const isDGS = inv.source_division === 'DGS';
+const companyNameEN = isDGS ? 'Delight Global Solutions LLC' : 'Delight Group LLC';
+const companyNameAR = isDGS ? 'ديلايت للحلول العالمية ش.ذ.م.م' : 'مجموعة ديلايت ش.ذ.م.م';
+const websiteURL = 'www.delightgroupllc.com';
+const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/Group
 ---
 
 <!DOCTYPE html>
@@ -68,8 +113,7 @@ const documentTitle = inv.order_type === 'quotation' ? 'QUOTATION / ESTIMATE' :
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{documentTitle} - {inv.invoice_number}</title>
   <style>
-    /* CSS Reset and Font configuration */
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
     
     * {
       box-sizing: border-box;
@@ -78,227 +122,46 @@ const documentTitle = inv.order_type === 'quotation' ? 'QUOTATION / ESTIMATE' :
     }
     
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Inter', sans-serif;
       color: #0f172a;
       background-color: #ffffff;
-      line-height: 1.4;
-      font-size: 11pt;
+      line-height: 1.3;
+      font-size: 10pt;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
 
-    /* A4 portrait layout specifications */
     @page {
       size: A4 portrait;
-      margin: 15mm 15mm 20mm 15mm;
+      margin: 12mm 12mm 12mm 12mm;
     }
 
     .print-page {
       width: 100%;
-      max-width: 180mm;
+      max-width: 186mm;
       margin: 0 auto;
       background: #ffffff;
+      position: relative;
     }
 
-    /* Typography & Utilities */
-    .font-mono {
-      font-family: 'JetBrains Mono', monospace;
-    }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
     .text-right { text-align: right; }
     .text-center { text-align: center; }
-    .font-black { font-weight: 900; }
     .font-bold { font-weight: 700; }
-    .font-semibold { font-weight: 600; }
+    .font-black { font-weight: 900; }
     .text-muted { color: #64748b; }
     .uppercase { text-transform: uppercase; }
-    .tracking-wider { tracking-spacing: 0.05em; }
 
-    /* Header styling */
-    .header-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 25px;
-    }
-    .company-info {
-      vertical-align: top;
-      width: 60%;
-    }
-    .company-title {
-      font-size: 20pt;
-      font-weight: 900;
-      color: #0891b2;
-      text-transform: uppercase;
-      letter-spacing: -0.5px;
-    }
-    .doc-meta {
-      vertical-align: top;
-      text-align: right;
-      width: 40%;
-    }
-    .doc-title {
-      font-size: 18pt;
-      font-weight: 900;
-      text-transform: uppercase;
-      color: #0f172a;
-      margin-bottom: 5px;
-    }
-
-    /* Details Grid */
-    .details-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 25px;
-    }
-    .details-col {
-      width: 50%;
-      vertical-align: top;
-      border: 1px solid #e2e8f0;
-      padding: 12px;
-      border-radius: 8px;
-    }
-    .details-col:first-child {
-      border-right: none;
-      border-top-right-radius: 0;
-      border-bottom-right-radius: 0;
-    }
-    .details-col:last-child {
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
-    }
-    .section-label {
-      font-size: 8pt;
-      font-weight: 900;
-      color: #94a3b8;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-      letter-spacing: 1px;
-    }
-
-    /* Items Table */
-    .items-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 25px;
-    }
-    .items-table th {
-      background-color: #f8fafc;
-      border-bottom: 2px solid #cbd5e1;
-      padding: 8px 10px;
-      font-size: 8pt;
-      font-weight: 900;
-      text-transform: uppercase;
-      color: #475569;
-    }
-    .items-table td {
-      padding: 10px;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 9.5pt;
-      vertical-align: top;
-    }
-    .items-table tr {
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-
-    /* Summary block */
-    .summary-wrapper {
-      width: 100%;
-      margin-bottom: 30px;
-    }
-    .summary-table {
-      width: 260px;
-      margin-left: auto;
-      border-collapse: collapse;
-    }
-    .summary-table td {
-      padding: 6px 10px;
-      font-size: 10pt;
-    }
-    .summary-table tr.grand-total {
-      border-top: 2px solid #0f172a;
-      font-weight: 900;
-      font-size: 12pt;
-    }
-
-    /* Bank Remittance Details block */
-    .bank-block {
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 15px;
-      background-color: #f8fafc;
-      margin-bottom: 30px;
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-    .bank-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-top: 8px;
-    }
-    .bank-item {
-      font-size: 9pt;
-    }
-    .bank-item span.label {
-      font-weight: 700;
-      color: #64748b;
-      margin-right: 5px;
-    }
-    .bank-item span.val {
-      font-weight: 600;
-      color: #0f172a;
-    }
-
-    /* Signature & Clauses styling */
-    .footer-section {
-      margin-top: auto;
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-    .clauses-block {
-      margin-bottom: 25px;
-      font-size: 8pt;
-      color: #64748b;
-      line-height: 1.5;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 15px;
-    }
-    .clauses-block h4 {
-      font-weight: 900;
-      text-transform: uppercase;
-      color: #475569;
-      margin-bottom: 5px;
-      font-size: 8.5pt;
-    }
-    .signatures-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 40px;
-    }
-    .signature-col {
-      width: 50%;
-      vertical-align: bottom;
-      text-align: center;
-      padding: 0 20px;
-    }
-    .signature-line {
-      border-top: 1.5px solid #94a3b8;
-      margin-top: 50px;
-      padding-top: 5px;
-      font-size: 9pt;
-      font-weight: 700;
-      color: #475569;
-    }
-
-    /* Hide print controls during print */
+    /* Top control bar (hidden in print) */
     .no-print {
       display: flex;
-      justify-content: flex-end;
-      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 20px;
-      padding: 10px;
-      background: #f1f5f9;
-      border-radius: 8px;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
     }
     .btn {
       padding: 8px 16px;
@@ -308,13 +171,476 @@ const documentTitle = inv.order_type === 'quotation' ? 'QUOTATION / ESTIMATE' :
       text-decoration: none;
       cursor: pointer;
       border: none;
+      transition: all 0.15s ease;
     }
     .btn-primary { background: #0f172a; color: #ffffff; }
     .btn-secondary { background: #ffffff; color: #334155; border: 1px solid #d1d5db; }
+    .layout-select {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      border: 1px solid #cbd5e1;
+      font-weight: 600;
+      background-color: white;
+    }
 
     @media print {
       .no-print { display: none !important; }
       body { margin: 0; padding: 0; }
+    }
+
+    /* ========================================================================= */
+    /* STANDARD LAYOUT STYLES                                                    */
+    /* ========================================================================= */
+    .std-container {
+      display: block;
+    }
+    .std-header-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .std-company-info {
+      vertical-align: top;
+      width: 60%;
+    }
+    .std-company-title {
+      font-size: 20pt;
+      font-weight: 900;
+      color: #0891b2;
+      text-transform: uppercase;
+    }
+    .std-doc-meta {
+      vertical-align: top;
+      text-align: right;
+      width: 40%;
+    }
+    .std-doc-title {
+      font-size: 18pt;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #0f172a;
+      margin-bottom: 5px;
+    }
+    .std-details-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .std-details-col {
+      width: 50%;
+      vertical-align: top;
+      border: 1px solid #e2e8f0;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .std-section-label {
+      font-size: 7.5pt;
+      font-weight: 900;
+      color: #94a3b8;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+    .std-items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .std-items-table th {
+      background-color: #f8fafc;
+      border-bottom: 2px solid #cbd5e1;
+      padding: 6px 8px;
+      font-size: 8pt;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #475569;
+    }
+    .std-items-table td {
+      padding: 8px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 9pt;
+      vertical-align: top;
+    }
+    .std-summary-table {
+      width: 240px;
+      margin-left: auto;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .std-summary-table td {
+      padding: 5px 8px;
+      font-size: 9.5pt;
+    }
+    .std-summary-table tr.grand-total {
+      border-top: 2px solid #0f172a;
+      font-weight: 900;
+      font-size: 11pt;
+    }
+    .std-bank-block {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      background-color: #f8fafc;
+      margin-bottom: 20px;
+    }
+    .std-bank-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 6px;
+      font-size: 8.5pt;
+    }
+    .std-signatures-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+    .std-signature-col {
+      width: 50%;
+      vertical-align: bottom;
+      text-align: center;
+    }
+    .std-signature-line {
+      border-top: 1.5px solid #94a3b8;
+      margin-top: 40px;
+      padding-top: 4px;
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    /* ========================================================================= */
+    /* MODERN GRID LAYOUT STYLES                                                 */
+    /* ========================================================================= */
+    .arrco-container {
+      display: block;
+      color: #000000;
+      font-size: 8.5pt;
+    }
+    .arrco-header {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    .arrco-logo-td {
+      width: 50%;
+      vertical-align: top;
+    }
+    .arrco-logo-svg-wrapper {
+      display: inline-block;
+      text-align: left;
+    }
+    .arrco-logo-text {
+      font-family: 'Outfit', sans-serif;
+      font-size: 30pt;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -1.5px;
+    }
+    .arrco-logo-sub {
+      font-size: 7.5pt;
+      letter-spacing: 2px;
+      font-weight: 600;
+      color: #555555;
+      text-transform: uppercase;
+      margin-top: -3px;
+    }
+    .arrco-logo-tagline {
+      font-size: 5.5pt;
+      color: #777777;
+      margin-top: 4px;
+      font-style: italic;
+    }
+    
+    .arrco-address-td {
+      width: 50%;
+      text-align: right;
+      vertical-align: top;
+      font-size: 7.5pt;
+      line-height: 1.3;
+      color: #333333;
+    }
+    .arrco-company-name-en {
+      font-size: 11pt;
+      font-weight: 800;
+      color: #1a1a1a;
+      margin-bottom: 2px;
+    }
+    .arrco-company-name-ar {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 2px;
+    }
+    .arrco-website {
+      font-weight: 700;
+      letter-spacing: 1px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .arrco-doc-title-section {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .arrco-doc-title {
+      font-size: 15pt;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #000000;
+    }
+    .arrco-trn-label {
+      font-size: 11pt;
+      font-weight: 700;
+      margin-top: 3px;
+    }
+
+    .arrco-grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #000000;
+      margin-bottom: 15px;
+    }
+    .arrco-grid-td {
+      width: 50%;
+      vertical-align: top;
+      padding: 8px 12px;
+    }
+    .arrco-grid-td:first-child {
+      border-right: 1px solid #000000;
+    }
+    .arrco-field-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .arrco-field-table td {
+      padding: 3px 0;
+      vertical-align: top;
+      font-size: 8.5pt;
+    }
+    .arrco-field-label {
+      width: 38%;
+      color: #333333;
+      font-weight: 500;
+    }
+    .arrco-field-value {
+      width: 62%;
+      font-weight: 700;
+      color: #000000;
+    }
+
+    .arrco-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      border: 1px solid #000000;
+    }
+    .arrco-table th {
+      background-color: #000000;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 8pt;
+      padding: 8px 6px;
+      text-align: left;
+      text-transform: uppercase;
+      border: 1px solid #000000;
+    }
+    .arrco-table td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #e2e8f0;
+      border-right: 1px solid #e2e8f0;
+      font-size: 8.5pt;
+      color: #000000;
+    }
+    .arrco-table td:last-child {
+      border-right: none;
+    }
+    
+    .arrco-watermark {
+      position: absolute;
+      top: 35%;
+      left: 10%;
+      right: 10%;
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: -10;
+      text-align: center;
+    }
+    .arrco-watermark svg {
+      width: 80%;
+      height: auto;
+    }
+
+    .arrco-dn-totals {
+      text-align: right;
+      font-size: 9.5pt;
+      font-weight: 700;
+      margin-bottom: 25px;
+      padding-right: 30px;
+    }
+    .arrco-dn-fields {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .arrco-dn-fields-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px;
+      background-color: #fcfcfc;
+    }
+    .arrco-dn-signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 50px;
+      font-size: 9pt;
+      font-weight: 700;
+    }
+    .arrco-dn-sign-box {
+      width: 45%;
+      text-align: left;
+      line-height: 1.6;
+    }
+    .arrco-dn-sign-line {
+      border-top: 1px solid #000000;
+      margin-top: 40px;
+      padding-top: 4px;
+    }
+    .arrco-dn-note {
+      margin-top: 30px;
+      font-size: 8pt;
+      font-weight: 700;
+      color: #000000;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+    }
+
+    .arrco-inv-bottom-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      border: 1px solid #000000;
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .arrco-inv-words-panel {
+      padding: 10px 12px;
+      border-right: 1px solid #000000;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .arrco-inv-totals-panel {
+      width: 100%;
+    }
+    .arrco-inv-totals-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .arrco-inv-totals-table td {
+      padding: 6px 12px;
+      font-size: 8.5pt;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .arrco-inv-totals-table tr:last-child td {
+      border-bottom: none;
+    }
+    .arrco-inv-totals-table td:first-child {
+      border-right: 1px solid #e2e8f0;
+      color: #333333;
+    }
+    .arrco-inv-totals-table td:last-child {
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .arrco-inv-signature-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 20px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .arrco-inv-disclaimer-text {
+      width: 55%;
+      font-size: 7pt;
+      color: #555555;
+      line-height: 1.4;
+    }
+    .arrco-inv-sign-stamp-box {
+      width: 38%;
+      border: 1px solid #000000;
+      text-align: center;
+      background-color: white;
+    }
+    .arrco-inv-sign-stamp-header {
+      background-color: #000000;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 8pt;
+      padding: 5px;
+    }
+    .arrco-inv-sign-stamp-body {
+      height: 60px;
+      position: relative;
+    }
+    .arrco-inv-sign-stamp-footer {
+      border-top: 1px solid #000000;
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      font-size: 7.5pt;
+    }
+    .arrco-inv-sign-stamp-footer-cell {
+      padding: 4px;
+      font-weight: 700;
+    }
+    .arrco-inv-sign-stamp-footer-cell:first-child {
+      border-right: 1px solid #000000;
+      text-align: left;
+    }
+
+    .page-break {
+      page-break-before: always;
+      break-before: always;
+    }
+
+    /* Terms of Sale Page */
+    .terms-page {
+      padding: 5px;
+      color: #111111;
+      font-size: 6.8pt;
+      line-height: 1.3;
+    }
+    .terms-title {
+      font-size: 13pt;
+      font-weight: 900;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #000000;
+      padding-bottom: 4px;
+    }
+    .terms-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .terms-col {
+      text-align: justify;
+    }
+    .terms-section {
+      margin-bottom: 8px;
+    }
+    .terms-section-title {
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #000000;
+      margin-bottom: 2px;
+      font-size: 7.2pt;
     }
   </style>
 </head>
@@ -324,173 +650,89 @@ const documentTitle = inv.order_type === 'quotation' ? 'QUOTATION / ESTIMATE' :
 
     <!-- Print control bar (hidden in printed doc) -->
     <div class="no-print">
-      <button class="btn btn-secondary" onclick="window.close()">Close Preview</button>
-      <button class="btn btn-primary" onclick="window.print()">Print Document</button>
-    </div>
-
-    <!-- Header Block -->
-    <table class="header-table">
-      <tr>
-        <td class="company-info">
-          <div class="company-title">DELIGHT GROUP LLC</div>
-          <div class="text-muted" style="font-size: 9pt; margin-top: 5px; line-height: 1.4;">
-            {settings.business_address || 'Dubai, United Arab Emirates'}<br>
-            TRN: <span class="font-mono font-bold" style="color:#0f172a;">{settings.trn_number || '100xxxxxxxxxxxx'}</span><br>
-            Email: corporate@delightgroupllc.com | Phone: +971 4 000 0000
-          </div>
-        </td>
-        <td class="doc-meta">
-          <div class="doc-title">{documentTitle}</div>
-          <div style="font-size: 10pt; line-height: 1.5;">
-            Document No: <span class="font-mono font-bold">{inv.invoice_number}</span><br>
-            Issue Date: <span class="font-bold">{inv.issue_date}</span><br>
-            {inv.due_date && <span>Due Date: <span class="font-bold">{inv.due_date}</span><br></span>}
-            {inv.lpo_number && <span>Ref LPO No: <span class="font-mono font-bold">{inv.lpo_number}</span><br></span>}
-            Division: <span class="font-bold">{inv.source_division || 'DTL'}</span>
-          </div>
-        </td>
-      </tr>
-    </table>
-
-    <!-- Billing Details Grid -->
-    <table class="details-table">
-      <tr>
-        <td class="details-col">
-          <div class="section-label">Remit / Bill To</div>
-          <div class="font-bold" style="font-size: 11pt; color: #0f172a;">{inv.customer_name}</div>
-          {inv.company_name && <div class="font-semibold text-muted" style="font-size: 9.5pt;">{inv.company_name}</div>}
-          <div class="text-muted" style="font-size: 9pt; margin-top: 4px; white-space: pre-line;">
-            {inv.billing_address || 'N/A'}
-          </div>
-          {inv.customer_email && <div class="text-muted" style="font-size: 9pt; margin-top: 4px;">Email: {inv.customer_email}</div>}
-          {inv.customer_phone && <div class="text-muted" style="font-size: 9pt;">Phone: {inv.customer_phone}</div>}
-        </td>
-        <td class="details-col">
-          <div class="section-label">Deliver To / Shipping Address</div>
-          {inv.shipping_address ? (
-            <div class="text-muted" style="font-size: 9pt; white-space: pre-line;">
-              {inv.shipping_address}
-            </div>
-          ) : (
-            <div class="text-muted" style="font-size: 9pt; italic">Same as Billing Address</div>
-          )}
-          {inv.company_vat && (
-            <div style="margin-top: 10px; font-size: 9pt;">
-              <span class="font-bold text-muted uppercase tracking-wider" style="font-size: 7.5pt; block">Client TRN / Tax Reg</span>
-              <span class="font-mono font-bold" style="color: #0f172a;">{inv.company_vat}</span>
-            </div>
-          )}
-        </td>
-      </tr>
-    </table>
-
-    <!-- Line Items Table -->
-    <table class="items-table">
-      <thead>
-        <tr>
-          <th style="text-align: left; width: 5%;">#</th>
-          <th style="text-align: left; width: 45%;">Item Description / Spec</th>
-          <th style="text-align: center; width: 10%;">Qty</th>
-          <th style="text-align: right; width: 15%;">Unit Price</th>
-          <th style="text-align: right; width: 10%;">VAT</th>
-          <th style="text-align: right; width: 15%;">Total (AED)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item, idx) => {
-          const lineTotal = item.quantity * item.unit_price;
-          const taxAmt = item.tax_type === 'percentage' ? lineTotal * (item.tax_value / 100) : item.tax_value;
-          return (
-            <tr>
-              <td>{idx + 1}</td>
-              <td>
-                <span class="font-semibold" style="color: #0f172a;">{item.description}</span>
-                {item.catalogue_ref && <span class="text-muted font-mono" style="font-size: 8pt; display: block;">Cat Ref: {item.catalogue_ref}</span>}
-                {item.tech_spec && <span class="text-muted" style="font-size: 8pt; display: block; margin-top: 2px;">Specs: {item.tech_spec}</span>}
-              </td>
-              <td class="text-center">{item.quantity}</td>
-              <td class="text-right font-mono">AED {Number(item.unit_price).toFixed(2)}</td>
-              <td class="text-right font-mono">{item.tax_type === 'percentage' ? `${item.tax_value}%` : `AED ${item.tax_value}`}</td>
-              <td class="text-right font-mono font-bold">AED {Number(lineTotal + taxAmt).toFixed(2)}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-
-    <!-- Summary Section -->
-    <div class="summary-wrapper">
-      <table class="summary-table">
-        <tr>
-          <td class="text-muted">Subtotal (Excl. VAT):</td>
-          <td class="text-right font-mono">AED {Number(inv.subtotal).toFixed(2)}</td>
-        </tr>
-        <tr>
-          <td class="text-muted">Total VAT amount:</td>
-          <td class="text-right font-mono" style="color: #c2410c;">AED {Number(inv.gst_amount).toFixed(2)}</td>
-        </tr>
-        {Number(inv.discount_amount) > 0 && (
-          <tr>
-            <td class="text-muted">Discount:</td>
-            <td class="text-right font-mono" style="color: #15803d;">- AED {Number(inv.discount_amount).toFixed(2)}</td>
-          </tr>
-        )}
-        <tr class="grand-total">
-          <td>Grand Total:</td>
-          <td class="text-right font-mono" style="color: #0891b2;">AED {Number(inv.total_amount).toFixed(2)}</td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- Prefilled Remittance Details Section -->
-    <div class="bank-block">
-      <div class="section-label" style="color: #0891b2; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px;">Remittance & Bank Instructions</div>
-      <div class="bank-grid">
-        <div class="bank-item"><span class="label">Bank Name:</span><span class="val">{settings.bank_name || 'N/A'}</span></div>
-        <div class="bank-item"><span class="label">Account Name:</span><span class="val">{settings.account_name || 'N/A'}</span></div>
-        <div class="bank-item"><span class="label">Account Number:</span><span class="val font-mono">{settings.account_number || 'N/A'}</span></div>
-        <div class="bank-item"><span class="label">Swift Code:</span><span class="val font-mono">{settings.swift_code || 'N/A'}</span></div>
-        <div class="bank-item" style="grid-column: span 2;"><span class="label">IBAN:</span><span class="val font-mono" style="color: #0891b2;">{settings.iban_number || 'N/A'}</span></div>
+      <div>
+        <label for="layoutSelector" class="text-xs font-bold text-slate-600 mr-2">Choose Print Layout:</label>
+        <select id="layoutSelector" class="layout-select">
+          <option value="standard">Standard Template (Delight Group)</option>
+          <option value="arrco">Modern Grid Layout (Delight Group)</option>
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-secondary" onclick="window.close()">Close Preview</button>
+        <button class="btn btn-primary" onclick="window.print()">Print Document</button>
       </div>
     </div>
 
-    <!-- Footer: Disclaimers & Signatures -->
-    <div class="footer-section">
-      {selectedClauses.length > 0 && (
-        <div class="clauses-block">
-          {selectedClauses.map(clause => (
-            <div style="margin-bottom: 10px;">
-              <h4>{clause.title}</h4>
-              <p>{clause.content}</p>
-            </div>
-          ))}
-        </div>
-      )}
+    <!-- Render Standard Layout component -->
+    <div id="layout-standard-wrapper" style="display: block;">
+      <StandardPrintLayout 
+        inv={inv} 
+        items={items} 
+        settings={settings} 
+        documentTitle={documentTitle} 
+        logoColor={logoColor}
+        companyNameEN={companyNameEN}
+      />
+    </div>
 
-      <table class="signatures-table">
-        <tr>
-          <td class="signature-col">
-            <div class="signature-line">Customer Signature & Stamp</div>
-          </td>
-          <td class="signature-col">
-            <div style="font-size: 9.5pt; font-weight: 700; margin-bottom: 25px; color: #475569;">For Delight Group LLC</div>
-            <div class="signature-line">Authorized Signatory ({settings.signatory_name || 'Management'})</div>
-          </td>
-        </tr>
-      </table>
+    <!-- Render Modern Grid Layout component -->
+    <div id="layout-arrco-wrapper" style="display: none;">
+      <ModernGridPrintLayout 
+        inv={inv} 
+        items={items} 
+        settings={settings} 
+        logoColor={logoColor}
+        isDGS={isDGS}
+        companyNameEN={companyNameEN}
+        companyNameAR={companyNameAR}
+        websiteURL={websiteURL}
+        amountInWords={amountInWords}
+        totalQty={totalQty}
+      />
     </div>
 
   </div>
 
   <script>
-    // Auto print if requested via query param
+    // Toggle templates based on layout selector
+    const layoutSelector = document.getElementById('layoutSelector') as HTMLSelectElement;
+    const stdLayoutWrapper = document.getElementById('layout-standard-wrapper');
+    const arrcoLayoutWrapper = document.getElementById('layout-arrco-wrapper');
+
+    const updateLayout = (layout: string) => {
+      if (layout === 'arrco') {
+        stdLayoutWrapper!.style.display = 'none';
+        arrcoLayoutWrapper!.style.display = 'block';
+      } else {
+        stdLayoutWrapper!.style.display = 'block';
+        arrcoLayoutWrapper!.style.display = 'none';
+      }
+    };
+
+    // Listen to selection changes
+    layoutSelector?.addEventListener('change', (e) => {
+      const selected = (e.target as HTMLSelectElement).value;
+      updateLayout(selected);
+      // Persist selection in URL
+      const url = new URL(window.location.href);
+      url.searchParams.set('layout', selected);
+      window.history.replaceState({}, '', url.toString());
+    });
+
+    // Read initial layout from URL params
     const urlParams = new URLSearchParams(window.location.search);
+    const initialLayout = urlParams.get('layout') || 'standard';
+    if (layoutSelector) {
+      layoutSelector.value = initialLayout;
+      updateLayout(initialLayout);
+    }
+
+    // Auto print if requested via query param
     if (urlParams.get('autoprint') === 'true' || urlParams.get('download') === 'true') {
       window.onload = () => {
-        // Simple delay to ensure fonts/layout are fully rendered
         setTimeout(() => {
           window.print();
-        }, 300);
+        }, 400);
       };
     }
   </script>
