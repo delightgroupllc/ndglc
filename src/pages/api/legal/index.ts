@@ -5,7 +5,7 @@ import { z } from 'zod';
 const artifactSchema = z.object({
   title: z.string().min(1),
   identifier: z.string().min(1),
-  type: z.enum(['public', 'order_clause']),
+  type: z.enum(['public', 'order_clause', 'both']),
   content: z.string().min(1)
 });
 

@@ -6,14 +6,15 @@ import { ArrowRight, Activity, Cpu, Shield, Database, LayoutGrid, ChevronRight, 
 const { division } = Astro.params;
 
 // Validate division parameter
-const isDtl = division?.toLowerCase() === 'delighttechnicallighting';
-const isDgs = division?.toLowerCase() === 'delightgreenscapes' || division?.toLowerCase() === 'delightscreenscape';
+const isDtl = division?.toLowerCase() === 'delighttechnicallighting' || division?.toLowerCase() === 'dtl';
+const isDgs = division?.toLowerCase() === 'delightgreenscapes' || division?.toLowerCase() === 'delightscreenscape' || division?.toLowerCase() === 'dgs';
 
 if (!isDtl && !isDgs) {
   return Astro.redirect('/');
 }
 
 const divSlug = division!.toLowerCase();
+const dbDivSlug = isDtl ? 'dtl' : 'dgs';
 const divName = isDtl ? 'Delight Technical Lighting' : 'Delight Greenscapes';
 const divLogo = isDtl ? '/dtllogo.jpg' : '/dgslogo.jpg';
 const divSubTitle = isDtl 
@@ -68,7 +69,7 @@ try {
      WHERE d.slug = $1
      GROUP BY c.id
      ORDER BY c.display_order ASC`,
-    [divSlug]
+    [dbDivSlug]
   );
   categories = res.rows;
 } catch (err: any) {
@@ -93,14 +94,15 @@ try {
 // Fetch featured products (for Trending section — products marked Featured in Products dashboard)
 try {
   const prodRes = await query(
-    `SELECT p.id, p.name, p.sku, p.description, pi.url as image_url
+    `SELECT p.id, p.name, p.sku, p.slug as product_slug, p.description, pi.url as image_url, c.slug as category_slug
      FROM products p
      JOIN divisions d ON d.id = p.division_id
+     JOIN categories c ON c.id = p.category_id
      LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
      WHERE d.slug = $1 AND p.featured = TRUE
      ORDER BY p.created_at DESC
      LIMIT 6`,
-    [divSlug]
+    [dbDivSlug]
   );
   featuredProducts = prodRes.rows;
 } catch (err: any) {
@@ -440,7 +442,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
                 {/* Right: Product grid 2×2 */}
                 <div class="grid grid-cols-2 gap-4">
                   {trendingItems.slice(0, 4).map((prod) => (
-                    <a href={`/${divSlug}/${prod.sku}`} class="group rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex flex-col hover:shadow-md transition-shadow">
+                    <a href={`/${divSlug}/${prod.category_slug || 'uncategorized'}/${prod.product_slug || prod.id}`} class="group rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex flex-col hover:shadow-md transition-shadow">
                       <div class="relative aspect-square overflow-hidden bg-slate-100">
                         {prod.image_url ? (
                           <img src={prod.image_url} alt={prod.name} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400" loading="lazy" />

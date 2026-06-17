@@ -14,5 +14,11 @@ export default defineConfig({
   ],
   vite: {
     plugins: [tailwindcss()], // 3. Embed Tailwind inside the Vite layer
+    server: {
+      watch: {
+        usePolling: true,
+        interval: 300, // Slightly higher interval to save CPU while polling
+      },
+    },
   },
 });

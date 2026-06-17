@@ -2,6 +2,8 @@
 import { query } from '../../../../lib/db';
 import StandardPrintLayout from '../../../../components/print/StandardPrintLayout.astro';
 import ModernGridPrintLayout from '../../../../components/print/ModernGridPrintLayout.astro';
+import '../../../../styles/global.css';
+
 
 const { id } = Astro.params;
 
@@ -29,6 +31,48 @@ try {
     acc[row.key] = row.value;
     return acc;
   }, {});
+
+  // Parse list configurations
+  var banksList = [];
+  try {
+    banksList = settings.banks ? JSON.parse(settings.banks) : [];
+  } catch (e) {}
+  if (banksList.length === 0 && (settings.bank_name || settings.account_number)) {
+    banksList = [{
+      id: 'bank_legacy',
+      bank_name: settings.bank_name || '',
+      account_name: settings.account_name || '',
+      account_number: settings.account_number || '',
+      swift_code: settings.swift_code || '',
+      iban_number: settings.iban_number || ''
+    }];
+  }
+
+  var signaturesList = [];
+  try {
+    signaturesList = settings.signatures ? JSON.parse(settings.signatures) : [];
+  } catch (e) {}
+  if (signaturesList.length === 0 && settings.signatory_name) {
+    signaturesList = [{
+      id: 'sig_legacy',
+      signatory_name: settings.signatory_name || '',
+      signatory_title: settings.signatory_title || ''
+    }];
+  }
+
+  var addressesList = [];
+  try {
+    addressesList = settings.addresses ? JSON.parse(settings.addresses) : [];
+  } catch (e) {}
+  if (addressesList.length === 0 && (settings.business_address || settings.trn_number)) {
+    addressesList = [{
+      id: 'addr_legacy',
+      business_address: settings.business_address || '',
+      trn_number: settings.trn_number || '',
+      business_registration: settings.business_registration || '',
+      permits_info: settings.permits_info || ''
+    }];
+  }
 
   // Fetch selected disclaimers/clauses
   let selectedIdentifiers: string[] = [];
@@ -112,7 +156,7 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{documentTitle} - {inv.invoice_number}</title>
-  <style>
+  <style is:global>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
     
     * {
@@ -133,15 +177,17 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
 
     @page {
       size: A4 portrait;
-      margin: 12mm 12mm 12mm 12mm;
+      margin: 0;
     }
 
     .print-page {
-      width: 100%;
-      max-width: 186mm;
+      width: 210mm;
+      height: 297mm;
       margin: 0 auto;
       background: #ffffff;
       position: relative;
+      box-sizing: border-box;
+      padding: 12mm 12mm 12mm 12mm;
     }
 
     .font-mono { font-family: 'JetBrains Mono', monospace; }
@@ -157,24 +203,48 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-      padding: 12px 16px;
-      background: #f8fafc;
+      margin-bottom: 24px;
+      padding: 14px 20px;
+      background: #ffffff;
       border: 1px solid #e2e8f0;
-      border-radius: 10px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     }
     .btn {
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 9px 18px;
+      border-radius: 8px;
       font-size: 12px;
       font-weight: 700;
       text-decoration: none;
       cursor: pointer;
-      border: none;
-      transition: all 0.15s ease;
+      border: 1px solid transparent;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
-    .btn-primary { background: #0f172a; color: #ffffff; }
-    .btn-secondary { background: #ffffff; color: #334155; border: 1px solid #d1d5db; }
+    .btn-primary { 
+      background: #0f2957; 
+      color: #ffffff; 
+      box-shadow: 0 2px 4px rgba(15, 41, 87, 0.1);
+    }
+    .btn-primary:hover {
+      background: #14356b;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(15, 41, 87, 0.15);
+    }
+    .btn-secondary { 
+      background: #ffffff; 
+      color: #1e3a8a; 
+      border: 1px solid #cbd5e1; 
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+    .btn-secondary:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #1d4ed8;
+      transform: translateY(-1px);
+    }
     .layout-select {
       padding: 6px 12px;
       border-radius: 6px;
@@ -184,9 +254,236 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       background-color: white;
     }
 
+    /* Hide summary default arrow */
+    #print-sidebar-config details summary::-webkit-details-marker {
+      display: none !important;
+    }
+    #print-sidebar-config details summary {
+      list-style: none !important;
+      outline: none !important;
+    }
+
+    /* Sidebar Overrides to match light theme mockup */
+    #print-sidebar-config {
+      background-color: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+      color: #334155 !important;
+      scrollbar-gutter: stable !important;
+      overflow-y: auto !important;
+      padding: 24px 14px !important;
+    }
+    #print-sidebar-config::-webkit-scrollbar {
+      width: 6px !important;
+    }
+    #print-sidebar-config::-webkit-scrollbar-track {
+      background: #f8fafc !important;
+    }
+    #print-sidebar-config::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1 !important;
+      border-radius: 3px !important;
+    }
+    #print-sidebar-config::-webkit-scrollbar-thumb:hover {
+      background-color: #94a3b8 !important;
+    }
+    #print-sidebar-config h3 {
+      color: #0f172a !important;
+    }
+    #print-sidebar-config details {
+      border: 1px solid #cbd5e1 !important;
+      border-left: 3px solid #cbd5e1 !important;
+      border-radius: 0px !important;
+      background: #ffffff !important;
+      overflow: hidden !important;
+      margin-bottom: 12px !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    #print-sidebar-config details[open] {
+      border-left-color: #2563eb !important;
+      border-color: #94a3b8 !important;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+    }
+    #print-sidebar-config summary {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 12px 14px !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      color: #0f172a !important;
+      cursor: pointer !important;
+      background: #ffffff !important;
+      transition: all 0.2s ease !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    #print-sidebar-config summary:hover {
+      background: #f8fafc !important;
+    }
+    #print-sidebar-config details summary span {
+      color: #0f172a !important;
+    }
+    #print-sidebar-config details summary .text-cyan-500,
+    #print-sidebar-config details summary .text-blue-500 {
+      color: #1d4ed8 !important;
+    }
+    #print-sidebar-config details[open] summary {
+      border-bottom: 1px solid #e2e8f0 !important;
+    }
+    #print-sidebar-config details[open] summary svg {
+      transform: rotate(180deg) !important;
+    }
+    #print-sidebar-config details summary svg {
+      transition: transform 0.2s ease !important;
+    }
+    #print-sidebar-config details > div {
+      background-color: #ffffff !important;
+      border-top: 1px solid #e2e8f0 !important;
+      color: #334155 !important;
+      padding: 16px 14px !important;
+    }
+    #print-sidebar-config details label:has(input[type="checkbox"]) {
+      display: flex !important;
+      align-items: center !important;
+      padding: 6px 8px !important;
+      margin: 3px 0 !important;
+      border-radius: 4px !important;
+      transition: all 0.15s ease !important;
+      cursor: pointer !important;
+    }
+    #print-sidebar-config details label:has(input[type="checkbox"]):hover {
+      background-color: #f1f5f9 !important;
+    }
+    #print-sidebar-config details label:not(:has(input[type="checkbox"])) {
+      display: block !important;
+      font-size: 9px !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      color: #64748b !important;
+      margin-bottom: 4px !important;
+      margin-top: 8px !important;
+    }
+    #print-sidebar-config details label span {
+      color: #0f172a !important;
+    }
+    #print-sidebar-config details .text-slate-300,
+    #print-sidebar-config details .text-slate-350 {
+      color: #334155 !important;
+    }
+    
+    /* Inputs inside sidebar */
+    #print-sidebar-config select,
+    #print-sidebar-config input[type="text"] {
+      background-color: #ffffff !important;
+      border: 1px solid #cbd5e1 !important;
+      color: #0f172a !important;
+      border-radius: 0px !important;
+      padding: 7px 12px !important;
+      font-size: 11px !important;
+      transition: all 0.2s ease-in-out !important;
+      outline: none !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    #print-sidebar-config select {
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 10px center !important;
+      background-size: 14px !important;
+      padding-right: 30px !important;
+    }
+    #print-sidebar-config select:focus,
+    #print-sidebar-config input[type="text"]:focus {
+      border-color: #3b82f6 !important;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+    }
+    
+    /* Range input inside sidebar */
+    #print-sidebar-config input[type="range"] {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 100% !important;
+      height: 4px !important;
+      background: #e2e8f0 !important;
+      border-radius: 9999px !important;
+      outline: none !important;
+    }
+    #print-sidebar-config input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 14px !important;
+      height: 14px !important;
+      border-radius: 50% !important;
+      background: #3b82f6 !important;
+      cursor: pointer !important;
+      box-shadow: 0 0 6px rgba(59, 130, 246, 0.3) !important;
+      transition: transform 0.1s ease !important;
+    }
+    #print-sidebar-config input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2) !important;
+    }
+    
+    /* Checkbox inside sidebar */
+    #print-sidebar-config input[type="checkbox"] {
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      height: 15px !important;
+      width: 15px !important;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 0px !important;
+      background-color: #ffffff !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      transition: all 0.15s ease !important;
+      vertical-align: middle !important;
+      position: relative !important;
+    }
+    #print-sidebar-config input[type="checkbox"]:checked {
+      background-color: #3b82f6 !important;
+      border-color: #3b82f6 !important;
+    }
+    #print-sidebar-config input[type="checkbox"]:checked::after {
+      content: "" !important;
+      position: absolute !important;
+      width: 3px !important;
+      height: 6px !important;
+      border: solid #ffffff !important;
+      border-width: 0 1.5px 1.5px 0 !important;
+      transform: rotate(45deg) !important;
+      top: 2px !important;
+      left: 5px !important;
+    }
+    #print-sidebar-config input[type="checkbox"]:hover {
+      border-color: #3b82f6 !important;
+    }
+
     @media print {
       .no-print { display: none !important; }
-      body { margin: 0; padding: 0; }
+      body { margin: 0; padding: 0; background: #ffffff; }
+      .print-page {
+        width: 210mm !important;
+        height: 297mm !important;
+        padding: 12mm !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-after: always !important;
+        break-after: always !important;
+      }
+      .print-page:last-child {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
     }
 
     /* ========================================================================= */
@@ -435,42 +732,36 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 12px;
-      border: 1px solid #000000;
+      border-top: 1.5px solid #000000;
+      border-bottom: 1.5px solid #000000;
     }
     .arrco-table th {
       background-color: #000000;
       color: #ffffff;
       font-weight: 700;
       font-size: 8pt;
-      padding: 8px 6px;
-      text-align: left;
+      padding: 7px 8px;
       text-transform: uppercase;
-      border: 1px solid #000000;
+      border: none;
     }
     .arrco-table td {
-      padding: 8px 6px;
+      padding: 8px 8px;
       border-bottom: 1px solid #e2e8f0;
-      border-right: 1px solid #e2e8f0;
+      border-right: none;
       font-size: 8.5pt;
       color: #000000;
-    }
-    .arrco-table td:last-child {
-      border-right: none;
     }
     
     .arrco-watermark {
       position: absolute;
-      top: 35%;
-      left: 10%;
-      right: 10%;
-      opacity: 0.03;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 380px;
+      height: 380px;
+      opacity: 1;
       pointer-events: none;
-      z-index: -10;
-      text-align: center;
-    }
-    .arrco-watermark svg {
-      width: 80%;
-      height: auto;
+      z-index: 0;
     }
 
     .arrco-dn-totals {
@@ -549,7 +840,6 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       border-bottom: none;
     }
     .arrco-inv-totals-table td:first-child {
-      border-right: 1px solid #e2e8f0;
       color: #333333;
     }
     .arrco-inv-totals-table td:last-child {
@@ -610,19 +900,19 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
 
     /* Terms of Sale Page */
     .terms-page {
-      padding: 5px;
+      padding: 2px;
       color: #111111;
-      font-size: 6.8pt;
-      line-height: 1.3;
+      font-size: 6pt;
+      line-height: 1.25;
     }
     .terms-title {
-      font-size: 13pt;
+      font-size: 12pt;
       font-weight: 900;
       text-transform: uppercase;
       text-align: center;
-      margin-bottom: 12px;
-      border-bottom: 2px solid #000000;
-      padding-bottom: 4px;
+      margin-bottom: 7px;
+      border-bottom: 1.5px solid #000000;
+      padding-bottom: 2px;
     }
     .terms-columns {
       display: grid;
@@ -633,85 +923,547 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       text-align: justify;
     }
     .terms-section {
-      margin-bottom: 8px;
+      margin-bottom: 4px;
+    }
+    .terms-section p {
+      margin: 0 0 3px 0;
     }
     .terms-section-title {
       font-weight: 700;
       text-transform: uppercase;
       color: #000000;
-      margin-bottom: 2px;
+      margin-bottom: 1.5px;
       font-size: 7.2pt;
+    }
+    .print-page-2-container {
+      padding: 8mm 12mm 6mm 12mm !important;
+    }
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
 <body>
   
-  <div class="print-page">
-
-    <!-- Print control bar (hidden in printed doc) -->
-    <div class="no-print">
-      <div>
-        <label for="layoutSelector" class="text-xs font-bold text-slate-600 mr-2">Choose Print Layout:</label>
-        <select id="layoutSelector" class="layout-select">
-          <option value="standard">Standard Template (Delight Group)</option>
-          <option value="arrco">Modern Grid Layout (Delight Group)</option>
-        </select>
+  <div id="print-root-container" data-grand-total={inv.total_amount} data-division={inv.source_division || 'DTL'} class="flex h-screen overflow-hidden print:h-auto print:overflow-visible print:block">
+    
+    <!-- LEFT: Document Canvas (Simulated A4 Pages) -->
+    <div class="flex-1 overflow-y-auto bg-slate-200/50 p-8 flex flex-col items-center gap-8 custom-scrollbar print:p-0 print:bg-white print:block">
+      
+      <!-- Print Canvas Top Action Bar (Visible on screen, hidden when printing) -->
+      <div class="w-[210mm] no-print flex items-center justify-between shrink-0">
+        <a href="/dashboard/invoices" class="btn btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" class="h-4 w-4 text-blue-900">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Orders
+        </a>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="window.print()" class="btn btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" class="h-4 w-4 text-blue-900">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download as PDF
+          </button>
+          <button type="button" onclick="window.print()" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" class="h-4 w-4 text-white">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
+            </svg>
+            Send to Printer
+          </button>
+        </div>
       </div>
-      <div class="flex gap-2">
-        <button class="btn btn-secondary" onclick="window.close()">Close Preview</button>
-        <button class="btn btn-primary" onclick="window.print()">Print Document</button>
+
+      <!-- Render Standard Layout component -->
+      <div id="layout-standard-wrapper" class="w-full" style="display: block;">
+        <StandardPrintLayout 
+          inv={inv} 
+          items={items} 
+          settings={settings} 
+          documentTitle={documentTitle} 
+          logoColor={logoColor}
+          companyNameEN={companyNameEN}
+        />
+      </div>
+
+      <!-- Render Modern Grid Layout component -->
+      <div id="layout-arrco-wrapper" class="w-full" style="display: none;">
+        <ModernGridPrintLayout 
+          inv={inv} 
+          items={items} 
+          settings={settings} 
+          logoColor={logoColor}
+          isDGS={isDGS}
+          companyNameEN={companyNameEN}
+          companyNameAR={companyNameAR}
+          websiteURL={websiteURL}
+          amountInWords={amountInWords}
+          totalQty={totalQty}
+          documentTitle={documentTitle}
+        />
       </div>
     </div>
 
-    <!-- Render Standard Layout component -->
-    <div id="layout-standard-wrapper" style="display: block;">
-      <StandardPrintLayout 
-        inv={inv} 
-        items={items} 
-        settings={settings} 
-        documentTitle={documentTitle} 
-        logoColor={logoColor}
-        companyNameEN={companyNameEN}
-      />
-    </div>
+    <!-- RIGHT: Configuration Sidebar -->
+    <div id="print-sidebar-config" class="w-80 bg-white text-slate-755 p-6 flex flex-col justify-between overflow-y-auto no-print border-l border-slate-200 shrink-0 custom-scrollbar h-full z-40 transition-transform duration-300 translate-x-0">
+      <div class="space-y-6">
+        <div class="flex items-center justify-center gap-2.5 pb-3 border-b border-slate-200 mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4.5 w-4.5 text-blue-600"><path d="M20 7h-9"></path><path d="M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>
+          <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider">Print Options</h3>
+        </div>
 
-    <!-- Render Modern Grid Layout component -->
-    <div id="layout-arrco-wrapper" style="display: none;">
-      <ModernGridPrintLayout 
-        inv={inv} 
-        items={items} 
-        settings={settings} 
-        logoColor={logoColor}
-        isDGS={isDGS}
-        companyNameEN={companyNameEN}
-        companyNameAR={companyNameAR}
-        websiteURL={websiteURL}
-        amountInWords={amountInWords}
-        totalQty={totalQty}
-      />
+        <!-- CATEGORY 1: Template & Branding -->
+        <details class="group border border-slate-200 rounded-xl bg-white overflow-hidden" open>
+          <summary class="flex items-center justify-between p-3 text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer hover:bg-slate-50 select-none transition-all">
+            <div class="flex items-center gap-2">
+              <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+              </div>
+              <span>Template & Branding</span>
+            </div>
+            <span class="transition-transform duration-200 group-open:rotate-180 text-blue-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </span>
+          </summary>
+          <div class="p-3.5 border-t border-slate-850 space-y-3.5 text-xs text-slate-300">
+            <!-- 1. Document Template Selector -->
+            <div class="space-y-1">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Print Template Layout</label>
+              <select id="layoutSelector" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                <option value="standard">Standard Template (Delight Group)</option>
+                <option value="arrco">Modern Grid Layout (Delight Group)</option>
+              </select>
+            </div>
+
+            <!-- 2. Document Title Override -->
+            <div class="space-y-1">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Document Header Title</label>
+              <select id="config-doc-type" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                <option value="TAX INVOICE" selected={inv.order_type !== 'quotation' && inv.order_type !== 'lpo' && inv.order_type !== 'delivery_note'}>TAX INVOICE</option>
+                <option value="ESTIMATION / QUOTE" selected={inv.order_type === 'quotation'}>ESTIMATION / QUOTE</option>
+                <option value="PRO FORMA INVOICE" selected={inv.order_type === 'lpo'}>PRO FORMA INVOICE</option>
+                <option value="DELIVERY NOTE" selected={inv.order_type === 'delivery_note'}>DELIVERY NOTE</option>
+                <option value="COMMERCIAL BILL">COMMERCIAL BILL</option>
+                <option value="PURCHASE ORDER">PURCHASE ORDER</option>
+              </select>
+            </div>
+
+            <!-- 3. Branding Selection -->
+            <div class="space-y-1">
+              <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Company Logo Branding</label>
+              <select id="config-branding-logo" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                <option value="auto">Auto-detect (DGS/DTL)</option>
+                <option value="dtl">DTL Logo Only</option>
+                <option value="dgs">DGS Logo Only</option>
+                <option value="dgllc">DGLLC Master Logo</option>
+              </select>
+            </div>
+
+            <!-- Address / Profile Selector -->
+            <div class="space-y-1 mt-2.5 pt-2 border-t border-slate-800/40">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Office Address Profile</label>
+              <select id="config-address-selector" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                {addressesList.map((a: any) => (
+                  <option value={a.id} selected={a.id === (settings.default_address_id || addressesList[0]?.id)}>
+                    {a.business_address ? (a.business_address.substring(0, 32) + '...') : 'Default Address'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <!-- Header logo size -->
+            <div class="space-y-2 pt-1 border-t border-slate-800/40">
+              <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="config-show-logo" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Header Primary Logo</span>
+              </label>
+              <div class="space-y-1 pl-5">
+                <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-0.5">Header Logo Size</label>
+                <select id="config-header-logo-size" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2 py-0.5 text-xs focus:ring-0">
+                  <option value="96" selected>Default</option>
+                  <option value="128">Large</option>
+                  <option value="160">X-Large</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Terms logo size -->
+            <div class="space-y-2 pt-1 border-t border-slate-800/40">
+              <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="config-show-logo-p2" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Terms of Service Page Header Logo</span>
+              </label>
+              <div class="space-y-1 pl-5">
+                <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-0.5">Terms of Service Logo Size</label>
+                <select id="config-terms-logo-size" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2 py-0.5 text-xs focus:ring-0">
+                  <option value="40">Default (Small)</option>
+                  <option value="72">Large</option>
+                  <option value="96" selected>X-Large</option>
+                  <option value="128">XXL</option>
+                  <option value="160">XXXL</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Watermark customization -->
+            <div class="space-y-2 pt-2 border-t border-slate-800/60">
+              <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="config-show-watermark" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Background Watermark</span>
+              </label>
+              <div>
+                <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1 pl-5">Watermark Image Source</label>
+                <div class="pl-5 mb-1.5">
+                  <select id="config-watermark-source" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-0.5 text-xs focus:ring-0">
+                    <option value="dgllc">DGLLC Master Logo</option>
+                    <option value="dtl">DTL Logo Only</option>
+                    <option value="dgs">DGS Logo Only</option>
+                  </select>
+                </div>
+              </div>
+              <div class="space-y-1 pl-5">
+                <div class="flex justify-between text-[9px] font-bold text-slate-500"><span>Watermark Opacity</span><span id="wm-op-val">6%</span></div>
+                <input type="range" id="config-watermark-opacity" min="1" max="40" value="6" class="w-full h-1 bg-slate-700 rounded-lg appearance-none accent-cyan-500" />
+              </div>
+              <div class="space-y-1 pl-5">
+                <div class="flex justify-between text-[9px] font-bold text-slate-500"><span>Watermark Width</span><span id="wm-sz-val">380px</span></div>
+                <input type="range" id="config-watermark-size" min="200" max="600" step="20" value="380" class="w-full h-1 bg-slate-700 rounded-lg appearance-none accent-cyan-500" />
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- CATEGORY 2: Customer & Metadata Visibility -->
+        <details class="group border border-slate-200 rounded-xl bg-white overflow-hidden">
+          <summary class="flex items-center justify-between p-3 text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer hover:bg-slate-50 select-none transition-all">
+            <div class="flex items-center gap-2">
+              <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              </div>
+              <span>Customer & Metadata</span>
+            </div>
+            <span class="transition-transform duration-200 group-open:rotate-180 text-blue-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </span>
+          </summary>
+          <div class="p-3.5 border-t border-slate-850 space-y-4 text-xs text-slate-300 font-semibold">
+            <!-- Billing Details Visibility -->
+            <div class="space-y-2">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Billing Details Visibility</label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-cust-company" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Customer / Company</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-cust-address" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Billing Address</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-cust-contact" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Contact Details</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-cust-trn" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Customer TRN</span>
+              </label>
+            </div>
+
+            <!-- Document Info Visibility -->
+            <div class="space-y-2 pt-2 border-t border-slate-800/40">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Document Info Visibility</label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-info-status" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Document Metadata</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-info-date" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Issue Date</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-info-due" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Due/Delivery Date</span>
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <!-- CATEGORY 3: Table Columns & Financials -->
+        <details class="group border border-slate-200 rounded-xl bg-white overflow-hidden">
+          <summary class="flex items-center justify-between p-3 text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer hover:bg-slate-50 select-none transition-all">
+            <div class="flex items-center gap-2">
+              <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5"><path d="M12 3v18M3 12h18"/></svg>
+              </div>
+              <span>Columns & Breakdown</span>
+            </div>
+            <span class="transition-transform duration-200 group-open:rotate-180 text-blue-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </span>
+          </summary>
+          <div class="p-3.5 border-t border-slate-850 space-y-4 text-xs text-slate-300 font-semibold">
+            <!-- Content Layout Options -->
+            <div class="space-y-2">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Content Layout Options</label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-col-ref" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show SKU/Ref Column</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-col-spec" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Technical Specs</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-col-price" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Pricing Columns</span>
+              </label>
+            </div>
+
+            <!-- Pricing breakdown Toggles -->
+            <div class="space-y-2 pt-2 border-t border-slate-800/40">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Financial Breakdowns</label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-subtotal" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Subtotal Row</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-vat" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show VAT Calculation</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-discount" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Discount Row</span>
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <!-- CATEGORY 4: Bank Details Customizer -->
+        <details class="group border border-slate-200 rounded-xl bg-white overflow-hidden">
+          <summary class="flex items-center justify-between p-3 text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer hover:bg-slate-50 select-none transition-all">
+            <div class="flex items-center gap-2">
+              <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+              </div>
+              <span>Remittance & Banking</span>
+            </div>
+            <span class="transition-transform duration-200 group-open:rotate-180 text-blue-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </span>
+          </summary>
+          <div class="p-3.5 border-t border-slate-850 space-y-3.5 text-xs text-slate-300">
+            <div>
+              <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Bank Remittance Placement</label>
+              <select id="config-remittance-placement" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                <option value="both" selected>Show on Page 1 & TOS Page</option>
+                <option value="page1">Show on Page 1 Only</option>
+                <option value="tos">Show on TOS Page Only</option>
+                <option value="none">Hide Remittance Entirely</option>
+              </select>
+            </div>
+            
+            <div class="mt-2.5 pt-2 border-t border-slate-800/40">
+              <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Select Bank Account</label>
+              <select id="config-bank-selector" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                {banksList.map((b: any) => (
+                  <option value={b.id} selected={b.id === (settings.default_bank_id || banksList[0]?.id)}>{b.bank_name} - {b.account_number}</option>
+                ))}
+              </select>
+            </div>
+
+            <div id="bank-customization-inputs" class="space-y-2.5 pt-2 border-t border-slate-800 text-xs text-slate-350">
+              <div>
+                <label class="text-[8px] text-slate-500 uppercase block mb-0.5">Bank Name</label>
+                <input type="text" id="config-bank-name" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" value={settings.bank_name || ''} />
+              </div>
+              <div>
+                <label class="text-[8px] text-slate-500 uppercase block mb-0.5">Account Name</label>
+                <input type="text" id="config-bank-acc-name" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" value={settings.account_name || ''} />
+              </div>
+              <div>
+                <label class="text-[8px] text-slate-500 uppercase block mb-0.5">Account Number</label>
+                <input type="text" id="config-bank-acc" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" value={settings.account_number || ''} />
+              </div>
+              <div>
+                <label class="text-[8px] text-slate-500 uppercase block mb-0.5">IBAN Number</label>
+                <input type="text" id="config-bank-iban" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" value={settings.iban_number || ''} />
+              </div>
+              <div>
+                <label class="text-[8px] text-slate-500 uppercase block mb-0.5">SWIFT / BIC Code</label>
+                <input type="text" id="config-bank-swift" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" value={settings.swift_code || ''} />
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- CATEGORY 5: Signatures & TOS Pages -->
+        <details class="group border border-slate-200 rounded-xl bg-white overflow-hidden">
+          <summary class="flex items-center justify-between p-3 text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer hover:bg-slate-50 select-none transition-all">
+            <div class="flex items-center gap-2">
+              <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+              </div>
+              <span>Signatures & TOS Options</span>
+            </div>
+            <span class="transition-transform duration-200 group-open:rotate-180 text-blue-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </span>
+          </summary>
+          <div class="p-3.5 border-t border-slate-850 space-y-3.5 text-xs text-slate-300">
+            <!-- Signature Placement -->
+            <div class="space-y-1.5">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Signature Area Placement</label>
+              <select id="config-sig-placement" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                <option value="bottom-fixed">Show Standard Bottom Signatures</option>
+                <option value="none">Hide Signature Area Completely</option>
+              </select>
+            </div>
+
+            <!-- Signatory selector -->
+            <div class="mt-2.5 pt-2 border-t border-slate-800/40">
+              <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Select Signatory Stamp</label>
+              <select id="config-signature-selector" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                {signaturesList.map((s: any) => (
+                  <option value={s.id} selected={s.id === (settings.default_signature_id || signaturesList[0]?.id)}>{s.signatory_name} ({s.signatory_title})</option>
+                ))}
+              </select>
+            </div>
+            
+            <div class="pt-2 border-t border-slate-805 space-y-2 font-semibold">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="sig-client" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Client Signature Line</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="sig-company" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Company Stamp / Signature</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-disclaimer" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Disclaimer Text</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-electronic-sig" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Electronic / No Signature Needed</span>
+              </label>
+            </div>
+
+            <!-- Page Toggles -->
+            <div class="pt-2.5 border-t border-slate-800 space-y-2 font-semibold">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Page Toggles</label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-page-2" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Terms & Conditions Page</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-company-card-tos" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Company Details Card at bottom of TOS</span>
+              </label>
+            </div>
+
+            <!-- Visible TOS Sections Checkboxes -->
+            <div class="pt-2.5 border-t border-slate-800 space-y-2 font-semibold">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Visible TOS Sections</label>
+              <div class="grid grid-cols-1 gap-1.5 pl-1 text-[10px] text-slate-350">
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-general" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>1. General</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-acceptance" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>2. Acceptance of Order</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-illustrations" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>3. Illustrations & Specs</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-designs" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>4. Designs</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-samples" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>5. Samples</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-delivery" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>6. Delivery</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-cancellation" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>7. Cancellation</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-returns" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>8. Returns</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-payment" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>9. Payment</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-installation" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>10. Installation</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-warranty-workmanship" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>11. Workmanship Warranty</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-warranty-product" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>12. Product Warranty</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-liability" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>13. Liability</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                  <input type="checkbox" id="config-show-tos-others" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span>14. Others</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- Action Footer -->
+      <div class="pt-6 border-t border-slate-200 mt-6 shrink-0 space-y-2">
+        <button type="button" onclick="window.print()" class="w-full bg-blue-700 hover:bg-blue-600 text-white font-black py-2.5 rounded-none text-xs transition-all uppercase tracking-wider shadow-md">
+          Print Document
+        </button>
+        <button type="button" id="config-save-btn" class="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold py-2 rounded-none text-xs transition-all uppercase tracking-wider flex items-center justify-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" class="h-3.5 w-3.5 text-slate-500">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+          </svg>
+          Save Configuration
+        </button>
+        <div class="text-[9px] text-slate-500 text-center mt-1 leading-normal font-medium max-w-xs mx-auto">
+          Note: This saves your print preferences temporarily in your browser cache on this computer.
+        </div>
+      </div>
     </div>
 
   </div>
 
-  <script>
+  <script define:vars={{ banksList, signaturesList, addressesList }}>
     // Toggle templates based on layout selector
-    const layoutSelector = document.getElementById('layoutSelector') as HTMLSelectElement;
+    const layoutSelector = document.getElementById('layoutSelector');
     const stdLayoutWrapper = document.getElementById('layout-standard-wrapper');
     const arrcoLayoutWrapper = document.getElementById('layout-arrco-wrapper');
 
-    const updateLayout = (layout: string) => {
+    const updateLayout = (layout) => {
       if (layout === 'arrco') {
-        stdLayoutWrapper!.style.display = 'none';
-        arrcoLayoutWrapper!.style.display = 'block';
+        stdLayoutWrapper.style.display = 'none';
+        arrcoLayoutWrapper.style.display = 'block';
       } else {
-        stdLayoutWrapper!.style.display = 'block';
-        arrcoLayoutWrapper!.style.display = 'none';
+        stdLayoutWrapper.style.display = 'block';
+        arrcoLayoutWrapper.style.display = 'none';
       }
     };
 
     // Listen to selection changes
     layoutSelector?.addEventListener('change', (e) => {
-      const selected = (e.target as HTMLSelectElement).value;
+      const selected = e.target.value;
       updateLayout(selected);
       // Persist selection in URL
       const url = new URL(window.location.href);
@@ -726,6 +1478,368 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       layoutSelector.value = initialLayout;
       updateLayout(initialLayout);
     }
+
+    // Dynamic document title override
+    document.getElementById('config-doc-type')?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      document.querySelectorAll('.arrco-doc-title, .std-doc-title').forEach(el => {
+        el.textContent = val;
+      });
+    });
+
+    // Setup helper for simple class toggle lists
+    const setupToggle = (checkboxId, targetClass) => {
+      document.getElementById(checkboxId)?.addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        document.querySelectorAll(`.${targetClass}`).forEach(el => {
+          if (checked) {
+            el.classList.remove('hidden');
+          } else {
+            el.classList.add('hidden');
+          }
+        });
+      });
+    };
+
+    // Register simple class visibility toggles
+    setupToggle('config-show-logo', 'print-logo-container');
+    setupToggle('config-show-logo-p2', 'print-logo-container-p2');
+    setupToggle('config-show-watermark', 'print-watermark');
+    setupToggle('config-show-cust-company', 'print-cust-company');
+    setupToggle('config-show-cust-address', 'print-cust-address');
+    setupToggle('config-show-cust-contact', 'print-cust-contact');
+    setupToggle('config-show-cust-trn', 'print-cust-trn');
+    setupToggle('config-show-info-status', 'print-info-status');
+    setupToggle('config-show-info-date', 'print-info-date');
+    setupToggle('config-show-info-due', 'print-info-due');
+    setupToggle('config-show-col-ref', 'print-item-cat-ref');
+    setupToggle('config-show-col-spec', 'print-item-tech-spec');
+    setupToggle('config-show-col-price', 'print-col-price');
+    setupToggle('config-show-subtotal', 'print-total-subtotal');
+    setupToggle('config-show-vat', 'print-total-vat');
+    setupToggle('config-show-discount', 'print-total-discount');
+    setupToggle('config-show-page-2', 'print-page-2-container');
+    setupToggle('config-show-company-card-tos', 'company-card-tos-wrapper');
+    setupToggle('config-show-disclaimer', 'print-disclaimer-text');
+    setupToggle('config-show-tos-general', 'terms-sec-general');
+    setupToggle('config-show-tos-acceptance', 'terms-sec-acceptance');
+    setupToggle('config-show-tos-illustrations', 'terms-sec-illustrations');
+    setupToggle('config-show-tos-designs', 'terms-sec-designs');
+    setupToggle('config-show-tos-samples', 'terms-sec-samples');
+    setupToggle('config-show-tos-delivery', 'terms-sec-delivery');
+    setupToggle('config-show-tos-cancellation', 'terms-sec-cancellation');
+    setupToggle('config-show-tos-returns', 'terms-sec-returns');
+    setupToggle('config-show-tos-payment', 'terms-sec-payment');
+    setupToggle('config-show-tos-installation', 'terms-sec-installation');
+    setupToggle('config-show-tos-warranty-workmanship', 'terms-sec-warranty-workmanship');
+    setupToggle('config-show-tos-warranty-product', 'terms-sec-warranty-product');
+    setupToggle('config-show-tos-liability', 'terms-sec-liability');
+    setupToggle('config-show-tos-others', 'terms-sec-others');
+
+    // Watermark customizer range inputs
+    document.getElementById('config-watermark-opacity')?.addEventListener('input', (e) => {
+      const val = e.target.value;
+      const label = document.getElementById('wm-op-val');
+      if (label) label.textContent = val + '%';
+      document.querySelectorAll('.print-watermark img').forEach(el => {
+        el.style.opacity = (Number(val) / 100).toString();
+      });
+    });
+
+    document.getElementById('config-watermark-size')?.addEventListener('input', (e) => {
+      const val = e.target.value;
+      const label = document.getElementById('wm-sz-val');
+      if (label) label.textContent = val + 'px';
+      document.querySelectorAll('.print-watermark img').forEach(el => {
+        el.style.width = val + 'px';
+      });
+    });
+
+    // Watermark image source selector
+    document.getElementById('config-watermark-source')?.addEventListener('change', (e) => {
+      const selected = e.target.value;
+      let wmUrl = '/dgllclogolarge.png';
+      if (selected === 'dtl') wmUrl = '/dtllogo.jpg';
+      else if (selected === 'dgs') wmUrl = '/dgslogo.jpg';
+      document.querySelectorAll('.print-watermark img').forEach(img => {
+        img.src = wmUrl;
+      });
+    });
+
+    // Company Logo branding switcher
+    document.getElementById('config-branding-logo')?.addEventListener('change', (e) => {
+      const selected = e.target.value;
+      let logoUrl = '/dgllclogosmall.png';
+      if (selected === 'dtl') logoUrl = '/dtllogo.jpg';
+      else if (selected === 'dgs') logoUrl = '/dgslogo.jpg';
+      else if (selected === 'dgllc') logoUrl = '/dgllclogolarge.png';
+      else {
+        // Auto detect logo
+        const division = document.getElementById('print-root-container')?.getAttribute('data-division') || 'DTL';
+        logoUrl = division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg';
+      }
+      document.querySelectorAll('#print-company-logo, #print-company-logo-p2, #print-company-logo-std, #print-company-logo-std-p2, .company-card-tos-logo').forEach(img => {
+        img.src = logoUrl;
+      });
+    });
+
+    // Header Logo size adjustment
+    document.getElementById('config-header-logo-size')?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      document.querySelectorAll('#print-company-logo, #print-company-logo-std').forEach(img => {
+        img.style.height = val + 'px';
+        img.style.maxHeight = val + 'px';
+      });
+    });
+
+    // Terms Logo size adjustment
+    document.getElementById('config-terms-logo-size')?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      document.querySelectorAll('#print-company-logo-p2, #print-company-logo-std-p2').forEach(img => {
+        img.style.height = val + 'px';
+        img.style.maxHeight = val + 'px';
+      });
+    });
+
+    // Signature Area placement selector
+    document.getElementById('config-sig-placement')?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      document.querySelectorAll('.print-signature-section').forEach(el => {
+        if (val === 'none') {
+          el.classList.add('hidden');
+        } else {
+          el.classList.remove('hidden');
+        }
+      });
+    });
+
+    // Signatures detail toggles
+    document.getElementById('sig-client')?.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      document.querySelectorAll('.print-sig-client-col').forEach(el => {
+        if (checked) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+    });
+
+    document.getElementById('sig-company')?.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      document.querySelectorAll('.print-sig-company-col').forEach(el => {
+        if (checked) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+    });
+
+    // Electronic Signature toggle handler
+    document.getElementById('config-electronic-sig')?.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      const physicalSigs = document.querySelectorAll('.print-signature-section');
+      const electronicBadges = document.querySelectorAll('.print-electronic-badge');
+      const sigPlacement = document.getElementById('config-sig-placement');
+      
+      if (checked) {
+        physicalSigs.forEach(el => el.classList.add('hidden'));
+        electronicBadges.forEach(el => el.classList.remove('hidden'));
+        if (sigPlacement) sigPlacement.disabled = true;
+      } else {
+        const val = sigPlacement?.value || 'bottom-fixed';
+        if (val !== 'none') {
+          physicalSigs.forEach(el => el.classList.remove('hidden'));
+        }
+        electronicBadges.forEach(el => el.classList.add('hidden'));
+        if (sigPlacement) sigPlacement.disabled = false;
+        
+        // Refresh checkboxes
+        document.getElementById('sig-client')?.dispatchEvent(new Event('change'));
+        document.getElementById('sig-company')?.dispatchEvent(new Event('change'));
+      }
+    });
+
+    // Bank Details customizer inputs real-time sync
+    const updateBankDetails = () => {
+      const name = document.getElementById('config-bank-name')?.value || '';
+      const accName = document.getElementById('config-bank-acc-name')?.value || '';
+      const acc = document.getElementById('config-bank-acc')?.value || '';
+      const iban = document.getElementById('config-bank-iban')?.value || '';
+      const swift = document.getElementById('config-bank-swift')?.value || '';
+      
+      document.querySelectorAll('#print-bank-name, #print-bank-name-p1-arr, #print-bank-name-std-p2, #print-bank-name-p2').forEach(el => el.textContent = name);
+      document.querySelectorAll('#print-bank-acc-name, #print-bank-acc-name-p1-arr, #print-bank-acc-name-std-p2, #print-bank-acc-name-p2').forEach(el => el.textContent = accName);
+      document.querySelectorAll('#print-bank-acc, #print-bank-acc-p1-arr, #print-bank-acc-std-p2, #print-bank-acc-p2').forEach(el => el.textContent = acc);
+      document.querySelectorAll('#print-bank-iban, #print-bank-iban-p1-arr, #print-bank-iban-std-p2, #print-bank-iban-p2').forEach(el => el.textContent = iban);
+      document.querySelectorAll('#print-bank-swift, #print-bank-swift-p1-arr, #print-bank-swift-std-p2, #print-bank-swift-p2').forEach(el => el.textContent = swift);
+    };
+
+    // Remittance block placement selector
+    document.getElementById('config-remittance-placement')?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      const p1Blocks = document.querySelectorAll('.print-bank-block-p1');
+      const p2Blocks = document.querySelectorAll('.print-bank-block-p2');
+      const inputs = document.getElementById('bank-customization-inputs');
+
+      if (val === 'both') {
+        p1Blocks.forEach(el => el.classList.remove('hidden'));
+        p2Blocks.forEach(el => el.classList.remove('hidden'));
+        inputs?.classList.remove('hidden');
+      } else if (val === 'page1') {
+        p1Blocks.forEach(el => el.classList.remove('hidden'));
+        p2Blocks.forEach(el => el.classList.add('hidden'));
+        inputs?.classList.remove('hidden');
+      } else if (val === 'tos') {
+        p1Blocks.forEach(el => el.classList.add('hidden'));
+        p2Blocks.forEach(el => el.classList.remove('hidden'));
+        inputs?.classList.remove('hidden');
+      } else {
+        // none
+        p1Blocks.forEach(el => el.classList.add('hidden'));
+        p2Blocks.forEach(el => el.classList.add('hidden'));
+        inputs?.classList.add('hidden');
+      }
+    });
+
+    // Bank detail event listeners
+    ['config-bank-name', 'config-bank-acc-name', 'config-bank-acc', 'config-bank-iban', 'config-bank-swift'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', updateBankDetails);
+    });
+
+    // Selector event listeners
+    document.getElementById('config-bank-selector')?.addEventListener('change', (e) => {
+      const id = e.target.value;
+      const bank = banksList.find((b) => b.id === id);
+      if (!bank) return;
+
+      const bankNameInput = document.getElementById('config-bank-name');
+      const accNameInput = document.getElementById('config-bank-acc-name');
+      const accInput = document.getElementById('config-bank-acc');
+      const ibanInput = document.getElementById('config-bank-iban');
+      const swiftInput = document.getElementById('config-bank-swift');
+
+      if (bankNameInput) bankNameInput.value = bank.bank_name || '';
+      if (accNameInput) accNameInput.value = bank.account_name || '';
+      if (accInput) accInput.value = bank.account_number || '';
+      if (ibanInput) ibanInput.value = bank.iban_number || '';
+      if (swiftInput) swiftInput.value = bank.swift_code || '';
+
+      updateBankDetails();
+    });
+
+    document.getElementById('config-signature-selector')?.addEventListener('change', (e) => {
+      const id = e.target.value;
+      const sig = signaturesList.find((s) => s.id === id);
+      if (!sig) return;
+
+      document.querySelectorAll('#print-sig-name-std, #print-sig-name-arr').forEach(el => {
+        el.textContent = sig.signatory_name || '';
+      });
+    });
+
+    document.getElementById('config-address-selector')?.addEventListener('change', (e) => {
+      const id = e.target.value;
+      const addr = addressesList.find((a) => a.id === id);
+      if (!addr) return;
+
+      // Update address
+      document.querySelectorAll('#print-company-address-std, #print-company-address-std-p2, #print-company-address-arr, #print-company-address-arr-p2').forEach(el => {
+        el.textContent = addr.business_address || '';
+      });
+
+      // Update TRN
+      document.querySelectorAll('#print-company-trn-std, #print-company-trn-std-p2, #print-company-trn-arr, #print-company-trn-arr-p2').forEach(el => {
+        el.textContent = addr.trn_number || '';
+      });
+
+      // Update Registration
+      document.querySelectorAll('#print-company-reg-std, #print-company-reg-std-p2, #print-company-reg-arr, #print-company-reg-arr-p2').forEach(el => {
+        el.textContent = addr.business_registration || '';
+      });
+      document.querySelectorAll('#print-company-reg-std-wrapper, #print-company-reg-std-p2-wrapper, #print-company-reg-arr-wrapper, #print-company-reg-arr-p2-wrapper').forEach(el => {
+        if (addr.business_registration) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+
+      // Update Permits
+      document.querySelectorAll('#print-company-permits-std, #print-company-permits-std-p2, #print-company-permits-arr, #print-company-permits-arr-p2').forEach(el => {
+        el.textContent = addr.permits_info || '';
+      });
+      document.querySelectorAll('#print-company-permits-std-wrapper, #print-company-permits-std-p2-wrapper, #print-company-permits-arr-wrapper, #print-company-permits-arr-p2-wrapper').forEach(el => {
+        if (addr.permits_info) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+    });
+
+    // Save configuration to localStorage
+    document.getElementById('config-save-btn')?.addEventListener('click', () => {
+      const config = {};
+      const inputs = [
+        'layoutSelector', 'config-doc-type', 'config-branding-logo', 'config-show-logo',
+        'config-header-logo-size', 'config-show-logo-p2', 'config-terms-logo-size',
+        'config-show-watermark', 'config-watermark-source', 'config-watermark-opacity', 'config-watermark-size',
+        'config-show-cust-company', 'config-show-cust-address', 'config-show-cust-contact', 'config-show-cust-trn',
+        'config-show-info-status', 'config-show-info-date', 'config-show-info-due',
+        'config-show-col-ref', 'config-show-col-spec', 'config-show-col-price',
+        'config-show-subtotal', 'config-show-vat', 'config-show-discount', 'config-show-page-2',
+        'config-show-company-card-tos', 'config-sig-placement', 'sig-client', 'sig-company', 
+        'config-show-disclaimer', 'config-electronic-sig',
+        'config-remittance-placement', 'config-bank-name', 'config-bank-acc-name', 'config-bank-acc', 'config-bank-iban', 'config-bank-swift',
+        'config-bank-selector', 'config-signature-selector', 'config-address-selector',
+        'config-show-tos-general', 'config-show-tos-acceptance', 'config-show-tos-illustrations',
+        'config-show-tos-designs', 'config-show-tos-samples', 'config-show-tos-delivery',
+        'config-show-tos-cancellation', 'config-show-tos-returns', 'config-show-tos-payment',
+        'config-show-tos-installation', 'config-show-tos-warranty-workmanship',
+        'config-show-tos-warranty-product', 'config-show-tos-liability', 'config-show-tos-others'
+      ];
+      inputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.tagName === 'INPUT' && el.type === 'checkbox') {
+          config[id] = el.checked;
+        } else {
+          config[id] = el.value;
+        }
+      });
+      localStorage.setItem('print_config_invoices', JSON.stringify(config));
+      
+      // Visual feedback on save button
+      const saveBtn = document.getElementById('config-save-btn');
+      if (saveBtn) {
+        const originalHtml = saveBtn.innerHTML;
+        saveBtn.innerHTML = `
+          <svg class="h-3.5 w-3.5 text-emerald-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Saved!
+        `;
+        setTimeout(() => {
+          saveBtn.innerHTML = originalHtml;
+        }, 1500);
+      }
+    });
+
+    // Load configuration from localStorage
+    const loadSavedConfig = () => {
+      try {
+        const saved = localStorage.getItem('print_config_invoices');
+        if (!saved) return;
+        const config = JSON.parse(saved);
+        Object.keys(config).forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (el.tagName === 'INPUT' && el.type === 'checkbox') {
+            el.checked = config[id];
+          } else {
+            el.value = config[id];
+          }
+          // Trigger events to update the layout rendering
+          el.dispatchEvent(new Event('change'));
+          el.dispatchEvent(new Event('input'));
+        });
+      } catch (err) {
+        console.error('Error loading print config:', err);
+      }
+    };
+    
+    // Call loadSavedConfig on startup
+    loadSavedConfig();
 
     // Auto print if requested via query param
     if (urlParams.get('autoprint') === 'true' || urlParams.get('download') === 'true') {

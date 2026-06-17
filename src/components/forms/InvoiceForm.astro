@@ -22,7 +22,7 @@ try {
   console.log('InvoiceForm.astro: Products loaded:', products.length, 'Categories loaded:', categories.length);
   const custRes = await query('SELECT * FROM customers ORDER BY name ASC');
   customers = custRes.rows;
-  const legalRes = await query("SELECT * FROM legal_artifacts ORDER BY type DESC, identifier ASC");
+  const legalRes = await query("SELECT * FROM legal_artifacts WHERE type IN ('order_clause', 'both') ORDER BY identifier ASC");
   disclaimers = legalRes.rows;
 } catch(e) {
   console.error('InvoiceForm.astro products load error:', e);
@@ -902,8 +902,8 @@ const disclaimersJson = JSON.stringify(disclaimers);
 
             if (successModal && successNum) {
               successNum.textContent = result.invoice_number || '';
-              if (successPrint) successPrint.href = `/dashboard/invoices/print/${result.id}?autoprint=true`;
-              if (successPdf) successPdf.href = `/dashboard/invoices/print/${result.id}?download=true`;
+              if (successPrint) successPrint.href = `/dashboard/invoices/print/${result.id}`;
+              if (successPdf) successPdf.href = `/dashboard/invoices/print/${result.id}`;
               if (successView) successView.href = `/dashboard/invoices/${result.id}`;
               
               successClose?.addEventListener('click', () => {

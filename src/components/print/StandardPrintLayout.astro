@@ -8,141 +8,339 @@ interface Props {
   companyNameEN: string;
 }
 const { inv, items, settings, documentTitle, logoColor, companyNameEN } = Astro.props;
+
+// Determine items fit limits
+const maxItemsPage1 = inv.order_type === 'delivery_note' ? 10 : 6;
+const maxItemsSubsequent = 14;
+
+// Split items list into pages
+const pagesOfItems: any[][] = [];
+if (items.length <= maxItemsPage1) {
+  pagesOfItems.push(items);
+} else {
+  pagesOfItems.push(items.slice(0, maxItemsPage1));
+  let index = maxItemsPage1;
+  while (index < items.length) {
+    pagesOfItems.push(items.slice(index, index + maxItemsSubsequent));
+    index += maxItemsSubsequent;
+  }
+}
+
+const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
 ---
 
-<div id="layout-standard" class="std-container">
-  <table class="std-header-table">
-    <tr>
-      <td class="std-company-info">
-        <div class="std-company-title" style={`color: ${logoColor}`}>{companyNameEN}</div>
-        <div class="text-muted" style="font-size: 9pt; margin-top: 5px; line-height: 1.4;">
-          {settings.business_address || 'Dubai, United Arab Emirates'}<br>
-          TRN: <span class="font-mono font-bold" style="color:#0f172a;">{settings.trn_number || '100380541100003'}</span><br>
-          Email: {settings.customer_email || 'corporate@delightgroupllc.com'} | Phone: {settings.customer_phone || '+971 4 000 0000'}
-        </div>
-      </td>
-      <td class="std-doc-meta">
-        <div class="std-doc-title">{documentTitle}</div>
-        <div style="font-size: 10pt; line-height: 1.5;">
-          Document No: <span class="font-mono font-bold">{inv.invoice_number}</span><br>
-          Issue Date: <span class="font-bold">{inv.issue_date}</span><br>
-          {inv.due_date && <span>Due Date: <span class="font-bold">{inv.due_date}</span><br></span>}
-          {inv.lpo_number && <span>Ref LPO No: <span class="font-mono font-bold">{inv.lpo_number}</span><br></span>}
-          Division: <span class="font-bold">{inv.source_division || 'DTL'}</span>
-        </div>
-      </td>
-    </tr>
-  </table>
+<div id="layout-standard" class="std-container w-full flex flex-col items-center gap-8">
+  {pagesOfItems.map((pageItems, pageIdx) => {
+    const isFirstPage = pageIdx === 0;
+    const isLastPage = pageIdx === pagesOfItems.length - 1;
+    const pageNumber = pageIdx + 1;
 
-  <table class="std-details-table">
-    <tr>
-      <td class="std-details-col">
-        <div class="std-section-label">Remit / Bill To</div>
-        <div class="font-bold" style="font-size: 11pt; color: #0f172a;">{inv.customer_name}</div>
-        {inv.company_name && <div class="font-semibold text-muted" style="font-size: 9.5pt;">{inv.company_name}</div>}
-        <div class="text-muted" style="font-size: 9pt; margin-top: 4px; white-space: pre-line;">
-          {inv.billing_address || 'N/A'}
+    return (
+      <div class="print-page bg-white shadow-xl border border-slate-250 p-12 relative print:p-0 print:border-none print:shadow-none mb-8">
+        <!-- Faint Brand Watermark Centered Behind Page Content -->
+        <div class="std-watermark print-watermark" style="position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 380px; height: 380px; opacity: 1; pointer-events: none; z-index: 0;">
+          <img src="/dgllclogolarge.png" id="watermark-img-std" style="width: 100%; height: auto; object-fit: contain; opacity: 0.06;" />
         </div>
-        {inv.customer_email && <div class="text-muted" style="font-size: 9pt; margin-top: 4px;">Email: {inv.customer_email}</div>}
-        {inv.customer_phone && <div class="text-muted" style="font-size: 9pt;">Phone: {inv.customer_phone}</div>}
-      </td>
-      <td class="std-details-col">
-        <div class="std-section-label">Deliver To / Shipping Address</div>
-        {inv.shipping_address ? (
-          <div class="text-muted" style="font-size: 9pt; white-space: pre-line;">
-            {inv.shipping_address}
-          </div>
+
+        {isFirstPage ? (
+          <!-- Header Table -->
+          <table class="std-header-table">
+            <tr>
+              <td class="std-company-info">
+                <div class="print-logo-container" style="margin-bottom: 10px;">
+                  <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-24 w-auto object-contain" id="print-company-logo-std" />
+                </div>
+                <div class="std-company-title" style={`color: ${logoColor}`}>{companyNameEN}</div>
+                <div class="text-muted" style="font-size: 9pt; margin-top: 5px; line-height: 1.4;">
+                  <span id="print-company-address-std">{settings.business_address || settings.company_address || 'Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE'}</span><br>
+                  TRN: <span class="font-mono font-bold text-slate-900" id="print-company-trn-std">{settings.trn_number || '100380541100003'}</span>
+                  <span id="print-company-reg-std-wrapper" class={settings.business_registration ? "" : "hidden"}> | Reg: <span class="font-mono font-bold text-slate-900" id="print-company-reg-std">{settings.business_registration || ''}</span></span>
+                  <br>
+                  <span id="print-company-permits-std-wrapper" class={settings.permits_info ? "block text-[8pt] text-slate-500" : "hidden"}>Permits/Info: <span id="print-company-permits-std" class="italic">{settings.permits_info || ''}</span><br></span>
+                  Email: {settings.contact_email || 'sales@delightgroupllc.com'} | Phone: {settings.contact_phone || '+971 (4) 555-0100'}
+                </div>
+              </td>
+              <td class="std-doc-meta">
+                <div class="std-doc-title">{documentTitle}</div>
+                <div style="font-size: 10pt; line-height: 1.5;">
+                  Document No: <span class="font-mono font-bold">{inv.invoice_number}</span><br>
+                  <span class="print-info-date">Issue Date: <span class="font-bold">{inv.issue_date}</span><br></span>
+                  {inv.due_date && <span class="print-info-due">Due Date: <span class="font-bold">{inv.due_date}</span><br></span>}
+                  {inv.lpo_number && <span class="print-info-status">Ref LPO No: <span class="font-mono font-bold">{inv.lpo_number}</span><br></span>}
+                  <span class="print-info-status">Division: <span class="font-bold">{inv.source_division || 'DTL'}</span></span>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Client details -->
+          <table class="std-details-table">
+            <tr>
+              <td class="std-details-col">
+                <div class="std-section-label">Remit / Bill To</div>
+                <div class="font-bold print-cust-company" style="font-size: 11pt; color: #0f172a;">{inv.customer_name}</div>
+                {inv.company_name && <div class="font-semibold text-muted print-cust-company" style="font-size: 9.5pt;">{inv.company_name}</div>}
+                <div class="text-muted print-cust-address" style="font-size: 9pt; margin-top: 4px; white-space: pre-line;">
+                  {inv.billing_address || 'N/A'}
+                </div>
+                {inv.customer_email && <div class="text-muted print-cust-contact" style="font-size: 9pt; margin-top: 4px;">Email: {inv.customer_email}</div>}
+                {inv.customer_phone && <div class="text-muted print-cust-contact" style="font-size: 9pt;">Phone: {inv.customer_phone}</div>}
+              </td>
+              <td class="std-details-col">
+                <div class="std-section-label">Deliver To / Shipping Address</div>
+                {inv.shipping_address ? (
+                  <div class="text-muted print-cust-address" style="font-size: 9pt; white-space: pre-line;">
+                    {inv.shipping_address}
+                  </div>
+                ) : (
+                  <div class="text-muted print-cust-address" style="font-size: 9pt; font-style: italic;">Same as Billing Address</div>
+                )}
+                {inv.company_vat && (
+                  <div class="print-cust-trn" style="margin-top: 10px; font-size: 9pt;">
+                    <span class="font-bold text-muted uppercase tracking-wider" style="font-size: 7.5pt; display: block;">Client TRN / Tax Reg</span>
+                    <span class="font-mono font-bold" style="color: #0f172a;">{inv.company_vat}</span>
+                  </div>
+                )}
+              </td>
+            </tr>
+          </table>
         ) : (
-          <div class="text-muted" style="font-size: 9pt; font-style: italic;">Same as Billing Address</div>
+          <!-- Compact Continuation Header -->
+          <table class="std-header-table w-full" style="margin-bottom: 20px; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">
+            <tr>
+              <td>
+                <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-10 w-auto object-contain" />
+              </td>
+              <td class="text-right" style="vertical-align: middle; font-size: 10pt; font-weight: 750;">
+                {documentTitle} - {inv.invoice_number} (Continuation Page {pageNumber} of {totalPages})
+              </td>
+            </tr>
+          </table>
         )}
-        {inv.company_vat && (
-          <div style="margin-top: 10px; font-size: 9pt;">
-            <span class="font-bold text-muted uppercase tracking-wider" style="font-size: 7.5pt; display: block;">Client TRN / Tax Reg</span>
-            <span class="font-mono font-bold" style="color: #0f172a;">{inv.company_vat}</span>
+
+        <!-- Items Table -->
+        <table class="std-items-table">
+          <thead>
+            <tr>
+              <th style="text-align: left; width: 5%;">#</th>
+              <th style="text-align: left; width: 45%;">Item Description / Spec</th>
+              <th style="text-align: center; width: 10%;">Qty</th>
+              <th style="text-align: right; width: 15%;" class="print-col-price">Unit Price</th>
+              <th style="text-align: right; width: 10%;" class="print-col-price">VAT</th>
+              <th style="text-align: right; width: 15%;" class="print-col-price">Total (AED)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((item, idx) => {
+              const globalIdx = isFirstPage ? (idx + 1) : (maxItemsPage1 + (pageIdx - 1) * maxItemsSubsequent + idx + 1);
+              const lineTotal = item.quantity * item.unit_price;
+              const taxAmt = item.tax_type === 'percentage' ? lineTotal * (item.tax_value / 100) : item.tax_value;
+              return (
+                <tr>
+                  <td>{globalIdx}</td>
+                  <td>
+                    <span class="font-semibold" style="color: #0f172a;">{item.description}</span>
+                    {item.catalogue_ref && <span class="text-muted font-mono print-item-cat-ref" style="font-size: 8pt; display: block;">Cat Ref: {item.catalogue_ref}</span>}
+                    {item.tech_spec && <span class="text-muted print-item-tech-spec" style="font-size: 8pt; display: block; margin-top: 2px;">Specs: {item.tech_spec}</span>}
+                  </td>
+                  <td class="text-center">{item.quantity}</td>
+                  <td class="text-right font-mono print-col-price">AED {Number(item.unit_price).toFixed(2)}</td>
+                  <td class="text-right font-mono print-col-price">{item.tax_type === 'percentage' ? `${item.tax_value}%` : `AED ${item.tax_value}`}</td>
+                  <td class="text-right font-mono font-bold print-col-price">AED {Number(lineTotal + taxAmt).toFixed(2)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <!-- Totals & Bank details & Signatures (ON LAST PAGE ONLY) -->
+        {isLastPage && (
+          <div class="std-summary-wrapper">
+            <table class="std-summary-table">
+              <tr class="print-total-subtotal">
+                <td class="text-muted">Subtotal (Excl. VAT):</td>
+                <td class="text-right font-mono">AED {Number(inv.subtotal).toFixed(2)}</td>
+              </tr>
+              <tr class="print-total-vat">
+                <td class="text-muted">Total VAT amount:</td>
+                <td class="text-right font-mono" style="color: #c2410c;">AED {Number(inv.gst_amount).toFixed(2)}</td>
+              </tr>
+              {Number(inv.discount_amount) > 0 && (
+                <tr class="print-total-discount">
+                  <td class="text-muted">Discount:</td>
+                  <td class="text-right font-mono" style="color: #15803d;">- AED {Number(inv.discount_amount).toFixed(2)}</td>
+                </tr>
+              )}
+              <tr class="std-summary-table grand-total">
+                <td>Grand Total:</td>
+                <td class="text-right font-mono" style={`color: ${logoColor}`}>AED {Number(inv.total_amount).toFixed(2)}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="std-bank-block print-bank-block-p1">
+            <div class="std-section-label" style={`color: ${logoColor}; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px;`}>Remittance & Bank Instructions</div>
+            <div class="std-bank-grid">
+              <div><span class="font-bold text-muted">Bank Name:</span> <span id="print-bank-name">{settings.bank_name || 'N/A'}</span></div>
+              <div><span class="font-bold text-muted">Account Name:</span> <span id="print-bank-acc-name">{settings.account_name || 'N/A'}</span></div>
+              <div><span class="font-bold text-muted">Account Number:</span> <span class="font-mono" id="print-bank-acc">{settings.account_number || 'N/A'}</span></div>
+              <div><span class="font-bold text-muted">Swift Code:</span> <span class="font-mono" id="print-bank-swift">{settings.swift_code || 'N/A'}</span></div>
+              <div style="grid-column: span 2;"><span class="font-bold text-muted">IBAN:</span> <span class="font-mono" style={`color: ${logoColor}`} id="print-bank-iban">{settings.iban_number || 'N/A'}</span></div>
+            </div>
+          </div>
+
+          <!-- Physical Signature Area -->
+          <div class="std-signatures-table print-signature-section">
+            <table style="width: 100%;">
+              <tr>
+                <td class="std-signature-col" id="print-sig-client-col">
+                  <div class="std-signature-line">Customer Signature & Stamp</div>
+                </td>
+                <td class="std-signature-col" id="print-sig-company-col">
+                  <div style="font-size: 9pt; font-weight: 700; margin-bottom: 25px; color: #475569;">For {companyNameEN}</div>
+                  <div class="std-signature-line">Authorized Signatory (<span id="print-sig-name-std">{settings.signatory_name || 'Management'}</span>)</div>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Electronic Signature Badge -->
+          <div class="electronic-doc-badge print-electronic-badge hidden" style="border: 1px dashed #cbd5e1; border-radius: 4px; padding: 10px; text-align: center; font-size: 8.5pt; color: #475569; font-weight: 600; margin-top: 15px; background-color: #f8fafc; page-break-inside: avoid; break-inside: avoid;">
+            This is a computer-generated document. No signature or stamp is required.
           </div>
         )}
-      </td>
-    </tr>
-  </table>
 
-  <table class="std-items-table">
-    <thead>
-      <tr>
-        <th style="text-align: left; width: 5%;">#</th>
-        <th style="text-align: left; width: 45%;">Item Description / Spec</th>
-        <th style="text-align: center; width: 10%;">Qty</th>
-        <th style="text-align: right; width: 15%;">Unit Price</th>
-        <th style="text-align: right; width: 10%;">VAT</th>
-        <th style="text-align: right; width: 15%;">Total (AED)</th>
-      </tr>
-    </thead>
-    <tbody>
-      {items.map((item, idx) => {
-        const lineTotal = item.quantity * item.unit_price;
-        const taxAmt = item.tax_type === 'percentage' ? lineTotal * (item.tax_value / 100) : item.tax_value;
-        return (
-          <tr>
-            <td>{idx + 1}</td>
-            <td>
-              <span class="font-semibold" style="color: #0f172a;">{item.description}</span>
-              {item.catalogue_ref && <span class="text-muted font-mono" style="font-size: 8pt; display: block;">Cat Ref: {item.catalogue_ref}</span>}
-              {item.tech_spec && <span class="text-muted" style="font-size: 8pt; display: block; margin-top: 2px;">Specs: {item.tech_spec}</span>}
-            </td>
-            <td class="text-center">{item.quantity}</td>
-            <td class="text-right font-mono">AED {Number(item.unit_price).toFixed(2)}</td>
-            <td class="text-right font-mono">{item.tax_type === 'percentage' ? `${item.tax_value}%` : `AED ${item.tax_value}`}</td>
-            <td class="text-right font-mono font-bold">AED {Number(lineTotal + taxAmt).toFixed(2)}</td>
-          </tr>
-        );
-      })}
-    </tbody>
-  </table>
+        <!-- Running Footer / Page Number -->
+        <div class="text-center text-muted print-page-footer-num" style="position: absolute; bottom: 30px; left: 0; right: 0; font-size: 8pt; font-weight: 500;">
+          Page {pageNumber} of {totalPages}
+        </div>
+      </div>
+    );
+  })}
 
-  <div class="std-summary-wrapper">
-    <table class="std-summary-table">
-      <tr>
-        <td class="text-muted">Subtotal (Excl. VAT):</td>
-        <td class="text-right font-mono">AED {Number(inv.subtotal).toFixed(2)}</td>
-      </tr>
-      <tr>
-        <td class="text-muted">Total VAT amount:</td>
-        <td class="text-right font-mono" style="color: #c2410c;">AED {Number(inv.gst_amount).toFixed(2)}</td>
-      </tr>
-      {Number(inv.discount_amount) > 0 && (
-        <tr>
-          <td class="text-muted">Discount:</td>
-          <td class="text-right font-mono" style="color: #15803d;">- AED {Number(inv.discount_amount).toFixed(2)}</td>
-        </tr>
-      )}
-      <tr class="std-summary-table grand-total">
-        <td>Grand Total:</td>
-        <td class="text-right font-mono" style={`color: ${logoColor}`}>AED {Number(inv.total_amount).toFixed(2)}</td>
-      </tr>
-    </table>
-  </div>
+  <!-- TERMS OF SALE PAGE (PAGE Y OF Y) -->
+  {inv.order_type !== 'delivery_note' && (
+    <div class="print-page bg-white shadow-xl border border-slate-250 p-12 relative print:p-0 print:border-none print:shadow-none mb-8 print-page-2-container">
+      <div class="std-watermark print-watermark" style="position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); width: 380px; height: 380px; opacity: 1; pointer-events: none; z-index: 0;">
+        <img src="/dgllclogolarge.png" id="watermark-img-std-p2" style="width: 100%; height: auto; object-fit: contain; opacity: 0.06;" />
+      </div>
 
-  <div class="std-bank-block">
-    <div class="std-section-label" style={`color: ${logoColor}; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px;`}>Remittance & Bank Instructions</div>
-    <div class="std-bank-grid">
-      <div><span class="font-bold text-muted">Bank Name:</span> <span>{settings.bank_name || 'N/A'}</span></div>
-      <div><span class="font-bold text-muted">Account Name:</span> <span>{settings.account_name || 'N/A'}</span></div>
-      <div><span class="font-bold text-muted">Account Number:</span> <span class="font-mono">{settings.account_number || 'N/A'}</span></div>
-      <div><span class="font-bold text-muted">Swift Code:</span> <span class="font-mono">{settings.swift_code || 'N/A'}</span></div>
-      <div style="grid-column: span 2;"><span class="font-bold text-muted">IBAN:</span> <span class="font-mono" style={`color: ${logoColor}`}>{settings.iban_number || 'N/A'}</span></div>
+      <!-- Centered Logo on Terms Page -->
+      <div class="print-logo-container-p2 text-center" style="margin-bottom: 8px; text-align: center;">
+        <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-24 w-auto object-contain mx-auto" id="print-company-logo-std-p2" style="margin: 0 auto; display: block;" />
+      </div>
+
+      <div class="terms-page">
+        <h2 class="terms-title">Terms of Sale</h2>
+        <div class="terms-columns">
+          <div class="terms-col">
+            <div class="terms-section terms-sec-general">
+              <h3 class="terms-section-title">General:</h3>
+              <p>The "Seller" means {companyNameEN}. The "Buyer" means the person, firm or company to whom the seller sells the Goods to. All quotations are given and all orders are accepted on these terms. Replace and supersede any other terms wherever appearing and override will exclude any other terms stipulated or incorporated or referred to by the Buyer, whether in the order or in any negotiations, and any course of dealing established between the Seller and the Buyer. All orders hereafter made by the buyer shall be deemed to be made subject to these terms.</p>
+            </div>
+            <div class="terms-section terms-sec-acceptance">
+              <h3 class="terms-section-title">Acceptance of order:</h3>
+              <p>No contract for the sale of goods shall be concluded until either the seller sends or otherwise communicates to the buyers its acceptance of the buyer's order. No modification of these terms shall be effective unless made by an express written agreement between the parties. If we are unable to accept your order, we will inform you of this and will not charge you for the product. This might be because the product is out of stock, because we have identified an error in the price or description of the product or because we are unable to meet a delivery deadline or product is discontinued. Once you confirm you would like to place an order, our acceptance of your order will take place when you send us a Purchase Order confirmation document, at which point a contract will come into existence between you and us. You cannot make any changes to your order after we have received your Purchase Order confirmation so please check the Sales Quotation carefully.</p>
+              <p>You are only able to amend or request for refund 3 days after you have confirmed the order, made advance / deposit or full payment. Outside of this grace period no amendments or cancellation can be made to your order.</p>
+            </div>
+            <div class="terms-section terms-sec-illustrations">
+              <h3 class="terms-section-title">Illustrations, Description, Dimensions, Weight, Volume:</h3>
+              <p>All descriptions and illustrations contained in catalogues, Price lists, submittals, advertisements or elsewhere are intended to merely present a general idea of the goods describe therein and nothing contained in any of them shall form part of the contract.</p>
+            </div>
+            <div class="terms-section terms-sec-designs">
+              <h3 class="terms-section-title">Designs:</h3>
+              <p>The seller's policy is one of continuous improvement. The right to change designs at any time without is reserved.</p>
+            </div>
+            <div class="terms-section terms-sec-samples">
+              <h3 class="terms-section-title">Samples:</h3>
+              <p>Notwithstanding that a sample of the goods may have been exhibited to and inspected by the Buyers, it is hereby agreed that such sample is so exhibited and inspected solely to enable the Buyers to judge for themselves the quality of the bulk and not so as to constitute a sale by sample. The buyers shall take the goods at their own risk as to their corresponding with the said sample or as to their quality condition or sufficiency for any purpose.</p>
+            </div>
+            <div class="terms-section terms-sec-delivery">
+              <h3 class="terms-section-title">Delivery:</h3>
+              <p>All delivery dates are estimated and the time for delivery shall be of the essence of the contract. Under no circumstances shall the seller be liable to compensate the Buyers in damages or otherwise for non-delivery of late delivery of the goods or any them for whatever reason or for any loss consequential or otherwise arising there from. The seller reserves the right to make partial deliveries and to allocate available supplies amongst customers. In time of shortage the seller shall be entitled to deliver the goods in one or more consignments unless otherwise expressly agreed. Delivery shall be deemed to take place, when the goods are dispatched from the seller's premises. The seller shall not be liable for any loss of any kind to the buyer arising from any damage for the good occurring after the risk has passed to the buyers. However, caused nor shall any liability of the buyers to the seller be diminished or extinguished by reasons of such loss. We are not responsible for delays outside our control. If your delivery of the products is delayed by an event outside our control then we will contact you as soon as possible to let you know and we will take steps to minimise the effect of the delay. Once the order is placed and payment is fully made, you will have to collect your products within limited time of 5-7 working days of the product(s) availability or collection notification by our office. Failing to collect, {companyNameEN} reserves the rights to re-sell the particular product(s) to other customer(s) should deem necessary. When you/your company claims for the collection outside of this collection date (5-7 working days) we will be considered this as new order and new charges will be applicable for the same with updated lead time.</p>
+            </div>
+            <div class="terms-section terms-sec-cancellation">
+              <h3 class="terms-section-title">Cancellation:</h3>
+              <p>No Cancellation will be accepted after 5 days from the date of LPO. Any Cancellation after stipulated time, advance payment will be forfeited. No Cancellation's will be allowed in case of partial delivery and customized items.</p>
+              <p>All Prices quoted include delivery to site or to Buyer's stores in the United Arab Emirates. The seller shall repair or replace free of charge goods damaged in transit or not delivered in accordance with the invoice and packing list, provided that in the event of damage of shortage, Written notification giving details of such damage or shortage must be sent to the seller within 7 days of receipt and in the case of non-delivery within 10 days of the date shown on the advice, in the event of failure to give notice within the aforementioned period the Goods will be deemed to be in all respects as invoiced.</p>
+            </div>
+          </div>
+
+          <div class="terms-col">
+            <div class="terms-section terms-sec-returns">
+              <h3 class="terms-section-title">Returns:</h3>
+              <p>Goods supplied in accordance with the Buyer's orders cannot be accepted for return without seller's written consent, if such consent is given an administration charges will be made. Returned Goods must be sent carriage free at the Buyers risk and will only be accepted if package in the original carton which in the seller's opinion is in a saleable condition. Only Goods of current design will be accepted for return. Goods can only be returned within 30 days of invoice. Pre-order or customised items from the date of order cannot be modified, returned, exchanged or refunded.</p>
+            </div>
+            <div class="terms-section terms-sec-payment">
+              <h3 class="terms-section-title">Payment:</h3>
+              <p>Payment shall be made in UAE Dirham's as per terms and conditions set out in the seller's quotation. All invoices will be raised in accordance with the rule of the land applicable there to from time to time. Interest on all sums due shall run at the rate of 2 percent per annum over the base lending rates of Commercial bank of Dubai until payment is received before as well as after any judgment thereof. Any bounce cheque will incur 500/- AED charges to Buyer. Please note that {companyNameEN} will accept 50,000 Dirhams maximum via credit card, 2% of the total value will be charged on any exceeding amount. The payment by the buyers from the seller for the goods can be made through bankers cheque, T.T, card payments or cash. The seller will identify the best payment method for the goods purchased by the buyers to eliminate difficulty for both parties.</p>
+            </div>
+            <div class="terms-section terms-sec-installation">
+              <h3 class="terms-section-title">Installation:</h3>
+              <p>We provide installation services for all the items purchased through our store. Our Team will visit your site for survey to identify the area and location of the fitting(s) to be installed. Upon completion of the survey we will provide you with the applicable installation charge and time. If identified area or location is not suitable to be installed our services team will advise you and may provide you with an alternative solution.</p>
+            </div>
+            <div class="terms-section terms-sec-warranty-workmanship">
+              <h3 class="terms-section-title">Workmanship Warranty:</h3>
+              <p>The workmanship warranty applies for 18 months from the date of project completion. The warranty is applied to products that are supplied and installed by us.</p>
+            </div>
+            <div class="terms-section terms-sec-warranty-product">
+              <h3 class="terms-section-title">Product Warranty:</h3>
+              <p>The product warranty is covered against manufacturing and material defects. The warranty shall be valid from the invoice date, subject to the full settlement of the invoice amount. Any delay in payment may affect the warranty commencement. The warranty claim will be considered after initial inspection of the defective products. The warranty includes only repair or replacement of the products with new fully functional product. The warranty does not cover a) rust, paint defect or physical damage due to poor storage conditions or improper use/ management; b) products that have been modified or repaired by any unauthorized personnel; c) Failure due to exposure to extreme conditions e.g. thunder, water ingress, fire, bad ventilation or other conditions beyond the control of the company d) Failures due to compatibility issues between the products and installation environment e.g. control system, power supply or the use of generators e) Any fading of fixtures due to environmental condition. The warranty can be claimed by submitting the faulty product with the respective invoice.</p>
+            </div>
+            <div class="terms-section terms-sec-liability">
+              <h3 class="terms-section-title">Liability:</h3>
+              <p>These terms set out the seller's entire liability in respect of the Goods and the seller's liability under these terms shall be in lieu and to the exclusion of all other warranties. Conditions, terms and liabilities expressed or implied statutory or otherwise in respect of the quality or the fitness of any particular purpose of the Goods or otherwise (Notwithstanding any advice or representation to the Buyer, all liability in respect of which howsoever arising is expressly excluded) accept any implied by law which law cannot be excluded. Save as provided in these terms and except as aforesaid the seller shall not be under any liability, Whether in contract or otherwise in respect of defects in the goods or for under no liability to any purchaser of the Goods from the buyers in any event the seller's from such defects or failure or from any work done in connection therewith. The seller shall be under no liability to any purchaser of the Goods from the buyers in any event the seller's liability (if any) whether in contract or otherwise in respect of any defects in the Goods or for any break of this agreement or of any duty owned to the Buyers in connection herewith, Shall be further limited in the aggregate to the price of the goods in question. Nothing in these terms shall restrict the seller's liability for death or personal injury caused by the seller's negligence.</p>
+              <p>We am not accountable for any physical damages occurred, if the items supplied are installed by any third party team.</p>
+            </div>
+            <div class="terms-section terms-sec-others">
+              <h3 class="terms-section-title">Others:</h3>
+              <p>Any discrepancy in the document should be communicated in writing within 7 days of document date. By signing this document, the customer accepts the terms, receipts of all materials mentioned above in good condition and complete quantity and has no further claims whatsoever.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Uniform Bottom Row for Bank details and Company Stamp Card -->
+        <div class="flex gap-4 mt-4 w-full justify-between items-stretch" style="page-break-inside: avoid; break-inside: avoid;">
+          <!-- Bank Details Card -->
+          <div class="terms-section print-bank-block-p2 flex-1" style="border: 1px solid #cbd5e1; border-radius: 2px; padding: 6px; background: #f8fafc; font-size: 5.8pt; box-sizing: border-box;">
+            <h3 class="terms-section-title" style="margin-bottom: 2px; font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">Delight Bank Details:</h3>
+            <p style="font-weight: 700; color: #000000; line-height: 1.35; margin: 0;">
+              {companyNameEN}<br>
+              Bank Name: <span id="print-bank-name-std-p2">{settings.bank_name || 'N/A'}</span><br>
+              A/C Name: <span id="print-bank-acc-name-std-p2">{settings.account_name || companyNameEN}</span><br>
+              A/C No: <span id="print-bank-acc-std-p2">{settings.account_number || 'N/A'}</span><br>
+              Bank Swift Code: <span id="print-bank-swift-std-p2">{settings.swift_code || 'N/A'}</span><br>
+              IBAN: <span id="print-bank-iban-std-p2">{settings.iban_number || 'N/A'}</span>
+            </p>
+          </div>
+
+          <!-- Company Stamp/Details Card -->
+          <div class="company-card-tos-wrapper flex-1" style="box-sizing: border-box;">
+            <div class="company-card-tos" style="border: 1px solid #cbd5e1; border-radius: 2px; padding: 6px; background: #f8fafc; display: flex; align-items: center; justify-content: space-between; height: 100%; box-sizing: border-box;">
+              <div style="display: flex; align-items: center; gap: 8px; text-align: left;">
+                <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="company-card-tos-logo" style="height: 28px; width: auto; object-fit: contain;" />
+                <div>
+                  <div style="font-weight: bold; font-size: 7.5pt; color: #0f172a;">For {companyNameEN}</div>
+                  <div style="font-size: 5.8pt; color: #475569; line-height: 1.3; margin-top: 1px; max-width: 200px;">
+                    <span id="print-company-address-std-p2">{settings.business_address || settings.company_address || 'Dubai, United Arab Emirates'}</span><br>
+                    TRN: <span class="font-mono font-bold" style="color:#0f172a;" id="print-company-trn-std-p2">{settings.trn_number || '100380541100003'}</span>
+                    <span id="print-company-reg-std-p2-wrapper" class={settings.business_registration ? "" : "hidden"}> | Reg: <span id="print-company-reg-std-p2">{settings.business_registration || ''}</span></span>
+                    <span id="print-company-permits-std-p2-wrapper" class={settings.permits_info ? "block" : "hidden"} style="font-size: 5pt; margin-top: 1px;">Permits: <span id="print-company-permits-std-p2" class="italic">{settings.permits_info || ''}</span></span>
+                  </div>
+                </div>
+              </div>
+              <div style="width: 65px; border: 1.5px solid #000000; text-align: center; background: white; padding: 2px; border-radius: 1px;">
+                <span style="font-size: 5pt; display: block; font-weight: bold; background: black; color: white; margin:-2px -2px 2px -2px; text-transform: uppercase;">stamp</span>
+                <div style="height: 18px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center text-muted print-page-footer-num" style="position: absolute; bottom: 30px; left: 0; right: 0; font-size: 8pt; font-weight: 500;">
+        Page {totalPages} of {totalPages}
+      </div>
     </div>
-  </div>
-
-  <div class="std-signatures-table">
-    <table style="width: 100%;">
-      <tr>
-        <td class="std-signature-col">
-          <div class="std-signature-line">Customer Signature & Stamp</div>
-        </td>
-        <td class="std-signature-col">
-          <div style="font-size: 9pt; font-weight: 700; margin-bottom: 25px; color: #475569;">For {companyNameEN}</div>
-          <div class="std-signature-line">Authorized Signatory ({settings.signatory_name || 'Management'})</div>
-        </td>
-      </tr>
-    </table>
-  </div>
+  )}
 </div>

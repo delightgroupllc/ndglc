@@ -8,12 +8,14 @@ const { division, category } = Astro.params;
 const divSlug = division!.toLowerCase();
 const catSlug = category!.toLowerCase();
 
-const isDtl = divSlug === 'dtl';
-const isDgs = divSlug === 'dgs';
+const isDtl = divSlug === 'dtl' || divSlug === 'delighttechnicallighting';
+const isDgs = divSlug === 'dgs' || divSlug === 'delightgreenscapes' || divSlug === 'delightscreenscape';
 
 if (!isDtl && !isDgs) {
   return Astro.redirect('/');
 }
+
+const dbDivSlug = isDtl ? 'dtl' : 'dgs';
 
 let categoryDetails: any = null;
 let products: any[] = [];
@@ -26,7 +28,7 @@ try {
      FROM categories c 
      JOIN divisions d ON d.id = c.division_id 
      WHERE c.slug = $1 AND d.slug = $2`,
-    [catSlug, divSlug]
+    [catSlug, dbDivSlug]
   );
   categoryDetails = catRes.rows[0];
 

@@ -120,7 +120,7 @@ const balanceDue = Math.max(0, Number(inv.total_amount) - totalPaid);
 
         <!-- Print & Download -->
         <a 
-          href={`/dashboard/invoices/print/${inv.id}?autoprint=true`} 
+          href={`/dashboard/invoices/print/${inv.id}`} 
           target="_blank"
           class="inline-flex items-center justify-center gap-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
         >
