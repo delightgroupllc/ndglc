@@ -11,6 +11,27 @@ try {
 } catch (e) {
   console.error("DB Offline", e);
 }
+
+function getCategory(identifier: string): 'page1' | 'tos' | 'website' {
+  const id = (identifier || '').toLowerCase().trim();
+  if (
+    id.includes('privacy-policy') || 
+    id.includes('cookie-policy') || 
+    id.includes('terms-of-use') || 
+    id.includes('terms-and-conditions')
+  ) {
+    return 'website';
+  }
+  if (
+    id === 'disclaimer' || 
+    id === 'payment-terms-30d' || 
+    id === 'warranty-liability' || 
+    id === 'delivery-terms'
+  ) {
+    return 'page1';
+  }
+  return 'tos';
+}
 ---
 
 <DashboardLayout title="Site Disclaimers | Delight Group LLC" activeItem="site-disclaimers">
@@ -44,7 +65,15 @@ try {
       </button>
     </div>
 
-    <div class="mt-4 flex items-center justify-between gap-4 border-b border-slate-200 pb-3">
+    <div class="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-slate-200 pb-3">
+      <div class="relative flex-grow max-w-xs">
+        <input 
+          type="text" 
+          id="disclaimer-search"
+          placeholder="Search disclaimers..." 
+          class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+        />
+      </div>
       <div class="flex items-center gap-2">
         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sort By</label>
         <select id="sort-selector" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20">
@@ -55,9 +84,37 @@ try {
       </div>
     </div>
 
+    <!-- Category Tabs Navigation -->
+    <div class="flex border-b border-slate-200 mt-6 gap-6">
+      <button 
+        type="button"
+        onclick="setActiveTab('page1')"
+        id="tab-page1"
+        class="tab-btn pb-3 px-1 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-all focus:outline-none"
+      >
+        Page 1 (Invoice Disclaimers)
+      </button>
+      <button 
+        type="button"
+        onclick="setActiveTab('tos')"
+        id="tab-tos"
+        class="tab-btn pb-3 px-1 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all focus:outline-none"
+      >
+        Terms of Sale (TOS)
+      </button>
+      <button 
+        type="button"
+        onclick="setActiveTab('website')"
+        id="tab-website"
+        class="tab-btn pb-3 px-1 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all focus:outline-none"
+      >
+        Website Disclaimers
+      </button>
+    </div>
+
     <div id="artifacts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
       {artifacts.map((artifact) => (
-        <div class="artifact-card bg-white rounded-xl border border-slate-200 p-6 flex flex-col justify-between hover:shadow-md transition-shadow group" data-title={artifact.title} data-updated={new Date(artifact.updated_at || artifact.created_at || Date.now()).getTime()}>
+        <div class="artifact-card bg-white rounded-xl border border-slate-200 p-6 flex flex-col justify-between hover:shadow-md transition-shadow group" data-title={artifact.title} data-updated={new Date(artifact.updated_at || artifact.created_at || Date.now()).getTime()} data-category={getCategory(artifact.identifier)}>
           <div class="space-y-4">
             <span class="inline-block px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wider">
               {artifact.type === 'both' ? 'Public & Order Clause' : artifact.type === 'public' ? 'Public Artifact' : 'Order Clause'}
@@ -294,5 +351,54 @@ try {
   };
 
   sortSelector?.addEventListener('change', sortCards);
+
+  // Client-side Search and Tab Switcher
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const cards = document.querySelectorAll('.artifact-card');
+  const searchInput = document.getElementById('disclaimer-search') as HTMLInputElement | null;
+
+  let currentTab = 'page1';
+
+  const filterAndSortCards = () => {
+    const query = searchInput?.value.toLowerCase() || '';
+    cards.forEach(card => {
+      const cat = card.getAttribute('data-category');
+      const title = (card.getAttribute('data-title') || '').toLowerCase();
+      const description = (card.querySelector('p')?.textContent || '').toLowerCase();
+      const identifier = (card.querySelector('code')?.textContent || '').toLowerCase();
+
+      const matchesTab = cat === currentTab;
+      const matchesQuery = title.includes(query) || description.includes(query) || identifier.includes(query);
+
+      if (matchesTab && matchesQuery) {
+        card.classList.remove('hidden');
+        card.classList.add('flex');
+      } else {
+        card.classList.remove('flex');
+        card.classList.add('hidden');
+      }
+    });
+  };
+
+  (window as any).setActiveTab = (tabId: string) => {
+    currentTab = tabId;
+    // Update tab button styles
+    tabButtons.forEach(btn => {
+      if (btn.id === `tab-${tabId}`) {
+        btn.classList.add('border-blue-600', 'text-blue-600', 'font-bold');
+        btn.classList.remove('border-transparent', 'text-slate-500', 'font-semibold');
+      } else {
+        btn.classList.remove('border-blue-600', 'text-blue-600', 'font-bold');
+        btn.classList.add('border-transparent', 'text-slate-500', 'font-semibold');
+      }
+    });
+
+    filterAndSortCards();
+  };
+
+  searchInput?.addEventListener('input', filterAndSortCards);
+
+  // Set initial state
+  (window as any).setActiveTab('page1');
 </script>
 </DashboardLayout>

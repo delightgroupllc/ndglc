@@ -22,7 +22,7 @@ try {
   console.log('InvoiceForm.astro: Products loaded:', products.length, 'Categories loaded:', categories.length);
   const custRes = await query('SELECT * FROM customers ORDER BY name ASC');
   customers = custRes.rows;
-  const legalRes = await query("SELECT * FROM legal_artifacts WHERE type IN ('order_clause', 'both') ORDER BY identifier ASC");
+  const legalRes = await query(`SELECT id, identifier, title, content, type FROM legal_artifacts WHERE show_in_invoice = TRUE ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
   disclaimers = legalRes.rows;
 } catch(e) {
   console.error('InvoiceForm.astro products load error:', e);
@@ -65,7 +65,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
                 autocomplete="off" />
               <datalist id="customer-datalist">
-                {customers.map(c => <option value={c.name} data-email={c.email||''} data-phone={c.phone||''} data-company={c.company_name||''} data-billing={c.billing_address||''} data-shipping={c.shipping_address||''} />)}
+                {customers.map(c => <option value={c.name} data-email={c.email||''} data-phone={c.phone||''} data-company={c.company_name||''} data-vat={c.company_vat||''} data-billing={c.billing_address||''} data-shipping={c.shipping_address||''} />)}
               </datalist>
               <p id="new-customer-note" class="hidden mt-1 text-[10px] font-bold text-blue-600">✦ New customer — will be auto-registered on save.</p>
             </div>
@@ -83,40 +83,45 @@ const disclaimersJson = JSON.stringify(disclaimers);
               <input type="email" id="invoice-customer-email" name="customer_email"
                 placeholder="billing@company.com"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-              <p id="email-error" class="hidden text-[10px] font-semibold text-rose-500">Enter a valid email address.</p>
+              <p id="email-error" class="hidden text-[10px] font-semibold text-rose-500">Email address is required.</p>
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number</label>
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number <span class="text-rose-500">*</span></label>
               <input type="tel" id="invoice-customer-phone" name="customer_phone"
                 placeholder="+971 50 000 0000"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+              <p id="phone-error" class="hidden text-[10px] font-semibold text-rose-500">Phone number is required.</p>
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name</label>
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name <span class="text-rose-500">*</span></label>
               <input type="text" id="invoice-company-name" name="company_name"
                 placeholder="e.g. ACME Trading LLC"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+              <p id="company-name-error" class="hidden text-[10px] font-semibold text-rose-500">Company name is required.</p>
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company TIN / VAT Number</label>
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company TIN / VAT Number <span class="text-rose-500">*</span></label>
               <input type="text" id="invoice-company-vat" name="company_vat"
                 placeholder="e.g. 100xxxxxxxxx003"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+              <p id="company-vat-error" class="hidden text-[10px] font-semibold text-rose-500">Company TIN / VAT Number is required.</p>
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Billing Address</label>
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Billing Address <span class="text-rose-500">*</span></label>
               <textarea id="invoice-billing-address" name="billing_address" rows="2"
                 placeholder="Street, City, Country"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
+              <p id="billing-address-error" class="hidden text-[10px] font-semibold text-rose-500">Billing address is required.</p>
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Delivery / Shipping Address</label>
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Delivery / Shipping Address <span class="text-rose-500">*</span></label>
               <textarea id="invoice-shipping-address" name="shipping_address" rows="2"
-                placeholder="Leave blank if same as billing"
+                placeholder="Street, City, Country"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
+              <p id="shipping-address-error" class="hidden text-[10px] font-semibold text-rose-500">Delivery / shipping address is required.</p>
             </div>
           </div>
         </div>
@@ -190,9 +195,10 @@ const disclaimersJson = JSON.stringify(disclaimers);
               <p id="issue-date-error" class="hidden text-[10px] font-semibold text-rose-500">Issue date is required.</p>
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Delivery / Due Date</label>
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Delivery / Due Date <span class="text-rose-500">*</span></label>
               <input type="date" id="invoice-due-date" name="due_date"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
+              <p id="due-date-error" class="hidden text-[10px] font-semibold text-rose-500">Due date is required.</p>
             </div>
           </div>
           <div class="grid grid-cols-1 gap-4">
@@ -206,11 +212,11 @@ const disclaimersJson = JSON.stringify(disclaimers);
               <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Include Disclaimers & Terms (Page 2)</label>
               <input type="hidden" id="invoice-payment-terms" name="payment_terms" value="" />
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="invoice-disclaimers-toggles">
-                {disclaimers.map(d => (
+                {disclaimers.map((d, idx) => (
                   <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300">
                     <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
                     <div>
-                      <span class="text-xs font-bold text-slate-800 block">{d.title}</span>
+                      <span class="text-xs font-bold text-slate-800 block">{idx + 1}. {d.title}</span>
                       <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
                     </div>
                   </label>
@@ -385,6 +391,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
             value="${data.description || ''}"
             placeholder="Item name *"
             class="item-desc-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
+          <p class="desc-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
         </div>
         <!-- Technical Spec -->
         <div class="space-y-1.5">
@@ -401,21 +408,23 @@ const disclaimersJson = JSON.stringify(disclaimers);
         <!-- Quantity -->
         <div class="space-y-1.5">
           <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Qty <span class="text-rose-500">*</span></label>
-          <input type="number" name="item_quantity" required min="1" step="1"
+          <input type="text" name="item_quantity" required
             value="${data.quantity || ''}"
             placeholder="Qty"
             class="item-qty-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-center h-9" />
+          <p class="qty-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
         </div>
         <!-- Unit Price -->
         <div class="space-y-1.5">
           <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Unit Price (AED) <span class="text-rose-500">*</span></label>
           <div class="relative">
             <span class="absolute left-3 top-2.5 text-[10px] font-bold text-slate-400">AED</span>
-            <input type="number" name="item_price" required min="0" step="0.01"
+            <input type="text" name="item_price" required
               value="${data.unit_price || ''}"
               placeholder="0.00"
               class="item-price-input w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
           </div>
+          <p class="price-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
         </div>
         <!-- Tax Type -->
         <div class="space-y-1.5">
@@ -428,9 +437,10 @@ const disclaimersJson = JSON.stringify(disclaimers);
         <!-- Tax Rate / Value -->
         <div class="space-y-1.5">
           <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Tax Rate / Amount</label>
-          <input type="number" name="item_tax_value" min="0" step="0.01"
+          <input type="text" name="item_tax_value"
             value="${data.tax_value !== undefined ? data.tax_value : (data.tax_rate !== undefined ? data.tax_rate : 5)}"
             class="item-tax-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
+          <p class="tax-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
         </div>
         <!-- Subtotal & Remove -->
         <div class="flex items-end justify-between gap-3 col-span-2 sm:col-span-1 md:col-span-1">
@@ -610,17 +620,100 @@ const disclaimersJson = JSON.stringify(disclaimers);
       custNameInput?.classList.remove('border-rose-400', 'bg-rose-50');
     }
 
-    // Email validation (if provided)
+    // Email validation
     const emailInput = document.getElementById('invoice-customer-email') as HTMLInputElement;
     const emailError = document.getElementById('email-error');
     const emailVal = emailInput?.value?.trim();
-    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+    if (!emailVal) {
+      if (emailError) emailError.textContent = 'Email address is required.';
+      emailError?.classList.remove('hidden');
+      emailInput?.classList.add('border-rose-400');
+      valid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      if (emailError) emailError.textContent = 'Enter a valid email address.';
       emailError?.classList.remove('hidden');
       emailInput?.classList.add('border-rose-400');
       valid = false;
     } else {
       emailError?.classList.add('hidden');
       emailInput?.classList.remove('border-rose-400');
+    }
+
+    // Phone validation
+    const phoneInput = document.getElementById('invoice-customer-phone') as HTMLInputElement;
+    const phoneError = document.getElementById('phone-error');
+    const phoneVal = phoneInput?.value?.trim();
+    if (!phoneVal) {
+      if (phoneError) phoneError.textContent = 'Phone number is required.';
+      phoneError?.classList.remove('hidden');
+      phoneInput?.classList.add('border-rose-400');
+      valid = false;
+    } else if (!/^\+?[\d\s\-()]{7,25}$/.test(phoneVal)) {
+      if (phoneError) phoneError.textContent = 'Invalid phone number format (7-25 characters comprising digits, spaces, hyphens, parentheses, or +).';
+      phoneError?.classList.remove('hidden');
+      phoneInput?.classList.add('border-rose-400');
+      valid = false;
+    } else {
+      phoneError?.classList.add('hidden');
+      phoneInput?.classList.remove('border-rose-400');
+    }
+
+    // Company Name validation
+    const companyNameInput = document.getElementById('invoice-company-name') as HTMLInputElement;
+    const companyNameError = document.getElementById('company-name-error');
+    const companyNameVal = companyNameInput?.value?.trim();
+    if (!companyNameVal) {
+      companyNameError?.classList.remove('hidden');
+      companyNameInput?.classList.add('border-rose-400');
+      valid = false;
+    } else {
+      companyNameError?.classList.add('hidden');
+      companyNameInput?.classList.remove('border-rose-400');
+    }
+
+    // Company VAT / TRN validation
+    const companyVatInput = document.getElementById('invoice-company-vat') as HTMLInputElement;
+    const companyVatError = document.getElementById('company-vat-error');
+    const companyVatVal = companyVatInput?.value?.trim();
+    if (!companyVatVal) {
+      if (companyVatError) companyVatError.textContent = 'Company TIN / VAT Number is required.';
+      companyVatError?.classList.remove('hidden');
+      companyVatInput?.classList.add('border-rose-400');
+      valid = false;
+    } else if (!/^[a-zA-Z0-9\s\-]+$/.test(companyVatVal)) {
+      if (companyVatError) companyVatError.textContent = 'Only alphanumeric characters, spaces, and hyphens allowed.';
+      companyVatError?.classList.remove('hidden');
+      companyVatInput?.classList.add('border-rose-400');
+      valid = false;
+    } else {
+      companyVatError?.classList.add('hidden');
+      companyVatInput?.classList.remove('border-rose-400');
+    }
+
+    // Billing Address validation
+    const billingInput = document.getElementById('invoice-billing-address') as HTMLTextAreaElement;
+    const billingError = document.getElementById('billing-address-error');
+    const billingVal = billingInput?.value?.trim();
+    if (!billingVal) {
+      billingError?.classList.remove('hidden');
+      billingInput?.classList.add('border-rose-400');
+      valid = false;
+    } else {
+      billingError?.classList.add('hidden');
+      billingInput?.classList.remove('border-rose-400');
+    }
+
+    // Shipping Address validation
+    const shippingInput = document.getElementById('invoice-shipping-address') as HTMLTextAreaElement;
+    const shippingError = document.getElementById('shipping-address-error');
+    const shippingVal = shippingInput?.value?.trim();
+    if (!shippingVal) {
+      shippingError?.classList.remove('hidden');
+      shippingInput?.classList.add('border-rose-400');
+      valid = false;
+    } else {
+      shippingError?.classList.add('hidden');
+      shippingInput?.classList.remove('border-rose-400');
     }
 
     // Issue date
@@ -635,18 +728,149 @@ const disclaimersJson = JSON.stringify(disclaimers);
       issueDateInput?.classList.remove('border-rose-400');
     }
 
+    // Due date
+    const dueDateInput = document.getElementById('invoice-due-date') as HTMLInputElement;
+    const dueDateError = document.getElementById('due-date-error');
+    if (!dueDateInput?.value) {
+      dueDateError?.classList.remove('hidden');
+      dueDateInput?.classList.add('border-rose-400');
+      valid = false;
+    } else {
+      dueDateError?.classList.add('hidden');
+      dueDateInput?.classList.remove('border-rose-400');
+    }
+
+    // Discount input validation
+    const discountInput = document.getElementById('inv-discount') as HTMLInputElement;
+    const discountVal = parseFloat(discountInput?.value);
+    if (isNaN(discountVal) || discountVal < 0) {
+      discountInput?.classList.add('border-rose-400');
+      valid = false;
+    } else {
+      discountInput?.classList.remove('border-rose-400');
+    }
+
     // Line items — at least one must have desc + qty + price
     const itemsError = document.getElementById('items-error');
     const rows = document.querySelectorAll('.invoice-item-row');
     let hasValidItem = false;
+    let hasValidationError = false;
+    let hasAtLeastOneRow = false;
+
     rows.forEach(row => {
-      const desc = (row.querySelector('.item-desc-input') as HTMLInputElement)?.value?.trim();
-      const qty = parseFloat((row.querySelector('.item-qty-input') as HTMLInputElement)?.value);
-      const price = parseFloat((row.querySelector('.item-price-input') as HTMLInputElement)?.value);
-      if (desc && qty >= 1 && price >= 0) hasValidItem = true;
+      const descInput = row.querySelector('.item-desc-input') as HTMLInputElement;
+      const qtyInput = row.querySelector('.item-qty-input') as HTMLInputElement;
+      const priceInput = row.querySelector('.item-price-input') as HTMLInputElement;
+      const taxInput = row.querySelector('.item-tax-input') as HTMLInputElement;
+
+      const descError = row.querySelector('.desc-error-msg') as HTMLElement;
+      const qtyError = row.querySelector('.qty-error-msg') as HTMLElement;
+      const priceError = row.querySelector('.price-error-msg') as HTMLElement;
+      const taxError = row.querySelector('.tax-error-msg') as HTMLElement;
+
+      // Hide all errors initially
+      descError?.classList.add('hidden');
+      qtyError?.classList.add('hidden');
+      priceError?.classList.add('hidden');
+      taxError?.classList.add('hidden');
+
+      const desc = descInput?.value?.trim() || '';
+      const qtyStr = qtyInput?.value?.trim() || '';
+      const priceStr = priceInput?.value?.trim() || '';
+      const taxStr = taxInput?.value?.trim() || '';
+
+      const qty = parseFloat(qtyStr);
+      const price = parseFloat(priceStr);
+      const tax = parseFloat(taxStr);
+
+      const isRowEmpty = !desc && !qtyStr && !priceStr && !taxStr;
+
+      if (isRowEmpty) {
+        descInput?.classList.remove('border-rose-400');
+        qtyInput?.classList.remove('border-rose-400');
+        priceInput?.classList.remove('border-rose-400');
+        taxInput?.classList.remove('border-rose-400');
+        return;
+      }
+
+      hasAtLeastOneRow = true;
+      let rowValid = true;
+
+      if (!desc) {
+        descInput?.classList.add('border-rose-400');
+        if (descError) {
+          descError.textContent = 'Item name is required';
+          descError.classList.remove('hidden');
+        }
+        rowValid = false;
+      } else {
+        descInput?.classList.remove('border-rose-400');
+      }
+
+      if (!qtyStr) {
+        qtyInput?.classList.add('border-rose-400');
+        if (qtyError) {
+          qtyError.textContent = 'Quantity is required';
+          qtyError.classList.remove('hidden');
+        }
+        rowValid = false;
+      } else if (isNaN(qty) || qty < 1 || !/^\d+$/.test(qtyStr)) {
+        qtyInput?.classList.add('border-rose-400');
+        if (qtyError) {
+          qtyError.textContent = 'Only positive integers allowed';
+          qtyError.classList.remove('hidden');
+        }
+        rowValid = false;
+      } else {
+        qtyInput?.classList.remove('border-rose-400');
+      }
+
+      if (!priceStr) {
+        priceInput?.classList.add('border-rose-400');
+        if (priceError) {
+          priceError.textContent = 'Unit price is required';
+          priceError.classList.remove('hidden');
+        }
+        rowValid = false;
+      } else if (isNaN(price) || price < 0 || !/^\d+(\.\d+)?$/.test(priceStr)) {
+        priceInput?.classList.add('border-rose-400');
+        if (priceError) {
+          priceError.textContent = 'Only positive numbers allowed';
+          priceError.classList.remove('hidden');
+        }
+        rowValid = false;
+      } else {
+        priceInput?.classList.remove('border-rose-400');
+      }
+
+      if (taxStr && (isNaN(tax) || tax < 0 || !/^\d+(\.\d+)?$/.test(taxStr))) {
+        taxInput?.classList.add('border-rose-400');
+        if (taxError) {
+          taxError.textContent = 'Only positive numbers allowed';
+          taxError.classList.remove('hidden');
+        }
+        rowValid = false;
+      } else {
+        taxInput?.classList.remove('border-rose-400');
+      }
+
+      if (rowValid) {
+        hasValidItem = true;
+      } else {
+        hasValidationError = true;
+        valid = false;
+      }
     });
+
     if (!hasValidItem) {
-      itemsError?.classList.remove('hidden');
+      if (itemsError) {
+        if (hasValidationError) {
+          itemsError.textContent = '⚠ Please fix the highlighted errors in the line items.';
+        } else {
+          itemsError.textContent = '⚠ At least one complete line item is required.';
+        }
+        itemsError.classList.remove('hidden');
+      }
       valid = false;
     } else {
       itemsError?.classList.add('hidden');
@@ -707,10 +931,15 @@ const disclaimersJson = JSON.stringify(disclaimers);
           (document.getElementById('invoice-customer-email') as HTMLInputElement).value = o.getAttribute('data-email') || '';
           (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = o.getAttribute('data-phone') || '';
           (document.getElementById('invoice-company-name') as HTMLInputElement).value = o.getAttribute('data-company') || '';
+          (document.getElementById('invoice-company-vat') as HTMLInputElement).value = o.getAttribute('data-vat') || '';
           (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = o.getAttribute('data-billing') || '';
           (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = o.getAttribute('data-shipping') || '';
         }
       });
+      if (!found) {
+        const fullNameInput = document.getElementById('inv-full-name') as HTMLInputElement;
+        if (fullNameInput) fullNameInput.value = val;
+      }
       document.getElementById('new-customer-note')?.classList.toggle('hidden', found || val.length === 0);
     });
 

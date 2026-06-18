@@ -7,25 +7,33 @@ const itemSchema = z.object({
   product_id: z.string().optional().nullable(),
   catalogue_ref: z.string().optional().nullable(),
   tech_spec: z.string().optional().nullable(),
-  quantity: z.number().int().min(1, 'Quantity must be at least 1'),
-  unit_price: z.number().min(0, 'Unit price cannot be negative'),
+  quantity: z.number({ 
+    required_error: 'Quantity is required',
+    invalid_type_error: 'Quantity must be a valid number' 
+  }).int('Quantity must be an integer').min(1, 'Quantity must be at least 1'),
+  unit_price: z.number({ 
+    required_error: 'Unit price is required',
+    invalid_type_error: 'Unit price must be a valid number' 
+  }).min(0, 'Unit price cannot be negative'),
   tax_type: z.enum(['percentage', 'fixed']).default('percentage'),
-  tax_value: z.number().min(0).default(5),
+  tax_value: z.number({ 
+    invalid_type_error: 'Tax value must be a valid number' 
+  }).min(0, 'Tax value cannot be negative').default(5),
 });
 
 const invoiceSchema = z.object({
   customer_name: z.string().min(1, 'Customer name is required'),
-  customer_email: z.string().email('Invalid email').optional().or(z.literal('')),
-  customer_phone: z.string().optional(),
-  company_name: z.string().optional(),
-  company_vat: z.string().optional().nullable(),
+  customer_email: z.string().email('Invalid email format').min(1, 'Email address is required'),
+  customer_phone: z.string().min(1, 'Phone number is required').regex(/^\+?[\d\s\-()]{7,25}$/, 'Invalid phone number format (7-25 characters comprising digits, spaces, hyphens, parentheses, or +)'),
+  company_name: z.string().min(1, 'Company name is required'),
+  company_vat: z.string().min(1, 'Company TIN / VAT Number is required').regex(/^[a-zA-Z0-9\s\-]+$/, 'Only alphanumeric characters, spaces, and hyphens allowed'),
   show_images: z.boolean().default(false),
-  billing_address: z.string().optional(),
-  shipping_address: z.string().optional(),
+  billing_address: z.string().min(1, 'Billing address is required'),
+  shipping_address: z.string().min(1, 'Delivery / shipping address is required'),
   order_type: z.enum(['standard', 'quotation', 'proforma', 'service', 'recurring', 'lpo', 'tax_invoice', 'inquiry', 'delivery_note', 'commercial_invoice', 'payment']).default('standard'),
   source_division: z.enum(['DTL', 'DGS', 'both']).optional().nullable(),
   issue_date: z.string().min(1, 'Issue date is required'),
-  due_date: z.string().optional(),
+  due_date: z.string().min(1, 'Due date is required'),
   payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']).default('unpaid'),
   discount_type: z.enum(['percentage', 'fixed']).default('fixed'),
   discount_value: z.number().min(0).default(0),
@@ -98,13 +106,14 @@ export const POST: APIRoute = async ({ request }) => {
     const invoice = await withTransaction(async (client) => {
       // Upsert customer
       await client.query(
-        `INSERT INTO customers (name, email, phone, billing_address, shipping_address)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO customers (name, email, phone, company_name, billing_address, shipping_address)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (name) DO UPDATE SET
             email = COALESCE(EXCLUDED.email, customers.email),
             phone = COALESCE(EXCLUDED.phone, customers.phone),
+            company_name = COALESCE(EXCLUDED.company_name, customers.company_name),
             billing_address = COALESCE(EXCLUDED.billing_address, customers.billing_address)`,
-        [parsed.customer_name, parsed.customer_email || null, parsed.customer_phone || null, parsed.billing_address || null, parsed.shipping_address || null]
+        [parsed.customer_name, parsed.customer_email || null, parsed.customer_phone || null, parsed.company_name || null, parsed.billing_address || null, parsed.shipping_address || null]
       );
 
       const invRes = await client.query(
@@ -119,7 +128,7 @@ export const POST: APIRoute = async ({ request }) => {
          parsed.customer_phone || null, parsed.company_name || null, parsed.company_vat || null,
          parsed.billing_address || null, parsed.shipping_address || null,
          parsed.order_type, parsed.source_division || null,
-         parsed.issue_date, parsed.due_date || null,
+         parsed.issue_date, parsed.due_date,
          subtotal, totalTax, parsed.discount_type, parsed.discount_value, discount, total_amount, parsed.payment_status,
          parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null]
       );

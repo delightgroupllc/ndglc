@@ -1,9 +1,10 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
-import { Users2, Search, ToggleLeft, ToggleRight, ShieldAlert, Award, AlertTriangle } from '@lucide/astro';
+import { Users2, Search, ToggleLeft, ToggleRight, ShieldAlert, Award, AlertTriangle, Plus } from '@lucide/astro';
 
 let users: any[] = [];
+let customers: any[] = [];
 let dbConnected = true;
 
 try {
@@ -15,6 +16,19 @@ try {
      ORDER BY u.created_at DESC`
   );
   users = res.rows;
+
+  const custRes = await query(`
+    SELECT c.*,
+      EXISTS(
+        SELECT 1 FROM invoices i 
+        WHERE i.customer_name = c.name 
+           OR i.customer_email = c.email 
+           OR i.customer_phone = c.phone
+      ) as has_orders
+    FROM customers c
+    ORDER BY c.created_at DESC
+  `);
+  customers = custRes.rows;
 } catch (err: any) {
   console.warn('Database offline, running mock user directory ledger:', err.message);
   dbConnected = false;
@@ -23,6 +37,11 @@ try {
     { id: 'user_1', name: 'Alexander Vance', email: 'alex.vance@steelgroup.com', is_suspended: false, roles_list: 'admin', tags_list: 'VIP', created_at: new Date().toISOString() },
     { id: 'user_2', name: 'Jane Stark', email: 'finance@starkcorp.com', is_suspended: false, roles_list: 'moderator', tags_list: 'partner', created_at: new Date().toISOString() },
     { id: 'user_3', name: 'Standard Portal Guest', email: 'client@company.com', is_suspended: true, roles_list: 'user', tags_list: '', created_at: new Date().toISOString() }
+  ];
+
+  customers = [
+    { id: 'c_1', name: 'Delight Customer A', email: 'cust.a@test.com', phone: '+971 50 111 2233', company_name: 'ACME Corp', company_vat: 'AE123456789', billing_address: 'Al Quoz, Dubai', shipping_address: 'Dubai Marine', created_at: new Date().toISOString() },
+    { id: 'c_2', name: 'Global Contracting LLC', email: 'contact@globalcontracting.com', phone: '+971 4 999 8888', company_name: 'Global Contracting LLC', company_vat: 'AE987654321', billing_address: 'Jebel Ali, Dubai', shipping_address: '', created_at: new Date().toISOString() }
   ];
 }
 ---
@@ -46,14 +65,44 @@ try {
         <input 
           type="text" 
           id="admin-search-users"
-          placeholder="Filter user directory..." 
+          placeholder="Filter directory..." 
           class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
         />
       </div>
+
+      <!-- Segmented Control Tabs & Action Buttons -->
+      <div class="flex flex-wrap items-center gap-3 self-start sm:self-auto shrink-0">
+        <div class="flex gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200 animate-fade-in">
+          <button id="btn-tab-customers" class="px-4 py-1.5 text-xs font-bold text-cyan-700 bg-white rounded-md shadow-xs transition-all focus:outline-none">
+            Customer Registry
+          </button>
+          <button id="btn-tab-users" class="px-4 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-md transition-all focus:outline-none">
+            Users Directory
+          </button>
+        </div>
+
+        <!-- Customer registry sub-filters: Active, Archived, Bin -->
+        <div id="customer-filter-group" class="flex gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 animate-fade-in">
+          <button id="btn-cust-active" class="px-3 py-1 text-2xs font-bold text-cyan-700 bg-white rounded-md shadow-xs transition-all focus:outline-none">
+            Active
+          </button>
+          <button id="btn-cust-archived" class="px-3 py-1 text-2xs font-bold text-slate-600 hover:text-slate-900 rounded-md transition-all focus:outline-none">
+            Archived
+          </button>
+          <button id="btn-cust-bin" class="px-3 py-1 text-2xs font-bold text-slate-600 hover:text-slate-900 rounded-md transition-all focus:outline-none">
+            Bin (Trash)
+          </button>
+        </div>
+
+        <button id="btn-create-customer" class="px-4 py-2 text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg shadow-sm transition-all focus:outline-none flex items-center gap-1.5">
+          <Plus class="w-3.5 h-3.5" />
+          Create Customer
+        </button>
+      </div>
     </div>
 
-    <!-- Table -->
-    <div class="rounded-xl border border-slate-200 bg-white overflow-x-auto shadow-sm">
+    <!-- Users Container -->
+    <div id="users-container" class="hidden rounded-xl border border-slate-200 bg-white overflow-x-auto shadow-sm">
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
@@ -118,23 +167,612 @@ try {
         </tbody>
       </table>
     </div>
+
+    <!-- Customers Container -->
+    <div id="customers-container" class="rounded-xl border border-slate-200 bg-white overflow-x-auto shadow-sm">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
+            <th class="px-6 py-4 font-semibold">Customer Info</th>
+            <th class="px-6 py-4 font-semibold">Company / TIN/VAT</th>
+            <th class="px-6 py-4 font-semibold">Billing Address</th>
+            <th class="px-6 py-4 font-semibold">Shipping Address</th>
+            <th class="px-6 py-4 font-semibold text-center">Status</th>
+            <th class="px-6 py-4 font-semibold text-center">Registered</th>
+            <th class="px-6 py-4 font-semibold text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="admin-customers-table">
+          {customers.map(c => (
+            <tr class="admin-customer-row border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors" 
+                data-id={c.id}
+                data-name={c.name}
+                data-email={c.email || ''} 
+                data-phone={c.phone || ''}
+                data-company={c.company_name || ''}
+                data-vat={c.company_vat || ''}
+                data-billing={c.billing_address || ''}
+                data-shipping={c.shipping_address || ''}
+                data-archived={c.is_archived ? 'true' : 'false'}
+                data-deleted={c.is_deleted ? 'true' : 'false'}
+                data-has-orders={c.has_orders ? 'true' : 'false'}>
+              <td class="px-6 py-4">
+                <div class="font-bold text-slate-900">{c.name}</div>
+                {c.email && <div class="text-2xs text-slate-500 mt-0.5 font-mono">{c.email}</div>}
+                {c.phone && <div class="text-2xs text-slate-400 mt-0.5">{c.phone}</div>}
+              </td>
+              <td class="px-6 py-4">
+                <div class="font-semibold text-slate-800">{c.company_name || '—'}</div>
+                {c.company_vat && <div class="text-2xs text-slate-500 mt-0.5 font-mono">TIN/VAT: {c.company_vat}</div>}
+              </td>
+              <td class="px-6 py-4 max-w-xs truncate font-medium text-slate-600" title={c.billing_address}>
+                {c.billing_address || <span class="text-slate-400 italic">—</span>}
+              </td>
+              <td class="px-6 py-4 max-w-xs truncate font-medium text-slate-600" title={c.shipping_address}>
+                {c.shipping_address || <span class="text-slate-400 italic">—</span>}
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span id={'customer-status-' + c.id} class={'rounded px-1.5 py-0.5 text-2xs font-semibold uppercase transition-colors ' + (
+                  c.is_deleted 
+                    ? 'bg-rose-500/10 text-rose-600'
+                    : c.is_archived 
+                      ? 'bg-amber-500/10 text-amber-600' 
+                      : 'bg-emerald-500/10 text-emerald-600'
+                )}>
+                  {c.is_deleted ? 'bin' : c.is_archived ? 'archived' : 'active'}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center text-slate-500 text-2xs font-mono">
+                {new Date(c.created_at).toLocaleDateString('en-AE')}
+              </td>
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-3">
+                  <button 
+                    type="button" 
+                    class="edit-customer-btn inline-flex items-center gap-1 text-2xs font-bold uppercase tracking-wider text-cyan-600 hover:text-cyan-700 focus:outline-none transition-colors"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {customers.length === 0 && (
+            <tr>
+              <td colspan="6" class="px-6 py-8 text-center text-slate-400 italic">No customers found in database.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CREATE / EDIT CUSTOMER MODAL -->
+  <div id="edit-customer-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+        <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-cyan-500"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <span id="customer-modal-title-text">Edit Customer Details</span>
+        </h3>
+        <button id="close-customer-modal" class="text-slate-400 hover:text-slate-700 rounded-lg p-1 hover:bg-slate-100 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <form id="edit-customer-form" class="p-6 space-y-4" onsubmit="return false;">
+        <input type="hidden" id="edit-customer-id" />
+        
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Customer Name *</label>
+          <input type="text" id="edit-customer-name" required class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+            <input type="email" id="edit-customer-email" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+            <input type="text" id="edit-customer-phone" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company Name</label>
+            <input type="text" id="edit-customer-company" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company TIN / VAT Number</label>
+            <input type="text" id="edit-customer-vat" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Billing Address</label>
+          <textarea id="edit-customer-billing" rows="2" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors resize-none"></textarea>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Shipping / Delivery Address</label>
+          <textarea id="edit-customer-shipping" rows="2" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors resize-none"></textarea>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-between items-center pt-4 border-t border-slate-100 mt-6">
+          <div class="flex gap-2">
+            <button type="button" id="btn-modal-archive-customer" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 transition-colors">
+              <span id="btn-modal-archive-text">Archive</span>
+            </button>
+            <button type="button" id="btn-modal-delete-customer" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 transition-colors">
+              Delete
+            </button>
+          </div>
+          <div class="flex gap-3">
+            <button type="button" id="btn-cancel-customer" class="px-4 py-2 rounded-lg text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" id="btn-save-customer" class="px-4 py-2 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors shadow-sm">
+              Save Details
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script>
     const searchInput = document.getElementById('admin-search-users') as HTMLInputElement | null;
-    const rows = document.querySelectorAll('.admin-user-row');
+    const userRows = document.querySelectorAll('.admin-user-row');
+    const customerRows = document.querySelectorAll('.admin-customer-row');
 
-    searchInput?.addEventListener('input', (e) => {
-      const query = (e.target as HTMLInputElement).value.toLowerCase();
-      rows.forEach(row => {
-        const name = row.getAttribute('data-name') || '';
-        const email = row.getAttribute('data-email') || '';
-        if (name.includes(query) || email.includes(query)) {
-          (row as HTMLElement).classList.remove('hidden');
-        } else {
-          (row as HTMLElement).classList.add('hidden');
-        }
+    // Tab buttons & containers
+    const btnTabUsers = document.getElementById('btn-tab-users');
+    const btnTabCustomers = document.getElementById('btn-tab-customers');
+    const usersContainer = document.getElementById('users-container');
+    const customersContainer = document.getElementById('customers-container');
+
+    // Sub-tab buttons
+    const btnCustActive = document.getElementById('btn-cust-active');
+    const btnCustArchived = document.getElementById('btn-cust-archived');
+    const btnCustBin = document.getElementById('btn-cust-bin');
+
+    // Default tabs
+    let activeTab: 'users' | 'customers' = 'customers';
+    let customerSubTab: 'active' | 'archived' | 'bin' = 'active';
+
+    const filterList = () => {
+      const query = searchInput?.value.toLowerCase() || '';
+      if (activeTab === 'users') {
+        userRows.forEach(row => {
+          const name = (row.getAttribute('data-name') || '').toLowerCase();
+          const email = (row.getAttribute('data-email') || '').toLowerCase();
+          if (name.includes(query) || email.includes(query)) {
+            (row as HTMLElement).classList.remove('hidden');
+          } else {
+            (row as HTMLElement).classList.add('hidden');
+          }
+        });
+      } else {
+        customerRows.forEach(row => {
+          const name = (row.getAttribute('data-name') || '').toLowerCase();
+          const email = (row.getAttribute('data-email') || '').toLowerCase();
+          const company = (row.getAttribute('data-company') || '').toLowerCase();
+          const vat = (row.getAttribute('data-vat') || '').toLowerCase();
+          
+          const isArchived = row.getAttribute('data-archived') === 'true';
+          const isDeleted = row.getAttribute('data-deleted') === 'true';
+
+          let matchesSubTab = false;
+          if (customerSubTab === 'active') {
+            matchesSubTab = !isArchived && !isDeleted;
+          } else if (customerSubTab === 'archived') {
+            matchesSubTab = isArchived && !isDeleted;
+          } else if (customerSubTab === 'bin') {
+            matchesSubTab = isDeleted;
+          }
+
+          const matchesQuery = !query || name.includes(query) || email.includes(query) || company.includes(query) || vat.includes(query);
+
+          if (matchesSubTab && matchesQuery) {
+            (row as HTMLElement).classList.remove('hidden');
+          } else {
+            (row as HTMLElement).classList.add('hidden');
+          }
+        });
+      }
+    };
+
+    const switchTab = (tab: 'users' | 'customers') => {
+      activeTab = tab;
+      const filterGrp = document.getElementById('customer-filter-group');
+      if (tab === 'users') {
+        btnTabUsers?.classList.add('bg-white', 'text-cyan-700', 'shadow-xs');
+        btnTabUsers?.classList.remove('text-slate-600');
+        btnTabCustomers?.classList.remove('bg-white', 'text-cyan-700', 'shadow-xs');
+        btnTabCustomers?.classList.add('text-slate-600');
+
+        usersContainer?.classList.remove('hidden');
+        customersContainer?.classList.add('hidden');
+        if (filterGrp) filterGrp.style.display = 'none';
+      } else {
+        btnTabCustomers?.classList.add('bg-white', 'text-cyan-700', 'shadow-xs');
+        btnTabCustomers?.classList.remove('text-slate-600');
+        btnTabUsers?.classList.remove('bg-white', 'text-cyan-700', 'shadow-xs');
+        btnTabUsers?.classList.add('text-slate-600');
+
+        customersContainer?.classList.remove('hidden');
+        usersContainer?.classList.add('hidden');
+        if (filterGrp) filterGrp.style.display = 'flex';
+      }
+      filterList();
+    };
+
+    const switchCustomerSubTab = (subTab: 'active' | 'archived' | 'bin') => {
+      customerSubTab = subTab;
+      
+      const buttons = [btnCustActive, btnCustArchived, btnCustBin];
+      buttons.forEach(btn => {
+        btn?.classList.remove('bg-white', 'text-cyan-700', 'shadow-xs');
+        btn?.classList.add('text-slate-600');
       });
+
+      if (subTab === 'active') {
+        btnCustActive?.classList.add('bg-white', 'text-cyan-700', 'shadow-xs');
+        btnCustActive?.classList.remove('text-slate-600');
+      } else if (subTab === 'archived') {
+        btnCustArchived?.classList.add('bg-white', 'text-cyan-700', 'shadow-xs');
+        btnCustArchived?.classList.remove('text-slate-600');
+      } else if (subTab === 'bin') {
+        btnCustBin?.classList.add('bg-white', 'text-cyan-700', 'shadow-xs');
+        btnCustBin?.classList.remove('text-slate-600');
+      }
+
+      filterList();
+    };
+
+    btnTabUsers?.addEventListener('click', () => switchTab('users'));
+    btnTabCustomers?.addEventListener('click', () => switchTab('customers'));
+
+    btnCustActive?.addEventListener('click', () => switchCustomerSubTab('active'));
+    btnCustArchived?.addEventListener('click', () => switchCustomerSubTab('archived'));
+    btnCustBin?.addEventListener('click', () => switchCustomerSubTab('bin'));
+
+    // Initialize layout to show customers first
+    switchTab('customers');
+    switchCustomerSubTab('active');
+
+    searchInput?.addEventListener('input', filterList);
+
+    // Customer edit modal logic
+    const editModal = document.getElementById('edit-customer-modal-backdrop');
+    const closeBtn = document.getElementById('close-customer-modal');
+    const cancelBtn = document.getElementById('btn-cancel-customer');
+    const customerForm = document.getElementById('edit-customer-form') as HTMLFormElement;
+    const modalTitleText = document.getElementById('customer-modal-title-text');
+    const createBtn = document.getElementById('btn-create-customer');
+
+    const openCreateModal = () => {
+      if (modalTitleText) modalTitleText.textContent = 'Create New Customer';
+      
+      const elId = document.getElementById('edit-customer-id') as HTMLInputElement | null;
+      const elName = document.getElementById('edit-customer-name') as HTMLInputElement | null;
+      const elEmail = document.getElementById('edit-customer-email') as HTMLInputElement | null;
+      const elPhone = document.getElementById('edit-customer-phone') as HTMLInputElement | null;
+      const elCompany = document.getElementById('edit-customer-company') as HTMLInputElement | null;
+      const elVat = document.getElementById('edit-customer-vat') as HTMLInputElement | null;
+      const elBilling = document.getElementById('edit-customer-billing') as HTMLTextAreaElement | null;
+      const elShipping = document.getElementById('edit-customer-shipping') as HTMLTextAreaElement | null;
+
+      if (elId) elId.value = '';
+      if (elName) elName.value = '';
+      if (elEmail) elEmail.value = '';
+      if (elPhone) elPhone.value = '';
+      if (elCompany) elCompany.value = '';
+      if (elVat) elVat.value = '';
+      if (elBilling) elBilling.value = '';
+      if (elShipping) elShipping.value = '';
+
+      // Hide actions for new record
+      document.getElementById('btn-modal-archive-customer')?.classList.add('hidden');
+      document.getElementById('btn-modal-delete-customer')?.classList.add('hidden');
+
+      editModal?.classList.remove('hidden');
+      editModal?.classList.add('flex');
+    };
+
+    const openEditModal = (row: HTMLElement) => {
+      if (modalTitleText) modalTitleText.textContent = 'Edit Customer Details';
+
+      const id = row.getAttribute('data-id') || '';
+      const name = row.getAttribute('data-name') || '';
+      const email = row.getAttribute('data-email') || '';
+      const phone = row.getAttribute('data-phone') || '';
+      const company = row.getAttribute('data-company') || '';
+      const vat = row.getAttribute('data-vat') || '';
+      const billing = row.getAttribute('data-billing') || '';
+      const shipping = row.getAttribute('data-shipping') || '';
+      
+      const isArchived = row.getAttribute('data-archived') === 'true';
+      const isDeleted = row.getAttribute('data-deleted') === 'true';
+      const hasOrders = row.getAttribute('data-has-orders') === 'true';
+
+      const elId = document.getElementById('edit-customer-id') as HTMLInputElement | null;
+      const elName = document.getElementById('edit-customer-name') as HTMLInputElement | null;
+      const elEmail = document.getElementById('edit-customer-email') as HTMLInputElement | null;
+      const elPhone = document.getElementById('edit-customer-phone') as HTMLInputElement | null;
+      const elCompany = document.getElementById('edit-customer-company') as HTMLInputElement | null;
+      const elVat = document.getElementById('edit-customer-vat') as HTMLInputElement | null;
+      const elBilling = document.getElementById('edit-customer-billing') as HTMLTextAreaElement | null;
+      const elShipping = document.getElementById('edit-customer-shipping') as HTMLTextAreaElement | null;
+
+      if (elId) elId.value = id;
+      if (elName) elName.value = name;
+      if (elEmail) elEmail.value = email;
+      if (elPhone) elPhone.value = phone;
+      if (elCompany) elCompany.value = company;
+      if (elVat) elVat.value = vat;
+      if (elBilling) elBilling.value = billing;
+      if (elShipping) elShipping.value = shipping;
+
+      // Show actions for existing record
+      const archiveBtn = document.getElementById('btn-modal-archive-customer') as HTMLButtonElement | null;
+      const archiveText = document.getElementById('btn-modal-archive-text');
+      const deleteBtn = document.getElementById('btn-modal-delete-customer') as HTMLButtonElement | null;
+
+      if (archiveBtn && archiveText && deleteBtn) {
+        archiveBtn.setAttribute('data-id', id);
+        archiveBtn.setAttribute('data-has-orders', hasOrders.toString());
+        
+        deleteBtn.setAttribute('data-id', id);
+        deleteBtn.setAttribute('data-has-orders', hasOrders.toString());
+
+        if (isDeleted) {
+          // In Bin: Show Restore & Delete Permanently
+          archiveBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/50 transition-colors';
+          archiveBtn.setAttribute('data-action', 'restore');
+          archiveText.textContent = 'Restore';
+          archiveBtn.classList.remove('hidden');
+
+          deleteBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 transition-colors';
+          deleteBtn.setAttribute('data-action', 'permanent_delete');
+          deleteBtn.textContent = 'Delete Permanently';
+          deleteBtn.classList.remove('hidden');
+        } else {
+          // Not in Bin: Show Archive/Unarchive & Delete
+          archiveBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 transition-colors';
+          archiveBtn.setAttribute('data-action', isArchived ? 'unarchive' : 'archive');
+          archiveBtn.setAttribute('data-archived', isArchived.toString());
+          archiveText.textContent = isArchived ? 'Unarchive' : 'Archive';
+          archiveBtn.classList.remove('hidden');
+
+          deleteBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 transition-colors';
+          deleteBtn.setAttribute('data-action', 'soft_delete');
+          deleteBtn.textContent = 'Delete';
+          deleteBtn.classList.remove('hidden');
+        }
+      }
+
+      editModal?.classList.remove('hidden');
+      editModal?.classList.add('flex');
+    };
+
+    const closeEditModal = () => {
+      editModal?.classList.add('hidden');
+      editModal?.classList.remove('flex');
+      customerForm?.reset();
+    };
+
+    createBtn?.addEventListener('click', openCreateModal);
+    closeBtn?.addEventListener('click', closeEditModal);
+    cancelBtn?.addEventListener('click', closeEditModal);
+    editModal?.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
+
+    document.querySelectorAll('.edit-customer-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const row = (e.currentTarget as HTMLButtonElement).closest('.admin-customer-row') as HTMLElement;
+        if (row) openEditModal(row);
+      });
+    });
+
+    customerForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById('btn-save-customer') as HTMLButtonElement | null;
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+      }
+
+      const elId = document.getElementById('edit-customer-id') as HTMLInputElement | null;
+      const elName = document.getElementById('edit-customer-name') as HTMLInputElement | null;
+      const elEmail = document.getElementById('edit-customer-email') as HTMLInputElement | null;
+      const elPhone = document.getElementById('edit-customer-phone') as HTMLInputElement | null;
+      const elCompany = document.getElementById('edit-customer-company') as HTMLInputElement | null;
+      const elVat = document.getElementById('edit-customer-vat') as HTMLInputElement | null;
+      const elBilling = document.getElementById('edit-customer-billing') as HTMLTextAreaElement | null;
+      const elShipping = document.getElementById('edit-customer-shipping') as HTMLTextAreaElement | null;
+
+      const id = elId?.value || '';
+      const payload = {
+        name: elName?.value.trim() || '',
+        email: elEmail?.value.trim() || null,
+        phone: elPhone?.value.trim() || null,
+        company_name: elCompany?.value.trim() || null,
+        company_vat: elVat?.value.trim() || null,
+        billing_address: elBilling?.value.trim() || null,
+        shipping_address: elShipping?.value.trim() || null,
+      };
+
+      if (!payload.name) {
+        alert('Customer Name is required');
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Details';
+        }
+        return;
+      }
+
+      // Client-side validation
+      if (payload.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(payload.email)) {
+          alert('Invalid email format');
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Details';
+          }
+          return;
+        }
+      }
+
+      if (payload.phone) {
+        const phoneRegex = /^\+?[\d\s\-()]{7,25}$/;
+        if (!phoneRegex.test(payload.phone)) {
+          alert('Invalid phone number format. Allowed: 7-25 characters comprising digits, spaces, hyphens, parentheses, or +');
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Details';
+          }
+          return;
+        }
+      }
+
+      try {
+        const url = id ? '/api/customers/' + id : '/api/customers';
+        const method = id ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to save customer details'));
+        }
+      } catch (err: any) {
+        alert('Error: ' + err.message);
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Details';
+        }
+      }
+    });
+
+    // Archive/Unarchive/Restore Trigger
+    document.getElementById('btn-modal-archive-customer')?.addEventListener('click', async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const customerId = target.getAttribute('data-id') || '';
+      const action = target.getAttribute('data-action') || 'archive';
+      const hasOrders = target.getAttribute('data-has-orders') === 'true';
+      const isCurrentlyArchived = target.getAttribute('data-archived') === 'true';
+
+      if (hasOrders) {
+        const warnMsg = action === 'restore' 
+          ? 'Warning: This customer has orders linked to them. Do you still want to restore them?'
+          : 'Warning: This customer has orders linked to them. Modifying their status could affect historical billing. Do you still want to proceed?';
+        if (!confirm(warnMsg)) return;
+      }
+
+      target.disabled = true;
+      const textSpan = document.getElementById('btn-modal-archive-text');
+      const originalText = textSpan ? textSpan.textContent : '';
+      if (textSpan) textSpan.textContent = '...';
+
+      try {
+        const payloadAction = action === 'restore' ? 'restore' : (isCurrentlyArchived ? 'unarchive' : 'archive');
+        const res = await fetch('/api/customers/' + customerId, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: payloadAction })
+        });
+
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to update customer status'));
+          if (textSpan) textSpan.textContent = originalText;
+        }
+      } catch (err) {
+        alert('Network error while updating customer status.');
+        if (textSpan) textSpan.textContent = originalText;
+      } finally {
+        target.disabled = false;
+      }
+    });
+
+    // Delete / Permanent Delete Trigger
+    document.getElementById('btn-modal-delete-customer')?.addEventListener('click', async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const customerId = target.getAttribute('data-id') || '';
+      const action = target.getAttribute('data-action') || 'soft_delete';
+      const hasOrders = target.getAttribute('data-has-orders') === 'true';
+
+      if (action === 'permanent_delete') {
+        if (hasOrders) {
+          if (!confirm('Warning: This customer has orders linked to them. Permanently deleting this customer cannot be undone and will impact billing history. Do you still want to proceed?')) {
+            return;
+          }
+        } else {
+          if (!confirm('Are you sure you want to permanently delete this customer? This action cannot be undone.')) {
+            return;
+          }
+        }
+      } else {
+        // Soft delete (move to bin)
+        if (hasOrders) {
+          if (!confirm('Warning: This customer has orders linked to them. Deleting them could affect historical billing. Do you still want to proceed?')) {
+            return;
+          }
+        } else {
+          if (!confirm('Are you sure you want to move this customer to the recycle bin?')) {
+            return;
+          }
+        }
+      }
+
+      target.disabled = true;
+
+      try {
+        if (action === 'permanent_delete') {
+          const res = await fetch('/api/customers/' + customerId, {
+            method: 'DELETE'
+          });
+
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            const err = await res.json();
+            alert('Error: ' + (err.error || 'Failed to delete customer'));
+          }
+        } else {
+          // Soft delete (setting is_deleted = true via PUT action)
+          const res = await fetch('/api/customers/' + customerId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete' })
+          });
+
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            const err = await res.json();
+            alert('Error: ' + (err.error || 'Failed to move customer to bin'));
+          }
+        }
+      } catch (err) {
+        alert('Network error while processing deletion.');
+      } finally {
+        target.disabled = false;
+      }
     });
 
     document.querySelectorAll('.toggle-suspend-btn').forEach(btn => {
@@ -149,7 +787,7 @@ try {
         textSpan.textContent = '...';
 
         try {
-          const res = await fetch(`/api/users/${userId}`, {
+          const res = await fetch('/api/users/' + userId, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'suspend' })
@@ -162,7 +800,7 @@ try {
             target.setAttribute('data-suspended', isSuspended.toString());
             textSpan.textContent = isSuspended ? 'Unsuspend' : 'Suspend';
 
-            const statusBadge = document.getElementById(`status-${userId}`);
+            const statusBadge = document.getElementById('status-' + userId);
             if (statusBadge) {
               statusBadge.textContent = isSuspended ? 'suspended' : 'active';
               if (isSuspended) {
@@ -185,3 +823,4 @@ try {
     });
   </script>
 </DashboardLayout>
+

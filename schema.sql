@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS customers (
   name TEXT UNIQUE NOT NULL,
   email TEXT,
   phone TEXT,
+  company_name TEXT,
   billing_address TEXT,
   shipping_address TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL

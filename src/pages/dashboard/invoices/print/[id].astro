@@ -16,7 +16,8 @@ try {
   // Fetch invoice details
   const invRes = await query(`
     SELECT i.*, 
-       (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+       (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list,
+       COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted
     FROM invoices i WHERE id = $1
   `, [id]);
   inv = invRes.rows[0];
@@ -74,21 +75,12 @@ try {
     }];
   }
 
-  // Fetch selected disclaimers/clauses
-  let selectedIdentifiers: string[] = [];
+  // Fetch all disclaimers/clauses
   try {
-    selectedIdentifiers = JSON.parse(inv?.payment_terms || '[]');
-  } catch (e) {
-    selectedIdentifiers = [];
-  }
-
-  if (selectedIdentifiers.length > 0) {
-    const placeholders = selectedIdentifiers.map((_, i) => `$${i + 1}`).join(',');
-    const legalRes = await query(`
-      SELECT title, content FROM legal_artifacts 
-      WHERE identifier IN (${placeholders})
-    `, selectedIdentifiers);
+    const legalRes = await query(`SELECT title, content, identifier, type, show_in_invoice FROM legal_artifacts WHERE show_in_invoice = TRUE ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
     selectedClauses = legalRes.rows;
+  } catch (e) {
+    console.error("Error fetching legal artifacts:", e);
   }
 
 } catch (err: any) {
@@ -148,6 +140,23 @@ const companyNameEN = isDGS ? 'Delight Global Solutions LLC' : 'Delight Group LL
 const companyNameAR = isDGS ? 'ديلايت للحلول العالمية ش.ذ.م.م' : 'مجموعة ديلايت ش.ذ.م.م';
 const websiteURL = 'www.delightgroupllc.com';
 const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/Group
+
+const activeSignature = signaturesList.find((s: any) => s.id === (settings.default_signature_id || (signaturesList[0]?.id || ''))) || signaturesList[0] || null;
+const signatureImage = activeSignature?.signature_image || '';
+
+let activeTerms: string[] = [];
+try {
+  activeTerms = inv.payment_terms ? JSON.parse(inv.payment_terms) : [];
+} catch (e) {
+  if (typeof inv.payment_terms === 'string') {
+    activeTerms = inv.payment_terms.split(',').map((t: string) => t.trim());
+  }
+}
+
+const isTermChecked = (identifier: string): boolean => {
+  if (!inv.payment_terms) return true;
+  return activeTerms.includes(identifier);
+};
 ---
 
 <!DOCTYPE html>
@@ -610,32 +619,32 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
     /* ========================================================================= */
     /* MODERN GRID LAYOUT STYLES                                                 */
     /* ========================================================================= */
-    .arrco-container {
+    .delightgroupllc-container {
       display: block;
       color: #000000;
       font-size: 8.5pt;
     }
-    .arrco-header {
+    .delightgroupllc-header {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 15px;
     }
-    .arrco-logo-td {
+    .delightgroupllc-logo-td {
       width: 50%;
       vertical-align: top;
     }
-    .arrco-logo-svg-wrapper {
+    .delightgroupllc-logo-svg-wrapper {
       display: inline-block;
       text-align: left;
     }
-    .arrco-logo-text {
+    .delightgroupllc-logo-text {
       font-family: 'Outfit', sans-serif;
       font-size: 30pt;
       font-weight: 900;
       line-height: 1;
       letter-spacing: -1.5px;
     }
-    .arrco-logo-sub {
+    .delightgroupllc-logo-sub {
       font-size: 7.5pt;
       letter-spacing: 2px;
       font-weight: 600;
@@ -643,14 +652,14 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       text-transform: uppercase;
       margin-top: -3px;
     }
-    .arrco-logo-tagline {
+    .delightgroupllc-logo-tagline {
       font-size: 5.5pt;
       color: #777777;
       margin-top: 4px;
       font-style: italic;
     }
     
-    .arrco-address-td {
+    .delightgroupllc-address-td {
       width: 50%;
       text-align: right;
       vertical-align: top;
@@ -658,84 +667,84 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       line-height: 1.3;
       color: #333333;
     }
-    .arrco-company-name-en {
+    .delightgroupllc-company-name-en {
       font-size: 11pt;
       font-weight: 800;
       color: #1a1a1a;
       margin-bottom: 2px;
     }
-    .arrco-company-name-ar {
+    .delightgroupllc-company-name-ar {
       font-size: 12pt;
       font-weight: 700;
       color: #1a1a1a;
       margin-bottom: 2px;
     }
-    .arrco-website {
+    .delightgroupllc-website {
       font-weight: 700;
       letter-spacing: 1px;
       display: block;
       margin-bottom: 4px;
     }
 
-    .arrco-doc-title-section {
+    .delightgroupllc-doc-title-section {
       text-align: center;
       margin-bottom: 15px;
     }
-    .arrco-doc-title {
+    .delightgroupllc-doc-title {
       font-size: 15pt;
       font-weight: 900;
       letter-spacing: 0.5px;
       text-transform: uppercase;
       color: #000000;
     }
-    .arrco-trn-label {
+    .delightgroupllc-trn-label {
       font-size: 11pt;
       font-weight: 700;
       margin-top: 3px;
     }
 
-    .arrco-grid-table {
+    .delightgroupllc-grid-table {
       width: 100%;
       border-collapse: collapse;
       border: 1px solid #000000;
       margin-bottom: 15px;
     }
-    .arrco-grid-td {
+    .delightgroupllc-grid-td {
       width: 50%;
       vertical-align: top;
       padding: 8px 12px;
     }
-    .arrco-grid-td:first-child {
+    .delightgroupllc-grid-td:first-child {
       border-right: 1px solid #000000;
     }
-    .arrco-field-table {
+    .delightgroupllc-field-table {
       width: 100%;
       border-collapse: collapse;
     }
-    .arrco-field-table td {
+    .delightgroupllc-field-table td {
       padding: 3px 0;
       vertical-align: top;
       font-size: 8.5pt;
     }
-    .arrco-field-label {
+    .delightgroupllc-field-label {
       width: 38%;
       color: #333333;
       font-weight: 500;
     }
-    .arrco-field-value {
+    .delightgroupllc-field-value {
       width: 62%;
       font-weight: 700;
       color: #000000;
     }
 
-    .arrco-table {
+    .delightgroupllc-table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 12px;
       border-top: 1.5px solid #000000;
       border-bottom: 1.5px solid #000000;
     }
-    .arrco-table th {
+    .delightgroupllc-table th {
       background-color: #000000;
       color: #ffffff;
       font-weight: 700;
@@ -744,7 +753,7 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       text-transform: uppercase;
       border: none;
     }
-    .arrco-table td {
+    .delightgroupllc-table td {
       padding: 8px 8px;
       border-bottom: 1px solid #e2e8f0;
       border-right: none;
@@ -752,7 +761,7 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       color: #000000;
     }
     
-    .arrco-watermark {
+    .delightgroupllc-watermark {
       position: absolute;
       top: 45%;
       left: 50%;
@@ -764,43 +773,43 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       z-index: 0;
     }
 
-    .arrco-dn-totals {
+    .delightgroupllc-dn-totals {
       text-align: right;
       font-size: 9.5pt;
       font-weight: 700;
       margin-bottom: 25px;
       padding-right: 30px;
     }
-    .arrco-dn-fields {
+    .delightgroupllc-dn-fields {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 15px;
       margin-bottom: 25px;
     }
-    .arrco-dn-fields-box {
+    .delightgroupllc-dn-fields-box {
       border: 1px solid #e2e8f0;
       border-radius: 6px;
       padding: 8px;
       background-color: #fcfcfc;
     }
-    .arrco-dn-signatures {
+    .delightgroupllc-dn-signatures {
       display: flex;
       justify-content: space-between;
       margin-top: 50px;
       font-size: 9pt;
       font-weight: 700;
     }
-    .arrco-dn-sign-box {
+    .delightgroupllc-dn-sign-box {
       width: 45%;
       text-align: left;
       line-height: 1.6;
     }
-    .arrco-dn-sign-line {
+    .delightgroupllc-dn-sign-line {
       border-top: 1px solid #000000;
       margin-top: 40px;
       padding-top: 4px;
     }
-    .arrco-dn-note {
+    .delightgroupllc-dn-note {
       margin-top: 30px;
       font-size: 8pt;
       font-weight: 700;
@@ -809,7 +818,7 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       padding-top: 10px;
     }
 
-    .arrco-inv-bottom-grid {
+    .delightgroupllc-inv-bottom-grid {
       display: grid;
       grid-template-columns: 1.4fr 1fr;
       border: 1px solid #000000;
@@ -817,37 +826,37 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       page-break-inside: avoid;
       break-inside: avoid;
     }
-    .arrco-inv-words-panel {
+    .delightgroupllc-inv-words-panel {
       padding: 10px 12px;
       border-right: 1px solid #000000;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
-    .arrco-inv-totals-panel {
+    .delightgroupllc-inv-totals-panel {
       width: 100%;
     }
-    .arrco-inv-totals-table {
+    .delightgroupllc-inv-totals-table {
       width: 100%;
       border-collapse: collapse;
     }
-    .arrco-inv-totals-table td {
+    .delightgroupllc-inv-totals-table td {
       padding: 6px 12px;
       font-size: 8.5pt;
       border-bottom: 1px solid #e2e8f0;
     }
-    .arrco-inv-totals-table tr:last-child td {
+    .delightgroupllc-inv-totals-table tr:last-child td {
       border-bottom: none;
     }
-    .arrco-inv-totals-table td:first-child {
+    .delightgroupllc-inv-totals-table td:first-child {
       color: #333333;
     }
-    .arrco-inv-totals-table td:last-child {
+    .delightgroupllc-inv-totals-table td:last-child {
       font-weight: 700;
       text-align: right;
     }
 
-    .arrco-inv-signature-section {
+    .delightgroupllc-inv-signature-section {
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
@@ -855,40 +864,40 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       page-break-inside: avoid;
       break-inside: avoid;
     }
-    .arrco-inv-disclaimer-text {
+    .delightgroupllc-inv-disclaimer-text {
       width: 55%;
       font-size: 7pt;
       color: #555555;
       line-height: 1.4;
     }
-    .arrco-inv-sign-stamp-box {
+    .delightgroupllc-inv-sign-stamp-box {
       width: 38%;
       border: 1px solid #000000;
       text-align: center;
       background-color: white;
     }
-    .arrco-inv-sign-stamp-header {
+    .delightgroupllc-inv-sign-stamp-header {
       background-color: #000000;
       color: #ffffff;
       font-weight: 700;
       font-size: 8pt;
       padding: 5px;
     }
-    .arrco-inv-sign-stamp-body {
+    .delightgroupllc-inv-sign-stamp-body {
       height: 60px;
       position: relative;
     }
-    .arrco-inv-sign-stamp-footer {
+    .delightgroupllc-inv-sign-stamp-footer {
       border-top: 1px solid #000000;
       display: grid;
       grid-template-columns: 1.5fr 1fr;
       font-size: 7.5pt;
     }
-    .arrco-inv-sign-stamp-footer-cell {
+    .delightgroupllc-inv-sign-stamp-footer-cell {
       padding: 4px;
       font-weight: 700;
     }
-    .arrco-inv-sign-stamp-footer-cell:first-child {
+    .delightgroupllc-inv-sign-stamp-footer-cell:first-child {
       border-right: 1px solid #000000;
       text-align: left;
     }
@@ -915,15 +924,22 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       padding-bottom: 2px;
     }
     .terms-columns {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      column-count: 2;
+      column-gap: 12px;
+      display: block;
+      counter-reset: term-counter;
     }
     .terms-col {
       text-align: justify;
     }
     .terms-section {
       margin-bottom: 4px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      text-align: justify;
+    }
+    .terms-section:not(.hidden) {
+      counter-increment: term-counter;
     }
     .terms-section p {
       margin: 0 0 3px 0;
@@ -934,6 +950,9 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       color: #000000;
       margin-bottom: 1.5px;
       font-size: 7.2pt;
+    }
+    .terms-columns .terms-section-title::before {
+      content: counter(term-counter) ". ";
     }
     .print-page-2-container {
       padding: 8mm 12mm 6mm 12mm !important;
@@ -983,11 +1002,14 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
           documentTitle={documentTitle} 
           logoColor={logoColor}
           companyNameEN={companyNameEN}
+          selectedClauses={selectedClauses}
+          signatureImage={signatureImage}
+          isCustomerDeleted={inv.is_customer_deleted}
         />
       </div>
 
       <!-- Render Modern Grid Layout component -->
-      <div id="layout-arrco-wrapper" class="w-full" style="display: none;">
+      <div id="layout-delightgroupllc-wrapper" class="w-full" style="display: none;">
         <ModernGridPrintLayout 
           inv={inv} 
           items={items} 
@@ -1000,6 +1022,9 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
           amountInWords={amountInWords}
           totalQty={totalQty}
           documentTitle={documentTitle}
+          selectedClauses={selectedClauses}
+          signatureImage={signatureImage}
+          isCustomerDeleted={inv.is_customer_deleted}
         />
       </div>
     </div>
@@ -1031,7 +1056,7 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
               <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Print Template Layout</label>
               <select id="layoutSelector" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
                 <option value="standard">Standard Template (Delight Group)</option>
-                <option value="arrco">Modern Grid Layout (Delight Group)</option>
+                <option value="delightgroupllc">Modern Grid Layout (Delight Group)</option>
               </select>
             </div>
 
@@ -1295,14 +1320,14 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
           </div>
         </details>
 
-        <!-- CATEGORY 5: Signatures & TOS Pages -->
-        <details class="group border border-slate-200 rounded-xl bg-white overflow-hidden">
+        <!-- CATEGORY 5: Signatures Options -->
+        <details class="group border border-slate-200 rounded-xl bg-white overflow-hidden" open>
           <summary class="flex items-center justify-between p-3 text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer hover:bg-slate-50 select-none transition-all">
             <div class="flex items-center gap-2">
               <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
               </div>
-              <span>Signatures & TOS Options</span>
+              <span>Signatures Options</span>
             </div>
             <span class="transition-transform duration-200 group-open:rotate-180 text-blue-600">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
@@ -1318,14 +1343,23 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
               </select>
             </div>
 
-            <!-- Signatory selector -->
+             <!-- Signatory selector -->
             <div class="mt-2.5 pt-2 border-t border-slate-800/40">
               <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Select Signatory Stamp</label>
               <select id="config-signature-selector" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
                 {signaturesList.map((s: any) => (
                   <option value={s.id} selected={s.id === (settings.default_signature_id || signaturesList[0]?.id)}>{s.signatory_name} ({s.signatory_title})</option>
                 ))}
+                <option value="custom">Enter Manually...</option>
               </select>
+              <div id="sidebar-signature-preview-wrapper" class="hidden mt-2 p-1.5 bg-slate-100 border border-slate-200 rounded text-center">
+                <div class="text-[8px] text-slate-500 uppercase font-bold mb-1">Signature Image</div>
+                <img id="sidebar-signature-preview" class="h-8 w-auto object-contain mx-auto" src="" />
+              </div>
+              <div id="custom-signature-input-wrapper" class="hidden mt-2">
+                <label class="text-[8px] text-slate-500 uppercase block mb-0.5">Custom Signatory Name</label>
+                <input type="text" id="config-custom-signature-name" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" placeholder="Type name..." />
+              </div>
             </div>
             
             <div class="pt-2 border-t border-slate-805 space-y-2 font-semibold">
@@ -1337,6 +1371,14 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
                 <input type="checkbox" id="sig-company" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Company Stamp / Signature</span>
               </label>
+              <label class="flex items-center gap-2 cursor-pointer pl-4">
+                <input type="checkbox" id="config-show-sig-image" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Signature Image</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer pl-4">
+                <input type="checkbox" id="config-show-stamp-box" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Leave Space for Stamp</span>
+              </label>
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="config-show-disclaimer" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Show Disclaimer Text</span>
@@ -1346,10 +1388,25 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
                 <span>Electronic / No Signature Needed</span>
               </label>
             </div>
+          </div>
+        </details>
 
+        <!-- CATEGORY 6: Terms of Sale (TOS) Options -->
+        <details class="group border border-slate-200 rounded-xl bg-white overflow-hidden">
+          <summary class="flex items-center justify-between p-3 text-xs font-bold text-slate-800 uppercase tracking-wider cursor-pointer hover:bg-slate-50 select-none transition-all">
+            <div class="flex items-center gap-2">
+              <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              </div>
+              <span>Terms of Sale (TOS)</span>
+            </div>
+            <span class="transition-transform duration-200 group-open:rotate-180 text-blue-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </span>
+          </summary>
+          <div class="p-3.5 border-t border-slate-850 space-y-3.5 text-xs text-slate-300">
             <!-- Page Toggles -->
-            <div class="pt-2.5 border-t border-slate-800 space-y-2 font-semibold">
-              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Page Toggles</label>
+            <div class="space-y-2 font-semibold">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="config-show-page-2" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Show Terms & Conditions Page</span>
@@ -1358,68 +1415,35 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
                 <input type="checkbox" id="config-show-company-card-tos" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Show Company Details Card at bottom of TOS</span>
               </label>
+              <label class="flex items-center gap-2 cursor-pointer text-cyan-400 font-bold">
+                <input type="checkbox" id="config-only-selected-tos" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show only selected T&amp;C from invoice</span>
+              </label>
+              <div id="config-only-selected-tos-note" class="text-[10px] text-amber-400 font-semibold pl-6 mt-1">
+                ✦ Showing only your invoice selections. Untick above to make custom inclusions.
+              </div>
+              <div id="config-custom-inclusion-note" class="text-[10px] text-emerald-400 font-semibold pl-6 mt-1 hidden">
+                ✦ Custom mode — tick or untick any section below.
+              </div>
             </div>
 
             <!-- Visible TOS Sections Checkboxes -->
             <div class="pt-2.5 border-t border-slate-800 space-y-2 font-semibold">
               <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Visible TOS Sections</label>
-              <div class="grid grid-cols-1 gap-1.5 pl-1 text-[10px] text-slate-350">
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-general" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>1. General</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-acceptance" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>2. Acceptance of Order</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-illustrations" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>3. Illustrations & Specs</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-designs" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>4. Designs</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-samples" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>5. Samples</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-delivery" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>6. Delivery</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-cancellation" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>7. Cancellation</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-returns" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>8. Returns</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-payment" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>9. Payment</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-installation" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>10. Installation</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-warranty-workmanship" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>11. Workmanship Warranty</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-warranty-product" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>12. Product Warranty</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-liability" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>13. Liability</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                  <input type="checkbox" id="config-show-tos-others" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                  <span>14. Others</span>
-                </label>
+              <div class="grid grid-cols-1 gap-1.5 pl-1 text-[10px] text-slate-350" id="tos-sections-checkboxes-list">
+                {selectedClauses
+                  .map((clause: any, idx: number) => (
+                    <label class="flex items-center gap-2 cursor-pointer hover:text-white transition-colors" data-identifier={clause.identifier}>
+                      <input 
+                        type="checkbox" 
+                        id={`config-show-tos-${clause.identifier.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`} 
+                        checked={isTermChecked(clause.identifier)} 
+                        class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" 
+                      />
+                      <span>{idx + 1}. {clause.title}</span>
+                    </label>
+                  ))
+                }
               </div>
             </div>
           </div>
@@ -1445,19 +1469,125 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
 
   </div>
 
-  <script define:vars={{ banksList, signaturesList, addressesList }}>
+  <script define:vars={{ banksList, signaturesList, addressesList, activeTerms }}>
+    // Only show selected Terms of Sale filter
+    const onlySelectedTOSCheckbox = document.getElementById('config-only-selected-tos');
+    const listContainer = document.getElementById('tos-sections-checkboxes-list');
+    
+    if (listContainer) {
+      listContainer.querySelectorAll('label[data-identifier]').forEach(label => {
+        const checkbox = label.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+          checkbox.setAttribute('data-original-checked', checkbox.checked.toString());
+        }
+      });
+    }
+    
+    const applySelectedTOSFilter = () => {
+      const showOnlySelected = onlySelectedTOSCheckbox ? onlySelectedTOSCheckbox.checked : false;
+      
+      // Toggle note visibility
+      const lockedNote = document.getElementById('config-only-selected-tos-note');
+      const customNote = document.getElementById('config-custom-inclusion-note');
+      if (lockedNote) lockedNote.classList.toggle('hidden', !showOnlySelected);
+      if (customNote) customNote.classList.toggle('hidden', showOnlySelected);
+
+      if (!listContainer) return;
+      
+      const labels = listContainer.querySelectorAll('label[data-identifier]');
+      labels.forEach(label => {
+        const ident = label.getAttribute('data-identifier');
+        const checkbox = label.querySelector('input[type="checkbox"]');
+        const isSelectedOnInvoice = activeTerms && activeTerms.includes(ident);
+        
+        if (showOnlySelected) {
+          // Lock mode: show only invoice-selected items, disable the rest
+          label.style.display = isSelectedOnInvoice ? 'flex' : 'none';
+          if (checkbox) {
+            checkbox.disabled = false;
+            if (isSelectedOnInvoice && !checkbox.checked) {
+              checkbox.checked = true;
+              checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            } else if (!isSelectedOnInvoice && checkbox.checked) {
+              checkbox.checked = false;
+              checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+        } else {
+          // Custom mode: show all items freely
+          label.style.display = 'flex';
+          label.style.opacity = '1';
+          if (checkbox) {
+            checkbox.disabled = false;
+            // Restore original server-rendered state
+            const originalChecked = checkbox.getAttribute('data-original-checked') === 'true';
+            if (checkbox.checked !== originalChecked) {
+              checkbox.checked = originalChecked;
+              checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+        }
+      });
+    };
+    
+    onlySelectedTOSCheckbox?.addEventListener('change', applySelectedTOSFilter);
+
+    // When in locked mode and user tries to check a non-invoice item — show banner
+    listContainer?.addEventListener('click', (e) => {
+      if (!onlySelectedTOSCheckbox?.checked) return; // custom mode — allow freely
+      const checkbox = e.target;
+      if (checkbox && checkbox.tagName === 'INPUT' && checkbox.type === 'checkbox') {
+        const label = checkbox.closest('label[data-identifier]');
+        if (!label) return;
+        const ident = label.getAttribute('data-identifier');
+        const isSelectedOnInvoice = activeTerms && activeTerms.includes(ident);
+        if (!isSelectedOnInvoice) {
+          // The label is hidden in locked mode so this shouldn't fire, but as safety net:
+          e.preventDefault();
+        }
+      }
+    }, true); // capture phase so we intercept before change
+
+    // *** Auto-apply on page load (toggle is checked by default) ***
+    applySelectedTOSFilter();
+
+    // Dynamic change listener for terms checkboxes inside the sidebar list
+    const tosCheckboxesList = document.getElementById('tos-sections-checkboxes-list');
+    tosCheckboxesList?.addEventListener('change', (e) => {
+      const checkbox = e.target;
+      if (checkbox && checkbox.tagName === 'INPUT' && checkbox.type === 'checkbox') {
+        const label = checkbox.closest('label[data-identifier]');
+        if (label) {
+          const ident = label.getAttribute('data-identifier');
+          const checked = checkbox.checked;
+          
+          // Generate target class from identifier
+          const sanitizedIdent = ident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+          const targetClass = `terms-sec-${sanitizedIdent}`;
+          
+          document.querySelectorAll(`.${targetClass}`).forEach(el => {
+            if (checked) {
+              el.classList.remove('hidden');
+            } else {
+              el.classList.add('hidden');
+            }
+          });
+        }
+      }
+    });
+
     // Toggle templates based on layout selector
     const layoutSelector = document.getElementById('layoutSelector');
     const stdLayoutWrapper = document.getElementById('layout-standard-wrapper');
-    const arrcoLayoutWrapper = document.getElementById('layout-arrco-wrapper');
+    const delightgroupllcLayoutWrapper = document.getElementById('layout-delightgroupllc-wrapper');
 
     const updateLayout = (layout) => {
-      if (layout === 'arrco') {
+      if (layout === 'delightgroupllc') {
         stdLayoutWrapper.style.display = 'none';
-        arrcoLayoutWrapper.style.display = 'block';
+        delightgroupllcLayoutWrapper.style.display = 'block';
       } else {
         stdLayoutWrapper.style.display = 'block';
-        arrcoLayoutWrapper.style.display = 'none';
+        delightgroupllcLayoutWrapper.style.display = 'none';
       }
     };
 
@@ -1482,7 +1612,7 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
     // Dynamic document title override
     document.getElementById('config-doc-type')?.addEventListener('change', (e) => {
       const val = e.target.value;
-      document.querySelectorAll('.arrco-doc-title, .std-doc-title').forEach(el => {
+      document.querySelectorAll('.delightgroupllc-doc-title, .std-doc-title').forEach(el => {
         el.textContent = val;
       });
     });
@@ -1503,6 +1633,7 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
 
     // Register simple class visibility toggles
     setupToggle('config-show-logo', 'print-logo-container');
+    setupToggle('config-show-sig-image', 'signature-image-render');
     setupToggle('config-show-logo-p2', 'print-logo-container-p2');
     setupToggle('config-show-watermark', 'print-watermark');
     setupToggle('config-show-cust-company', 'print-cust-company');
@@ -1521,20 +1652,6 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
     setupToggle('config-show-page-2', 'print-page-2-container');
     setupToggle('config-show-company-card-tos', 'company-card-tos-wrapper');
     setupToggle('config-show-disclaimer', 'print-disclaimer-text');
-    setupToggle('config-show-tos-general', 'terms-sec-general');
-    setupToggle('config-show-tos-acceptance', 'terms-sec-acceptance');
-    setupToggle('config-show-tos-illustrations', 'terms-sec-illustrations');
-    setupToggle('config-show-tos-designs', 'terms-sec-designs');
-    setupToggle('config-show-tos-samples', 'terms-sec-samples');
-    setupToggle('config-show-tos-delivery', 'terms-sec-delivery');
-    setupToggle('config-show-tos-cancellation', 'terms-sec-cancellation');
-    setupToggle('config-show-tos-returns', 'terms-sec-returns');
-    setupToggle('config-show-tos-payment', 'terms-sec-payment');
-    setupToggle('config-show-tos-installation', 'terms-sec-installation');
-    setupToggle('config-show-tos-warranty-workmanship', 'terms-sec-warranty-workmanship');
-    setupToggle('config-show-tos-warranty-product', 'terms-sec-warranty-product');
-    setupToggle('config-show-tos-liability', 'terms-sec-liability');
-    setupToggle('config-show-tos-others', 'terms-sec-others');
 
     // Watermark customizer range inputs
     document.getElementById('config-watermark-opacity')?.addEventListener('input', (e) => {
@@ -1627,6 +1744,21 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       document.querySelectorAll('.print-sig-company-col').forEach(el => {
         if (checked) el.classList.remove('hidden');
         else el.classList.add('hidden');
+      });
+    });
+
+    document.getElementById('config-show-stamp-box')?.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      document.querySelectorAll('.print-stamp-box').forEach(el => {
+        if (checked) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+      document.querySelectorAll('.delightgroupllc-inv-sign-stamp-body').forEach(el => {
+        if (checked) {
+          el.style.height = '100px';
+        } else {
+          el.style.height = '60px';
+        }
       });
     });
 
@@ -1723,13 +1855,63 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
       updateBankDetails();
     });
 
+    const updateSidebarSignaturePreview = (id) => {
+      const wrapper = document.getElementById('sidebar-signature-preview-wrapper');
+      const img = document.getElementById('sidebar-signature-preview');
+      if (id === 'custom') {
+        if (img) img.src = '';
+        wrapper?.classList.add('hidden');
+        return;
+      }
+      const sig = signaturesList.find((s) => s.id === id);
+      if (sig && sig.signature_image) {
+        if (img) img.src = sig.signature_image;
+        wrapper?.classList.remove('hidden');
+      } else {
+        if (img) img.src = '';
+        wrapper?.classList.add('hidden');
+      }
+    };
+
     document.getElementById('config-signature-selector')?.addEventListener('change', (e) => {
       const id = e.target.value;
-      const sig = signaturesList.find((s) => s.id === id);
-      if (!sig) return;
+      const customWrapper = document.getElementById('custom-signature-input-wrapper');
+      
+      updateSidebarSignaturePreview(id);
 
+      if (id === 'custom') {
+        customWrapper?.classList.remove('hidden');
+        const customVal = document.getElementById('config-custom-signature-name')?.value || '';
+        document.querySelectorAll('#print-sig-name-std, #print-sig-name-arr').forEach(el => {
+          el.textContent = customVal;
+        });
+        document.querySelectorAll('.signature-image-render').forEach(el => {
+          el.src = '';
+          el.classList.add('hidden');
+        });
+      } else {
+        customWrapper?.classList.add('hidden');
+        const sig = signaturesList.find((s) => s.id === id);
+        if (!sig) return;
+        document.querySelectorAll('#print-sig-name-std, #print-sig-name-arr').forEach(el => {
+          el.textContent = sig.signatory_name || '';
+        });
+        document.querySelectorAll('.signature-image-render').forEach(el => {
+          if (sig.signature_image) {
+            el.src = sig.signature_image;
+            el.classList.remove('hidden');
+          } else {
+            el.src = '';
+            el.classList.add('hidden');
+          }
+        });
+      }
+    });
+
+    document.getElementById('config-custom-signature-name')?.addEventListener('input', (e) => {
+      const val = e.target.value;
       document.querySelectorAll('#print-sig-name-std, #print-sig-name-arr').forEach(el => {
-        el.textContent = sig.signatory_name || '';
+        el.textContent = val;
       });
     });
 
@@ -1765,6 +1947,20 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
         if (addr.permits_info) el.classList.remove('hidden');
         else el.classList.add('hidden');
       });
+
+      // Update Phone
+      document.querySelectorAll('#print-company-phone-std').forEach(el => {
+        el.textContent = addr.phone_number || '';
+      });
+      document.querySelectorAll('#print-company-phone-std-type').forEach(el => {
+        el.textContent = addr.phone_type || 'Phone';
+      });
+      document.querySelectorAll('#print-company-phone-arr').forEach(el => {
+        el.textContent = addr.phone_number || '';
+      });
+      document.querySelectorAll('#print-company-phone-arr-type').forEach(el => {
+        el.textContent = addr.phone_type || 'Tel';
+      });
     });
 
     // Save configuration to localStorage
@@ -1779,14 +1975,9 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
         'config-show-col-ref', 'config-show-col-spec', 'config-show-col-price',
         'config-show-subtotal', 'config-show-vat', 'config-show-discount', 'config-show-page-2',
         'config-show-company-card-tos', 'config-sig-placement', 'sig-client', 'sig-company', 
-        'config-show-disclaimer', 'config-electronic-sig',
+        'config-show-sig-image', 'config-show-stamp-box', 'config-show-disclaimer', 'config-electronic-sig',
         'config-remittance-placement', 'config-bank-name', 'config-bank-acc-name', 'config-bank-acc', 'config-bank-iban', 'config-bank-swift',
-        'config-bank-selector', 'config-signature-selector', 'config-address-selector',
-        'config-show-tos-general', 'config-show-tos-acceptance', 'config-show-tos-illustrations',
-        'config-show-tos-designs', 'config-show-tos-samples', 'config-show-tos-delivery',
-        'config-show-tos-cancellation', 'config-show-tos-returns', 'config-show-tos-payment',
-        'config-show-tos-installation', 'config-show-tos-warranty-workmanship',
-        'config-show-tos-warranty-product', 'config-show-tos-liability', 'config-show-tos-others'
+        'config-bank-selector', 'config-signature-selector', 'config-address-selector', 'config-only-selected-tos'
       ];
       inputs.forEach(id => {
         const el = document.getElementById(id);
@@ -1840,6 +2031,14 @@ const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/
     
     // Call loadSavedConfig on startup
     loadSavedConfig();
+    // Run filter
+    applySelectedTOSFilter();
+
+    // Set initial sidebar signature preview based on the current selector value
+    const initialSigId = document.getElementById('config-signature-selector')?.value;
+    if (initialSigId) {
+      updateSidebarSignaturePreview(initialSigId);
+    }
 
     // Auto print if requested via query param
     if (urlParams.get('autoprint') === 'true' || urlParams.get('download') === 'true') {

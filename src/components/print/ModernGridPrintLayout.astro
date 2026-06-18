@@ -11,8 +11,11 @@ interface Props {
   amountInWords: string;
   totalQty: number;
   documentTitle: string;
+  selectedClauses?: any[];
+  signatureImage?: string;
+  isCustomerDeleted?: boolean;
 }
-const { inv, items, settings, logoColor, isDGS, companyNameEN, companyNameAR, websiteURL, amountInWords, totalQty, documentTitle } = Astro.props;
+const { inv, items, settings, logoColor, isDGS, companyNameEN, companyNameAR, websiteURL, amountInWords, totalQty, documentTitle, selectedClauses = [], signatureImage, isCustomerDeleted = false } = Astro.props;
 
 // Determine items fit limits
 const maxItemsPage1 = inv.order_type === 'delivery_note' ? 9 : 5;
@@ -32,9 +35,28 @@ if (items.length <= maxItemsPage1) {
 }
 
 const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
+
+const getClause = (identifier: string, fallback: string): string => {
+  const clause = selectedClauses.find((c: any) => c.identifier === identifier);
+  return clause ? clause.content : fallback;
+};
+
+let activeTerms: string[] = [];
+try {
+  activeTerms = inv.payment_terms ? JSON.parse(inv.payment_terms) : [];
+} catch (e) {
+  if (typeof inv.payment_terms === 'string') {
+    activeTerms = inv.payment_terms.split(',').map((t: string) => t.trim());
+  }
+}
+
+const isTermActive = (identifier: string): boolean => {
+  if (!inv.payment_terms) return true;
+  return activeTerms.includes(identifier);
+};
 ---
 
-<div id="layout-arrco" class="arrco-container w-full flex flex-col items-center gap-8">
+<div id="layout-delightgroupllc" class="delightgroupllc-container w-full flex flex-col items-center gap-8">
   {pagesOfItems.map((pageItems, pageIdx) => {
     const isFirstPage = pageIdx === 0;
     const isLastPage = pageIdx === pagesOfItems.length - 1;
@@ -43,124 +65,124 @@ const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
     return (
       <div class="print-page bg-white shadow-xl border border-slate-250 p-12 relative print:p-0 print:border-none print:shadow-none mb-8">
         <!-- Faint Brand Watermark Centered Behind Page Content -->
-        <div class="arrco-watermark print-watermark">
+        <div class="delightgroupllc-watermark print-watermark">
           <img src="/dgllclogolarge.png" id="watermark-img" style="width: 100%; height: auto; object-fit: contain; opacity: 0.06;" />
         </div>
 
         {isFirstPage ? (
           <!-- Header (Full Logo + Address) -->
-          <table class="arrco-header">
+          <table class="delightgroupllc-header">
             <tr>
-              <td class="arrco-logo-td">
-                <div class="arrco-logo-svg-wrapper print-logo-container">
+              <td class="delightgroupllc-logo-td">
+                <div class="delightgroupllc-logo-svg-wrapper print-logo-container">
                   <img src={isDGS ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-28 w-auto object-contain" id="print-company-logo" />
                 </div>
               </td>
-              <td class="arrco-address-td">
-                <div class="arrco-company-name-ar">{companyNameAR}</div>
-                <div class="arrco-company-name-en">{companyNameEN}</div>
-                <span class="arrco-website" style={`color: ${logoColor}`}>{websiteURL}</span>
+              <td class="delightgroupllc-address-td">
+                <div class="delightgroupllc-company-name-ar">{companyNameAR}</div>
+                <div class="delightgroupllc-company-name-en">{companyNameEN}</div>
+                <span class="delightgroupllc-website" style={`color: ${logoColor}`}>{websiteURL}</span>
                 <div style="margin-top: 3px; line-height: 1.35; color: #475569;">
                   <span id="print-company-address-arr">{settings.business_address || settings.company_address || 'Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE'}</span><br>
                   <span id="print-company-reg-arr-wrapper" class={settings.business_registration ? "" : "hidden"}>Reg: <span id="print-company-reg-arr">{settings.business_registration || ''}</span> | </span>
                   <span id="print-company-permits-arr-wrapper" class={settings.permits_info ? "" : "hidden"}>Permits: <span id="print-company-permits-arr" class="italic">{settings.permits_info || ''}</span> | </span>
-                  Tel: {settings.contact_phone || '+971 (4) 555-0100'} | Email: {settings.contact_email || 'sales@delightgroupllc.com'}
+                  <span id="print-company-phone-arr-type">{settings.phone_type || 'Tel'}</span>: <span id="print-company-phone-arr">{settings.phone_number || settings.contact_phone || '+971 (4) 555-0100'}</span> | Email: {settings.contact_email || 'sales@delightgroupllc.com'}
                 </div>
               </td>
             </tr>
           </table>
 
           <!-- Document Title -->
-          <div class="arrco-doc-title-section">
-            <h1 class="arrco-doc-title">{documentTitle}</h1>
-            <p class="arrco-trn-label">TRN NO: <span id="print-company-trn-arr">{settings.trn_number || '105441325500003'}</span></p>
+          <div class="delightgroupllc-doc-title-section">
+            <h1 class="delightgroupllc-doc-title">{documentTitle}</h1>
+            <p class="delightgroupllc-trn-label">TRN NO: <span id="print-company-trn-arr">{settings.trn_number || '105441325500003'}</span></p>
           </div>
 
           <!-- Details Grid Box -->
-          <table class="arrco-grid-table">
+          <table class="delightgroupllc-grid-table">
             <tr>
               <!-- Customer Details -->
-              <td class="arrco-grid-td">
-                <table class="arrco-field-table">
+              <td class="delightgroupllc-grid-td">
+                <table class="delightgroupllc-field-table">
                   <tr>
-                    <td class="arrco-field-label">Customer Code:</td>
-                    <td class="arrco-field-value">CUS-{inv.customer_phone ? inv.customer_phone.replace(/\D/g, '').slice(-6) : '002334'}</td>
+                    <td class="delightgroupllc-field-label">Customer Code:</td>
+                    <td class="delightgroupllc-field-value">CUS-{inv.customer_phone ? inv.customer_phone.replace(/\D/g, '').slice(-6) : '002334'}</td>
                   </tr>
                   <tr class="print-cust-company">
-                    <td class="arrco-field-label">Customer Name:</td>
-                    <td class="arrco-field-value uppercase">{inv.customer_name}</td>
+                    <td class="delightgroupllc-field-label">Customer Name:</td>
+                    <td class="delightgroupllc-field-value uppercase">{inv.customer_name}{isCustomerDeleted ? '*' : ''}</td>
                   </tr>
                   <tr class="print-cust-company">
-                    <td class="arrco-field-label">Contact Name:</td>
-                    <td class="arrco-field-value uppercase">{inv.company_name || inv.customer_name}</td>
+                    <td class="delightgroupllc-field-label">Contact Name:</td>
+                    <td class="delightgroupllc-field-value uppercase">{inv.company_name || inv.customer_name}</td>
                   </tr>
                   <tr class="print-cust-address">
-                    <td class="arrco-field-label">Customer Address:</td>
-                    <td class="arrco-field-value uppercase" style="white-space: pre-line;">{inv.billing_address || 'DUBAI, UAE'}</td>
+                    <td class="delightgroupllc-field-label">Customer Address:</td>
+                    <td class="delightgroupllc-field-value uppercase" style="white-space: pre-line;">{inv.billing_address || 'DUBAI, UAE'}</td>
                   </tr>
                   <tr class="print-cust-contact">
-                    <td class="arrco-field-label">Contact Number:</td>
-                    <td class="arrco-field-value">{inv.customer_phone || '—'}</td>
+                    <td class="delightgroupllc-field-label">Contact Number:</td>
+                    <td class="delightgroupllc-field-value">{inv.customer_phone || '—'}</td>
                   </tr>
                   <tr class="print-cust-trn">
-                    <td class="arrco-field-label">TRN Number:</td>
-                    <td class="arrco-field-value font-mono">{inv.company_vat || '—'}</td>
+                    <td class="delightgroupllc-field-label">TRN Number:</td>
+                    <td class="delightgroupllc-field-value font-mono">{inv.company_vat || '—'}</td>
                   </tr>
                 </table>
               </td>
 
               <!-- Order Metadata -->
-              <td class="arrco-grid-td">
-                <table class="arrco-field-table">
+              <td class="delightgroupllc-grid-td">
+                <table class="delightgroupllc-field-table">
                   {inv.order_type === 'delivery_note' ? (
                     <tr>
-                      <td class="arrco-field-label">Delivery Note Number:</td>
-                      <td class="arrco-field-value font-mono">{inv.invoice_number}</td>
+                      <td class="delightgroupllc-field-label">Delivery Note Number:</td>
+                      <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
                     </tr>
                     <tr class="print-info-date">
-                      <td class="arrco-field-label">Delivery Date:</td>
-                      <td class="arrco-field-value">{new Date(inv.issue_date).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
+                      <td class="delightgroupllc-field-label">Delivery Date:</td>
+                      <td class="delightgroupllc-field-value">{new Date(inv.issue_date).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
                     </tr>
                     <tr class="print-info-status">
-                      <td class="arrco-field-label">Sales Person:</td>
-                      <td class="arrco-field-value">{settings.signatory_name || 'Management'}</td>
+                      <td class="delightgroupllc-field-label">Sales Person:</td>
+                      <td class="delightgroupllc-field-value">{settings.signatory_name || 'Management'}</td>
                     </tr>
                     <tr class="print-info-due">
-                      <td class="arrco-field-label">Sales Person Contact:</td>
-                      <td class="arrco-field-value">{settings.contact_phone || '—'}</td>
+                      <td class="delightgroupllc-field-label">Sales Person Contact:</td>
+                      <td class="delightgroupllc-field-value">{settings.contact_phone || '—'}</td>
                     </tr>
                     <tr>
-                      <td class="arrco-field-label">LPO Number:</td>
-                      <td class="arrco-field-value font-mono">{inv.lpo_number || '—'}</td>
+                      <td class="delightgroupllc-field-label">LPO Number:</td>
+                      <td class="delightgroupllc-field-value font-mono">{inv.lpo_number || '—'}</td>
                     </tr>
                     <tr>
-                      <td class="arrco-field-label">Invoice Reference:</td>
-                      <td class="arrco-field-value font-mono">{inv.invoice_number}</td>
+                      <td class="delightgroupllc-field-label">Invoice Reference:</td>
+                      <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
                     </tr>
                   ) : (
                     <tr class="print-info-date">
-                      <td class="arrco-field-label">Invoice Date:</td>
-                      <td class="arrco-field-value">{new Date(inv.issue_date).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
+                      <td class="delightgroupllc-field-label">Invoice Date:</td>
+                      <td class="delightgroupllc-field-value">{new Date(inv.issue_date).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
                     </tr>
                     <tr>
-                      <td class="arrco-field-label">Invoice Number:</td>
-                      <td class="arrco-field-value font-mono">{inv.invoice_number}</td>
+                      <td class="delightgroupllc-field-label">Invoice Number:</td>
+                      <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
                     </tr>
                     <tr class="print-info-status">
-                      <td class="arrco-field-label">Sales Person:</td>
-                      <td class="arrco-field-value">{settings.signatory_name || 'Management'}</td>
+                      <td class="delightgroupllc-field-label">Sales Person:</td>
+                      <td class="delightgroupllc-field-value">{settings.signatory_name || 'Management'}</td>
                     </tr>
                     <tr class="print-info-status">
-                      <td class="arrco-field-label">Sales Person Contact:</td>
-                      <td class="arrco-field-value">{settings.contact_phone || '—'}</td>
+                      <td class="delightgroupllc-field-label">Sales Person Contact:</td>
+                      <td class="delightgroupllc-field-value">{settings.contact_phone || '—'}</td>
                     </tr>
                     <tr>
-                      <td class="arrco-field-label">LPO Number:</td>
-                      <td class="arrco-field-value font-mono">{inv.lpo_number || '—'}</td>
+                      <td class="delightgroupllc-field-label">LPO Number:</td>
+                      <td class="delightgroupllc-field-value font-mono">{inv.lpo_number || '—'}</td>
                     </tr>
                     <tr class="print-info-due">
-                      <td class="arrco-field-label">Quotation Reference:</td>
-                      <td class="arrco-field-value font-mono">{inv.lpo_number || '—'}</td>
+                      <td class="delightgroupllc-field-label">Quotation Reference:</td>
+                      <td class="delightgroupllc-field-value font-mono">{inv.lpo_number || '—'}</td>
                     </tr>
                   )}
                 </table>
@@ -169,7 +191,7 @@ const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
           </table>
         ) : (
           <!-- Compact Continuation Header -->
-          <table class="arrco-header w-full" style="margin-bottom: 20px; border-bottom: 1.5px solid #000000; padding-bottom: 8px;">
+          <table class="delightgroupllc-header w-full" style="margin-bottom: 20px; border-bottom: 1.5px solid #000000; padding-bottom: 8px;">
             <tr>
               <td>
                 <img src={isDGS ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-12 w-auto object-contain" />
@@ -183,7 +205,7 @@ const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
 
         <!-- TABLE SECTION -->
         {inv.order_type === 'delivery_note' ? (
-          <table class="arrco-table">
+          <table class="delightgroupllc-table">
             <thead>
               <tr>
                 <th style="width: 7%; text-align: center;">Sl.No</th>
@@ -214,7 +236,7 @@ const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
             </tbody>
           </table>
         ) : (
-          <table class="arrco-table">
+          <table class="delightgroupllc-table">
             <thead>
               <tr>
                 <th style="width: 5%; text-align: center;">S/No</th>
@@ -261,47 +283,52 @@ const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
         <!-- FOOTER / SIGNATURES (ON LAST PAGE ONLY) -->
         {isLastPage && (
           inv.order_type === 'delivery_note' ? (
-            <div class="arrco-dn-totals">
+            <div class="delightgroupllc-dn-totals">
               Total Items Quantity &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="font-mono">{totalQty}</span>
             </div>
 
-            <div class="arrco-dn-fields print-electronic-badge">
-              <div class="arrco-dn-fields-box">
+            <div class="delightgroupllc-dn-fields print-electronic-badge">
+              <div class="delightgroupllc-dn-fields-box">
                 <span class="text-muted block" style="font-size: 7.5pt; font-weight: 600;">Contact Person:</span>
                 <span class="font-bold" style="font-size: 9pt;">{inv.customer_name}</span>
               </div>
-              <div class="arrco-dn-fields-box">
+              <div class="delightgroupllc-dn-fields-box">
                 <span class="text-muted block" style="font-size: 7.5pt; font-weight: 600;">Contact Number:</span>
                 <span class="font-bold" style="font-size: 9pt;">{inv.customer_phone || '—'}</span>
               </div>
-              <div class="arrco-dn-fields-box">
+              <div class="delightgroupllc-dn-fields-box">
                 <span class="text-muted block" style="font-size: 7.5pt; font-weight: 600;">Description:</span>
                 <span class="font-bold" style="font-size: 9pt;">{inv.internal_notes || '—'}</span>
               </div>
             </div>
 
-            <div class="arrco-dn-signatures print-signature-section">
-              <div class="arrco-dn-sign-box" id="dn-sig-client-block">
+            <div class="delightgroupllc-dn-signatures print-signature-section">
+              <div class="delightgroupllc-dn-sign-box print-sig-client-col" id="dn-sig-client-block">
                 Received By:<br>
                 Contact Number:<br>
                 Received Date:<br>
-                <div class="arrco-dn-sign-line">Customer Signature</div>
+                <div class="delightgroupllc-dn-sign-line">Customer Signature</div>
               </div>
-              <div class="arrco-dn-sign-box text-right" id="dn-sig-company-block" style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
+              <div class="delightgroupllc-dn-sign-box text-right print-sig-company-col" id="dn-sig-company-block" style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
                 <div>For {companyNameEN}</div>
-                <div class="arrco-dn-sign-line" style="width: 70%; text-align: center;">Authorized Signatory (<span id="print-sig-name-arr">{settings.signatory_name || 'Management'}</span>)</div>
+                <!-- Dynamic Stamp Space -->
+                <div class="print-stamp-box hidden" style="height: 60px;"></div>
+                <div class="signature-image-container relative flex justify-center items-end h-12 -mb-3 z-10 w-[70%]">
+                  <img class={"signature-image-render h-12 w-auto object-contain " + (signatureImage ? "" : "hidden")} src={signatureImage || ""} />
+                </div>
+                <div class="delightgroupllc-dn-sign-line" style="width: 70%; text-align: center; margin-top: 0px;">Authorized Signatory (<span id="print-sig-name-arr">{settings.signatory_name || 'Management'}</span>)</div>
               </div>
             </div>
 
-            <p class="arrco-dn-note print-electronic-badge">NOTE: Customer must check good's condition and quantity at the time of delivery of the material</p>
+            <p class="delightgroupllc-dn-note print-electronic-badge">NOTE: Customer must check good's condition and quantity at the time of delivery of the material</p>
           ) : (
-            <div class="arrco-inv-bottom-grid">
-              <div class="arrco-inv-words-panel">
+            <div class="delightgroupllc-inv-bottom-grid">
+              <div class="delightgroupllc-inv-words-panel">
                 <span class="font-bold text-muted uppercase tracking-wider" style="font-size: 7.5pt; display: block; margin-bottom: 5px;">Amount in words:</span>
                 <span class="font-bold" style="font-size: 9.5pt; color: #000000;">{amountInWords}</span>
               </div>
-              <div class="arrco-inv-totals-panel">
-                <table class="arrco-inv-totals-table">
+              <div class="delightgroupllc-inv-totals-panel">
+                <table class="delightgroupllc-inv-totals-table">
                   <tr class="print-total-subtotal">
                     <td>Total Amount</td>
                     <td>{Number(inv.subtotal).toFixed(2)}</td>
@@ -337,22 +364,39 @@ const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
               </div>
             </div>
 
-            <div class="arrco-inv-signature-section print-signature-section" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 15px; margin-top: 20px;">
-              <div class="arrco-inv-disclaimer-text print-disclaimer-text">
-                <strong>Disclaimer:</strong><br>
-                By submitting payment, the Customer acknowledges and agrees that he/she has read, understood, and accepted the terms of sale. Payment shall constitute full acceptance of these terms without limitation or qualification.
+            <div class="delightgroupllc-inv-signature-section print-signature-section" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 15px; margin-top: 20px;">
+              <div class="delightgroupllc-inv-disclaimer-text print-disclaimer-text">
+                {(() => {
+                  const disclaimerClauses = selectedClauses.filter((clause: any) => clause.identifier === 'disclaimer' || (clause.title && clause.title.toLowerCase().includes('disclaimer')));
+                  return disclaimerClauses.length > 0 ? (
+                    disclaimerClauses.map((clause: any) => (
+                      <div class="mb-1">
+                        <strong>{clause.title}:</strong> {clause.content}
+                      </div>
+                    ))
+                  ) : (
+                    <div>
+                      <strong>Disclaimer:</strong><br/>
+                      By submitting payment, the Customer acknowledges and agrees that he/she has read, understood, and accepted the terms of sale. Payment shall constitute full acceptance of these terms without limitation or qualification.
+                    </div>
+                  );
+                })()}
               </div>
               <div class="print-sig-client-col" style="width: 30%; min-width: 140px; margin-bottom: 5px;">
                 <div style="border-top: 1.5px solid #000000; margin-top: 50px; padding-top: 4px; font-size: 7.5pt; font-weight: 700; text-align: center; text-transform: uppercase;">
                   Customer Signature
                 </div>
               </div>
-              <div class="arrco-inv-sign-stamp-box print-sig-company-col" id="inv-sig-stamp-block" style="width: 35%; min-width: 160px;">
-                <div class="arrco-inv-sign-stamp-header">For {companyNameEN}</div>
-                <div class="arrco-inv-sign-stamp-body"></div>
-                <div class="arrco-inv-sign-stamp-footer">
-                  <div class="arrco-inv-sign-stamp-footer-cell">signature</div>
-                  <div class="arrco-inv-sign-stamp-footer-cell">date</div>
+              <div class="delightgroupllc-inv-sign-stamp-box print-sig-company-col" id="inv-sig-stamp-block" style="width: 35%; min-width: 160px;">
+                <div class="delightgroupllc-inv-sign-stamp-header">For {companyNameEN}</div>
+                <div class="delightgroupllc-inv-sign-stamp-body flex items-center justify-center" style="height: 60px; position: relative;">
+                  <!-- Dynamic Stamp Space -->
+                  <div class="print-stamp-box hidden" style="height: 10px;"></div>
+                  <img class={"signature-image-render h-12 w-auto object-contain " + (signatureImage ? "" : "hidden")} src={signatureImage || ""} style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);" />
+                </div>
+                <div class="delightgroupllc-inv-sign-stamp-footer">
+                  <div class="delightgroupllc-inv-sign-stamp-footer-cell">signature</div>
+                  <div class="delightgroupllc-inv-sign-stamp-footer-cell">date</div>
                 </div>
               </div>
             </div>
@@ -376,7 +420,7 @@ const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
   {inv.order_type !== 'delivery_note' && (
     <div class="print-page bg-white shadow-xl border border-slate-250 p-12 relative print:p-0 print:border-none print:shadow-none mb-8 print-page-2-container">
       <!-- Faint Watermark on Terms Page -->
-      <div class="arrco-watermark print-watermark">
+      <div class="delightgroupllc-watermark print-watermark">
         <img src="/dgllclogolarge.png" id="watermark-img-p2" style="width: 100%; height: auto; object-fit: contain; opacity: 0.06;" />
       </div>
 
@@ -388,70 +432,17 @@ const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
       <div class="terms-page">
         <h2 class="terms-title">Terms of Sale</h2>
         <div class="terms-columns">
-          <div class="terms-col">
-            <div class="terms-section terms-sec-general">
-              <h3 class="terms-section-title">General:</h3>
-              <p>The "Seller" means {companyNameEN}. The "Buyer" means the person, firm or company to whom the seller sells the Goods to. All quotations are given and all orders are accepted on these terms. Replace and supersede any other terms wherever appearing and override will exclude any other terms stipulated or incorporated or referred to by the Buyer, whether in the order or in any negotiations, and any course of dealing established between the Seller and the Buyer. All orders hereafter made by the buyer shall be deemed to be made subject to these terms.</p>
-            </div>
-            <div class="terms-section terms-sec-acceptance">
-              <h3 class="terms-section-title">Acceptance of order:</h3>
-              <p>No contract for the sale of goods shall be concluded until either the seller sends or otherwise communicates to the buyers its acceptance of the buyer's order. No modification of these terms shall be effective unless made by an express written agreement between the parties. If we are unable to accept your order, we will inform you of this and will not charge you for the product. This might be because the product is out of stock, because we have identified an error in the price or description of the product or because we are unable to meet a delivery deadline or product is discontinued. Once you confirm you would like to place an order, our acceptance of your order will take place when you send us a Purchase Order confirmation document, at which point a contract will come into existence between you and us. You cannot make any changes to your order after we have received your Purchase Order confirmation so please check the Sales Quotation carefully.</p>
-              <p>You are only able to amend or request for refund 3 days after you have confirmed the order, made advance / deposit or full payment. Outside of this grace period no amendments or cancellation can be made to your order.</p>
-            </div>
-            <div class="terms-section terms-sec-illustrations">
-              <h3 class="terms-section-title">Illustrations, Description, Dimensions, Weight, Volume:</h3>
-              <p>All descriptions and illustrations contained in catalogues, Price lists, submittals, advertisements or elsewhere are intended to merely present a general idea of the goods describe therein and nothing contained in any of them shall form part of the contract.</p>
-            </div>
-            <div class="terms-section terms-sec-designs">
-              <h3 class="terms-section-title">Designs:</h3>
-              <p>The seller's policy is one of continuous improvement. The right to change designs at any time without is reserved.</p>
-            </div>
-            <div class="terms-section terms-sec-samples">
-              <h3 class="terms-section-title">Samples:</h3>
-              <p>Notwithstanding that a sample of the goods may have been exhibited to and inspected by the Buyers, it is hereby agreed that such sample is so exhibited and inspected solely to enable the Buyers to judge for themselves the quality of the bulk and not so as to constitute a sale by sample. The buyers shall take the goods at their own risk as to their corresponding with the said sample or as to their quality condition or sufficiency for any purpose.</p>
-            </div>
-            <div class="terms-section flex-col terms-sec-delivery">
-              <h3 class="terms-section-title">Delivery:</h3>
-              <p>All delivery dates are estimated and the time for delivery shall be of the essence of the contract. Under no circumstances shall the seller be liable to compensate the Buyers in damages or otherwise for non-delivery of late delivery of the goods or any them for whatever reason or for any loss consequential or otherwise arising there from. The seller reserves the right to make partial deliveries and to allocate available supplies amongst customers. In time of shortage the seller shall be entitled to deliver the goods in one or more consignments unless otherwise expressly agreed. Delivery shall be deemed to take place, when the goods are dispatched from the seller's premises. The seller shall not be liable for any loss of any kind to the buyer arising from any damage for the good occurring after the risk has passed to the buyers. However, caused nor shall any liability of the buyers to the seller be diminished or extinguished by reasons of such loss. We are not responsible for delays outside our control. If your delivery of the products is delayed by an event outside our control then we will contact you as soon as possible to let you know and we will take steps to minimise the effect of the delay. Once the order is placed and payment is fully made, you will have to collect your products within limited time of 5-7 working days of the product(s) availability or collection notification by our office. Failing to collect, {companyNameEN} reserves the rights to re-sell the particular product(s) to other customer(s) should deem necessary. When you/your company claims for the collection outside of this collection date (5-7 working days) we will be considered this as new order and new charges will be applicable for the same with updated lead time.</p>
-            </div>
-            <div class="terms-section terms-sec-cancellation">
-              <h3 class="terms-section-title">Cancellation:</h3>
-              <p>No Cancellation will be accepted after 5 days from the date of LPO. Any Cancellation after stipulated time, advance payment will be forfeited. No Cancellation's will be allowed in case of partial delivery and customized items.</p>
-              <p>All Prices quoted include delivery to site or to Buyer's stores in the United Arab Emirates. The seller shall repair or replace free of charge goods damaged in transit or not delivered in accordance with the invoice and packing list, provided that in the event of damage of shortage, Written notification giving details of such damage or shortage must be sent to the seller within 7 days of receipt and in the case of non-delivery within 10 days of the date shown on the advice, in the event of failure to give notice within the aforementioned period the Goods will be deemed to be in all respects as invoiced.</p>
-            </div>
-          </div>
-
-          <div class="terms-col">
-            <div class="terms-section terms-sec-returns">
-              <h3 class="terms-section-title">Returns:</h3>
-              <p>Goods supplied in accordance with the Buyer's orders cannot be accepted for return without seller's written consent, if such consent is given an administration charges will be made. Returned Goods must be sent carriage free at the Buyers risk and will only be accepted if package in the original carton which in the seller's opinion is in a saleable condition. Only Goods of current design will be accepted for return. Goods can only be returned within 30 days of invoice. Pre-order or customised items from the date of order cannot be modified, returned, exchanged or refunded.</p>
-            </div>
-            <div class="terms-section terms-sec-payment">
-              <h3 class="terms-section-title">Payment:</h3>
-              <p>Payment shall be made in UAE Dirham's as per terms and conditions set out in the seller's quotation. All invoices will be raised in accordance with the rule of the land applicable there to from time to time. Interest on all sums due shall run at the rate of 2 percent per annum over the base lending rates of Commercial bank of Dubai until payment is received before as well as after any judgment thereof. Any bounce cheque will incur 500/- AED charges to Buyer. Please note that {companyNameEN} will accept 50,000 Dirhams maximum via credit card, 2% of the total value will be charged on any exceeding amount. The payment by the buyers from the seller for the goods can be made through bankers cheque, T.T, card payments or cash. The seller will identify the best payment method for the goods purchased by the buyers to eliminate difficulty for both parties.</p>
-            </div>
-            <div class="terms-section terms-sec-installation">
-              <h3 class="terms-section-title">Installation:</h3>
-              <p>We provide installation services for all the items purchased through our store. Our Team will visit your site for survey to identify the area and location of the fitting(s) to be installed. Upon completion of the survey we will provide you with the applicable installation charge and time. If identified area or location is not suitable to be installed our services team will advise you and may provide you with an alternative solution.</p>
-            </div>
-            <div class="terms-section terms-sec-warranty-workmanship">
-              <h3 class="terms-section-title">Workmanship Warranty:</h3>
-              <p>The workmanship warranty applies for 18 months from the date of project completion. The warranty is applied to products that are supplied and installed by us.</p>
-            </div>
-            <div class="terms-section terms-sec-warranty-product">
-              <h3 class="terms-section-title">Product Warranty:</h3>
-              <p>The product warranty is covered against manufacturing and material defects. The warranty shall be valid from the invoice date, subject to the full settlement of the invoice amount. Any delay in payment may affect the warranty commencement. The warranty claim will be considered after initial inspection of the defective products. The warranty includes only repair or replacement of the products with new fully functional product. The warranty does not cover a) rust, paint defect or physical damage due to poor storage conditions or improper use/ management; b) products that have been modified or repaired by any unauthorized personnel; c) Failure due to exposure to extreme conditions e.g. thunder, water ingress, fire, bad ventilation or other conditions beyond the control of the company d) Failures due to compatibility issues between the products and installation environment e.g. control system, power supply or the use of generators e) Any fading of fixtures due to environmental condition. The warranty can be claimed by submitting the faulty product with the respective invoice.</p>
-            </div>
-            <div class="terms-section terms-sec-liability">
-              <h3 class="terms-section-title">Liability:</h3>
-              <p>These terms set out the seller's entire liability in respect of the Goods and the seller's liability under these terms shall be in lieu and to the exclusion of all other warranties. Conditions, terms and liabilities expressed or implied statutory or otherwise in respect of the quality or the fitness of any particular purpose of the Goods or otherwise (Notwithstanding any advice or representation to the Buyer, all liability in respect of which howsoever arising is expressly excluded) accept any implied by law which law cannot be excluded. Save as provided in these terms and except as aforesaid the seller shall not be under any liability, Whether in contract or otherwise in respect of defects in the goods or for under no liability to any purchaser of the Goods from the buyers in any event the seller's from such defects or failure or from any work done in connection therewith. The seller shall be under no liability to any purchaser of the Goods from the buyers in any event the seller's liability (if any) whether in contract or otherwise in respect of any defects in the Goods or for any break of this agreement or of any duty owned to the Buyers in connection herewith, Shall be further limited in the aggregate to the price of the goods in question. Nothing in these terms shall restrict the seller's liability for death or personal injury caused by the seller's negligence.</p>
-              <p>We are not accountable for any physical damages occurred, if the items supplied are installed by any third party team.</p>
-            </div>
-            <div class="terms-section terms-sec-others">
-              <h3 class="terms-section-title">Others:</h3>
-              <p>Any discrepancy in the document should be communicated in writing within 7 days of document date. By signing this document, the customer accepts the terms, receipts of all materials mentioned above in good condition and complete quantity and has no further claims whatsoever.</p>
-            </div>
-          </div>
+          {selectedClauses
+            .map((clause: any) => {
+              const sanitizedIdent = clause.identifier.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+              return (
+                <div class={`terms-section terms-sec-${sanitizedIdent} ${isTermActive(clause.identifier) ? '' : 'hidden'}`}>
+                  <h3 class="terms-section-title">{clause.title}:</h3>
+                  <div set:html={clause.content}></div>
+                </div>
+              );
+            })
+          }
         </div>
 
         <!-- Uniform Bottom Row for Bank details and Company Stamp Card -->
@@ -483,10 +474,6 @@ const totalPages = pagesOfItems.length + 1; // +1 for Terms of Sale page
                     <span id="print-company-permits-arr-p2-wrapper" class={settings.permits_info ? "block" : "hidden"} style="font-size: 5pt; margin-top: 1px;">Permits: <span id="print-company-permits-arr-p2" class="italic">{settings.permits_info || ''}</span></span>
                   </div>
                 </div>
-              </div>
-              <div style="width: 65px; border: 1.5px solid #000000; text-align: center; background: white; padding: 2px; border-radius: 1px;">
-                <span style="font-size: 5pt; display: block; font-weight: bold; background: black; color: white; margin:-2px -2px 2px -2px; text-transform: uppercase;">stamp</span>
-                <div style="height: 18px;"></div>
               </div>
             </div>
           </div>
