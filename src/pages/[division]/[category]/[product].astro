@@ -58,7 +58,7 @@ try {
 
   // 3. Get all images for slideshow
   const imgRes = await query(
-    `SELECT * FROM product_images WHERE product_id = $1 ORDER BY is_primary DESC, created_at ASC`,
+    `SELECT * FROM product_images WHERE product_id = $1 ORDER BY is_primary DESC`,
     [productDetails.id]
   );
   productDetails.images = imgRes.rows.map((r: any) => r.url);
@@ -70,7 +70,7 @@ try {
     return Astro.redirect(`/${divSlug}/${catSlug}`);
   }
 } catch (err: any) {
-  console.warn('Database offline, running mock product telemetry sheets:', err.message);
+  console.warn('[product.astro] DB query failed:', err.message);
   dbConnected = false;
   
   // Custom mock details
