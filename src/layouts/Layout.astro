@@ -164,17 +164,18 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
 
       /* Secondary nav transition on scroll */
       #secondary-nav-container {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        max-height: 40px;
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        max-height: 60px;
         opacity: 1;
         transform: translateY(0);
-        overflow: hidden;
+        overflow: visible; /* MUST be visible so dropdown panels aren't clipped */
       }
       header.hide-secondary:not(:hover) #secondary-nav-container {
         max-height: 0 !important;
         opacity: 0 !important;
         transform: translateY(-10px) !important;
         pointer-events: none !important;
+        overflow: hidden !important; /* Only clip during collapse animation */
       }
     </style>
   </head>
@@ -332,17 +333,19 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               <div class="flex-none w-64"></div>
               
               <!-- Center navigation items (Centered) -->
-              <div class="flex items-center justify-center gap-6 flex-grow">
+              <div class="relative flex items-center justify-center gap-6 flex-grow">
                 
                 <!-- 1) Products Dropdown -->
-                <div class="group py-2 flex items-center cursor-pointer">
+                <div class="group h-10 flex items-center cursor-pointer">
                   <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
                     Products
                   </span>
 
                   <!-- Products Mega Menu Dropdown -->
-                  <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-5xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-6 md:p-8 mt-0.5 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
-                  <div class="grid grid-cols-5 gap-6">
+                  <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-3xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-6 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                    <!-- Transparent hover bridge: fills gap between nav and panel -->
+                    <div class="absolute -top-2 inset-x-0 h-2"></div>
+                    <div class="grid grid-cols-5 gap-6">
                     {isDTL ? (
                       <>
                         <div>
@@ -443,21 +446,23 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
                         </div>
                       </>
                     )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
               <!-- Vertical Divider -->
               <div class="h-5 w-px bg-slate-200/80"></div>
 
               <!-- 2) Solutions Dropdown -->
-              <div class="relative group py-2 flex items-center cursor-pointer">
+              <div class="group h-10 flex items-center cursor-pointer">
                 <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
                   Solutions
                 </span>
 
                 <!-- Solutions Dropdown Menu -->
-                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-96 bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0.5 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-3xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                  <!-- Transparent hover bridge -->
+                  <div class="absolute -top-2 inset-x-0 h-2"></div>
                   <div class="grid grid-cols-2">
                     <div class="border-r border-slate-100 p-4 space-y-1.5 text-left">
                       <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Retail Solutions</a>
@@ -502,17 +507,20 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               <div class="h-5 w-px bg-slate-200/80"></div>
 
               <!-- 5) All Categories / Grid Link -->
-              <div class="relative group py-2 flex items-center cursor-pointer">
+              <div class="group h-10 flex items-center cursor-pointer">
                 <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
                   All Categories
                 </span>
 
                 <!-- Categories Quick Links Menu -->
-                <div class={`absolute right-0 top-full w-64 bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0.5 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'} p-4`}>
-                  <div class="text-left font-extrabold text-[10px] uppercase tracking-wider text-slate-400 mb-2.5 px-2">Quick Navigation</div>
-                  <div class="space-y-1 text-left">
+                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-2xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'} p-6`}>
+                  <!-- Transparent hover bridge -->
+                  <div class="absolute -top-2 inset-x-0 h-2"></div>
+                  <div class="text-left font-extrabold text-[10px] uppercase tracking-wider text-slate-400 mb-4 px-2">Quick Navigation</div>
+                  <div class="grid grid-cols-3 gap-2 text-left">
                     {secondaryNavCategories.filter(cat => cat.divSlug === (isDTL ? 'delighttechnicallighting' : 'delightgreenscapes')).map(cat => (
-                      <a href={`/${cat.divSlug}/${cat.slug}`} class={`block px-3 py-2 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition ${isDTL ? 'hover:text-amber-650' : 'hover:text-emerald-700'}`}>
+                      <a href={`/${cat.divSlug}/${cat.slug}`} class={`flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 transition group/cat ${isDTL ? 'hover:text-amber-650' : 'hover:text-emerald-700'}`}>
+                        <span class={`w-1.5 h-1.5 rounded-full shrink-0 ${isDTL ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
                         {cat.name}
                       </a>
                     ))}
