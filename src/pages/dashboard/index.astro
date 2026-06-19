@@ -3,7 +3,10 @@ import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
 import { 
   DollarSign, FolderGit2, Inbox, ShieldCheck, 
-  TrendingUp, Activity, History, AlertTriangle 
+  TrendingUp, Activity, History, AlertTriangle,
+  Users, Building2, ShoppingBag, Layers,
+  FileText, CheckCircle2, XCircle, AlertCircle,
+  FileEdit, Archive
 } from '@lucide/astro';
 
 const user = Astro.locals.user;
@@ -16,7 +19,25 @@ let metrics = {
   totalRevenue: 0.00,
   projectCount: 0,
   accountStanding: 'NOMINAL',
-  activeInquiries: 0
+  activeInquiries: 0,
+  customerCount: 0,
+  companyCount: 0,
+  invoicesByStatus: {
+    paid: { count: 0, value: 0 },
+    unpaid: { count: 0, value: 0 },
+    overdue: { count: 0, value: 0 },
+    cancelled: { count: 0, value: 0 },
+    draft: { count: 0, value: 0 }
+  },
+  productsByStatus: {
+    active: 0,
+    inactive: 0,
+    draft: 0
+  },
+  projectsByStatus: {
+    active: 0,
+    archived: 0
+  }
 };
 
 let connectionStatuses = {
@@ -62,7 +83,35 @@ try {
     metrics.totalValuation = dbVal;
   }
 
-  // 7. Load connection status checks
+  // 7. Get Customers & Companies counts
+  const custCountRes = await query('SELECT COUNT(*) as count FROM customers');
+  metrics.customerCount = parseInt(custCountRes.rows[0].count);
+  
+  const compCountRes = await query("SELECT COUNT(DISTINCT company_name) as count FROM customers WHERE company_name IS NOT NULL AND company_name != ''");
+  metrics.companyCount = parseInt(compCountRes.rows[0].count);
+
+  // 8. Invoices Breakdown
+  const invRes = await query("SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as value, payment_status FROM invoices GROUP BY payment_status");
+  metrics.invoicesByStatus = invRes.rows.reduce((acc: any, row: any) => {
+    acc[row.payment_status] = { count: parseInt(row.count), value: parseFloat(row.value) };
+    return acc;
+  }, { paid: { count: 0, value: 0 }, unpaid: { count: 0, value: 0 }, overdue: { count: 0, value: 0 }, cancelled: { count: 0, value: 0 }, draft: { count: 0, value: 0 } });
+
+  // 9. Products Breakdown
+  const prodRes = await query("SELECT COUNT(*) as count, status FROM products GROUP BY status");
+  metrics.productsByStatus = prodRes.rows.reduce((acc: any, row: any) => {
+    acc[row.status] = parseInt(row.count);
+    return acc;
+  }, { active: 0, inactive: 0, draft: 0 });
+
+  // 10. Projects Breakdown
+  const projRes = await query("SELECT COUNT(*) as count, status FROM projects GROUP BY status");
+  metrics.projectsByStatus = projRes.rows.reduce((acc: any, row: any) => {
+    acc[row.status] = parseInt(row.count);
+    return acc;
+  }, { active: 0, archived: 0 });
+
+  // 11. Load connection status checks
   connectionStatuses.db.status = 'ONLINE';
   const start = Date.now();
   await query('SELECT 1');
@@ -80,11 +129,29 @@ try {
     totalRevenue: 12390.00,
     projectCount: 4,
     accountStanding: 'EXCELLENT',
-    activeInquiries: 2
+    activeInquiries: 2,
+    customerCount: 15,
+    companyCount: 8,
+    invoicesByStatus: {
+      paid: { count: 12, value: 12390.00 },
+      unpaid: { count: 4, value: 17700.00 },
+      overdue: { count: 1, value: 3200.00 },
+      cancelled: { count: 2, value: 4500.00 },
+      draft: { count: 3, value: 8900.00 }
+    },
+    productsByStatus: {
+      active: 42,
+      inactive: 5,
+      draft: 8
+    },
+    projectsByStatus: {
+      active: 6,
+      archived: 2
+    }
   };
 }
 
-// 8. Load other API keys/connection checks
+// 12. Load other API checks
 const hasClerkKey = !!(process.env.CLERK_SECRET_KEY || import.meta.env?.CLERK_SECRET_KEY);
 connectionStatuses.clerk.status = hasClerkKey ? 'CONFIGURED' : 'MISSING';
 
@@ -137,71 +204,214 @@ connectionStatuses.vercel.environment = process.env.NODE_ENV === 'production' ? 
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
     <!-- Metrics Grid (lg:col-span-12) -->
     <div class="lg:col-span-12 space-y-6">
-      <h3 class="text-sm font-bold font-display text-slate-900 uppercase tracking-wider">Metrics Grid</h3>
+      <h3 class="text-sm font-bold font-display text-slate-900 uppercase tracking-wider">Telemetry Overview</h3>
       
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {isAdmin ? (
-          <!-- Admin View: 6 Metrics -->
-          <>
-            <!-- Total Valuation -->
-            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Valuation</p>
-              <p class="text-2xl font-bold font-display text-slate-900">AED {metrics.totalValuation.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
+      {isAdmin ? (
+        <!-- Admin Command Center View -->
+        <div class="space-y-8">
+          
+          <!-- Financials & Orders Section -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <DollarSign class="h-4 w-4 text-emerald-500" />
+              Financials & Ledger Summary
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <!-- Total Revenue -->
+              <div class="rounded-xl border border-slate-200 bg-gradient-to-br from-emerald-50/30 to-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <div class="flex justify-between items-center">
+                  <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Revenue (Paid)</p>
+                  <span class="px-2 py-0.5 rounded-full text-3xs font-medium bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                    <CheckCircle2 class="h-3 w-3" />
+                    {metrics.invoicesByStatus.paid.count} Orders
+                  </span>
+                </div>
+                <p class="text-2xl font-bold font-display text-emerald-600">AED {metrics.totalRevenue.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
+                <p class="text-3xs text-slate-400">Settled and logged transactions</p>
+              </div>
+
+              <!-- Pending Settlements -->
+              <div class="rounded-xl border border-slate-200 bg-gradient-to-br from-amber-50/30 to-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <div class="flex justify-between items-center">
+                  <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Pending Settlements (Unpaid)</p>
+                  <span class="px-2 py-0.5 rounded-full text-3xs font-medium bg-amber-100 text-amber-800 flex items-center gap-1">
+                    <AlertCircle class="h-3 w-3" />
+                    {metrics.invoicesByStatus.unpaid.count} Pending
+                  </span>
+                </div>
+                <p class="text-2xl font-bold font-display text-amber-600">AED {metrics.pendingSettlements.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
+                <p class="text-3xs text-slate-400">Awaiting clearance/payment</p>
+              </div>
+
+              <!-- Stock Inventory Valuation -->
+              <div class="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50/50 to-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <div class="flex justify-between items-center">
+                  <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Stock Valuation</p>
+                  <span class="px-2 py-0.5 rounded-full text-3xs font-medium bg-slate-100 text-slate-800">
+                    Est. Value
+                  </span>
+                </div>
+                <p class="text-2xl font-bold font-display text-slate-900 font-mono">AED {metrics.totalValuation.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
+                <p class="text-3xs text-slate-400">Calculated from warehouse inventory levels</p>
+              </div>
             </div>
 
-            <!-- Pending Settlements -->
-            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Pending Settlements</p>
-              <p class="text-2xl font-bold font-display text-amber-600">AED {metrics.pendingSettlements.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
+            <!-- Invoices Ledger Breakdown Details -->
+            <div class="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <p class="text-xs font-bold text-slate-750 uppercase tracking-wider">Invoices & Orders Breakdown</p>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                <!-- Paid -->
+                <div class="border border-slate-100 rounded-lg p-3 bg-slate-50/50 flex flex-col justify-between">
+                  <span class="text-3xs font-semibold text-slate-500 uppercase">Paid</span>
+                  <span class="text-lg font-bold text-emerald-600 mt-1">{metrics.invoicesByStatus.paid.count}</span>
+                  <span class="text-3xs text-slate-400">AED {metrics.invoicesByStatus.paid.value.toLocaleString('en-AE', { maximumFractionDigits: 0 })}</span>
+                </div>
+                <!-- Unpaid -->
+                <div class="border border-slate-100 rounded-lg p-3 bg-slate-50/50 flex flex-col justify-between">
+                  <span class="text-3xs font-semibold text-slate-500 uppercase">Unpaid</span>
+                  <span class="text-lg font-bold text-amber-600 mt-1">{metrics.invoicesByStatus.unpaid.count}</span>
+                  <span class="text-3xs text-slate-400">AED {metrics.invoicesByStatus.unpaid.value.toLocaleString('en-AE', { maximumFractionDigits: 0 })}</span>
+                </div>
+                <!-- Overdue -->
+                <div class="border border-slate-100 rounded-lg p-3 bg-slate-50/50 flex flex-col justify-between">
+                  <span class="text-3xs font-semibold text-slate-500 uppercase">Overdue</span>
+                  <span class="text-lg font-bold text-rose-600 mt-1">{metrics.invoicesByStatus.overdue.count}</span>
+                  <span class="text-3xs text-slate-400">AED {metrics.invoicesByStatus.overdue.value.toLocaleString('en-AE', { maximumFractionDigits: 0 })}</span>
+                </div>
+                <!-- Drafts -->
+                <div class="border border-slate-100 rounded-lg p-3 bg-slate-50/50 flex flex-col justify-between">
+                  <span class="text-3xs font-semibold text-slate-500 uppercase">Drafts</span>
+                  <span class="text-lg font-bold text-slate-600 mt-1">{metrics.invoicesByStatus.draft.count}</span>
+                  <span class="text-3xs text-slate-400">AED {metrics.invoicesByStatus.draft.value.toLocaleString('en-AE', { maximumFractionDigits: 0 })}</span>
+                </div>
+                <!-- Cancelled (Trash) -->
+                <div class="border border-slate-100 rounded-lg p-3 bg-slate-50/50 flex flex-col justify-between">
+                  <span class="text-3xs font-semibold text-slate-500 uppercase">Cancelled / Trash</span>
+                  <span class="text-lg font-bold text-red-700 mt-1">{metrics.invoicesByStatus.cancelled.count}</span>
+                  <span class="text-3xs text-slate-400">AED {metrics.invoicesByStatus.cancelled.value.toLocaleString('en-AE', { maximumFractionDigits: 0 })}</span>
+                </div>
+              </div>
             </div>
+          </div>
 
-            <!-- Total Revenue -->
-            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Revenue</p>
-              <p class="text-2xl font-bold font-display text-emerald-600">AED {metrics.totalRevenue.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
-            </div>
+          <!-- CRM & Communications Section -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <Users class="h-4 w-4 text-blue-500" />
+              CRM & Communications
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <!-- Customers -->
+              <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Customers</p>
+                <p class="text-2xl font-bold font-display text-slate-900">{metrics.customerCount}</p>
+                <p class="text-3xs text-slate-400">Registered client accounts</p>
+              </div>
 
-            <!-- Project Count -->
-            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Project Count</p>
-              <p class="text-2xl font-bold font-display text-cyan-600">{metrics.projectCount} Collections</p>
-            </div>
+              <!-- Companies -->
+              <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Distinct Companies</p>
+                <p class="text-2xl font-bold font-display text-slate-900">{metrics.companyCount}</p>
+                <p class="text-3xs text-slate-400">Unique corporate entities</p>
+              </div>
 
-            <!-- Account Standing -->
-            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Account Standing</p>
-              <p class="text-2xl font-bold font-display text-emerald-600">{metrics.accountStanding}</p>
+              <!-- Active Enquiries -->
+              <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <div class="flex justify-between items-center">
+                  <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Active Inquiries</p>
+                  {metrics.activeInquiries > 0 && (
+                    <span class="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                  )}
+                </div>
+                <p class="text-2xl font-bold font-display text-blue-600">{metrics.activeInquiries} Pending</p>
+                <p class="text-3xs text-slate-400">Unresolved contact requests</p>
+              </div>
             </div>
+          </div>
 
-            <!-- Active Enquiries -->
-            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Active Inquiries</p>
-              <p class="text-2xl font-bold font-display text-blue-600">{metrics.activeInquiries} CRM Dispatches</p>
-            </div>
-          </>
-        ) : (
-          <!-- Regular User View: 3 Metrics -->
-          <>
-            <!-- Project Count -->
-            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Project Mapped Count</p>
-              <p class="text-2xl font-bold font-display text-cyan-600">{metrics.projectCount} Collections</p>
-            </div>
+          <!-- Catalog & Inventory Section -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <ShoppingBag class="h-4 w-4 text-cyan-500" />
+              Catalog & Inventory
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <!-- Categories -->
+              <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Total Categories</p>
+                <p class="text-2xl font-bold font-display text-slate-900">{metrics.projectCount}</p>
+                <p class="text-3xs text-slate-400">Product groupings</p>
+              </div>
 
-            <!-- Awaiting Settlement -->
-            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Awaiting Settlement</p>
-              <p class="text-2xl font-bold font-display text-amber-600">AED {metrics.pendingSettlements.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
-            </div>
+              <!-- Active Products -->
+              <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Active Products</p>
+                <p class="text-2xl font-bold font-display text-emerald-600">{metrics.productsByStatus.active}</p>
+                <p class="text-3xs text-slate-400">Visible in online catalog</p>
+              </div>
 
-            <!-- Account Standing -->
-            <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-              <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Account Standing</p>
-              <p class="text-2xl font-bold font-display text-emerald-600">{metrics.accountStanding}</p>
+              <!-- Draft Products -->
+              <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Draft Products</p>
+                <p class="text-2xl font-bold font-display text-slate-500">{metrics.productsByStatus.draft}</p>
+                <p class="text-3xs text-slate-400">In-progress or unpublished</p>
+              </div>
+
+              <!-- Inactive Products -->
+              <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Inactive Products</p>
+                <p class="text-2xl font-bold font-display text-red-600">{metrics.productsByStatus.inactive}</p>
+                <p class="text-3xs text-slate-400">Archived/out of stock products</p>
+              </div>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+
+          <!-- Projects Section -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <FolderGit2 class="h-4 w-4 text-purple-500" />
+              Portfolio & Projects
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <!-- Active Projects -->
+              <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Active Projects</p>
+                <p class="text-2xl font-bold font-display text-purple-600">{metrics.projectsByStatus.active}</p>
+                <p class="text-3xs text-slate-400">Live display installations</p>
+              </div>
+
+              <!-- Archived Projects -->
+              <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-all">
+                <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Archived Projects</p>
+                <p class="text-2xl font-bold font-display text-slate-450">{metrics.projectsByStatus.archived}</p>
+                <p class="text-3xs text-slate-400">Completed historical showcases</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      ) : (
+        <!-- Regular User View: 3 Metrics -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Project Count -->
+          <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Project Mapped Count</p>
+            <p class="text-2xl font-bold font-display text-cyan-600">{metrics.projectCount} Collections</p>
+          </div>
+
+          <!-- Awaiting Settlement -->
+          <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Awaiting Settlement</p>
+            <p class="text-2xl font-bold font-display text-amber-600">AED {metrics.pendingSettlements.toLocaleString('en-AE', { minimumFractionDigits: 2 })}</p>
+          </div>
+
+          <!-- Account Standing -->
+          <div class="rounded-lg border border-slate-200 bg-white p-5 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <p class="text-2xs font-semibold text-slate-500 uppercase tracking-wider">Account Standing</p>
+            <p class="text-2xl font-bold font-display text-emerald-600">{metrics.accountStanding}</p>
+          </div>
+        </div>
+      )}
 
       <!-- Connection Status Console -->
       <div class="rounded-lg border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
