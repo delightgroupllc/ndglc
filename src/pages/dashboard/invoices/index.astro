@@ -118,6 +118,8 @@ invoices = invoices.map(inv => {
     deleteLabel = 'ARCHIVE';
     deleteBtnClass = "delete-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-bold text-slate-600 rounded transition-colors uppercase tracking-wider";
   }
+  const showDeleteAction = isDraftOrUnconfirmed;
+  const showArchiveAction = !isDraftOrUnconfirmed;
 
   return {
     ...inv,
@@ -129,6 +131,8 @@ invoices = invoices.map(inv => {
     showConfirm,
     showBill,
     showCancelOrder,
+    showDeleteAction,
+    showArchiveAction,
     deleteLabel,
     deleteBtnClass
   };
@@ -357,7 +361,7 @@ invoices = invoices.map(inv => {
                           </button>
 
                           {/* ARCHIVE/UNARCHIVE button */}
-                          {!inv.is_deleted && (
+                          {inv.showArchiveAction && !inv.is_deleted && (
                             <button 
                               type="button" 
                               class={`archive-btn px-2 py-1.5 border text-[9px] font-black rounded transition-colors uppercase tracking-wider col-span-1 ${
@@ -372,8 +376,20 @@ invoices = invoices.map(inv => {
                             </button>
                           )}
 
-                          {/* DELETE/RESTORE/PERM_DELETE button */}
-                          {inv.is_deleted ? (
+                          {/* DELETE button */}
+                          {inv.showDeleteAction && !inv.is_deleted && (
+                            <button 
+                              type="button" 
+                              class="delete-btn px-2 py-1.5 border border-rose-100 bg-rose-50 hover:bg-rose-100 text-[9px] font-black text-rose-700 rounded transition-colors uppercase tracking-wider col-span-1"
+                              data-id={inv.id} 
+                              data-action="DELETE"
+                            >
+                              DELETE
+                            </button>
+                          )}
+
+                          {/* RESTORE/PERM_DELETE button (only for items in trash) */}
+                          {inv.is_deleted && (
                             <>
                               <button 
                                 type="button" 
@@ -392,15 +408,6 @@ invoices = invoices.map(inv => {
                                 PERM DEL
                               </button>
                             </>
-                          ) : (
-                            <button 
-                              type="button" 
-                              class="delete-btn px-2 py-1.5 border border-rose-100 bg-rose-50 hover:bg-rose-100 text-[9px] font-black text-rose-700 rounded transition-colors uppercase tracking-wider col-span-1"
-                              data-id={inv.id} 
-                              data-action="DELETE"
-                            >
-                              DELETE
-                            </button>
                           )}
                         </div>
                       ) : (
@@ -798,6 +805,10 @@ invoices = invoices.map(inv => {
 
         if (!confirm(confirmMsg)) return;
 
+        const originalText = target.innerHTML;
+        target.disabled = true;
+        target.textContent = '...';
+
         try {
           const res = await fetch(`/api/invoices/${id}`, {
             method: 'PATCH',
@@ -811,6 +822,9 @@ invoices = invoices.map(inv => {
           }
         } catch (err) {
           alert('Error executing operation.');
+        } finally {
+          target.disabled = false;
+          target.innerHTML = originalText;
         }
       });
     });
@@ -825,6 +839,10 @@ invoices = invoices.map(inv => {
 
         if (!confirm(`Are you absolutely sure you want to permanently delete order ${num}? This action cannot be undone and will erase all data for this invoice.`)) return;
 
+        const originalText = target.innerHTML;
+        target.disabled = true;
+        target.textContent = '...';
+
         try {
           const res = await fetch(`/api/invoices/${id}`, {
             method: 'DELETE'
@@ -837,6 +855,9 @@ invoices = invoices.map(inv => {
           }
         } catch (err) {
           alert('Error executing permanent deletion.');
+        } finally {
+          target.disabled = false;
+          target.innerHTML = originalText;
         }
       });
     });

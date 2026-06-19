@@ -2,7 +2,7 @@
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 import { query } from '../../../lib/db';
 import { 
-  ArrowLeft, Printer, FileDown, Plus, CreditCard, Banknote, Calendar, Tag, CheckCircle2, AlertCircle, Copy
+  ArrowLeft, Printer, FileDown, Plus, CreditCard, Banknote, Calendar, Tag, CheckCircle2, AlertCircle, Copy, Archive, RefreshCw, Trash2
 } from '@lucide/astro';
 import InvoiceForm from '../../../components/forms/InvoiceForm.astro';
 
@@ -131,6 +131,32 @@ if (inv.payment_status === 'draft') {
     };
   }
 }
+
+// Enforce Document Progression Pipeline Rules
+const isPaid = inv.payment_status === 'paid';
+const isConfirmed = inv.payment_status === 'paid' || inv.payment_status === 'confirmed';
+const type = inv.order_type || 'tax_invoice';
+
+let stage = 6;
+if (isPaid) {
+  stage = 7;
+} else if (type === 'inquiry') {
+  stage = 1;
+} else if (type === 'quotation') {
+  stage = 2;
+} else if (type === 'proforma') {
+  stage = 3;
+} else if (type === 'lpo') {
+  stage = 4;
+} else if (type === 'delivery_note') {
+  stage = 5;
+} else if (type === 'tax_invoice') {
+  stage = 6;
+}
+
+const isDraftOrUnconfirmed = stage <= 3 || (stage === 4 && !isConfirmed);
+const showDeleteAction = isDraftOrUnconfirmed;
+const showArchiveAction = !isDraftOrUnconfirmed;
 ---
 
 <DashboardLayout title={`Order ${inv.invoice_number}`} activeItem="invoices">
@@ -217,6 +243,54 @@ if (inv.payment_status === 'draft') {
           <Copy class="h-4 w-4" />
           Duplicate
         </button>
+
+        {showArchiveAction && !inv.is_deleted && (
+          <button 
+            type="button" 
+            id="archive-invoice-btn"
+            data-action={inv.is_archived ? 'UNARCHIVE' : 'ARCHIVE'}
+            class={`inline-flex items-center justify-center gap-1.5 border px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm ${
+              inv.is_archived 
+                ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700' 
+                : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+            }`}
+          >
+            <Archive class="h-4 w-4" />
+            {inv.is_archived ? 'Unarchive' : 'Archive'}
+          </button>
+        )}
+
+        {inv.is_deleted ? (
+          <>
+            <button 
+              type="button" 
+              id="restore-invoice-btn"
+              class="inline-flex items-center justify-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
+            >
+              <RefreshCw class="h-4 w-4" />
+              Restore
+            </button>
+            <button 
+              type="button" 
+              id="perm-delete-invoice-btn"
+              class="inline-flex items-center justify-center gap-1.5 border border-rose-600 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
+            >
+              <Trash2 class="h-4 w-4" />
+              Perm Del
+            </button>
+          </>
+        ) : (
+          showDeleteAction && (
+            <button 
+              type="button" 
+              id="delete-invoice-btn"
+              class="inline-flex items-center justify-center gap-1.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
+            >
+              <Trash2 class="h-4 w-4" />
+              Delete
+            </button>
+          )
+        )}
       </div>
     </div>
 
@@ -670,6 +744,150 @@ if (inv.payment_status === 'draft') {
     } finally {
       btn.disabled = false;
       btn.innerHTML = originalContent;
+    }
+  });
+
+  // Archive button handler
+  document.getElementById('archive-invoice-btn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const action = btn.getAttribute('data-action');
+    console.log(`[Archive Button] Clicked! Action: ${action}`);
+    if (!confirm(`Are you sure you want to ${action?.toLowerCase()} this document?`)) {
+      console.log(`[Archive Button] User cancelled confirmation.`);
+      return;
+    }
+
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    try {
+      console.log(`[Archive Button] Sending PATCH request to /api/invoices/${invoiceId}...`);
+      const startTime = performance.now();
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_archived: action === 'ARCHIVE' })
+      });
+      console.log(`[Archive Button] Received response in ${Math.round(performance.now() - startTime)}ms. Status: ${res.status}`);
+      if (res.ok) {
+        console.log(`[Archive Button] Success! Reloading page...`);
+        window.location.reload();
+      } else {
+        console.error(`[Archive Button] Request failed!`);
+        alert('Operation failed.');
+      }
+    } catch (err) {
+      console.error(`[Archive Button] Network/Fetch error:`, err);
+      alert('Error executing operation.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  });
+
+  // Delete button handler (Soft Delete)
+  document.getElementById('delete-invoice-btn')?.addEventListener('click', async (e) => {
+    console.log(`[Delete Button] Clicked!`);
+    if (!confirm('Are you sure you want to move this document to trash?')) {
+      console.log(`[Delete Button] User cancelled confirmation.`);
+      return;
+    }
+    const btn = e.currentTarget as HTMLButtonElement;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+    try {
+      console.log(`[Delete Button] Sending PATCH request to /api/invoices/${invoiceId}...`);
+      const startTime = performance.now();
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_deleted: true })
+      });
+      console.log(`[Delete Button] Received response in ${Math.round(performance.now() - startTime)}ms. Status: ${res.status}`);
+      if (res.ok) {
+        console.log(`[Delete Button] Success! Reloading page...`);
+        window.location.reload();
+      } else {
+        console.error(`[Delete Button] Request failed!`);
+        alert('Operation failed.');
+      }
+    } catch (err) {
+      console.error(`[Delete Button] Network/Fetch error:`, err);
+      alert('Error executing operation.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  });
+
+  // Restore button handler
+  document.getElementById('restore-invoice-btn')?.addEventListener('click', async (e) => {
+    console.log(`[Restore Button] Clicked!`);
+    if (!confirm('Are you sure you want to restore this document from trash?')) {
+      console.log(`[Restore Button] User cancelled confirmation.`);
+      return;
+    }
+    const btn = e.currentTarget as HTMLButtonElement;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Restoring...';
+    try {
+      console.log(`[Restore Button] Sending PATCH request to /api/invoices/${invoiceId}...`);
+      const startTime = performance.now();
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_deleted: false })
+      });
+      console.log(`[Restore Button] Received response in ${Math.round(performance.now() - startTime)}ms. Status: ${res.status}`);
+      if (res.ok) {
+        console.log(`[Restore Button] Success! Reloading page...`);
+        window.location.reload();
+      } else {
+        console.error(`[Restore Button] Request failed!`);
+        alert('Operation failed.');
+      }
+    } catch (err) {
+      console.error(`[Restore Button] Network/Fetch error:`, err);
+      alert('Error executing operation.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  });
+
+  // Permanent Delete button handler
+  document.getElementById('perm-delete-invoice-btn')?.addEventListener('click', async (e) => {
+    console.log(`[Perm Delete Button] Clicked!`);
+    if (!confirm('Are you absolutely sure you want to permanently delete this order? This action cannot be undone.')) {
+      console.log(`[Perm Delete Button] User cancelled confirmation.`);
+      return;
+    }
+    const btn = e.currentTarget as HTMLButtonElement;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+    try {
+      console.log(`[Perm Delete Button] Sending DELETE request to /api/invoices/${invoiceId}...`);
+      const startTime = performance.now();
+      const res = await fetch(`/api/invoices/${invoiceId}`, { method: 'DELETE' });
+      console.log(`[Perm Delete Button] Received response in ${Math.round(performance.now() - startTime)}ms. Status: ${res.status}`);
+      if (res.ok) {
+        console.log(`[Perm Delete Button] Success! Redirecting to dashboard...`);
+        window.location.href = '/dashboard/invoices';
+      } else {
+        const err = await res.json();
+        console.error(`[Perm Delete Button] Request failed! Error:`, err.error);
+        alert(`Failed to permanently delete: ${err.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error(`[Perm Delete Button] Network/Fetch error:`, err);
+      alert('Error executing permanent deletion.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
     }
   });
 
