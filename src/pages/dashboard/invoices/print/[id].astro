@@ -11,6 +11,7 @@ let inv: any = null;
 let items: any[] = [];
 let settings: Record<string, string> = {};
 let selectedClauses: any[] = [];
+let dnNote: string = 'DELIVERY NOTE : Customer must check good\'s condition and quantity at the time of delivery of the material';
 
 try {
   // Fetch invoice details
@@ -77,6 +78,8 @@ try {
     }];
   }
 
+  // Delivery Note disclaimer - dynamically loaded from DB
+
   // Fetch all disclaimers/clauses
   try {
     const legalRes = await query(`SELECT title, content, identifier, type, show_in_invoice FROM legal_artifacts ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
@@ -85,7 +88,7 @@ try {
     // Extract delivery note disclaimer specifically (any identifier containing 'delivery-note')
     const dnClause = allClauses.find((c: any) => c.identifier === 'delivery-note-disclaimer' || c.identifier === 'delivery-terms' || c.identifier === 'dn-disclaimer');
     if (dnClause) {
-      (globalThis as any).__dnNote = dnClause.content;
+      dnNote = dnClause.content;
     }
   } catch (e) {
     console.error("Error fetching legal artifacts:", e);
@@ -149,9 +152,6 @@ const companyNameEN = isDGS ? 'Delight Greenscapes' : 'Delight Technical Lightin
 const companyNameAR = isDGS ? 'ديلايت جرين سكيبس' : 'ديلايت للاضاءة الفنية';
 const websiteURL = 'www.delightgroupllc.com';
 const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/Group
-
-// Delivery Note disclaimer — from legal artifacts (identifier: delivery-note-disclaimer, delivery-terms, or dn-disclaimer)
-const dnNote: string = (globalThis as any).__dnNote || 'DELIVERY NOTE : Customer must check good\'s condition and quantity at the time of delivery of the material';
 
 const activeSignature = signaturesList.find((s: any) => s.id === (settings.default_signature_id || (signaturesList[0]?.id || ''))) || signaturesList[0] || null;
 const signatureImage = activeSignature?.signature_image || '';
@@ -1024,6 +1024,7 @@ const isTermChecked = (identifier: string): boolean => {
           signatureImage={signatureImage}
           isCustomerDeleted={inv.is_customer_deleted}
           dnNote={dnNote}
+          totalQtyInWords={totalQtyInWords}
         />
       </div>
 
@@ -1424,7 +1425,6 @@ const isTermChecked = (identifier: string): boolean => {
               </select>
             </div>
 
-             <!-- Signatory selector -->
             <div class="mt-2.5 pt-2 border-t border-slate-800/40">
               <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Select Signatory Stamp</label>
               <select id="config-signature-selector" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
@@ -1442,6 +1442,23 @@ const isTermChecked = (identifier: string): boolean => {
                 <label class="text-[8px] text-slate-500 uppercase block mb-0.5">Custom Signatory Name</label>
                 <input type="text" id="config-custom-signature-name" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" placeholder="Type name..." />
               </div>
+            </div>
+
+            <div class="mt-2.5 pt-2 border-t border-slate-800/40">
+              <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Signature Box Company Name</label>
+              <select id="config-sig-company-name" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                {isDGS ? (
+                  <>
+                    <option value="Delight Greenscapes" selected={companyNameEN === 'Delight Greenscapes' || companyNameEN === 'Delight Global Solutions'}>Delight Greenscapes</option>
+                    <option value="Delight Group LLC" selected={companyNameEN === 'Delight Group LLC'}>Delight Group LLC</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="Delight Technical Lighting" selected={companyNameEN === 'Delight Technical Lighting'}>Delight Technical Lighting</option>
+                    <option value="Delight Group LLC" selected={companyNameEN === 'Delight Group LLC'}>Delight Group LLC</option>
+                  </>
+                )}
+              </select>
             </div>
             
             <div class="pt-2 border-t border-slate-805 space-y-2 font-semibold">
@@ -1725,6 +1742,50 @@ const isTermChecked = (identifier: string): boolean => {
           layoutWrapper.classList.add('mode-invoice');
         }
       }
+
+      if (val === 'DELIVERY NOTE') {
+        const toUntick = [
+          'config-show-col-spec',
+          'config-show-col-price',
+          'config-show-col-units',
+          'config-show-col-vat',
+          'config-show-subtotal',
+          'config-show-vat',
+          'config-show-discount',
+          'config-show-total',
+          'config-show-page-2',
+          'config-show-words',
+          'config-show-disclaimer'
+        ];
+        toUntick.forEach(id => {
+          const cb = document.getElementById(id);
+          if (cb && cb.checked) {
+            cb.checked = false;
+            cb.dispatchEvent(new Event('change'));
+          }
+        });
+
+        const remittanceSelect = document.getElementById('config-remittance-placement');
+        if (remittanceSelect && remittanceSelect.value !== 'none') {
+          remittanceSelect.value = 'none';
+          remittanceSelect.dispatchEvent(new Event('change'));
+        }
+      } else if (val === 'TAX INVOICE') {
+        const dnNoteCb = document.getElementById('config-show-dn-condition-note');
+        if (dnNoteCb && dnNoteCb.checked) {
+          dnNoteCb.checked = false;
+          dnNoteCb.dispatchEvent(new Event('change'));
+        }
+        const layoutVal = document.getElementById('layoutSelector')?.value || 'standard';
+        if (layoutVal === 'standard') {
+          const qtyWordsCb = document.getElementById('config-show-qty-words');
+          if (qtyWordsCb && qtyWordsCb.checked) {
+            qtyWordsCb.checked = false;
+            qtyWordsCb.dispatchEvent(new Event('change'));
+          }
+        }
+      }
+
       setTimeout(repaginate, 50);
     });
 
@@ -1842,15 +1903,21 @@ const isTermChecked = (identifier: string): boolean => {
       let currentRowIndex = 0;
 
       const specsChecked = document.getElementById('config-show-col-spec')?.checked;
+      const docType = document.getElementById('config-doc-type')?.value;
+      const isDeliveryNote = docType === 'DELIVERY NOTE';
+      
       let maxItemsPage1 = 5;
       let maxItemsSubsequent = 14;
 
       if (layout === 'delightgroupllc') {
-        if (specsChecked) {
-          maxItemsPage1 = 4;
+        if (isDeliveryNote) {
+          maxItemsPage1 = 8;
+          maxItemsSubsequent = 8;
+        } else if (specsChecked) {
+          maxItemsPage1 = 6;
           maxItemsSubsequent = 5;
         } else {
-          maxItemsPage1 = 8;
+          maxItemsPage1 = 10;
           maxItemsSubsequent = 10;
         }
       } else {
@@ -1985,7 +2052,8 @@ const isTermChecked = (identifier: string): boolean => {
       pages.forEach((page, idx) => {
         const tbody = getItemsTbody(page);
         const hasRows = tbody && tbody.children.length > 0;
-        const hasTotals = totalsBlock && page.contains(totalsBlock);
+        const hasTotals = mathBlock && page.contains(mathBlock);
+        const hasSigs = sigsBlock && page.contains(sigsBlock);
 
         // Hide empty items tables to avoid orphaned headers
         const itemsTable = page.querySelector('.std-items-table, .delightgroupllc-table, .dg-items-table');
@@ -1997,7 +2065,7 @@ const isTermChecked = (identifier: string): boolean => {
           }
         }
 
-        if (hasRows || hasTotals || idx === 0) {
+        if (hasRows || hasTotals || hasSigs || idx === 0) {
           page.style.display = 'block';
           actualItemsPagesCount = idx + 1;
         } else {
@@ -2195,11 +2263,11 @@ const isTermChecked = (identifier: string): boolean => {
       let itemsPagesCount = 1;
       if (layout === 'delightgroupllc') {
         const pages = document.querySelectorAll('#layout-delightgroupllc-wrapper .print-page');
-        const itemsPages = Array.from(pages).filter(p => !p.classList.contains('print-page-2-container'));
+        const itemsPages = Array.from(pages).filter(p => !p.classList.contains('print-page-2-container') && p.style.display !== 'none');
         itemsPagesCount = itemsPages.length || 1;
       } else {
         const pages = document.querySelectorAll('#layout-standard-wrapper .print-page');
-        const itemsPages = Array.from(pages).filter(p => !p.classList.contains('print-page-2-container'));
+        const itemsPages = Array.from(pages).filter(p => !p.classList.contains('print-page-2-container') && p.style.display !== 'none');
         itemsPagesCount = itemsPages.length || 1;
       }
 
@@ -2275,6 +2343,14 @@ const isTermChecked = (identifier: string): boolean => {
         else el.classList.add('hidden');
       });
     };
+
+    // Signature Company Name handler
+    document.getElementById('config-sig-company-name')?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      document.querySelectorAll('.dynamic-sig-company-name-en').forEach(el => {
+        el.textContent = val;
+      });
+    });
 
     document.getElementById('sig-client')?.addEventListener('change', updateReceiverPosition);
     document.getElementById('sig-receiver')?.addEventListener('change', updateReceiverPosition);
@@ -2608,6 +2684,11 @@ const isTermChecked = (identifier: string): boolean => {
     const sigSelector = document.getElementById('config-signature-selector');
     if (sigSelector) {
       sigSelector.dispatchEvent(new Event('change'));
+    }
+
+    const docTypeSelector = document.getElementById('config-doc-type');
+    if (docTypeSelector) {
+      docTypeSelector.dispatchEvent(new Event('change'));
     }
 
     // Auto print if requested via query param

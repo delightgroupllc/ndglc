@@ -10,8 +10,9 @@ interface Props {
   signatureImage?: string;
   isCustomerDeleted?: boolean;
   dnNote?: string;
+  totalQtyInWords?: string;
 }
-const { inv, items, settings, documentTitle, logoColor, companyNameEN, selectedClauses = [], signatureImage, isCustomerDeleted = false, dnNote = "DELIVERY NOTE : Customer must check good's condition and quantity at the time of delivery of the material" } = Astro.props;
+const { inv, items, settings, documentTitle, logoColor, companyNameEN, selectedClauses = [], signatureImage, isCustomerDeleted = false, dnNote = "DELIVERY NOTE : Customer must check good's condition and quantity at the time of delivery of the material", totalQtyInWords = '' } = Astro.props;
 
 // Determine items fit limits
 const maxItemsPage1 = 5;
@@ -183,34 +184,41 @@ const isTermActive = (identifier: string): boolean => {
         {isLastPage && (
           <>
           <div class="print-footer-math std-totals-sigs-block" style="page-break-inside: avoid; break-inside: avoid; margin-top: 15px;">
-            <div class="std-summary-wrapper">
-              <table class="std-summary-table">
+            <div class="std-summary-wrapper w-full">
+              <table class="std-summary-table m-0" style="width: 100%;">
                 <tr class="print-total-subtotal">
-                  <td class="text-muted">Subtotal (Excl. VAT):</td>
-                  <td class="text-right font-mono">AED {Number(inv.subtotal).toFixed(2)}</td>
+                  <td style="width: 50%;"></td>
+                  <td class="text-muted" style="width: 30%;">Subtotal (Excl. VAT):</td>
+                  <td class="text-right font-mono" style="width: 20%;">AED {Number(inv.subtotal).toFixed(2)}</td>
                 </tr>
                 <tr class="print-total-vat">
+                  <td></td>
                   <td class="text-muted">Total VAT amount:</td>
                   <td class="text-right font-mono" style="color: #c2410c;">AED {Number(inv.gst_amount).toFixed(2)}</td>
                 </tr>
                 {Number(inv.discount_amount) > 0 && (
                   <tr class="print-total-discount">
+                    <td></td>
                     <td class="text-muted">Discount:</td>
                     <td class="text-right font-mono" style="color: #15803d;">- AED {Number(inv.discount_amount).toFixed(2)}</td>
                   </tr>
                 )}
                 <tr class="print-total-quantity">
-                  <td class="text-muted">Total Quantity:</td>
-                  <td class="text-right font-mono" style="padding-right: 32px;">{items.reduce((sum, item) => sum + Number(item.quantity), 0)}</td>
-                </tr>
-                <tr class="print-dn-material-condition-disclaimer">
-                  <td colspan="2" class="text-right font-bold uppercase tracking-wide text-slate-600" style="font-size: 7.5pt; padding-top: 16px; padding-bottom: 8px;">{dnNote}</td>
+                  <td class="print-qty-words-panel font-normal text-slate-500 text-xs text-left" style="vertical-align: middle;">
+                    Quantity in words: <span class="font-bold text-slate-900">{totalQtyInWords}</span>
+                  </td>
+                  <td class="text-muted" style="vertical-align: middle;">Total Quantity:</td>
+                  <td class="text-right font-mono" style="padding-right: 32px; vertical-align: middle;">{items.reduce((sum, item) => sum + Number(item.quantity), 0)}</td>
                 </tr>
                 <tr class="std-summary-table grand-total print-total-due-row">
+                  <td></td>
                   <td>Total:</td>
                   <td class="text-right font-mono" style={`color: ${logoColor}`}>AED {Number(inv.total_amount).toFixed(2)}</td>
                 </tr>
               </table>
+              <div class="print-dn-material-condition-disclaimer text-center font-bold uppercase tracking-wide text-slate-600 w-full" style="font-size: 7.5pt; margin-top: 16px; margin-bottom: 8px;">
+                {dnNote}
+              </div>
             </div>
           </div>
           <div class="print-footer-sigs" style="page-break-inside: avoid; break-inside: avoid;">
@@ -264,7 +272,7 @@ const isTermActive = (identifier: string): boolean => {
                   </td>
                   <td style="width: 16%;"></td>
                   <td class="std-signature-col print-sig-company-col" id="print-sig-company-col" style="width: 42%; vertical-align: bottom;">
-                    <div style="font-size: 9pt; font-weight: 700; color: #475569;">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
+                    <div style="font-size: 9pt; font-weight: 700; color: #475569;">For <span class="dynamic-sig-company-name-en">{companyNameEN}</span></div>
                     <!-- Dynamic Stamp Space -->
                     <div class="print-stamp-box hidden" style="height: 60px;"></div>
                     <div class="signature-image-container relative flex justify-start items-end h-14 -mb-4 z-10 w-[80%]">

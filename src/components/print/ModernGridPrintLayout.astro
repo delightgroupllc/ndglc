@@ -20,7 +20,7 @@ interface Props {
 const { inv, items, settings, logoColor, isDGS, companyNameEN, companyNameAR, websiteURL, amountInWords, totalQty, totalQtyInWords = '', documentTitle, selectedClauses = [], signatureImage, isCustomerDeleted = false, dnNote = "DELIVERY NOTE : Customer must check good's condition and quantity at the time of delivery of the material" } = Astro.props;
 
 // Determine items fit limits
-const maxItemsPage1 = 4;
+const maxItemsPage1 = 6;
 const maxItemsSubsequent = 10;
 
 // Split items list into pages
@@ -202,8 +202,6 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
               <th style="width: 6%; text-align: center;" class="print-col-units">Units</th>
               <th style="width: 6%; text-align: center;"><span class="inv-only-layout-inline">Qty</span><span class="dn-only-layout-inline">Quantity</span></th>
               <th style="width: 8%; text-align: right;" class="print-col-price">Unit Price</th>
-              <th style="width: 8%; text-align: right;" class="print-col-price">Discounted Unit Price</th>
-              <th style="width: 8%; text-align: right;" class="print-col-price">Total Amount</th>
               <th style="width: 5%; text-align: center;" class="print-col-vat">Vat %</th>
               <th style="width: 8%; text-align: right;" class="print-col-vat">Vat Amount</th>
               <th style="width: 10%; text-align: right;" class="print-col-price">Net Amount Incl. VAT</th>
@@ -225,8 +223,6 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
                   <td class="text-center print-col-units">{item.unit || 'PCS'}</td>
                   <td class="text-center font-bold">{item.quantity}</td>
                   <td class="text-right font-mono print-col-price">{Number(item.unit_price).toFixed(2)}</td>
-                  <td class="text-right font-mono print-col-price">{Number(item.unit_price).toFixed(2)}</td>
-                  <td class="text-right font-mono print-col-price">{Number(lineTotal).toFixed(2)}</td>
                   <td class="text-center font-mono print-col-vat">{item.tax_type === 'percentage' ? `${item.tax_value}` : '5'}</td>
                   <td class="text-right font-mono print-col-vat">{Number(taxAmt).toFixed(2)}</td>
                   <td class="text-right font-mono font-bold print-col-price">{Number(lineTotal + taxAmt).toFixed(2)}</td>
@@ -242,10 +238,12 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
           <div class="print-footer-math delightgroupllc-inv-footer-group" style="display: table; page-break-inside: avoid; break-inside: avoid; width: 100%;">
             <!-- DELIVERY NOTE FOOTER BLOCK -->
             <div class="dn-only-layout">
-              <div class="delightgroupllc-dn-totals print-total-quantity">
-                Total Items Quantity &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="font-mono">{totalQty}</span>
-                <div class="print-qty-words-panel mt-1 font-normal text-slate-500 text-xs">
+              <div class="delightgroupllc-dn-totals print-total-quantity flex justify-between items-center w-full pr-[30px]">
+                <div class="print-qty-words-panel font-normal text-slate-500 text-xs text-left">
                   Quantity in words: <span class="font-bold text-slate-900">{totalQtyInWords}</span>
+                </div>
+                <div>
+                  Total Items Quantity &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="font-mono text-base">{totalQty}</span>
                 </div>
               </div>
               <p class="delightgroupllc-dn-note print-dn-material-condition-disclaimer text-center font-bold uppercase tracking-wide text-slate-600" style="font-size: 7.5pt; margin-top: 16px; margin-bottom: 24px;">{dnNote}</p>
@@ -312,7 +310,7 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
                     <td style="width: 16%;"></td>
                     <!-- RIGHT slot: Company Signature -->
                     <td class="delightgroupllc-dn-sign-box print-sig-company-col" id="dn-sig-company-block" style="width: 42%; vertical-align: bottom; text-align: right;">
-                      <div style="text-align: right;">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
+                      <div style="text-align: right;">For <span class="dynamic-sig-company-name-en">{companyNameEN}</span></div>
                       <!-- Dynamic Stamp Space -->
                       <div class="print-stamp-box hidden" style="height: 60px;"></div>
                       <div class="signature-image-container relative flex justify-end items-end h-12 -mb-3 z-10 w-full" style="padding-right: 15%;">
@@ -373,7 +371,7 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
                   </div>
                 </div>
                 <div class="delightgroupllc-inv-sign-stamp-box print-sig-company-col" id="inv-sig-stamp-block" style="width: 35%; min-width: 160px;">
-                  <div class="delightgroupllc-inv-sign-stamp-header">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
+                  <div class="delightgroupllc-inv-sign-stamp-header">For <span class="dynamic-sig-company-name-en">{companyNameEN}</span></div>
                   <div class="delightgroupllc-inv-sign-stamp-body flex items-center justify-center" style="height: 60px; position: relative;">
                     <!-- Dynamic Stamp Space -->
                     <div class="print-stamp-box hidden" style="height: 10px;"></div>
@@ -472,7 +470,7 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
               <div style="display: flex; align-items: center; gap: 8px; text-align: left;">
                 <img src={isDGS ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="company-card-tos-logo" style="height: 28px; width: auto; object-fit: contain;" />
                 <div>
-                  <div style="font-weight: bold; font-size: 7.5pt; color: #0f172a;">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
+                  <div style="font-weight: bold; font-size: 7.5pt; color: #0f172a;">For <span class="dynamic-sig-company-name-en">{companyNameEN}</span></div>
                   <div style="font-size: 5.8pt; color: #475569; line-height: 1.3; margin-top: 1px; max-width: 200px;">
                     <span id="print-company-address-arr-p2">{settings.business_address || settings.company_address || 'Dubai, United Arab Emirates'}</span><br>
                     TRN: <span class="font-mono font-bold" style="color:#0f172a;" id="print-company-trn-arr-p2">{settings.trn_number || '100380541100003'}</span>
