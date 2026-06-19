@@ -21,18 +21,22 @@ if (fs.existsSync(envPath)) {
 async function diagnose() {
   console.log('--- DATABASE DIAGNOSTIC START ---');
   try {
-    // Dynamic import to ensure .env variables are loaded BEFORE src/lib/db.ts is evaluated!
     const { query } = await import('./src/lib/db');
     
     const res = await query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      ORDER BY table_name;
+      SELECT i.id, i.invoice_number, i.customer_name, COUNT(ii.id) as item_count
+      FROM invoices i
+      LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
+      GROUP BY i.id, i.invoice_number, i.customer_name
+      ORDER BY item_count DESC
+      LIMIT 10;
     `);
-    console.log('Tables found in database:', res.rows.map(r => r.table_name));
+    console.log('Invoices with item count:');
+    res.rows.forEach(r => {
+      console.log(`ID: ${r.id} | No: ${r.invoice_number} | Customer: ${r.customer_name} | Items: ${r.item_count}`);
+    });
   } catch (err: any) {
-    console.error('Error querying tables:', err.message);
+    console.error('Error querying invoices:', err.message);
   }
   console.log('--- DATABASE DIAGNOSTIC END ---');
   process.exit(0);

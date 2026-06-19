@@ -10,6 +10,7 @@ const customerSchema = z.object({
   company_vat: z.string().optional().nullable(),
   billing_address: z.string().optional().nullable(),
   shipping_address: z.string().optional().nullable(),
+  code: z.string().optional().nullable(),
   action: z.enum(['archive', 'unarchive', 'delete', 'restore']).optional(),
 });
 
@@ -70,11 +71,49 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
         const billing = parsed.billing_address !== undefined ? parsed.billing_address : customer.billing_address;
         const shipping = parsed.shipping_address !== undefined ? parsed.shipping_address : customer.shipping_address;
 
+        const code = parsed.code !== undefined ? parsed.code?.trim() : customer.code;
+
+        let companyId = null;
+        if (company) {
+          const checkComp = await client.query('SELECT id FROM companies WHERE name = $1', [company]);
+          if (checkComp.rowCount > 0) {
+            companyId = checkComp.rows[0].id;
+            await client.query(
+              `UPDATE companies SET
+                 vat_number = COALESCE($1, vat_number),
+                 billing_address = COALESCE($2, billing_address),
+                 shipping_address = COALESCE($3, shipping_address)
+               WHERE id = $4`,
+              [company_vat || null, billing || null, shipping || null, companyId]
+            );
+          } else {
+            let compCode = null;
+            let isUnique = false;
+            let attempts = 0;
+            while (!isUnique && attempts < 100) {
+              const randomNum = Math.floor(1000 + Math.random() * 9000);
+              compCode = `COM-${randomNum}`;
+              const check = await client.query('SELECT 1 FROM companies WHERE code = $1', [compCode]);
+              if (check.rowCount === 0) {
+                isUnique = true;
+              }
+              attempts++;
+            }
+            const compRes = await client.query(
+              `INSERT INTO companies (name, vat_number, billing_address, shipping_address, code)
+               VALUES ($1, $2, $3, $4, $5)
+               RETURNING id`,
+              [company, company_vat || null, billing || null, shipping || null, compCode]
+            );
+            companyId = compRes.rows[0].id;
+          }
+        }
+
         const res = await client.query(
           `UPDATE customers SET
-            name = $1, email = $2, phone = $3, company_name = $4, billing_address = $5, shipping_address = $6, company_vat = $7
-           WHERE id = $8 RETURNING *`,
-          [name, email || null, phone || null, company || null, billing || null, shipping || null, company_vat || null, id]
+            name = $1, email = $2, phone = $3, company_name = $4, company_id = $5, billing_address = $6, shipping_address = $7, company_vat = $8, code = $9
+           WHERE id = $10 RETURNING *`,
+          [name, email || null, phone || null, company || null, companyId, billing || null, shipping || null, company_vat || null, code || null, id]
         );
 
         // Log edit action

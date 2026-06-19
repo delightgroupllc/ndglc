@@ -10,16 +10,18 @@ interface Props {
   websiteURL: string;
   amountInWords: string;
   totalQty: number;
+  totalQtyInWords?: string;
   documentTitle: string;
   selectedClauses?: any[];
   signatureImage?: string;
   isCustomerDeleted?: boolean;
+  dnNote?: string;
 }
-const { inv, items, settings, logoColor, isDGS, companyNameEN, companyNameAR, websiteURL, amountInWords, totalQty, documentTitle, selectedClauses = [], signatureImage, isCustomerDeleted = false } = Astro.props;
+const { inv, items, settings, logoColor, isDGS, companyNameEN, companyNameAR, websiteURL, amountInWords, totalQty, totalQtyInWords = '', documentTitle, selectedClauses = [], signatureImage, isCustomerDeleted = false, dnNote = "DELIVERY NOTE : Customer must check good's condition and quantity at the time of delivery of the material" } = Astro.props;
 
 // Determine items fit limits
-const maxItemsPage1 = inv.order_type === 'delivery_note' ? 9 : 5;
-const maxItemsSubsequent = 12;
+const maxItemsPage1 = inv.order_type === 'delivery_note' ? 8 : 4;
+const maxItemsSubsequent = 10;
 
 // Split items list into pages
 const pagesOfItems: any[][] = [];
@@ -54,9 +56,13 @@ const isTermActive = (identifier: string): boolean => {
   if (!inv.payment_terms) return true;
   return activeTerms.includes(identifier);
 };
+
+const docNumberLabel = inv.order_type === 'delivery_note' ? 'Delivery Note Number:' : 'Invoice Number:';
+const docDateLabel = inv.order_type === 'delivery_note' ? 'Delivery Date:' : 'Invoice Date:';
+const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-info-due' : 'print-info-status';
 ---
 
-<div id="layout-delightgroupllc" class="delightgroupllc-container w-full flex flex-col items-center gap-8">
+<div id="layout-delightgroupllc" class={`delightgroupllc-container w-full flex flex-col items-center gap-8 mode-${inv.order_type === 'delivery_note' ? 'delivery-note' : 'invoice'}`}>
   {pagesOfItems.map((pageItems, pageIdx) => {
     const isFirstPage = pageIdx === 0;
     const isLastPage = pageIdx === pagesOfItems.length - 1;
@@ -79,8 +85,8 @@ const isTermActive = (identifier: string): boolean => {
                 </div>
               </td>
               <td class="delightgroupllc-address-td">
-                <div class="delightgroupllc-company-name-ar">{companyNameAR}</div>
-                <div class="delightgroupllc-company-name-en">{companyNameEN}</div>
+                <div class="delightgroupllc-company-name-ar"><span class="dynamic-company-name-ar">{companyNameAR}</span></div>
+                <div class="delightgroupllc-company-name-en"><span class="dynamic-company-name-en">{companyNameEN}</span></div>
                 <span class="delightgroupllc-website" style={`color: ${logoColor}`}>{websiteURL}</span>
                 <div style="margin-top: 3px; line-height: 1.35; color: #475569;">
                   <span id="print-company-address-arr">{settings.business_address || settings.company_address || 'Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE'}</span><br>
@@ -106,15 +112,15 @@ const isTermActive = (identifier: string): boolean => {
                 <table class="delightgroupllc-field-table">
                   <tr>
                     <td class="delightgroupllc-field-label">Customer Code:</td>
-                    <td class="delightgroupllc-field-value">CUS-{inv.customer_phone ? inv.customer_phone.replace(/\D/g, '').slice(-6) : '002334'}</td>
+                    <td class="delightgroupllc-field-value">{"CUS-" + (inv.customer_phone ? inv.customer_phone.replace(/\D/g, '').slice(-6) : '002334')}</td>
                   </tr>
                   <tr class="print-cust-company">
                     <td class="delightgroupllc-field-label">Customer Name:</td>
-                    <td class="delightgroupllc-field-value uppercase">{inv.customer_name}{isCustomerDeleted ? '*' : ''}</td>
+                    <td class="delightgroupllc-field-value uppercase">{inv.customer_name + (isCustomerDeleted ? '*' : '')}<span class="print-cust-id">{inv.customer_code ? ` (ID: ${inv.customer_code})` : ''}</span></td>
                   </tr>
                   <tr class="print-cust-company">
                     <td class="delightgroupllc-field-label">Contact Name:</td>
-                    <td class="delightgroupllc-field-value uppercase">{inv.company_name || inv.customer_name}</td>
+                    <td class="delightgroupllc-field-value uppercase">{inv.company_name || inv.customer_name}<span class="print-comp-id">{inv.company_code ? ` (ID: ${inv.company_code})` : ''}</span></td>
                   </tr>
                   <tr class="print-cust-address">
                     <td class="delightgroupllc-field-label">Customer Address:</td>
@@ -134,57 +140,40 @@ const isTermActive = (identifier: string): boolean => {
               <!-- Order Metadata -->
               <td class="delightgroupllc-grid-td">
                 <table class="delightgroupllc-field-table">
-                  {inv.order_type === 'delivery_note' ? (
-                    <tr>
-                      <td class="delightgroupllc-field-label">Delivery Note Number:</td>
-                      <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
-                    </tr>
-                    <tr class="print-info-date">
-                      <td class="delightgroupllc-field-label">Delivery Date:</td>
-                      <td class="delightgroupllc-field-value">{new Date(inv.issue_date).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
-                    </tr>
-                    <tr class="print-info-status">
-                      <td class="delightgroupllc-field-label">Sales Person:</td>
-                      <td class="delightgroupllc-field-value">{settings.signatory_name || 'Management'}</td>
-                    </tr>
-                    <tr class="print-info-due">
-                      <td class="delightgroupllc-field-label">Sales Person Contact:</td>
-                      <td class="delightgroupllc-field-value">{settings.contact_phone || '—'}</td>
-                    </tr>
-                    <tr>
-                      <td class="delightgroupllc-field-label">LPO Number:</td>
-                      <td class="delightgroupllc-field-value font-mono">{inv.lpo_number || '—'}</td>
-                    </tr>
-                    <tr>
-                      <td class="delightgroupllc-field-label">Invoice Reference:</td>
-                      <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
-                    </tr>
-                  ) : (
-                    <tr class="print-info-date">
-                      <td class="delightgroupllc-field-label">Invoice Date:</td>
-                      <td class="delightgroupllc-field-value">{new Date(inv.issue_date).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
-                    </tr>
-                    <tr>
-                      <td class="delightgroupllc-field-label">Invoice Number:</td>
-                      <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
-                    </tr>
-                    <tr class="print-info-status">
-                      <td class="delightgroupllc-field-label">Sales Person:</td>
-                      <td class="delightgroupllc-field-value">{settings.signatory_name || 'Management'}</td>
-                    </tr>
-                    <tr class="print-info-status">
-                      <td class="delightgroupllc-field-label">Sales Person Contact:</td>
-                      <td class="delightgroupllc-field-value">{settings.contact_phone || '—'}</td>
-                    </tr>
-                    <tr>
-                      <td class="delightgroupllc-field-label">LPO Number:</td>
-                      <td class="delightgroupllc-field-value font-mono">{inv.lpo_number || '—'}</td>
-                    </tr>
-                    <tr class="print-info-due">
-                      <td class="delightgroupllc-field-label">Quotation Reference:</td>
-                      <td class="delightgroupllc-field-value font-mono">{inv.lpo_number || '—'}</td>
+                  <tr>
+                    <td class="delightgroupllc-field-label">{docNumberLabel}</td>
+                    <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
+                  </tr>
+                  <tr class="print-info-date">
+                    <td class="delightgroupllc-field-label">{docDateLabel}</td>
+                    <td class="delightgroupllc-field-value">{new Date(inv.issue_date).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
+                  </tr>
+                  <tr class="print-info-status">
+                    <td class="delightgroupllc-field-label">Sales Person:</td>
+                    <td class="delightgroupllc-field-value">{settings.signatory_name || 'Management'}</td>
+                  </tr>
+                  <tr class={docSalesPersonContactClass}>
+                    <td class="delightgroupllc-field-label">Sales Person Contact:</td>
+                    <td class="delightgroupllc-field-value">{settings.contact_phone || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td class="delightgroupllc-field-label">LPO Number:</td>
+                    <td class="delightgroupllc-field-value font-mono">{inv.lpo_number || '—'}</td>
+                  </tr>
+                  <tr class="print-info-due">
+                    <td class="delightgroupllc-field-label">Invoice Reference:</td>
+                    <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
+                  </tr>
+                  {inv.invoice_number && inv.invoice_number.toUpperCase().includes('DUP') && (
+                    <tr class="print-info-duplicate">
+                      <td class="delightgroupllc-field-label">Document Status:</td>
+                      <td class="delightgroupllc-field-value"><span style="border: 1.5px solid #ef4444; color: #ef4444; padding: 1px 6px; font-size: 8pt; font-weight: 800; text-transform: uppercase; border-radius: 2px; display: inline-block;">DUPLICATE</span></td>
                     </tr>
                   )}
+                  <tr class="print-info-due">
+                    <td class="delightgroupllc-field-label">Quotation Reference:</td>
+                    <td class="delightgroupllc-field-value font-mono">{inv.quotation_ref || '—'}</td>
+                  </tr>
                 </table>
               </td>
             </tr>
@@ -194,223 +183,233 @@ const isTermActive = (identifier: string): boolean => {
           <table class="delightgroupllc-header w-full" style="margin-bottom: 20px; border-bottom: 1.5px solid #000000; padding-bottom: 8px;">
             <tr>
               <td>
-                <img src={isDGS ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-12 w-auto object-contain" />
+                <img src={isDGS ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-12 w-auto object-contain print-company-logo-subsequent" />
               </td>
               <td class="text-right" style="vertical-align: middle; font-size: 9pt; font-weight: 700;">
-                {documentTitle} - {inv.invoice_number} (Continuation Page {pageNumber} of {totalPages})
+                <span class="delightgroupllc-doc-title">{documentTitle}</span> (Continuation Page <span class="dynamic-page-num">{pageNumber}</span> of <span class="dynamic-total-pages">{totalPages}</span>)
               </td>
             </tr>
           </table>
         )}
 
         <!-- TABLE SECTION -->
-        {inv.order_type === 'delivery_note' ? (
-          <table class="delightgroupllc-table">
-            <thead>
-              <tr>
-                <th style="width: 7%; text-align: center;">Sl.No</th>
-                <th style="width: 15%; text-align: center;" class="print-item-cat-ref">SKU No</th>
-                <th style="width: 48%; text-align: left;">Product Description</th>
-                <th style="width: 12%; text-align: center;">Warehouse</th>
-                <th style="width: 8%; text-align: center;">Units</th>
-                <th style="width: 10%; text-align: center;">Quantity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.map((item, idx) => {
-                const globalIdx = pageIdx * maxItemsPage1 + idx + 1;
-                return (
-                  <tr>
-                    <td class="text-center">{globalIdx}</td>
-                    <td class="text-center font-mono print-item-cat-ref">{item.catalogue_ref || '—'}</td>
-                    <td class="font-bold uppercase">
-                      <span class="block">{item.description}</span>
-                      {item.tech_spec && <span class="print-item-tech-spec block text-slate-500 font-normal mt-0.5" style="font-size: 7.5pt; text-transform: none;">Specs: {item.tech_spec}</span>}
-                    </td>
-                    <td class="text-center">DES</td>
-                    <td class="text-center">PCS</td>
-                    <td class="font-bold text-center">{item.quantity}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <table class="delightgroupllc-table">
-            <thead>
-              <tr>
-                <th style="width: 5%; text-align: center;">S/No</th>
-                <th style="width: 10%; text-align: center;" class="print-item-cat-ref">SKU</th>
-                <th style="width: 37%; text-align: left;">Product Description</th>
-                <th style="width: 6%; text-align: center;">Units</th>
-                <th style="width: 6%; text-align: center;">Qty</th>
-                <th style="width: 8%; text-align: right;" class="print-col-price">Unit Price</th>
-                <th style="width: 8%; text-align: right;" class="print-col-price">Discounted Unit Price</th>
-                <th style="width: 8%; text-align: right;" class="print-col-price">Total Amount</th>
-                <th style="width: 5%; text-align: center;" class="print-col-vat">Vat %</th>
-                <th style="width: 8%; text-align: right;" class="print-col-vat">Vat Amount</th>
-                <th style="width: 10%; text-align: right;" class="print-col-price">Net Amount Incl. VAT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.map((item, idx) => {
-                const globalIdx = isFirstPage ? (idx + 1) : (maxItemsPage1 + (pageIdx - 1) * maxItemsSubsequent + idx + 1);
-                const lineTotal = item.quantity * item.unit_price;
-                const taxAmt = item.tax_type === 'percentage' ? lineTotal * (item.tax_value / 100) : item.tax_value;
-                return (
-                  <tr>
-                    <td class="text-center">{globalIdx}</td>
-                    <td class="text-center font-mono print-item-cat-ref">{item.catalogue_ref || '—'}</td>
-                    <td class="font-bold uppercase">
-                      <span class="block">{item.description}</span>
-                      {item.tech_spec && <span class="print-item-tech-spec block text-slate-500 font-normal mt-0.5" style="font-size: 7.5pt; text-transform: none;">Specs: {item.tech_spec}</span>}
-                    </td>
-                    <td class="text-center">PCS</td>
-                    <td class="text-center">{item.quantity}</td>
-                    <td class="text-right font-mono print-col-price">{Number(item.unit_price).toFixed(2)}</td>
-                    <td class="text-right font-mono print-col-price">{Number(item.unit_price).toFixed(2)}</td>
-                    <td class="text-right font-mono print-col-price">{Number(lineTotal).toFixed(2)}</td>
-                    <td class="text-center font-mono print-col-vat">{item.tax_type === 'percentage' ? `${item.tax_value}` : '5'}</td>
-                    <td class="text-right font-mono print-col-vat">{Number(taxAmt).toFixed(2)}</td>
-                    <td class="text-right font-mono font-bold print-col-price">{Number(lineTotal + taxAmt).toFixed(2)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+        <table class="delightgroupllc-table">
+          <thead>
+            <tr>
+              <th style="width: 5%; text-align: center;">S/No</th>
+              <th style="width: 10%; text-align: center;" class="print-item-cat-ref"><span class="inv-only-layout-inline">SKU</span><span class="dn-only-layout-inline">SKU No</span></th>
+              <th style="width: 37%; text-align: left;">Product Description</th>
+              <th style="width: 6%; text-align: center;" class="print-col-units">Units</th>
+              <th style="width: 6%; text-align: center;"><span class="inv-only-layout-inline">Qty</span><span class="dn-only-layout-inline">Quantity</span></th>
+              <th style="width: 8%; text-align: right;" class="print-col-price">Unit Price</th>
+              <th style="width: 8%; text-align: right;" class="print-col-price">Discounted Unit Price</th>
+              <th style="width: 8%; text-align: right;" class="print-col-price">Total Amount</th>
+              <th style="width: 5%; text-align: center;" class="print-col-vat">Vat %</th>
+              <th style="width: 8%; text-align: right;" class="print-col-vat">Vat Amount</th>
+              <th style="width: 10%; text-align: right;" class="print-col-price">Net Amount Incl. VAT</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((item, idx) => {
+              const globalIdx = isFirstPage ? (idx + 1) : (maxItemsPage1 + (pageIdx - 1) * maxItemsSubsequent + idx + 1);
+              const lineTotal = item.quantity * item.unit_price;
+              const taxAmt = item.tax_type === 'percentage' ? lineTotal * (item.tax_value / 100) : item.tax_value;
+              return (
+                <tr class="item-row-render">
+                  <td class="text-center">{globalIdx}</td>
+                  <td class="text-center font-mono print-item-cat-ref">{item.catalogue_ref || '—'}</td>
+                  <td class="font-bold uppercase">
+                    <span class="block">{item.description}</span>
+                    {item.tech_spec && <span class="print-item-tech-spec block text-slate-500 font-normal mt-0.5" style="font-size: 7.5pt; text-transform: none;">Specs: {item.tech_spec}</span>}
+                  </td>
+                  <td class="text-center print-col-units">{item.unit || 'PCS'}</td>
+                  <td class="text-center font-bold">{item.quantity}</td>
+                  <td class="text-right font-mono print-col-price">{Number(item.unit_price).toFixed(2)}</td>
+                  <td class="text-right font-mono print-col-price">{Number(item.unit_price).toFixed(2)}</td>
+                  <td class="text-right font-mono print-col-price">{Number(lineTotal).toFixed(2)}</td>
+                  <td class="text-center font-mono print-col-vat">{item.tax_type === 'percentage' ? `${item.tax_value}` : '5'}</td>
+                  <td class="text-right font-mono print-col-vat">{Number(taxAmt).toFixed(2)}</td>
+                  <td class="text-right font-mono font-bold print-col-price">{Number(lineTotal + taxAmt).toFixed(2)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
         <!-- FOOTER / SIGNATURES (ON LAST PAGE ONLY) -->
         {isLastPage && (
-          inv.order_type === 'delivery_note' ? (
-            <div class="delightgroupllc-dn-totals">
-              Total Items Quantity &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="font-mono">{totalQty}</span>
-            </div>
-
-            <div class="delightgroupllc-dn-fields print-electronic-badge">
-              <div class="delightgroupllc-dn-fields-box">
-                <span class="text-muted block" style="font-size: 7.5pt; font-weight: 600;">Contact Person:</span>
-                <span class="font-bold" style="font-size: 9pt;">{inv.customer_name}</span>
-              </div>
-              <div class="delightgroupllc-dn-fields-box">
-                <span class="text-muted block" style="font-size: 7.5pt; font-weight: 600;">Contact Number:</span>
-                <span class="font-bold" style="font-size: 9pt;">{inv.customer_phone || '—'}</span>
-              </div>
-              <div class="delightgroupllc-dn-fields-box">
-                <span class="text-muted block" style="font-size: 7.5pt; font-weight: 600;">Description:</span>
-                <span class="font-bold" style="font-size: 9pt;">{inv.internal_notes || '—'}</span>
-              </div>
-            </div>
-
-            <div class="delightgroupllc-dn-signatures print-signature-section">
-              <div class="delightgroupllc-dn-sign-box print-sig-client-col" id="dn-sig-client-block">
-                Received By:<br>
-                Contact Number:<br>
-                Received Date:<br>
-                <div class="delightgroupllc-dn-sign-line">Customer Signature</div>
-              </div>
-              <div class="delightgroupllc-dn-sign-box text-right print-sig-company-col" id="dn-sig-company-block" style="display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;">
-                <div>For {companyNameEN}</div>
-                <!-- Dynamic Stamp Space -->
-                <div class="print-stamp-box hidden" style="height: 60px;"></div>
-                <div class="signature-image-container relative flex justify-center items-end h-12 -mb-3 z-10 w-[70%]">
-                  <img class={"signature-image-render h-12 w-auto object-contain " + (signatureImage ? "" : "hidden")} src={signatureImage || ""} />
+          <div class="delightgroupllc-inv-footer-group" style="page-break-inside: avoid; break-inside: avoid; width: 100%;">
+            <!-- DELIVERY NOTE FOOTER BLOCK -->
+            <div class="dn-only-layout">
+              <div class="delightgroupllc-dn-totals print-total-quantity">
+                Total Items Quantity &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="font-mono">{totalQty}</span>
+                <div class="print-qty-words-panel mt-1 font-normal text-slate-500 text-xs">
+                  Quantity in words: <span class="font-bold text-slate-900">{totalQtyInWords}</span>
                 </div>
-                <div class="delightgroupllc-dn-sign-line" style="width: 70%; text-align: center; margin-top: 0px;">Authorized Signatory (<span id="print-sig-name-arr">{settings.signatory_name || 'Management'}</span>)</div>
               </div>
-            </div>
+              <p class="delightgroupllc-dn-note print-dn-material-condition-disclaimer text-center font-bold uppercase tracking-wide text-slate-600" style="font-size: 7.5pt; margin-top: 16px; margin-bottom: 24px;">{dnNote}</p>
 
-            <p class="delightgroupllc-dn-note print-electronic-badge">NOTE: Customer must check good's condition and quantity at the time of delivery of the material</p>
-          ) : (
-            <div class="delightgroupllc-inv-bottom-grid">
-              <div class="delightgroupllc-inv-words-panel">
-                <span class="font-bold text-muted uppercase tracking-wider" style="font-size: 7.5pt; display: block; margin-bottom: 5px;">Amount in words:</span>
-                <span class="font-bold" style="font-size: 9.5pt; color: #000000;">{amountInWords}</span>
               </div>
-              <div class="delightgroupllc-inv-totals-panel">
-                <table class="delightgroupllc-inv-totals-table">
-                  <tr class="print-total-subtotal">
-                    <td>Total Amount</td>
-                    <td>{Number(inv.subtotal).toFixed(2)}</td>
-                  </tr>
-                  <tr class="print-total-discount">
-                    <td>Discount Amount</td>
-                    <td>{Number(inv.discount_amount).toFixed(2)}</td>
-                  </tr>
-                  <tr class="print-total-subtotal">
-                    <td>Taxable Amount</td>
-                    <td>{Number(Number(inv.subtotal) - Number(inv.discount_amount)).toFixed(2)}</td>
-                  </tr>
-                  <tr class="print-total-vat">
-                    <td>Vat Amount</td>
-                    <td>{Number(inv.gst_amount).toFixed(2)}</td>
-                  </tr>
-                  <tr style="font-weight: 800; font-size: 9.5pt; background-color: #f8fafc;" class="print-total-due">
-                    <td style="color: #000000; border-top: 1px solid #000000;">Grand Total</td>
-                    <td style={`color: ${logoColor}; border-top: 1px solid #000000;`}>{Number(inv.total_amount).toFixed(2)}</td>
+
+              <div class="delightgroupllc-dn-signatures print-signature-section mt-4">
+                <table style="width: 100%;">
+                  <tr>
+                    <!-- LEFT slot: Customer Signature (default) OR Receiver-in-left (when customer hidden) -->
+                    <td class="delightgroupllc-dn-sign-box print-sig-client-col" id="dn-sig-client-block" style="width: 42%; vertical-align: bottom;">
+                      <div class="delightgroupllc-dn-sign-line">Customer Signature</div>
+                     
+                    </td>
+                    <!-- LEFT slot for receiver when customer is hidden -->
+                    <td class="delightgroupllc-dn-sign-box print-sig-receiver-left hidden" id="dn-sig-receiver-left" style="position: relative; width: 42%; vertical-align: bottom; text-align: left;">
+                      <div class="delightgroupllc-dn-sign-line">Receiver Signature</div>
+                      <div style="position: absolute; top: 100%; left: 0; font-size: 7.5pt; color: #475569; margin-top: 6px; line-height: 1.6;">
+                        Name: ____________________<br/>
+                        Contact: __________________<br/>
+                        Date: ____________________
+                      </div>
+                    </td>
+                    <td style="width: 16%;"></td>
+                    <!-- RIGHT slot: Company Signature -->
+                    <td class="delightgroupllc-dn-sign-box print-sig-company-col" id="dn-sig-company-block" style="width: 42%; vertical-align: bottom; text-align: right;">
+                      <div style="text-align: right;">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
+                      <!-- Dynamic Stamp Space -->
+                      <div class="print-stamp-box hidden" style="height: 60px;"></div>
+                      <div class="signature-image-container relative flex justify-end items-end h-12 -mb-3 z-10 w-full" style="padding-right: 15%;">
+                        <img class={"signature-image-render h-12 w-auto object-contain " + (signatureImage ? "" : "hidden")} src={signatureImage || ""} />
+                      </div>
+                      <div class="delightgroupllc-dn-sign-line" style="width: 70%; text-align: center; margin-top: 0px; margin-left: auto;">Authorized Signatory<span class="print-sig-paren-arr"> (</span><span id="print-sig-name-arr">{settings.signatory_name || 'Management'}</span><span class="print-sig-paren-arr">)</span></div>
+                    </td>
                   </tr>
                 </table>
               </div>
-            </div>
-
-            <div class="print-bank-block-p1" style="margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; font-size: 7.5pt; background: #f8fafc; page-break-inside: avoid; break-inside: avoid;">
-              <strong style={`display: block; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 5px; font-size: 8pt; color: ${logoColor}; text-transform: uppercase;`}>Remittance & Bank Instructions</strong>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                <div><span class="text-muted">Bank Name:</span> <span id="print-bank-name-p1-arr">{settings.bank_name || 'N/A'}</span></div>
-                <div><span class="text-muted">Account Name:</span> <span id="print-bank-acc-name-p1-arr">{settings.account_name || 'N/A'}</span></div>
-                <div><span class="text-muted">Account Number:</span> <span class="font-mono font-bold" id="print-bank-acc-p1-arr">{settings.account_number || 'N/A'}</span></div>
-                <div><span class="text-muted">Swift Code:</span> <span class="font-mono font-bold" id="print-bank-swift-p1-arr">{settings.swift_code || 'N/A'}</span></div>
-                <div style="grid-column: span 2;"><span class="text-muted">IBAN:</span> <span class="font-mono font-bold" style={`color: ${logoColor}`} id="print-bank-iban-p1-arr">{settings.iban_number || 'N/A'}</span></div>
+   <!-- Receiver signature BOTTOM row (only when customer is ALSO shown) -->
+              <div class="std-signature-col print-sig-receiver-col hidden" id="print-sig-receiver-col" style="width: 42%; vertical-align: bottom; margin-left: auto; margin-right: auto; padding-left: 20px; margin-top: 70px;">
+                <div class="std-signature-line">Receiver Signature</div>
+                <div style="font-size: 7.5pt; color: #475569; text-align: left; margin-top: 6px; line-height: 1.8;">
+                  Name: ________________________<br/>
+                  Contact: ______________________<br/>
+                  Date: ________________________
+                </div>
               </div>
+
+
             </div>
 
-            <div class="delightgroupllc-inv-signature-section print-signature-section" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 15px; margin-top: 20px;">
-              <div class="delightgroupllc-inv-disclaimer-text print-disclaimer-text">
-                {(() => {
-                  const disclaimerClauses = selectedClauses.filter((clause: any) => clause.identifier === 'disclaimer' || (clause.title && clause.title.toLowerCase().includes('disclaimer')));
-                  return disclaimerClauses.length > 0 ? (
-                    disclaimerClauses.map((clause: any) => (
-                      <div class="mb-1">
-                        <strong>{clause.title}:</strong> {clause.content}
+            <!-- INVOICE FOOTER BLOCK -->
+            <div class="inv-only-layout">
+              <div class="delightgroupllc-inv-bottom-grid">
+                <div class="delightgroupllc-inv-words-panel print-words-panel">
+                  <span class="font-bold text-muted uppercase tracking-wider" style="font-size: 7.5pt; display: block; margin-bottom: 5px;">Amount in words:</span>
+                  <span class="font-bold" style="font-size: 9.5pt; color: #000000;">{amountInWords}</span>
+                </div>
+                <div class="delightgroupllc-inv-totals-panel">
+                  <table class="delightgroupllc-inv-totals-table">
+                    <tr class="print-total-subtotal">
+                      <td>Total Amount</td>
+                      <td>{Number(inv.subtotal).toFixed(2)}</td>
+                    </tr>
+                    <tr class="print-total-discount">
+                      <td>Discount Amount</td>
+                      <td>{Number(inv.discount_amount).toFixed(2)}</td>
+                    </tr>
+                    <tr class="print-total-subtotal">
+                      <td>Taxable Amount</td>
+                      <td>{Number(Number(inv.subtotal) - Number(inv.discount_amount)).toFixed(2)}</td>
+                    </tr>
+                    <tr class="print-total-vat">
+                      <td>Vat Amount</td>
+                      <td>{Number(inv.gst_amount).toFixed(2)}</td>
+                    </tr>
+                    <tr class="print-total-quantity">
+                      <td>Total Quantity</td>
+                      <td style="padding-right: 32px;">{totalQty}</td>
+                    </tr>
+                    <tr style="font-weight: 800; font-size: 9.5pt; background-color: #f8fafc;" class="print-total-due print-total-due-row">
+                      <td>Total</td>
+                      <td style={`color: ${logoColor}; border-top: 1px solid #000000;`}>{Number(inv.total_amount).toFixed(2)}</td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+
+              <div class="print-bank-block-p1" style="margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; font-size: 7.5pt; background: #f8fafc; page-break-inside: avoid; break-inside: avoid;">
+                <strong style={`display: block; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 5px; font-size: 8pt; color: ${logoColor}; text-transform: uppercase;`}>Remittance & Bank Instructions</strong>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                  <div><span class="text-muted">Bank Name:</span> <span id="print-bank-name-p1-arr">{settings.bank_name || 'N/A'}</span></div>
+                  <div><span class="text-muted">Account Name:</span> <span id="print-bank-acc-name-p1-arr">{settings.account_name || 'N/A'}</span></div>
+                  <div><span class="text-muted">Account Number:</span> <span class="font-mono font-bold" id="print-bank-acc-p1-arr">{settings.account_number || 'N/A'}</span></div>
+                  <div><span class="text-muted">Swift Code:</span> <span class="font-mono font-bold" id="print-bank-swift-p1-arr">{settings.swift_code || 'N/A'}</span></div>
+                  <div style="grid-column: span 2;"><span class="text-muted">IBAN:</span> <span class="font-mono font-bold" style={`color: ${logoColor}`} id="print-bank-iban-p1-arr">{settings.iban_number || 'N/A'}</span></div>
+                </div>
+              </div>
+
+              <div class="delightgroupllc-inv-signature-section print-signature-section" style="display: flex; justify-content: space-between; align-items: flex-end; gap: 15px; margin-top: 20px;">
+                <div class="delightgroupllc-inv-disclaimer-text print-disclaimer-text">
+                  {(() => {
+                    const disclaimerClauses = selectedClauses.filter((clause: any) => clause.identifier === 'disclaimer' || (clause.title && clause.title.toLowerCase().includes('disclaimer')));
+                    return disclaimerClauses.length > 0 ? (
+                      disclaimerClauses.map((clause: any) => (
+                        <div class="mb-1">
+                          <strong>{clause.title}:</strong> {clause.content}
+                        </div>
+                      ))
+                    ) : (
+                      <div>
+                        <strong>Disclaimer:</strong><br/>
+                        By submitting payment, the Customer acknowledges and agrees that he/she has read, understood, and accepted the terms of sale. Payment shall constitute full acceptance of these terms without limitation or qualification.
                       </div>
-                    ))
-                  ) : (
-                    <div>
-                      <strong>Disclaimer:</strong><br/>
-                      By submitting payment, the Customer acknowledges and agrees that he/she has read, understood, and accepted the terms of sale. Payment shall constitute full acceptance of these terms without limitation or qualification.
-                    </div>
-                  );
-                })()}
-              </div>
-              <div class="print-sig-client-col" style="width: 30%; min-width: 140px; margin-bottom: 5px;">
-                <div style="border-top: 1.5px solid #000000; margin-top: 50px; padding-top: 4px; font-size: 7.5pt; font-weight: 700; text-align: center; text-transform: uppercase;">
-                  Customer Signature
+                    );
+                  })()}
+                </div>
+                <div class="print-sig-client-col" style="width: 30%; min-width: 140px; margin-bottom: 5px;">
+                  <div style="border-top: 1.5px solid #000000; margin-top: 50px; padding-top: 4px; font-size: 7.5pt; font-weight: 700; text-align: center; text-transform: uppercase;">
+                    Customer Signature
+                  </div>
+                </div>
+                <div class="delightgroupllc-inv-sign-stamp-box print-sig-company-col" id="inv-sig-stamp-block" style="width: 35%; min-width: 160px;">
+                  <div class="delightgroupllc-inv-sign-stamp-header">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
+                  <div class="delightgroupllc-inv-sign-stamp-body flex items-center justify-center" style="height: 60px; position: relative;">
+                    <!-- Dynamic Stamp Space -->
+                    <div class="print-stamp-box hidden" style="height: 10px;"></div>
+                    <img class={"signature-image-render h-12 w-auto object-contain " + (signatureImage ? "" : "hidden")} src={signatureImage || ""} style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);" />
+                  </div>
+                  <div class="delightgroupllc-inv-sign-stamp-footer">
+                    <div class="delightgroupllc-inv-sign-stamp-footer-cell">Signature</div>
+                    <div class="delightgroupllc-inv-sign-stamp-footer-cell">Date</div>
+                  </div>
                 </div>
               </div>
-              <div class="delightgroupllc-inv-sign-stamp-box print-sig-company-col" id="inv-sig-stamp-block" style="width: 35%; min-width: 160px;">
-                <div class="delightgroupllc-inv-sign-stamp-header">For {companyNameEN}</div>
-                <div class="delightgroupllc-inv-sign-stamp-body flex items-center justify-center" style="height: 60px; position: relative;">
-                  <!-- Dynamic Stamp Space -->
-                  <div class="print-stamp-box hidden" style="height: 10px;"></div>
-                  <img class={"signature-image-render h-12 w-auto object-contain " + (signatureImage ? "" : "hidden")} src={signatureImage || ""} style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);" />
-                </div>
-                <div class="delightgroupllc-inv-sign-stamp-footer">
-                  <div class="delightgroupllc-inv-sign-stamp-footer-cell">signature</div>
-                  <div class="delightgroupllc-inv-sign-stamp-footer-cell">date</div>
-                </div>
-              </div>
-            </div>
 
-            <!-- Electronic Signature Badge for Modern Grid -->
-            <div class="electronic-doc-badge print-electronic-badge hidden" style="border: 1.5px dashed #000000; padding: 10px; text-align: center; font-size: 8.5pt; color: #000000; font-weight: 700; margin-top: 15px; text-transform: uppercase; page-break-inside: avoid; break-inside: avoid;">
-              This is a computer-generated document. No signature or stamp is required.
+              <!-- Receiver signature below invoice signatures -->
+              <div class="print-sig-receiver-col hidden mx-auto" style="width: 30%; min-width: 140px; margin-bottom: 5px; margin-top: 70px;">
+                <div style="font-size: 7.5pt; font-weight: 700; text-align: center; text-transform: uppercase; margin-top: 10px;">
+                  Receiver Signature
+                </div>
+                <div style="font-size: 7.5pt; color: #475569; margin-top: 8px; line-height: 1.6; text-align: left;">
+                  Name: ____________________<br/>
+                  Contact: __________________<br/>
+                  Date: ____________________
+                </div>
+              </div>
+
+              <!-- Electronic Signature Badge for Modern Grid -->
+              <div class="electronic-doc-badge print-electronic-badge hidden" style="border: 1.5px dashed #000000; padding: 10px; text-align: center; font-size: 8.5pt; color: #000000; font-weight: 700; margin-top: 15px; text-transform: uppercase; page-break-inside: avoid; break-inside: avoid;">
+                This is a computer-generated document. No signature or stamp is required.
+              </div>
             </div>
-          )
+          </div>
+        )}
+
+        <!-- Continuation Note -->
+        {!isLastPage && (
+          <div class="text-center text-slate-400 italic" style="position: absolute; bottom: 55px; left: 0; right: 0; font-size: 7.5pt; font-weight: 600; letter-spacing: 0.5px;">
+            * Order continued on next page...
+          </div>
         )}
 
         <!-- Running Footer / Page Number -->
         <div class="text-center text-muted print-page-footer-num" style="position: absolute; bottom: 30px; left: 0; right: 0; font-size: 8pt; font-weight: 500;">
-          Page {pageNumber} of {totalPages}
+          Page {pageNumber} of <span class="dynamic-total-pages">{totalPages}</span>
         </div>
       </div>
     );
@@ -451,9 +450,9 @@ const isTermActive = (identifier: string): boolean => {
           <div class="terms-section print-bank-block-p2 flex-1" style="border: 1px solid #cbd5e1; border-radius: 2px; padding: 6px; background: #f8fafc; font-size: 5.8pt; box-sizing: border-box;">
             <h3 class="terms-section-title" style="margin-bottom: 2px; font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">Delight Bank Details:</h3>
             <p style="font-weight: 700; color: #000000; line-height: 1.35; margin: 0;">
-              {companyNameEN}<br>
+              <span class="dynamic-company-name-en">{companyNameEN}</span><br>
               Bank Name: <span id="print-bank-name-p2">{settings.bank_name || 'N/A'}</span><br>
-              A/C Name: <span id="print-bank-acc-name-p2">{settings.account_name || companyNameEN}</span><br>
+              A/C Name: <span id="print-bank-acc-name-p2" class={!settings.account_name ? "dynamic-company-name-en" : ""}>{settings.account_name || companyNameEN}</span><br>
               A/C No: <span id="print-bank-acc-p2">{settings.account_number || 'N/A'}</span><br>
               Bank Swift Code: <span id="print-bank-swift-p2">{settings.swift_code || 'N/A'}</span><br>
               IBAN: <span id="print-bank-iban-p2">{settings.iban_number || 'N/A'}</span>
@@ -466,7 +465,7 @@ const isTermActive = (identifier: string): boolean => {
               <div style="display: flex; align-items: center; gap: 8px; text-align: left;">
                 <img src={isDGS ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="company-card-tos-logo" style="height: 28px; width: auto; object-fit: contain;" />
                 <div>
-                  <div style="font-weight: bold; font-size: 7.5pt; color: #0f172a;">For {companyNameEN}</div>
+                  <div style="font-weight: bold; font-size: 7.5pt; color: #0f172a;">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
                   <div style="font-size: 5.8pt; color: #475569; line-height: 1.3; margin-top: 1px; max-width: 200px;">
                     <span id="print-company-address-arr-p2">{settings.business_address || settings.company_address || 'Dubai, United Arab Emirates'}</span><br>
                     TRN: <span class="font-mono font-bold" style="color:#0f172a;" id="print-company-trn-arr-p2">{settings.trn_number || '100380541100003'}</span>
@@ -481,8 +480,52 @@ const isTermActive = (identifier: string): boolean => {
       </div>
 
       <div class="text-center text-muted print-page-footer-num" style="position: absolute; bottom: 30px; left: 0; right: 0; font-size: 8pt; font-weight: 500;">
-        Page {totalPages} of {totalPages}
+        Page <span class="dynamic-total-pages">{totalPages}</span> of <span class="dynamic-total-pages">{totalPages}</span>
       </div>
     </div>
   )}
 </div>
+
+<style is:global>
+  #layout-delightgroupllc.mode-delivery-note .print-col-price,
+  #layout-delightgroupllc.mode-delivery-note .print-col-vat,
+  #layout-delightgroupllc.mode-delivery-note .inv-only-layout {
+    display: none !important;
+  }
+  #layout-delightgroupllc.mode-delivery-note .dn-only-layout {
+    display: block !important;
+  }
+  #layout-delightgroupllc.mode-delivery-note div.delightgroupllc-dn-fields {
+    display: grid !important;
+  }
+  #layout-delightgroupllc.mode-delivery-note .doc-num-page-2-header {
+    display: none !important;
+  }
+
+  #layout-delightgroupllc:not(.mode-delivery-note) .dn-only-layout {
+    display: none !important;
+  }
+
+  /* Inline label swaps */
+  #layout-delightgroupllc.mode-delivery-note .inv-only-layout-inline {
+    display: none !important;
+  }
+  #layout-delightgroupllc.mode-delivery-note .dn-only-layout-inline {
+    display: inline !important;
+  }
+  #layout-delightgroupllc:not(.mode-delivery-note) .dn-only-layout-inline {
+    display: none !important;
+  }
+  #layout-delightgroupllc:not(.mode-delivery-note) .inv-only-layout-inline {
+    display: inline !important;
+  }
+
+  /* Receiver Signature Column */
+  #layout-delightgroupllc.mode-delivery-note .print-col-receiver-sig {
+    display: table-cell !important;
+  }
+  #layout-delightgroupllc:not(.mode-delivery-note) .print-col-receiver-sig {
+    display: none !important;
+  }
+</style>
+

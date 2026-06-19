@@ -1,10 +1,11 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
-import { Users2, Search, ToggleLeft, ToggleRight, ShieldAlert, Award, AlertTriangle, Plus } from '@lucide/astro';
+import { Users2, Search, ToggleLeft, ToggleRight, ShieldAlert, Award, AlertTriangle, Plus, Copy } from '@lucide/astro';
 
 let users: any[] = [];
 let customers: any[] = [];
+let companies: any[] = [];
 let dbConnected = true;
 
 try {
@@ -29,6 +30,14 @@ try {
     ORDER BY c.created_at DESC
   `);
   customers = custRes.rows;
+
+  const compRes = await query(`
+    SELECT c.*, 
+      (SELECT COUNT(*) FROM customers cust WHERE cust.company_id = c.id) as customer_count
+    FROM companies c
+    ORDER BY c.name ASC
+  `);
+  companies = compRes.rows;
 } catch (err: any) {
   console.warn('Database offline, running mock user directory ledger:', err.message);
   dbConnected = false;
@@ -42,6 +51,11 @@ try {
   customers = [
     { id: 'c_1', name: 'Delight Customer A', email: 'cust.a@test.com', phone: '+971 50 111 2233', company_name: 'ACME Corp', company_vat: 'AE123456789', billing_address: 'Al Quoz, Dubai', shipping_address: 'Dubai Marine', created_at: new Date().toISOString() },
     { id: 'c_2', name: 'Global Contracting LLC', email: 'contact@globalcontracting.com', phone: '+971 4 999 8888', company_name: 'Global Contracting LLC', company_vat: 'AE987654321', billing_address: 'Jebel Ali, Dubai', shipping_address: '', created_at: new Date().toISOString() }
+  ];
+
+  companies = [
+    { id: 'comp_1', name: 'ACME Corp', vat_number: 'AE123456789', billing_address: 'Al Quoz, Dubai', shipping_address: 'Dubai Marine', customer_count: 1, created_at: new Date().toISOString() },
+    { id: 'comp_2', name: 'Global Contracting LLC', vat_number: 'AE987654321', billing_address: 'Jebel Ali, Dubai', shipping_address: '', customer_count: 1, created_at: new Date().toISOString() }
   ];
 }
 ---
@@ -59,15 +73,31 @@ try {
   )}
 
   <div class="space-y-6 p-6 lg:p-8">
+    
+    <!-- Info Note -->
+    <div class="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 flex gap-3 text-xs text-cyan-800 font-medium">
+      <span class="font-bold">Note:</span> Generating an invoice for a customer or company that does not exist yet will automatically create the record and link them.
+    </div>
+
     <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-      <div class="relative flex-grow max-w-md">
-        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <input 
-          type="text" 
-          id="admin-search-users"
-          placeholder="Filter directory..." 
-          class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
-        />
+      <div class="relative flex-grow max-w-md flex gap-2">
+        <div class="relative flex-grow">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input 
+            type="text" 
+            id="admin-search-users"
+            placeholder="Filter directory..." 
+            class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+          />
+        </div>
+        <select 
+          id="customer-sort-select" 
+          class="rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-medium shrink-0"
+        >
+          <option value="recent">Sort: Recent</option>
+          <option value="name">Sort: Name</option>
+          <option value="company">Sort: Company</option>
+        </select>
       </div>
 
       <!-- Segmented Control Tabs & Action Buttons -->
@@ -75,6 +105,9 @@ try {
         <div class="flex gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200 animate-fade-in">
           <button id="btn-tab-customers" class="px-4 py-1.5 text-xs font-bold text-cyan-700 bg-white rounded-md shadow-xs transition-all focus:outline-none">
             Customer Registry
+          </button>
+          <button id="btn-tab-companies" class="px-4 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-md transition-all focus:outline-none">
+            Company Registry
           </button>
           <button id="btn-tab-users" class="px-4 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-md transition-all focus:outline-none">
             Users Directory
@@ -94,6 +127,10 @@ try {
           </button>
         </div>
 
+        <button id="btn-create-company" class="px-4 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-lg shadow-sm transition-all focus:outline-none flex items-center gap-1.5">
+          <Plus class="w-3.5 h-3.5" />
+          Create Company
+        </button>
         <button id="btn-create-customer" class="px-4 py-2 text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg shadow-sm transition-all focus:outline-none flex items-center gap-1.5">
           <Plus class="w-3.5 h-3.5" />
           Create Customer
@@ -173,6 +210,7 @@ try {
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
+            <th class="px-6 py-4 font-semibold">Customer Code</th>
             <th class="px-6 py-4 font-semibold">Customer Info</th>
             <th class="px-6 py-4 font-semibold">Company / TIN/VAT</th>
             <th class="px-6 py-4 font-semibold">Billing Address</th>
@@ -183,8 +221,9 @@ try {
           </tr>
         </thead>
         <tbody id="admin-customers-table">
-          {customers.map(c => (
+          {customers.map((c, i) => (
             <tr class="admin-customer-row border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors" 
+                data-index={i}
                 data-id={c.id}
                 data-name={c.name}
                 data-email={c.email || ''} 
@@ -193,9 +232,13 @@ try {
                 data-vat={c.company_vat || ''}
                 data-billing={c.billing_address || ''}
                 data-shipping={c.shipping_address || ''}
+                data-code={c.code || ''}
                 data-archived={c.is_archived ? 'true' : 'false'}
                 data-deleted={c.is_deleted ? 'true' : 'false'}
                 data-has-orders={c.has_orders ? 'true' : 'false'}>
+              <td class="px-6 py-4 font-mono font-bold text-slate-900">
+                {c.code || '—'}
+              </td>
               <td class="px-6 py-4">
                 <div class="font-bold text-slate-900">{c.name}</div>
                 {c.email && <div class="text-2xs text-slate-500 mt-0.5 font-mono">{c.email}</div>}
@@ -245,11 +288,138 @@ try {
         </tbody>
       </table>
     </div>
+
+    <!-- Companies Container -->
+    <div id="companies-container" class="hidden rounded-xl border border-slate-200 bg-white overflow-x-auto shadow-sm">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
+            <th class="px-6 py-4 font-semibold">Company Code</th>
+            <th class="px-6 py-4 font-semibold">Company Name</th>
+            <th class="px-6 py-4 font-semibold">TIN/VAT Number</th>
+            <th class="px-6 py-4 font-semibold">Billing Address</th>
+            <th class="px-6 py-4 font-semibold">Shipping Address</th>
+            <th class="px-6 py-4 font-semibold text-center">Linked Customers</th>
+            <th class="px-6 py-4 font-semibold text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="admin-companies-table">
+          {companies.map((comp) => (
+            <tr class="admin-company-row border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors" 
+                data-id={comp.id}
+                data-name={comp.name}
+                data-vat={comp.vat_number || ''}
+                data-billing={comp.billing_address || ''}
+                data-shipping={comp.shipping_address || ''}
+                data-code={comp.code || ''}>
+              <td class="px-6 py-4 font-mono font-bold text-slate-900">
+                {comp.code || '—'}
+              </td>
+              <td class="px-6 py-4 font-bold text-slate-900">{comp.name}</td>
+              <td class="px-6 py-4 font-mono font-medium text-slate-700">
+                {comp.vat_number || <span class="text-slate-400 italic">—</span>}
+              </td>
+              <td class="px-6 py-4 max-w-xs truncate font-medium text-slate-600" title={comp.billing_address ? comp.billing_address.split(' ||| ').join('; ') : ''}>
+                {comp.billing_address ? comp.billing_address.split(' ||| ').join('; ') : <span class="text-slate-400 italic">—</span>}
+              </td>
+              <td class="px-6 py-4 max-w-xs truncate font-medium text-slate-600" title={comp.shipping_address ? comp.shipping_address.split(' ||| ').join('; ') : ''}>
+                {comp.shipping_address ? comp.shipping_address.split(' ||| ').join('; ') : <span class="text-slate-400 italic">—</span>}
+              </td>
+              <td class="px-6 py-4 text-center font-bold text-cyan-600">
+                {comp.customer_count || 0}
+              </td>
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-3">
+                  <button 
+                    type="button" 
+                    class="edit-company-btn inline-flex items-center gap-1 text-2xs font-bold uppercase tracking-wider text-violet-600 hover:text-violet-700 focus:outline-none transition-colors"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {companies.length === 0 && (
+            <tr>
+              <td colspan="6" class="px-6 py-8 text-center text-slate-400 italic">No companies found in database.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- CREATE / EDIT COMPANY MODAL -->
+  <div id="edit-company-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col">
+      <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+        <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-violet-500"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <span id="company-modal-title-text">Edit Company Details</span>
+        </h3>
+        <button id="close-company-modal" class="text-slate-400 hover:text-slate-700 rounded-lg p-1 hover:bg-slate-100 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <form id="edit-company-form" class="p-6 space-y-4" onsubmit="return false;">
+        <input type="hidden" id="edit-company-id" />
+        
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company Code</label>
+          <input type="text" id="edit-company-code" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-violet-500 focus:outline-none transition-colors" placeholder="e.g. COM-1001 (generated automatically if blank)" />
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company Name *</label>
+          <input type="text" id="edit-company-name" required class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-violet-500 focus:outline-none transition-colors" />
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company TIN / VAT Number</label>
+          <input type="text" id="edit-company-vat" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Billing Addresses</label>
+          <div id="company-billing-addresses-list" class="space-y-2"></div>
+          <button type="button" id="btn-add-company-billing" class="inline-flex items-center gap-1 text-2xs font-bold text-cyan-600 hover:text-cyan-700 bg-transparent border-0 cursor-pointer">
+            <Plus class="w-3.5 h-3.5" /> Add another billing address
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Shipping / Delivery Addresses</label>
+          <div id="company-shipping-addresses-list" class="space-y-2"></div>
+          <button type="button" id="btn-add-company-shipping" class="inline-flex items-center gap-1 text-2xs font-bold text-cyan-600 hover:text-cyan-700 bg-transparent border-0 cursor-pointer">
+            <Plus class="w-3.5 h-3.5" /> Add another shipping address
+          </button>
+        </div>
+
+        <div class="flex justify-between items-center pt-4 border-t border-slate-100 mt-6">
+          <div>
+            <button type="button" id="btn-modal-delete-company" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 transition-colors">
+              Delete
+            </button>
+          </div>
+          <div class="flex gap-3">
+            <button type="button" id="btn-cancel-company" class="px-4 py-2 rounded-lg text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" id="btn-save-company" class="px-4 py-2 rounded-lg text-xs font-bold bg-violet-600 hover:bg-violet-700 text-white transition-colors shadow-sm">
+              Save Details
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- CREATE / EDIT CUSTOMER MODAL -->
   <div id="edit-customer-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 animate-fade-in">
-    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto">
       <!-- Header -->
       <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
         <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -265,6 +435,11 @@ try {
       <form id="edit-customer-form" class="p-6 space-y-4" onsubmit="return false;">
         <input type="hidden" id="edit-customer-id" />
         
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Customer Code</label>
+          <input type="text" id="edit-customer-code" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" placeholder="e.g. CUS-1001 (generated automatically if blank)" />
+        </div>
+
         <div class="space-y-1">
           <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Customer Name *</label>
           <input type="text" id="edit-customer-name" required class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
@@ -329,12 +504,19 @@ try {
     const searchInput = document.getElementById('admin-search-users') as HTMLInputElement | null;
     const userRows = document.querySelectorAll('.admin-user-row');
     const customerRows = document.querySelectorAll('.admin-customer-row');
+    const companyRows = document.querySelectorAll('.admin-company-row');
 
     // Tab buttons & containers
     const btnTabUsers = document.getElementById('btn-tab-users');
     const btnTabCustomers = document.getElementById('btn-tab-customers');
+    const btnTabCompanies = document.getElementById('btn-tab-companies');
     const usersContainer = document.getElementById('users-container');
     const customersContainer = document.getElementById('customers-container');
+    const companiesContainer = document.getElementById('companies-container');
+
+    // Action buttons
+    const btnCreateCompany = document.getElementById('btn-create-company');
+    const btnCreateCustomer = document.getElementById('btn-create-customer');
 
     // Sub-tab buttons
     const btnCustActive = document.getElementById('btn-cust-active');
@@ -342,7 +524,7 @@ try {
     const btnCustBin = document.getElementById('btn-cust-bin');
 
     // Default tabs
-    let activeTab: 'users' | 'customers' = 'customers';
+    let activeTab: 'users' | 'customers' | 'companies' = 'customers';
     let customerSubTab: 'active' | 'archived' | 'bin' = 'active';
 
     const filterList = () => {
@@ -352,6 +534,18 @@ try {
           const name = (row.getAttribute('data-name') || '').toLowerCase();
           const email = (row.getAttribute('data-email') || '').toLowerCase();
           if (name.includes(query) || email.includes(query)) {
+            (row as HTMLElement).classList.remove('hidden');
+          } else {
+            (row as HTMLElement).classList.add('hidden');
+          }
+        });
+      } else if (activeTab === 'companies') {
+        companyRows.forEach(row => {
+          const name = (row.getAttribute('data-name') || '').toLowerCase();
+          const vat = (row.getAttribute('data-vat') || '').toLowerCase();
+          const billing = (row.getAttribute('data-billing') || '').toLowerCase();
+          const shipping = (row.getAttribute('data-shipping') || '').toLowerCase();
+          if (name.includes(query) || vat.includes(query) || billing.includes(query) || shipping.includes(query)) {
             (row as HTMLElement).classList.remove('hidden');
           } else {
             (row as HTMLElement).classList.add('hidden');
@@ -387,27 +581,77 @@ try {
       }
     };
 
-    const switchTab = (tab: 'users' | 'customers') => {
+    const sortCustomers = () => {
+      const sortBy = (document.getElementById('customer-sort-select') as HTMLSelectElement)?.value || 'recent';
+      const tbody = document.getElementById('admin-customers-table');
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll('.admin-customer-row'));
+      
+      rows.sort((a, b) => {
+        if (sortBy === 'name') {
+          const nameA = (a.getAttribute('data-name') || '').toLowerCase();
+          const nameB = (b.getAttribute('data-name') || '').toLowerCase();
+          return nameA.localeCompare(nameB);
+        } else if (sortBy === 'company') {
+          const compA = (a.getAttribute('data-company') || '').toLowerCase() || 'zzzzzz';
+          const compB = (b.getAttribute('data-company') || '').toLowerCase() || 'zzzzzz';
+          return compA.localeCompare(compB);
+        } else {
+          const indexA = parseInt(a.getAttribute('data-index') || '0');
+          const indexB = parseInt(b.getAttribute('data-index') || '0');
+          return indexA - indexB;
+        }
+      });
+
+      rows.forEach(row => tbody.appendChild(row));
+    };
+
+    document.getElementById('customer-sort-select')?.addEventListener('change', sortCustomers);
+
+    const switchTab = (tab: 'users' | 'customers' | 'companies') => {
       activeTab = tab;
       const filterGrp = document.getElementById('customer-filter-group');
+      const sortSelect = document.getElementById('customer-sort-select');
+      
+      const tabs = [btnTabUsers, btnTabCustomers, btnTabCompanies];
+      tabs.forEach(btn => {
+        btn?.classList.remove('bg-white', 'text-cyan-700', 'shadow-xs');
+        btn?.classList.add('text-slate-600');
+      });
+
       if (tab === 'users') {
         btnTabUsers?.classList.add('bg-white', 'text-cyan-700', 'shadow-xs');
         btnTabUsers?.classList.remove('text-slate-600');
-        btnTabCustomers?.classList.remove('bg-white', 'text-cyan-700', 'shadow-xs');
-        btnTabCustomers?.classList.add('text-slate-600');
 
         usersContainer?.classList.remove('hidden');
         customersContainer?.classList.add('hidden');
+        companiesContainer?.classList.add('hidden');
         if (filterGrp) filterGrp.style.display = 'none';
+        if (sortSelect) sortSelect.style.display = 'none';
+        if (btnCreateCompany) btnCreateCompany.style.display = 'none';
+        if (btnCreateCustomer) btnCreateCustomer.style.display = 'none';
+      } else if (tab === 'companies') {
+        btnTabCompanies?.classList.add('bg-white', 'text-cyan-700', 'shadow-xs');
+        btnTabCompanies?.classList.remove('text-slate-600');
+
+        companiesContainer?.classList.remove('hidden');
+        customersContainer?.classList.add('hidden');
+        usersContainer?.classList.add('hidden');
+        if (filterGrp) filterGrp.style.display = 'none';
+        if (sortSelect) sortSelect.style.display = 'none';
+        if (btnCreateCompany) btnCreateCompany.style.display = 'inline-flex';
+        if (btnCreateCustomer) btnCreateCustomer.style.display = 'none';
       } else {
         btnTabCustomers?.classList.add('bg-white', 'text-cyan-700', 'shadow-xs');
         btnTabCustomers?.classList.remove('text-slate-600');
-        btnTabUsers?.classList.remove('bg-white', 'text-cyan-700', 'shadow-xs');
-        btnTabUsers?.classList.add('text-slate-600');
 
         customersContainer?.classList.remove('hidden');
         usersContainer?.classList.add('hidden');
+        companiesContainer?.classList.add('hidden');
         if (filterGrp) filterGrp.style.display = 'flex';
+        if (sortSelect) sortSelect.style.display = 'inline-block';
+        if (btnCreateCompany) btnCreateCompany.style.display = 'none';
+        if (btnCreateCustomer) btnCreateCustomer.style.display = 'inline-flex';
       }
       filterList();
     };
@@ -437,6 +681,7 @@ try {
 
     btnTabUsers?.addEventListener('click', () => switchTab('users'));
     btnTabCustomers?.addEventListener('click', () => switchTab('customers'));
+    btnTabCompanies?.addEventListener('click', () => switchTab('companies'));
 
     btnCustActive?.addEventListener('click', () => switchCustomerSubTab('active'));
     btnCustArchived?.addEventListener('click', () => switchCustomerSubTab('archived'));
@@ -467,6 +712,7 @@ try {
       const elVat = document.getElementById('edit-customer-vat') as HTMLInputElement | null;
       const elBilling = document.getElementById('edit-customer-billing') as HTMLTextAreaElement | null;
       const elShipping = document.getElementById('edit-customer-shipping') as HTMLTextAreaElement | null;
+      const elCode = document.getElementById('edit-customer-code') as HTMLInputElement | null;
 
       if (elId) elId.value = '';
       if (elName) elName.value = '';
@@ -476,6 +722,7 @@ try {
       if (elVat) elVat.value = '';
       if (elBilling) elBilling.value = '';
       if (elShipping) elShipping.value = '';
+      if (elCode) elCode.value = '';
 
       // Hide actions for new record
       document.getElementById('btn-modal-archive-customer')?.classList.add('hidden');
@@ -509,6 +756,7 @@ try {
       const elVat = document.getElementById('edit-customer-vat') as HTMLInputElement | null;
       const elBilling = document.getElementById('edit-customer-billing') as HTMLTextAreaElement | null;
       const elShipping = document.getElementById('edit-customer-shipping') as HTMLTextAreaElement | null;
+      const elCode = document.getElementById('edit-customer-code') as HTMLInputElement | null;
 
       if (elId) elId.value = id;
       if (elName) elName.value = name;
@@ -518,6 +766,7 @@ try {
       if (elVat) elVat.value = vat;
       if (elBilling) elBilling.value = billing;
       if (elShipping) elShipping.value = shipping;
+      if (elCode) elCode.value = row.getAttribute('data-code') || '';
 
       // Show actions for existing record
       const archiveBtn = document.getElementById('btn-modal-archive-customer') as HTMLButtonElement | null;
@@ -577,6 +826,220 @@ try {
         const row = (e.currentTarget as HTMLButtonElement).closest('.admin-customer-row') as HTMLElement;
         if (row) openEditModal(row);
       });
+    });
+
+    // Company edit modal logic
+    const companyEditModal = document.getElementById('edit-company-modal-backdrop');
+    const companyCloseBtn = document.getElementById('close-company-modal');
+    const companyCancelBtn = document.getElementById('btn-cancel-company');
+    const companyForm = document.getElementById('edit-company-form') as HTMLFormElement;
+    const companyModalTitleText = document.getElementById('company-modal-title-text');
+    const companyCreateBtn = document.getElementById('btn-create-company');
+
+    const createAddressEntryElement = (value = '') => {
+      const container = document.createElement('div');
+      container.className = 'flex gap-2 items-start address-entry';
+      container.innerHTML = `
+        <textarea class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors resize-none" rows="1" placeholder="Enter address...">${value}</textarea>
+        <button type="button" class="btn-remove-address text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition-all shrink-0 mt-0.5" title="Remove Address">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
+      `;
+      container.querySelector('.btn-remove-address')?.addEventListener('click', () => {
+        container.remove();
+      });
+      return container;
+    };
+
+    const billingList = document.getElementById('company-billing-addresses-list');
+    const shippingList = document.getElementById('company-shipping-addresses-list');
+
+    document.getElementById('btn-add-company-billing')?.addEventListener('click', () => {
+      billingList?.appendChild(createAddressEntryElement(''));
+    });
+
+    document.getElementById('btn-add-company-shipping')?.addEventListener('click', () => {
+      shippingList?.appendChild(createAddressEntryElement(''));
+    });
+
+    const openCompanyCreateModal = () => {
+      if (companyModalTitleText) companyModalTitleText.textContent = 'Create New Company';
+      
+      const elId = document.getElementById('edit-company-id') as HTMLInputElement | null;
+      const elName = document.getElementById('edit-company-name') as HTMLInputElement | null;
+      const elVat = document.getElementById('edit-company-vat') as HTMLInputElement | null;
+      const elCode = document.getElementById('edit-company-code') as HTMLInputElement | null;
+
+      if (elId) elId.value = '';
+      if (elName) elName.value = '';
+      if (elVat) elVat.value = '';
+      if (elCode) elCode.value = '';
+
+      if (billingList) {
+        billingList.innerHTML = '';
+        billingList.appendChild(createAddressEntryElement(''));
+      }
+      if (shippingList) {
+        shippingList.innerHTML = '';
+        shippingList.appendChild(createAddressEntryElement(''));
+      }
+
+      document.getElementById('btn-modal-delete-company')?.classList.add('hidden');
+
+      companyEditModal?.classList.remove('hidden');
+      companyEditModal?.classList.add('flex');
+    };
+
+    const openCompanyEditModal = (row: HTMLElement) => {
+      if (companyModalTitleText) companyModalTitleText.textContent = 'Edit Company Details';
+
+      const id = row.getAttribute('data-id') || '';
+      const name = row.getAttribute('data-name') || '';
+      const vat = row.getAttribute('data-vat') || '';
+      const billing = row.getAttribute('data-billing') || '';
+      const shipping = row.getAttribute('data-shipping') || '';
+      const code = row.getAttribute('data-code') || '';
+
+      const elId = document.getElementById('edit-company-id') as HTMLInputElement | null;
+      const elName = document.getElementById('edit-company-name') as HTMLInputElement | null;
+      const elVat = document.getElementById('edit-company-vat') as HTMLInputElement | null;
+      const elCode = document.getElementById('edit-company-code') as HTMLInputElement | null;
+
+      if (elId) elId.value = id;
+      if (elName) elName.value = name;
+      if (elVat) elVat.value = vat;
+      if (elCode) elCode.value = code;
+
+      if (billingList) {
+        billingList.innerHTML = '';
+        const items = billing ? billing.split(' ||| ') : [''];
+        items.forEach(val => billingList.appendChild(createAddressEntryElement(val)));
+      }
+      if (shippingList) {
+        shippingList.innerHTML = '';
+        const items = shipping ? shipping.split(' ||| ') : [''];
+        items.forEach(val => shippingList.appendChild(createAddressEntryElement(val)));
+      }
+
+      const deleteBtn = document.getElementById('btn-modal-delete-company') as HTMLButtonElement | null;
+      if (deleteBtn) {
+        deleteBtn.setAttribute('data-id', id);
+        deleteBtn.classList.remove('hidden');
+      }
+
+      companyEditModal?.classList.remove('hidden');
+      companyEditModal?.classList.add('flex');
+    };
+
+    const closeCompanyEditModal = () => {
+      companyEditModal?.classList.add('hidden');
+      companyEditModal?.classList.remove('flex');
+      companyForm?.reset();
+    };
+
+    companyCreateBtn?.addEventListener('click', openCompanyCreateModal);
+    companyCloseBtn?.addEventListener('click', closeCompanyEditModal);
+    companyCancelBtn?.addEventListener('click', closeCompanyEditModal);
+    companyEditModal?.addEventListener('click', (e) => { if (e.target === companyEditModal) closeCompanyEditModal(); });
+
+    document.querySelectorAll('.edit-company-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const row = (e.currentTarget as HTMLButtonElement).closest('.admin-company-row') as HTMLElement;
+        if (row) openCompanyEditModal(row);
+      });
+    });
+
+    companyForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById('btn-save-company') as HTMLButtonElement | null;
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+      }
+
+      const elId = document.getElementById('edit-company-id') as HTMLInputElement | null;
+      const elName = document.getElementById('edit-company-name') as HTMLInputElement | null;
+      const elVat = document.getElementById('edit-company-vat') as HTMLInputElement | null;
+      const elCode = document.getElementById('edit-company-code') as HTMLInputElement | null;
+
+      const id = elId?.value || '';
+      
+      const billingAddresses = billingList 
+        ? Array.from(billingList.querySelectorAll('textarea')).map(txt => txt.value.trim()).filter(v => v)
+        : [];
+      const shippingAddresses = shippingList
+        ? Array.from(shippingList.querySelectorAll('textarea')).map(txt => txt.value.trim()).filter(v => v)
+        : [];
+
+      const payload = {
+        name: elName?.value.trim() || '',
+        vat_number: elVat?.value.trim() || null,
+        billing_address: billingAddresses.length > 0 ? billingAddresses.join(' ||| ') : null,
+        shipping_address: shippingAddresses.length > 0 ? shippingAddresses.join(' ||| ') : null,
+        code: elCode?.value.trim() || null,
+      };
+
+      if (!payload.name) {
+        alert('Company Name is required');
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Details';
+        }
+        return;
+      }
+
+      try {
+        const url = id ? '/api/companies/' + id : '/api/companies';
+        const method = id ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to save company details'));
+        }
+      } catch (err: any) {
+        alert('Error: ' + err.message);
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Details';
+        }
+      }
+    });
+
+    // Delete Company Trigger
+    document.getElementById('btn-modal-delete-company')?.addEventListener('click', async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const companyId = target.getAttribute('data-id') || '';
+
+      if (!confirm('Are you sure you want to permanently delete this company? This will unlink all associated customers and cannot be undone.')) {
+        return;
+      }
+
+      target.disabled = true;
+
+      try {
+        const res = await fetch('/api/companies/' + companyId, {
+          method: 'DELETE'
+        });
+
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to delete company'));
+        }
+      } catch (err) {
+        alert('Network error while processing deletion.');
+      } finally {
+        target.disabled = false;
+      }
     });
 
     customerForm?.addEventListener('submit', async (e) => {

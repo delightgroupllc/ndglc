@@ -9,6 +9,7 @@ let products: any[] = [];
 let categories: any[] = [];
 let customers: any[] = [];
 let disclaimers: any[] = [];
+let settings: Record<string, string> = {};
 try {
   const prodRes = await query(`
     SELECT p.id, p.name, p.sku, p.category_id, pi.url as image_url
@@ -20,12 +21,35 @@ try {
   const catRes = await query('SELECT id, name FROM categories ORDER BY name ASC');
   categories = catRes.rows;
   console.log('InvoiceForm.astro: Products loaded:', products.length, 'Categories loaded:', categories.length);
-  const custRes = await query('SELECT * FROM customers ORDER BY name ASC');
+  const custRes = await query(`
+    SELECT c.*, co.code as company_code 
+    FROM customers c 
+    LEFT JOIN companies co ON c.company_id = co.id 
+    ORDER BY c.name ASC
+  `);
   customers = custRes.rows;
   const legalRes = await query(`SELECT id, identifier, title, content, type FROM legal_artifacts WHERE show_in_invoice = TRUE ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
   disclaimers = legalRes.rows;
+
+  const settingsRes = await query('SELECT key, value FROM settings');
+  settings = settingsRes.rows.reduce((acc: any, row: any) => {
+    acc[row.key] = row.value;
+    return acc;
+  }, {});
 } catch(e) {
-  console.error('InvoiceForm.astro products load error:', e);
+  console.error('InvoiceForm.astro load error:', e);
+}
+
+let signaturesList: any[] = [];
+try {
+  signaturesList = settings.signatures ? JSON.parse(settings.signatures) : [];
+} catch (e) {}
+if (signaturesList.length === 0 && settings.signatory_name) {
+  signaturesList = [{
+    id: 'sig_legacy',
+    signatory_name: settings.signatory_name || '',
+    signatory_title: settings.signatory_title || ''
+  }];
 }
 
 const productsJson = JSON.stringify(products);
@@ -56,18 +80,44 @@ const disclaimersJson = JSON.stringify(disclaimers);
         <div class="p-6 space-y-4">
           <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Customer Information</h4>
 
+          {/* Select Company */}
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Company</label>
+            <select id="invoice-select-company" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 font-semibold text-slate-750">
+              <option value="">-- All Companies --</option>
+              {Array.from(new Map(customers.filter(c => c.company_name).map(c => [c.company_name, c.company_code])).entries()).sort((a,b) => a[0].localeCompare(b[0])).map(([companyName, companyCode]) => (
+                <option value={companyName}>{companyName} {companyCode ? `(${companyCode})` : ''}</option>
+              ))}
+            </select>
+          </div>
+
           <!-- Select Customer -->
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Customer</label>
             <div class="relative">
               <input type="text" id="invoice-customer-name" name="customer_name" list="customer-datalist"
-                placeholder="Type to search or enter new name…"
+                placeholder="Type to search by name or code…"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
                 autocomplete="off" />
               <datalist id="customer-datalist">
-                {customers.map(c => <option value={c.name} data-email={c.email||''} data-phone={c.phone||''} data-company={c.company_name||''} data-vat={c.company_vat||''} data-billing={c.billing_address||''} data-shipping={c.shipping_address||''} />)}
+                {customers.map(c => (
+                  <option 
+                    value={c.name} 
+                    data-code={c.code||''} 
+                    data-company-code={c.company_code||''} 
+                    data-email={c.email||''} 
+                    data-phone={c.phone||''} 
+                    data-company={c.company_name||''} 
+                    data-vat={c.company_vat||''} 
+                    data-billing={c.billing_address||''} 
+                    data-shipping={c.shipping_address||''}
+                  >
+                    {c.code || ''} - {c.company_name ? `${c.company_name} (${c.company_code || ''})` : 'Individual'}
+                  </option>
+                ))}
               </datalist>
-              <p id="new-customer-note" class="hidden mt-1 text-[10px] font-bold text-blue-600">✦ New customer — will be auto-registered on save.</p>
+              <p id="new-customer-note" class="hidden mt-1 text-[10px] font-bold text-blue-600">✦ New customer — will be auto-registered and linked to the company on save.</p>
+              <p id="new-company-note" class="hidden mt-1 text-[10px] font-bold text-indigo-600">✦ New company — will be created and registered in the company registry on save.</p>
             </div>
           </div>
 
@@ -77,6 +127,18 @@ const disclaimersJson = JSON.stringify(disclaimers);
               <input type="text" id="inv-full-name" name="full_name_display" placeholder="Contact person name" readonly
                 class="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-600 px-3 py-2.5 text-sm cursor-default" />
               <p class="text-[10px] text-slate-400">Auto-filled from customer selection</p>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Customer Code (ID)</label>
+              <input type="text" id="invoice-customer-code" readonly placeholder="CUS-XXXX"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-500 px-3 py-2.5 text-sm cursor-default font-mono" />
+              <p class="text-[10px] text-slate-400">Auto-assigned ID</p>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Code (ID)</label>
+              <input type="text" id="invoice-company-code" readonly placeholder="COM-XXXX"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-500 px-3 py-2.5 text-sm cursor-default font-mono" />
+              <p class="text-[10px] text-slate-400">Auto-assigned ID</p>
             </div>
             <div class="space-y-1.5">
               <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address <span class="text-rose-500">*</span></label>
@@ -179,7 +241,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
               </select>
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Source Division</label>
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Source Division <span class="text-rose-500">*</span></label>
               <select name="source_division" id="inv-source-division"
                 class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none">
                 <option value="">-- Select Division --</option>
@@ -187,6 +249,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
                 <option value="DGS">Division DGS</option>
                 <option value="both">Both Divisions</option>
               </select>
+              <p id="source-division-error" class="hidden text-[10px] font-semibold text-rose-500">Source Division is required.</p>
             </div>
             <div class="space-y-1.5">
               <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Issue Date <span class="text-rose-500">*</span></label>
@@ -200,13 +263,31 @@ const disclaimersJson = JSON.stringify(disclaimers);
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
               <p id="due-date-error" class="hidden text-[10px] font-semibold text-rose-500">Due date is required.</p>
             </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Signatory Incharge <span class="text-rose-500">*</span></label>
+              <select name="signatory_incharge" id="invoice-signatory-incharge"
+                class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700">
+                <option value="">-- Select Signatory --</option>
+                <option value="any">Any (Authorized Signatory Only)</option>
+                {signaturesList.map((s: any) => (
+                  <option value={s.id}>{s.signatory_name} ({s.signatory_title})</option>
+                ))}
+              </select>
+              <p id="signatory-error" class="hidden text-[10px] font-semibold text-rose-500">Signatory Incharge is required.</p>
+            </div>
           </div>
-          <div class="grid grid-cols-1 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
               <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Reference PO / LPO No</label>
               <input type="text" id="invoice-lpo-number" name="lpo_number" placeholder="e.g. PO#00000859"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
             </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Quotation Reference</label>
+              <input type="text" id="invoice-quotation-ref" name="quotation_ref" placeholder="e.g. QT-2026-4819"
+                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
+            </div>
+          </div>
             
             <div class="space-y-3 pt-2">
               <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Include Disclaimers & Terms (Page 2)</label>
@@ -750,6 +831,30 @@ const disclaimersJson = JSON.stringify(disclaimers);
       discountInput?.classList.remove('border-rose-400');
     }
 
+    // Signatory validation
+    const signatorySelect = document.getElementById('invoice-signatory-incharge') as HTMLSelectElement;
+    const signatoryError = document.getElementById('signatory-error');
+    if (!signatorySelect?.value) {
+      signatoryError?.classList.remove('hidden');
+      signatorySelect?.classList.add('border-rose-400');
+      valid = false;
+    } else {
+      signatoryError?.classList.add('hidden');
+      signatorySelect?.classList.remove('border-rose-400');
+    }
+
+    // Source Division validation
+    const sourceDivisionSelect = document.getElementById('inv-source-division') as HTMLSelectElement;
+    const sourceDivisionError = document.getElementById('source-division-error');
+    if (!sourceDivisionSelect?.value) {
+      sourceDivisionError?.classList.remove('hidden');
+      sourceDivisionSelect?.classList.add('border-rose-400');
+      valid = false;
+    } else {
+      sourceDivisionError?.classList.add('hidden');
+      sourceDivisionSelect?.classList.remove('border-rose-400');
+    }
+
     // Line items — at least one must have desc + qty + price
     const itemsError = document.getElementById('items-error');
     const rows = document.querySelectorAll('.invoice-item-row');
@@ -899,6 +1004,27 @@ const disclaimersJson = JSON.stringify(disclaimers);
       recalcSummary();
       document.getElementById('invoice-form-msg')?.classList.add('hidden');
       document.getElementById('new-customer-note')?.classList.add('hidden');
+
+      // Clear validation styling and error messages
+      const fields = [
+        'invoice-customer-name', 'invoice-customer-email', 'invoice-customer-phone',
+        'invoice-company-name', 'invoice-company-vat', 'invoice-billing-address',
+        'invoice-shipping-address', 'invoice-issue-date', 'invoice-due-date',
+        'inv-discount', 'invoice-signatory-incharge', 'inv-source-division'
+      ];
+      fields.forEach(id => {
+        const el = document.getElementById(id);
+        el?.classList.remove('border-rose-400', 'bg-rose-50');
+      });
+
+      const errorIds = [
+        'email-error', 'phone-error', 'company-name-error', 'company-vat-error',
+        'billing-address-error', 'shipping-address-error', 'issue-date-error',
+        'due-date-error', 'signatory-error', 'source-division-error', 'items-error'
+      ];
+      errorIds.forEach(id => {
+        document.getElementById(id)?.classList.add('hidden');
+      });
     };
 
     document.getElementById('close-invoice-modal')?.addEventListener('click', closeModal);
@@ -917,6 +1043,21 @@ const disclaimersJson = JSON.stringify(disclaimers);
     document.getElementById('inv-discount')?.addEventListener('input', recalcSummary);
     document.getElementById('inv-discount-type')?.addEventListener('change', recalcSummary);
 
+    // Company selector filtering
+    const companySelect = document.getElementById('invoice-select-company') as HTMLSelectElement;
+    const allCustomerOpts = Array.from(document.querySelectorAll('#customer-datalist option')) as HTMLOptionElement[];
+    const knownCompanies = new Set(allCustomerOpts.map(o => o.getAttribute('data-company') || '').filter(Boolean));
+
+    companySelect?.addEventListener('change', () => {
+      const selected = companySelect.value;
+      const datalist = document.getElementById('customer-datalist')!;
+      datalist.innerHTML = '';
+      const filtered = selected
+        ? allCustomerOpts.filter(o => (o.getAttribute('data-company') || '') === selected)
+        : allCustomerOpts;
+      filtered.forEach(o => datalist.appendChild(o.cloneNode(true)));
+    });
+
     // Customer autocomplete fill
     const custInput = document.getElementById('invoice-customer-name') as HTMLInputElement;
     custInput?.addEventListener('input', () => {
@@ -934,13 +1075,25 @@ const disclaimersJson = JSON.stringify(disclaimers);
           (document.getElementById('invoice-company-vat') as HTMLInputElement).value = o.getAttribute('data-vat') || '';
           (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = o.getAttribute('data-billing') || '';
           (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = o.getAttribute('data-shipping') || '';
+          (document.getElementById('invoice-customer-code') as HTMLInputElement).value = o.getAttribute('data-code') || '';
+          (document.getElementById('invoice-company-code') as HTMLInputElement).value = o.getAttribute('data-company-code') || '';
         }
       });
       if (!found) {
         const fullNameInput = document.getElementById('inv-full-name') as HTMLInputElement;
         if (fullNameInput) fullNameInput.value = val;
+        (document.getElementById('invoice-customer-code') as HTMLInputElement).value = '';
+        (document.getElementById('invoice-company-code') as HTMLInputElement).value = '';
       }
       document.getElementById('new-customer-note')?.classList.toggle('hidden', found || val.length === 0);
+    });
+
+    // Show new company note when company name doesn't match known companies
+    const companyNameInput = document.getElementById('invoice-company-name') as HTMLInputElement;
+    companyNameInput?.addEventListener('input', () => {
+      const compVal = companyNameInput.value.trim();
+      const isNewCompany = compVal.length > 0 && !knownCompanies.has(compVal);
+      document.getElementById('new-company-note')?.classList.toggle('hidden', !isNewCompany);
     });
 
     const updatePaymentTermsHiddenInput = () => {
@@ -973,6 +1126,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
         (document.getElementById('invoice-company-name') as HTMLInputElement).value = inv.company_name || '';
         (document.getElementById('invoice-company-vat') as HTMLInputElement).value = inv.company_vat || '';
         (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = inv.lpo_number || '';
+        (document.getElementById('invoice-quotation-ref') as HTMLInputElement).value = inv.quotation_ref || '';
         (document.getElementById('invoice-payment-terms') as HTMLInputElement).value = inv.payment_terms || '';
         
         let selectedDisclaimers = [];
@@ -995,6 +1149,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
         (document.getElementById('invoice-issue-date') as HTMLInputElement).value = inv.issue_date ? new Date(inv.issue_date).toISOString().split('T')[0] : '';
         (document.getElementById('invoice-due-date') as HTMLInputElement).value = inv.due_date ? new Date(inv.due_date).toISOString().split('T')[0] : '';
         (document.getElementById('invoice-payment-status') as HTMLSelectElement).value = inv.payment_status || 'unpaid';
+        (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = inv.signatory_incharge || '';
         (document.getElementById('inv-discount-type') as HTMLSelectElement).value = inv.discount_type || 'fixed';
         (document.getElementById('inv-discount') as HTMLInputElement).value = inv.discount_value !== undefined ? inv.discount_value : (inv.discount_amount || '0');
         (document.getElementById('inv-internal-notes') as HTMLTextAreaElement).value = inv.internal_notes || '';
@@ -1016,6 +1171,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
         (document.getElementById('invoice-company-vat') as HTMLInputElement).value = '';
         (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = '';
         (document.getElementById('invoice-payment-terms') as HTMLInputElement).value = '';
+        (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = '';
         
         document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
           (cb as HTMLInputElement).checked = true;
@@ -1090,6 +1246,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
         issue_date: (document.getElementById('invoice-issue-date') as HTMLInputElement).value,
         due_date: (document.getElementById('invoice-due-date') as HTMLInputElement).value || undefined,
         payment_status: isDraft ? 'draft' : (document.getElementById('invoice-payment-status') as HTMLSelectElement).value,
+        signatory_incharge: (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value || undefined,
         discount_type: (document.getElementById('inv-discount-type') as HTMLSelectElement).value,
         discount_value: parseFloat((document.getElementById('inv-discount') as HTMLInputElement).value) || 0,
         internal_notes: (document.getElementById('inv-internal-notes') as HTMLTextAreaElement).value.trim() || undefined,

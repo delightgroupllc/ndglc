@@ -19,7 +19,9 @@ try {
   const invRes = await query(`
     SELECT i.*, 
        (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list,
-       COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted
+       COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted,
+       (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code,
+       (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code
     FROM invoices i WHERE id = $1
   `, [id]);
   inv = invRes.rows[0];
@@ -79,6 +81,56 @@ if (!inv) {
 
 const totalPaid = transactions.reduce((sum, t) => sum + Number(t.amount), 0);
 const balanceDue = Math.max(0, Number(inv.total_amount) - totalPaid);
+
+// Determine suggested next step
+let nextStep: {
+  title: string;
+  description: string;
+  actionText?: string;
+  actionId?: string;
+  actionColor?: string;
+} | null = null;
+
+if (inv.payment_status === 'draft') {
+  nextStep = {
+    title: 'Finalize Draft / Change Status',
+    description: 'This order is currently a Draft. Click below to edit the details and change the status to active.',
+    actionText: 'Edit & Activate',
+    actionId: 'suggested-edit-btn',
+    actionColor: 'bg-cyan-600 hover:bg-cyan-700 text-white hover:shadow-cyan-100'
+  };
+} else if (inv.payment_status === 'unpaid' || inv.payment_status === 'overdue') {
+  nextStep = {
+    title: 'Record Payment & Deliver',
+    description: 'This order is unpaid. Record a customer payment or convert this to a Delivery Note if items are ready to be dispatched.',
+    actionText: 'Record Payment',
+    actionId: 'suggested-payment-btn',
+    actionColor: 'bg-green-600 hover:bg-green-700 text-white hover:shadow-green-100'
+  };
+} else if (inv.payment_status === 'partially_paid') {
+  nextStep = {
+    title: 'Record Remaining Balance',
+    description: `A partial payment has been made. There is still a balance of AED ${balanceDue.toLocaleString()} due.`,
+    actionText: 'Record Payment',
+    actionId: 'suggested-payment-btn',
+    actionColor: 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-amber-100'
+  };
+} else if (inv.payment_status === 'paid') {
+  if (inv.order_type !== 'delivery_note') {
+    nextStep = {
+      title: 'Generate Delivery Note',
+      description: 'This order is fully paid. You can now convert this order to a Delivery Note for shipment.',
+      actionText: 'Convert to Delivery Note',
+      actionId: 'suggested-delivery-btn',
+      actionColor: 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-blue-100'
+    };
+  } else {
+    nextStep = {
+      title: 'Order Fulfilled & Paid',
+      description: 'No further actions are required. This order is fully paid and issued as a Delivery Note.',
+    };
+  }
+}
 ---
 
 <DashboardLayout title={`Order ${inv.invoice_number}`} activeItem="invoices">
@@ -154,16 +206,17 @@ const balanceDue = Math.max(0, Number(inv.total_amount) - totalPaid);
           class="inline-flex items-center justify-center gap-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
         >
           <Printer class="h-4 w-4" />
-          Print
+          Print / Download PDF
         </a>
-        <a 
-          href={`/dashboard/invoices/print/${inv.id}?download=true`} 
-          target="_blank"
-          class="inline-flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-sm"
+        <button 
+          type="button" 
+          id="duplicate-invoice-btn"
+          data-id={inv.id}
+          class="inline-flex items-center justify-center gap-1.5 border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
         >
-          <FileDown class="h-4 w-4" />
-          Download PDF
-        </a>
+          <Copy class="h-4 w-4" />
+          Duplicate
+        </button>
       </div>
     </div>
 
@@ -278,12 +331,40 @@ const balanceDue = Math.max(0, Number(inv.total_amount) - totalPaid);
       <!-- Right Col: Metadata & Bank Details -->
       <div class="space-y-6">
         
+        <!-- Suggested Action Card -->
+        {nextStep && (
+          <div class="bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-200/60 p-6 rounded-2xl space-y-4 shadow-sm relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 w-24 h-24 bg-cyan-200/30 rounded-full blur-xl"></div>
+            <div class="flex items-center gap-2">
+              <span class="flex h-2.5 w-2.5 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+              </span>
+              <h2 class="text-xs font-extrabold uppercase tracking-widest text-cyan-800">Suggested Next Action</h2>
+            </div>
+            <div class="space-y-1">
+              <h3 class="text-sm font-bold text-slate-900">{nextStep.title}</h3>
+              <p class="text-xs text-slate-600 leading-relaxed">{nextStep.description}</p>
+            </div>
+            {nextStep.actionText && (
+              <button
+                type="button"
+                id={nextStep.actionId}
+                class={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${nextStep.actionColor}`}
+              >
+                {nextStep.actionText}
+              </button>
+            )}
+          </div>
+        )}
+
         <!-- Client Info -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3">Client Info</h2>
           <div class="space-y-2 text-sm text-slate-600">
             <p><span class="block text-[10px] uppercase font-bold text-slate-400">Name</span><span class="font-medium text-slate-900">{inv.customer_name}{inv.is_customer_deleted ? '*' : ''}</span></p>
-            {inv.company_name && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Company</span>{inv.company_name}</p>}
+            {inv.customer_code && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Customer Code (ID)</span><span class="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded font-bold text-slate-700">{inv.customer_code}</span></p>}
+            {inv.company_name && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Company</span>{inv.company_name} {inv.company_code && <span class="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded ml-1 font-bold text-slate-750">{inv.company_code}</span>}</p>}
             {inv.customer_email && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Email</span>{inv.customer_email}</p>}
             {inv.customer_phone && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Phone</span>{inv.customer_phone}</p>}
             {inv.billing_address && <p><span class="block text-[10px] uppercase font-bold text-slate-400">Address</span>{inv.billing_address}</p>}
@@ -561,6 +642,50 @@ const balanceDue = Math.max(0, Number(inv.total_amount) - totalPaid);
     if (invDataStr) {
       const invData = JSON.parse(invDataStr);
       document.dispatchEvent(new CustomEvent('open-invoice-modal', { detail: { invoice: invData } }));
+    }
+  });
+
+  // Duplicate button handler
+  document.getElementById('duplicate-invoice-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('duplicate-invoice-btn') as HTMLButtonElement;
+    const invoiceId = btn.getAttribute('data-id');
+    if (!confirm('Create a duplicate of this order?')) return;
+    btn.disabled = true;
+    const originalContent = btn.innerHTML;
+    btn.textContent = 'Duplicating...';
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duplicateFrom: invoiceId }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        window.location.href = `/dashboard/invoices/${result.id}`;
+      } else {
+        alert(`Error: ${result.error || 'Unknown error occurred'}`);
+      }
+    } catch (e: any) {
+      alert(`Network error: ${e.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalContent;
+    }
+  });
+
+  // Suggested Actions event triggers
+  document.getElementById('suggested-edit-btn')?.addEventListener('click', () => {
+    document.getElementById('edit-invoice-btn')?.click();
+  });
+  document.getElementById('suggested-payment-btn')?.addEventListener('click', () => {
+    document.getElementById('open-payment-modal-btn')?.click();
+  });
+  document.getElementById('suggested-delivery-btn')?.addEventListener('click', () => {
+    const convertDeliveryBtn = document.getElementById('convert-delivery-btn');
+    if (convertDeliveryBtn) {
+      convertDeliveryBtn.click();
+    } else {
+      convertOrder('delivery_note');
     }
   });
 </script>

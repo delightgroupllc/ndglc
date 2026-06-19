@@ -17,8 +17,8 @@ let products: any[] = [];
 
 try {
   const queryStr = isAdmin
-    ? 'SELECT i.*, (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list, COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted FROM invoices i ORDER BY i.created_at DESC'
-    : 'SELECT i.*, (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list, COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted FROM invoices i WHERE i.customer_email = $1 ORDER BY i.created_at DESC';
+    ? 'SELECT i.*, (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list, COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted, (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code, (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code FROM invoices i ORDER BY i.created_at DESC'
+    : 'SELECT i.*, (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list, COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted, (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code, (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code FROM invoices i WHERE i.customer_email = $1 ORDER BY i.created_at DESC';
   const queryParams = isAdmin ? [] : [user?.email || ''];
   const res = await query(queryStr, queryParams);
   invoices = res.rows;
@@ -105,10 +105,19 @@ invoices = invoices.map(inv => {
   const showCancelOrder = stage === 4 || stage === 5 || stage === 6;
 
   const isDraftOrUnconfirmed = stage <= 3 || (stage === 4 && !isConfirmed);
-  const deleteLabel = isDraftOrUnconfirmed ? 'DELETE' : 'ARCHIVE';
-  const deleteBtnClass = isDraftOrUnconfirmed 
-    ? "delete-btn px-2 py-1.5 border border-rose-100 bg-rose-50 hover:bg-rose-100 text-[9px] font-black text-rose-700 rounded transition-colors uppercase tracking-wider"
-    : "delete-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-bold text-slate-600 rounded transition-colors uppercase tracking-wider";
+  let deleteLabel = 'DELETE';
+  let deleteBtnClass = "delete-btn px-2 py-1.5 border border-rose-100 bg-rose-50 hover:bg-rose-100 text-[9px] font-black text-rose-700 rounded transition-colors uppercase tracking-wider";
+  
+  if (inv.is_deleted) {
+    deleteLabel = 'RESTORE';
+    deleteBtnClass = "delete-btn px-2 py-1.5 border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 text-[9px] font-black text-emerald-700 rounded transition-colors uppercase tracking-wider";
+  } else if (inv.is_archived) {
+    deleteLabel = 'UNARCHIVE';
+    deleteBtnClass = "delete-btn px-2 py-1.5 border border-amber-100 bg-amber-50 hover:bg-amber-100 text-[9px] font-black text-amber-700 rounded transition-colors uppercase tracking-wider";
+  } else if (!isDraftOrUnconfirmed) {
+    deleteLabel = 'ARCHIVE';
+    deleteBtnClass = "delete-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-bold text-slate-600 rounded transition-colors uppercase tracking-wider";
+  }
 
   return {
     ...inv,
@@ -159,6 +168,8 @@ invoices = invoices.map(inv => {
           <option value="overdue">Overdue</option>
           <option value="draft">Draft</option>
           <option value="cancelled">Cancelled</option>
+          <option value="archived">Archived</option>
+          <option value="deleted">Deleted</option>
         </select>
         <select id="filter-invoice-division" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
           <option value="">All Divisions</option>
@@ -180,6 +191,22 @@ invoices = invoices.map(inv => {
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           Billing Workflow
+        </button>
+        <button 
+          type="button" 
+          id="btn-show-archived"
+          class="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-3xs"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M21 8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M22 3H2v4h20V3z"/><path d="M10 12h4"/></svg>
+          Archived
+        </button>
+        <button 
+          type="button" 
+          id="btn-show-deleted"
+          class="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-3xs"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          Trash
         </button>
         {isAdmin && (
           <button 
@@ -221,19 +248,28 @@ invoices = invoices.map(inv => {
                   data-div={inv.source_division || ''}
                   data-amount={inv.total_amount}
                   data-date={inv.issue_date}
+                  data-archived={inv.is_archived ? 'true' : 'false'}
+                  data-deleted={inv.is_deleted ? 'true' : 'false'}
                 >
                   <td class="px-6 py-5">
                     <div class="font-extrabold text-slate-900 text-sm tracking-tight">{inv.invoice_number}</div>
-                    <div class="flex items-center gap-1.5 mt-1.5">
+                    <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
                       <span class="inline-block px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-500 text-[9px] font-black uppercase tracking-wider">
                         {inv.order_type === 'quotation' ? 'Estimation' : (inv.order_type === 'lpo' ? 'LPO' : (inv.order_type === 'inquiry' ? 'Inquiry' : (inv.order_type === 'proforma' ? 'Pro Forma' : (inv.order_type === 'delivery_note' ? 'Delivery Note' : 'Tax Invoice'))))}
                       </span>
                       <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">{inv.source_division || 'DTL'}</span>
+                      {inv.invoice_number && inv.invoice_number.toUpperCase().includes('DUP') && (
+                        <span class="inline-block px-1.5 py-0.5 rounded border border-rose-500 bg-rose-50 text-rose-500 text-[9px] font-black uppercase tracking-wider shadow-3xs">
+                          DUPLICATE
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td class="px-6 py-5">
-                    <div class="font-black text-slate-800 uppercase tracking-wide flex items-center gap-0.5">
+                    <div class="font-black text-slate-800 uppercase tracking-wide flex flex-wrap items-center gap-1">
                       {inv.customer_name}
+                      {inv.customer_code && <span class="text-[10px] text-slate-500 font-bold">(ID: {inv.customer_code})</span>}
+                      {inv.company_code && <span class="text-[10px] text-slate-500 font-bold">(ID: {inv.company_code})</span>}
                       {inv.is_customer_deleted && (
                         <span 
                           class="relative group cursor-help"
@@ -310,15 +346,62 @@ invoices = invoices.map(inv => {
 
                           {/* CANCEL ORDER button - Stages 4, 5, 6 only */}
                           {inv.showCancelOrder ? (
-                            <button type="button" class="cancel-invoice-btn px-2 py-1.5 border border-amber-100 bg-amber-50 hover:bg-amber-100 text-[9px] font-black text-amber-700 rounded transition-colors uppercase tracking-wider col-span-3" data-num={inv.invoice_number}>
+                            <button type="button" class="cancel-invoice-btn px-2 py-1.5 border border-amber-100 bg-amber-50 hover:bg-amber-100 text-[9px] font-black text-amber-700 rounded transition-colors uppercase tracking-wider col-span-3" data-num={inv.invoice_number} data-id={inv.id}>
                               Cancel Order
                             </button>
                           ) : null}
 
-                          {/* DELETE / ARCHIVE button - always visible, layout and labels changes dynamically */}
-                          <button type="button" class={inv.deleteBtnClass} data-id={inv.id}>
-                            {inv.deleteLabel}
+                          {/* DUPLICATE button - always visible */}
+                          <button type="button" class="duplicate-row-btn px-2 py-1.5 border border-violet-100 bg-violet-50 hover:bg-violet-100 text-[9px] font-black text-violet-700 rounded transition-colors uppercase tracking-wider col-span-1" data-id={inv.id}>
+                            Duplicate
                           </button>
+
+                          {/* ARCHIVE/UNARCHIVE button */}
+                          {!inv.is_deleted && (
+                            <button 
+                              type="button" 
+                              class={`archive-btn px-2 py-1.5 border text-[9px] font-black rounded transition-colors uppercase tracking-wider col-span-1 ${
+                                inv.is_archived 
+                                  ? "border-amber-100 bg-amber-50 hover:bg-amber-100 text-amber-700" 
+                                  : "border-slate-200 bg-white hover:bg-slate-50 text-slate-600"
+                              }`} 
+                              data-id={inv.id} 
+                              data-action={inv.is_archived ? 'UNARCHIVE' : 'ARCHIVE'}
+                            >
+                              {inv.is_archived ? 'UNARCHIVE' : 'ARCHIVE'}
+                            </button>
+                          )}
+
+                          {/* DELETE/RESTORE/PERM_DELETE button */}
+                          {inv.is_deleted ? (
+                            <>
+                              <button 
+                                type="button" 
+                                class="delete-btn px-2 py-1.5 border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 text-[9px] font-black text-emerald-700 rounded transition-colors uppercase tracking-wider col-span-1"
+                                data-id={inv.id} 
+                                data-action="RESTORE"
+                              >
+                                RESTORE
+                              </button>
+                              <button 
+                                type="button" 
+                                class="perm-delete-btn px-2 py-1.5 border border-rose-600 bg-rose-600 hover:bg-rose-700 text-[9px] font-black text-white rounded transition-colors uppercase tracking-wider col-span-1 shadow-sm"
+                                data-id={inv.id} 
+                                data-num={inv.invoice_number}
+                              >
+                                PERM DEL
+                              </button>
+                            </>
+                          ) : (
+                            <button 
+                              type="button" 
+                              class="delete-btn px-2 py-1.5 border border-rose-100 bg-rose-50 hover:bg-rose-100 text-[9px] font-black text-rose-700 rounded transition-colors uppercase tracking-wider col-span-1"
+                              data-id={inv.id} 
+                              data-action="DELETE"
+                            >
+                              DELETE
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <div class="flex gap-2 justify-end w-44">
@@ -590,10 +673,20 @@ invoices = invoices.map(inv => {
         const num = row.getAttribute('data-num')?.toLowerCase() || '';
         const rowStatus = row.getAttribute('data-status') || '';
         const rowDiv = row.getAttribute('data-div') || '';
+        const isArchived = row.getAttribute('data-archived') === 'true';
+        const isDeleted = row.getAttribute('data-deleted') === 'true';
 
         const matchesSearch = !query || name.includes(query) || num.includes(query);
-        const matchesStatus = !status || rowStatus === status;
         const matchesDiv = !division || rowDiv === division || (rowDiv === 'both');
+
+        let matchesStatus = false;
+        if (status === 'archived') {
+          matchesStatus = isArchived && !isDeleted;
+        } else if (status === 'deleted') {
+          matchesStatus = isDeleted;
+        } else {
+          matchesStatus = !isArchived && !isDeleted && (!status || rowStatus === status);
+        }
 
         if (matchesSearch && matchesStatus && matchesDiv) {
           (row as HTMLElement).classList.remove('hidden');
@@ -625,24 +718,157 @@ invoices = invoices.map(inv => {
     divisionFilter?.addEventListener('change', filterAndSortInvoices);
     sortSelect?.addEventListener('change', filterAndSortInvoices);
 
-    // Delete functionality
-    document.querySelectorAll('.delete-btn').forEach(btn => {
+    // Sync header button states with status filter dropdown
+    const btnShowArchived = document.getElementById('btn-show-archived');
+    const btnShowDeleted = document.getElementById('btn-show-deleted');
+
+    function updateHeaderButtonsState() {
+      const currentStatus = statusFilter?.value || '';
+      
+      // Update Archived Button
+      if (currentStatus === 'archived') {
+        btnShowArchived?.classList.remove('bg-white', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-50');
+        btnShowArchived?.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-300', 'hover:bg-amber-100');
+      } else {
+        btnShowArchived?.classList.add('bg-white', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-50');
+        btnShowArchived?.classList.remove('bg-amber-50', 'text-amber-700', 'border-amber-300', 'hover:bg-amber-100');
+      }
+
+      // Update Deleted Button
+      if (currentStatus === 'deleted') {
+        btnShowDeleted?.classList.remove('bg-white', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-50');
+        btnShowDeleted?.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-300', 'hover:bg-rose-100');
+      } else {
+        btnShowDeleted?.classList.add('bg-white', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-50');
+        btnShowDeleted?.classList.remove('bg-rose-50', 'text-rose-700', 'border-rose-300', 'hover:bg-rose-100');
+      }
+    }
+
+    btnShowArchived?.addEventListener('click', () => {
+      if (statusFilter) {
+        if (statusFilter.value === 'archived') {
+          statusFilter.value = '';
+        } else {
+          statusFilter.value = 'archived';
+        }
+        statusFilter.dispatchEvent(new Event('change'));
+      }
+    });
+
+    btnShowDeleted?.addEventListener('click', () => {
+      if (statusFilter) {
+        if (statusFilter.value === 'deleted') {
+          statusFilter.value = '';
+        } else {
+          statusFilter.value = 'deleted';
+        }
+        statusFilter.dispatchEvent(new Event('change'));
+      }
+    });
+
+    statusFilter?.addEventListener('change', updateHeaderButtonsState);
+    
+    // Initial run
+    updateHeaderButtonsState();
+
+    // Delete / Archive / Restore functionality
+    document.querySelectorAll('.delete-btn, .archive-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        if (!confirm('Are you sure you want to delete this invoice? This cannot be undone.')) return;
-        
-        const row = (e.currentTarget as HTMLElement).closest('tr') || (e.currentTarget as HTMLElement).closest('button');
-        const id = row?.getAttribute('data-id');
+        const target = e.currentTarget as HTMLButtonElement;
+        const id = target.getAttribute('data-id');
+        const action = target.getAttribute('data-action') || 'DELETE';
         if (!id) return;
 
+        let confirmMsg = 'Are you sure?';
+        let body = {};
+
+        if (action === 'DELETE') {
+          confirmMsg = 'Are you sure you want to move this order to the recycle bin?';
+          body = { is_deleted: true };
+        } else if (action === 'ARCHIVE') {
+          confirmMsg = 'Are you sure you want to archive this order?';
+          body = { is_archived: true };
+        } else if (action === 'RESTORE') {
+          confirmMsg = 'Are you sure you want to restore this order?';
+          body = { is_deleted: false };
+        } else if (action === 'UNARCHIVE') {
+          confirmMsg = 'Are you sure you want to unarchive this order?';
+          body = { is_archived: false };
+        }
+
+        if (!confirm(confirmMsg)) return;
+
         try {
-          const res = await fetch(`/api/invoices/${id}`, { method: 'DELETE' });
+          const res = await fetch(`/api/invoices/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
           if (res.ok) {
             window.location.reload();
           } else {
-            alert('Failed to delete invoice.');
+            alert('Operation failed.');
           }
         } catch (err) {
-          alert('Error deleting invoice.');
+          alert('Error executing operation.');
+        }
+      });
+    });
+
+    // Permanent Delete functionality
+    document.querySelectorAll('.perm-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const id = target.getAttribute('data-id');
+        const num = target.getAttribute('data-num') || '';
+        if (!id) return;
+
+        if (!confirm(`Are you absolutely sure you want to permanently delete order ${num}? This action cannot be undone and will erase all data for this invoice.`)) return;
+
+        try {
+          const res = await fetch(`/api/invoices/${id}`, {
+            method: 'DELETE'
+          });
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            const err = await res.json();
+            alert(`Failed to permanently delete: ${err.error || 'Unknown error'}`);
+          }
+        } catch (err) {
+          alert('Error executing permanent deletion.');
+        }
+      });
+    });
+
+    // Duplicate Row functionality
+    document.querySelectorAll('.duplicate-row-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const id = target.getAttribute('data-id');
+        if (!id || !confirm('Are you sure you want to duplicate this order?')) return;
+
+        const originalText = target.innerHTML;
+        target.disabled = true;
+        target.textContent = '...';
+
+        try {
+          const res = await fetch('/api/invoices', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ duplicateFrom: id })
+          });
+          const result = await res.json();
+          if (res.ok) {
+            window.location.href = `/dashboard/invoices/${result.id}`;
+          } else {
+            alert(`Error: ${result.error || 'Failed to duplicate order'}`);
+          }
+        } catch (err) {
+          alert('Network error while duplicating.');
+        } finally {
+          target.disabled = false;
+          target.innerHTML = originalText;
         }
       });
     });
@@ -1087,10 +1313,27 @@ invoices = invoices.map(inv => {
     });
 
     document.querySelectorAll('.cancel-invoice-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         const target = e.currentTarget as HTMLElement;
+        const invoiceId = target.getAttribute('data-id') || '';
         const num = target.getAttribute('data-num') || '';
-        alert(`Order Cancelled! System has locked record and sent notifications for ${num}.`);
+        if (!invoiceId) return;
+        if (!confirm(`Are you sure you want to cancel order ${num}? This action cannot be easily undone.`)) return;
+        try {
+          const res = await fetch(`/api/invoices/${invoiceId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payment_status: 'cancelled' }),
+          });
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            const err = await res.json();
+            alert(`Failed to cancel: ${err.error || 'Unknown error'}`);
+          }
+        } catch (err: any) {
+          alert(`Network error: ${err.message}`);
+        }
       });
     });
   </script>

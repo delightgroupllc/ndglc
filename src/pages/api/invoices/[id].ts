@@ -34,6 +34,7 @@ const invoiceSchema = z.object({
   source_division: z.enum(['DTL', 'DGS', 'both']).optional().nullable(),
   issue_date: z.string().min(1, 'Issue date is required'),
   due_date: z.string().min(1, 'Due date is required'),
+  signatory_incharge: z.string().min(1, 'Signatory Incharge is required'),
   payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']),
   discount_type: z.enum(['percentage', 'fixed']).default('fixed'),
   discount_value: z.number().min(0).default(0),
@@ -95,13 +96,13 @@ export const PUT: APIRoute = async ({ params, request }) => {
           billing_address=$6, shipping_address=$7, order_type=$8, source_division=$9,
           issue_date=$10, due_date=$11, subtotal=$12, gst_amount=$13,
           discount_type=$14, discount_value=$15, discount_amount=$16, total_amount=$17, payment_status=$18,
-          internal_notes=$19, show_images=$20, lpo_number=$21, payment_terms=$22, updated_at=NOW()
-         WHERE id=$23 RETURNING *`,
+          internal_notes=$19, show_images=$20, lpo_number=$21, payment_terms=$22, signatory_incharge=$23, updated_at=NOW()
+         WHERE id=$24 RETURNING *`,
         [parsed.customer_name, parsed.customer_email || null, parsed.customer_phone || null,
         parsed.company_name || null, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null,
         parsed.order_type, parsed.source_division || null, parsed.issue_date, parsed.due_date,
         subtotal, totalTax, parsed.discount_type, parsed.discount_value, discount, total_amount, parsed.payment_status,
-        parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null, id]
+        parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null, parsed.signatory_incharge, id]
       );
 
       // Wipe and re-insert items (simpler + ACID-safe)
@@ -189,8 +190,24 @@ export const PATCH: APIRoute = async ({ params, request }) => {
     const id = params.id;
     if (!id) return new Response(JSON.stringify({ error: 'ID required' }), { status: 400 });
     const data = await request.json();
+    if (data.payment_status) {
+      const validStatuses = ['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft'];
+      if (!validStatuses.includes(data.payment_status)) {
+        return new Response(JSON.stringify({ error: 'Invalid payment status' }), { status: 400 });
+      }
+      await query('UPDATE invoices SET payment_status = $1, updated_at = NOW() WHERE id = $2', [data.payment_status, id]);
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if (data.order_type) {
       await query('UPDATE invoices SET order_type = $1, updated_at = NOW() WHERE id = $2', [data.order_type, id]);
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (data.is_archived !== undefined) {
+      await query('UPDATE invoices SET is_archived = $1, updated_at = NOW() WHERE id = $2', [data.is_archived, id]);
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (data.is_deleted !== undefined) {
+      await query('UPDATE invoices SET is_deleted = $1, updated_at = NOW() WHERE id = $2', [data.is_deleted, id]);
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     return new Response(JSON.stringify({ error: 'Field not provided' }), { status: 400 });

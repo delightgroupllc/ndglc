@@ -17,7 +17,9 @@ try {
   const invRes = await query(`
     SELECT i.*, 
        (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list,
-       COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted
+       COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted,
+       (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code,
+       (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code
     FROM invoices i WHERE id = $1
   `, [id]);
   inv = invRes.rows[0];
@@ -77,8 +79,14 @@ try {
 
   // Fetch all disclaimers/clauses
   try {
-    const legalRes = await query(`SELECT title, content, identifier, type, show_in_invoice FROM legal_artifacts WHERE show_in_invoice = TRUE ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
-    selectedClauses = legalRes.rows;
+    const legalRes = await query(`SELECT title, content, identifier, type, show_in_invoice FROM legal_artifacts ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
+    const allClauses = legalRes.rows;
+    selectedClauses = allClauses.filter((c: any) => c.show_in_invoice === true);
+    // Extract delivery note disclaimer specifically (any identifier containing 'delivery-note')
+    const dnClause = allClauses.find((c: any) => c.identifier === 'delivery-note-disclaimer' || c.identifier === 'delivery-terms' || c.identifier === 'dn-disclaimer');
+    if (dnClause) {
+      (globalThis as any).__dnNote = dnClause.content;
+    }
   } catch (e) {
     console.error("Error fetching legal artifacts:", e);
   }
@@ -133,13 +141,17 @@ function numberToWords(num: number): string {
 
 const amountInWords = numberToWords(inv.total_amount);
 const totalQty = items.reduce((sum, item) => sum + Number(item.quantity), 0);
+const totalQtyInWords = numberToWords(totalQty).replace(/Dirham.*/i, 'Only');
 
 // Division branding
 const isDGS = inv.source_division === 'DGS';
-const companyNameEN = isDGS ? 'Delight Global Solutions LLC' : 'Delight Group LLC';
-const companyNameAR = isDGS ? 'ديلايت للحلول العالمية ش.ذ.م.م' : 'مجموعة ديلايت ش.ذ.م.م';
+const companyNameEN = isDGS ? 'Delight Greenscapes' : 'Delight Technical Lighting';
+const companyNameAR = isDGS ? 'ديلايت جرين سكيبس' : 'ديلايت للاضاءة الفنية';
 const websiteURL = 'www.delightgroupllc.com';
 const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/Group
+
+// Delivery Note disclaimer — from legal artifacts (identifier: delivery-note-disclaimer, delivery-terms, or dn-disclaimer)
+const dnNote: string = (globalThis as any).__dnNote || 'DELIVERY NOTE : Customer must check good\'s condition and quantity at the time of delivery of the material';
 
 const activeSignature = signaturesList.find((s: any) => s.id === (settings.default_signature_id || (signaturesList[0]?.id || ''))) || signaturesList[0] || null;
 const signatureImage = activeSignature?.signature_image || '';
@@ -826,6 +838,12 @@ const isTermChecked = (identifier: string): boolean => {
       page-break-inside: avoid;
       break-inside: avoid;
     }
+    .delightgroupllc-inv-bottom-grid .print-words-panel.hidden + .delightgroupllc-inv-totals-panel {
+      grid-column: 1 / -1;
+    }
+    .delightgroupllc-inv-bottom-grid:has(.print-words-panel.hidden) {
+      grid-template-columns: 1fr;
+    }
     .delightgroupllc-inv-words-panel {
       padding: 10px 12px;
       border-right: 1px solid #000000;
@@ -1005,6 +1023,7 @@ const isTermChecked = (identifier: string): boolean => {
           selectedClauses={selectedClauses}
           signatureImage={signatureImage}
           isCustomerDeleted={inv.is_customer_deleted}
+          dnNote={dnNote}
         />
       </div>
 
@@ -1021,10 +1040,12 @@ const isTermChecked = (identifier: string): boolean => {
           websiteURL={websiteURL}
           amountInWords={amountInWords}
           totalQty={totalQty}
+          totalQtyInWords={totalQtyInWords}
           documentTitle={documentTitle}
           selectedClauses={selectedClauses}
           signatureImage={signatureImage}
           isCustomerDeleted={inv.is_customer_deleted}
+          dnNote={dnNote}
         />
       </div>
     </div>
@@ -1077,10 +1098,42 @@ const isTermChecked = (identifier: string): boolean => {
             <div class="space-y-1">
               <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Company Logo Branding</label>
               <select id="config-branding-logo" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
-                <option value="auto">Auto-detect (DGS/DTL)</option>
-                <option value="dtl">DTL Logo Only</option>
-                <option value="dgs">DGS Logo Only</option>
+                <option value="auto">Auto-detect</option>
+                {isDGS ? (
+                  <option value="dgs">DGS Logo Only</option>
+                ) : (
+                  <option value="dtl">DTL Logo Only</option>
+                )}
                 <option value="dgllc">DGLLC Master Logo</option>
+              </select>
+            </div>
+
+            <!-- 4. Company Name Branding Selection -->
+            <div class="space-y-1 mt-1.5">
+              <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Company Name Branding</label>
+              <select id="config-branding-name" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                <option value="auto">Auto-detect</option>
+                {isDGS ? (
+                  <>
+                    <option value="dgs">Delight Greenscapes</option>
+                    <option value="dgllc">Delight Group LLC</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="dtl">Delight Technical Lighting</option>
+                    <option value="dgllc">Delight Group LLC</option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            <!-- 5. Total Summary Display Mode -->
+            <div class="space-y-1 mt-1.5">
+              <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Total Summary Display</label>
+              <select id="config-total-show-mode" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
+                <option value="both">Show Both (Quantity & Amount)</option>
+                <option value="amount">Show Total Amount Only</option>
+                <option value="quantity">Show Total Quantity Only</option>
               </select>
             </div>
 
@@ -1241,6 +1294,14 @@ const isTermChecked = (identifier: string): boolean => {
                 <input type="checkbox" id="config-show-col-price" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Show Pricing Columns</span>
               </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-col-units" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Units Column</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-col-vat" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show VAT Columns</span>
+              </label>
             </div>
 
             <!-- Pricing breakdown Toggles -->
@@ -1257,6 +1318,26 @@ const isTermChecked = (identifier: string): boolean => {
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="config-show-discount" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Show Discount Row</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-total" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Total Row</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-total-qty" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Total Quantity</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-qty-words" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Quantity in Words</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-words" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Amount in Words</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-dn-condition-note" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Delivery Note Note</span>
               </label>
             </div>
           </div>
@@ -1348,9 +1429,10 @@ const isTermChecked = (identifier: string): boolean => {
               <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Select Signatory Stamp</label>
               <select id="config-signature-selector" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
                 {signaturesList.map((s: any) => (
-                  <option value={s.id} selected={s.id === (settings.default_signature_id || signaturesList[0]?.id)}>{s.signatory_name} ({s.signatory_title})</option>
+                  <option value={s.id} selected={s.id === (inv.signatory_incharge || settings.default_signature_id || signaturesList[0]?.id)}>{s.signatory_name} ({s.signatory_title})</option>
                 ))}
-                <option value="custom">Enter Manually...</option>
+                <option value="any" selected={inv.signatory_incharge === 'any'}>Any (Authorized Signatory Only)</option>
+                <option value="custom" selected={inv.signatory_incharge && inv.signatory_incharge !== 'any' && !signaturesList.some((s: any) => s.id === inv.signatory_incharge)}>Enter Manually...</option>
               </select>
               <div id="sidebar-signature-preview-wrapper" class="hidden mt-2 p-1.5 bg-slate-100 border border-slate-200 rounded text-center">
                 <div class="text-[8px] text-slate-500 uppercase font-bold mb-1">Signature Image</div>
@@ -1365,7 +1447,11 @@ const isTermChecked = (identifier: string): boolean => {
             <div class="pt-2 border-t border-slate-805 space-y-2 font-semibold">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="sig-client" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                <span>Client Signature Line</span>
+                <span>Customer Signature Line</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="sig-receiver" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Receiver Signature Line</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="sig-company" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
@@ -1383,6 +1469,19 @@ const isTermChecked = (identifier: string): boolean => {
                 <input type="checkbox" id="config-show-disclaimer" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Show Disclaimer Text</span>
               </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-duplicate-tag" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show "Duplicate" Status</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-cust-id" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Customer ID</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-comp-id" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Company ID</span>
+              </label>
+         
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="config-electronic-sig" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Electronic / No Signature Needed</span>
@@ -1615,6 +1714,18 @@ const isTermChecked = (identifier: string): boolean => {
       document.querySelectorAll('.delightgroupllc-doc-title, .std-doc-title').forEach(el => {
         el.textContent = val;
       });
+
+      const layoutWrapper = document.getElementById('layout-delightgroupllc');
+      if (layoutWrapper) {
+        if (val === 'DELIVERY NOTE') {
+          layoutWrapper.classList.remove('mode-invoice');
+          layoutWrapper.classList.add('mode-delivery-note');
+        } else {
+          layoutWrapper.classList.remove('mode-delivery-note');
+          layoutWrapper.classList.add('mode-invoice');
+        }
+      }
+      setTimeout(repaginate, 50);
     });
 
     // Setup helper for simple class toggle lists
@@ -1636,6 +1747,10 @@ const isTermChecked = (identifier: string): boolean => {
     setupToggle('config-show-sig-image', 'signature-image-render');
     setupToggle('config-show-logo-p2', 'print-logo-container-p2');
     setupToggle('config-show-watermark', 'print-watermark');
+    setupToggle('config-show-dn-notice', 'print-dn-material-condition-disclaimer');
+    setupToggle('config-show-duplicate-tag', 'print-info-duplicate');
+    setupToggle('config-show-cust-id', 'print-cust-id');
+    setupToggle('config-show-comp-id', 'print-comp-id');
     setupToggle('config-show-cust-company', 'print-cust-company');
     setupToggle('config-show-cust-address', 'print-cust-address');
     setupToggle('config-show-cust-contact', 'print-cust-contact');
@@ -1644,14 +1759,287 @@ const isTermChecked = (identifier: string): boolean => {
     setupToggle('config-show-info-date', 'print-info-date');
     setupToggle('config-show-info-due', 'print-info-due');
     setupToggle('config-show-col-ref', 'print-item-cat-ref');
-    setupToggle('config-show-col-spec', 'print-item-tech-spec');
+    document.getElementById('config-show-col-ref')?.addEventListener('change', () => {
+      repaginate();
+    });
     setupToggle('config-show-col-price', 'print-col-price');
+    document.getElementById('config-show-col-price')?.addEventListener('change', () => {
+      repaginate();
+    });
+    setupToggle('config-show-col-units', 'print-col-units');
+    document.getElementById('config-show-col-units')?.addEventListener('change', () => {
+      repaginate();
+    });
+    setupToggle('config-show-col-vat', 'print-col-vat');
+    document.getElementById('config-show-col-vat')?.addEventListener('change', () => {
+      repaginate();
+    });
     setupToggle('config-show-subtotal', 'print-total-subtotal');
     setupToggle('config-show-vat', 'print-total-vat');
     setupToggle('config-show-discount', 'print-total-discount');
+    setupToggle('config-show-total', 'print-total-due-row');
+    setupToggle('config-show-total-qty', 'print-total-quantity');
+    document.getElementById('config-show-total-qty')?.addEventListener('change', () => {
+      repaginate();
+    });
+    setupToggle('config-show-qty-words', 'print-qty-words-panel');
+    document.getElementById('config-show-qty-words')?.addEventListener('change', () => {
+      repaginate();
+    });
+    setupToggle('config-show-dn-condition-note', 'print-dn-material-condition-disclaimer');
+    document.getElementById('config-show-dn-condition-note')?.addEventListener('change', () => {
+      repaginate();
+    });
+    setupToggle('config-show-words', 'print-words-panel');
     setupToggle('config-show-page-2', 'print-page-2-container');
     setupToggle('config-show-company-card-tos', 'company-card-tos-wrapper');
     setupToggle('config-show-disclaimer', 'print-disclaimer-text');
+
+    // Dynamic Client-side Repagination to utilize page space and avoid footer overflows
+    const repaginate = () => {
+      const layout = document.getElementById('layoutSelector')?.value || 'standard';
+      const wrapperId = layout === 'delightgroupllc' ? 'layout-delightgroupllc-wrapper' : 'layout-standard-wrapper';
+      const wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+
+      // 1. Move totals & signatures block out of pages to redistribute at the end (before any pages are removed)
+      const totalsBlock = wrapper.querySelector('.std-totals-sigs-block, .delightgroupllc-inv-footer-group');
+      if (totalsBlock) totalsBlock.remove();
+
+      // 2. Gather all rows from all pages (including dynamic overflow pages) BEFORE removing the pages
+      const allRows = [];
+      wrapper.querySelectorAll('.print-page').forEach(page => {
+        if (page.classList.contains('print-page-2-container')) return;
+        page.querySelectorAll('tbody tr.item-row-render').forEach(r => {
+          allRows.push(r);
+          r.remove(); // detach from DOM to redistribute
+        });
+      });
+
+      // Remove any dynamically-created overflow pages from previous runs before re-measuring
+      wrapper.querySelectorAll('.print-page.dynamic-overflow-page').forEach(p => p.remove());
+
+      const pages = Array.from(wrapper.querySelectorAll('.print-page')).filter(p => !p.classList.contains('print-page-2-container'));
+      if (pages.length === 0) return;
+
+      // Make sure all pages are visible initially to do measurements
+      pages.forEach(p => { p.style.display = 'block'; });
+
+      if (allRows.length === 0) {
+        if (totalsBlock) pages[pages.length - 1].appendChild(totalsBlock);
+        return;
+      }
+
+      // Hide continuation notices during layout reflow
+      wrapper.querySelectorAll('.italic').forEach(el => {
+        if (el.textContent.includes('continued')) el.style.display = 'none';
+      });
+
+      let currentPageIndex = 0;
+
+      // Footer reserve as a fraction of page height — this is SCALE-INDEPENDENT.
+      // getBoundingClientRect returns visual pixels which change with CSS zoom/transforms.
+      // By using (rowBottom - pageTop) / pageHeight we compare fractions, invariant to any scaling.
+      // Continuation notice: bottom:55px, page number: bottom:30px, out of 297mm ≈ 1123px.
+      // Reserve fraction = 80px / 1123px ≈ 0.071 (7.1% from bottom)
+      // Reserve fraction = 80px / 1123px ≈ 0.071 (7.1% from bottom)
+      const PAGE_HEIGHT_PX = 1123; // 297mm at 96dpi — used only for reserve fraction
+      const FOOTER_RESERVE_FRACTION = 110 / PAGE_HEIGHT_PX; // ~9.8%
+      const TOTALS_RESERVE_FRACTION = 350 / PAGE_HEIGHT_PX; // ~31% (ensures the tall totals box does not bleed over the footer margin)
+
+      // FIX: Get the items tbody specifically — NOT the header/details/field table auto-generated tbodies.
+      // Standard layout: .std-items-table
+      // Modern Grid layout: .delightgroupllc-table (both invoice and delivery note variants)
+      const getItemsTbody = (page) => {
+        return page.querySelector('.std-items-table tbody') ||
+               page.querySelector('.delightgroupllc-table tbody') ||
+               page.querySelector('.dg-items-table tbody');
+      };
+
+      // Scale-independent overflow: compare row bottom as a fraction of page height.
+      // Works correctly even when the preview is CSS-scaled/zoomed.
+      const rowOverflows = (page, tbody) => {
+        if (!tbody || !tbody.lastElementChild) return false;
+        const pageRect = page.getBoundingClientRect();
+        if (pageRect.height === 0) return false;
+        const rowBottom = tbody.lastElementChild.getBoundingClientRect().bottom;
+        const fraction = (rowBottom - pageRect.top) / pageRect.height;
+        return fraction > (1 - FOOTER_RESERVE_FRACTION);
+      };
+
+      const blockOverflows = (page, block) => {
+        const pageRect = page.getBoundingClientRect();
+        if (pageRect.height === 0) return false;
+        const blockBottom = block.getBoundingClientRect().bottom;
+        const fraction = (blockBottom - pageRect.top) / pageRect.height;
+        return fraction > (1 - TOTALS_RESERVE_FRACTION);
+      };
+
+      // Dynamically create a new overflow continuation page when we run out of pre-rendered pages
+      const createOverflowPage = () => {
+        // Clone the LAST page as template (it already has the compact continuation header)
+        const templatePage = pages[pages.length - 1];
+        const newPage = templatePage.cloneNode(true);
+        newPage.classList.add('dynamic-overflow-page'); // tag so we can clean up on re-run
+
+        // Clear rows from the cloned tbody
+        const clonedTbody = getItemsTbody(newPage);
+        if (clonedTbody) {
+          while (clonedTbody.firstChild) clonedTbody.removeChild(clonedTbody.firstChild);
+        }
+
+        // Remove totals block if cloned
+        newPage.querySelector('.std-totals-sigs-block, .delightgroupllc-inv-footer-group')?.remove();
+
+        // Hide cloned continuation notice (will be shown/hidden at end)
+        newPage.querySelectorAll('.italic').forEach(el => {
+          if (el.textContent.includes('continued')) el.style.display = 'none';
+        });
+
+        // Insert before TOS page, or append to container
+        const container = wrapper.firstElementChild || wrapper;
+        const tosPage = container.querySelector('.print-page-2-container');
+        tosPage ? container.insertBefore(newPage, tosPage) : container.appendChild(newPage);
+
+        pages.push(newPage);
+        return newPage;
+      };
+
+      // Iterative row distribution (avoids call-stack depth issues with many rows)
+      for (let i = 0; i < allRows.length; i++) {
+        const row = allRows[i];
+
+        // Update item serial number
+        const sNoCell = row.firstElementChild;
+        if (sNoCell) sNoCell.textContent = (i + 1).toString();
+
+        const page = pages[currentPageIndex];
+        const tbody = getItemsTbody(page);
+
+        // Safety: if this page has no items table (shouldn't happen), skip to next
+        if (!tbody) {
+          if (currentPageIndex < pages.length - 1) { currentPageIndex++; }
+          else { createOverflowPage(); currentPageIndex++; }
+          i--; // retry this row
+          continue;
+        }
+
+        tbody.appendChild(row);
+
+        // Check if content now overflows (scale-independent fraction check)
+        if (rowOverflows(page, tbody)) {
+          if (tbody.children.length > 1) {
+            // Move this row to the next page
+            row.remove();
+            if (currentPageIndex >= pages.length - 1) createOverflowPage();
+            currentPageIndex++;
+            i--; // retry this row on the next page
+          }
+          // else: this row is the ONLY row — keep it, can't split further
+        }
+      }
+
+      // Place totals/signatures block on the last active page
+      if (totalsBlock) {
+        const lastPage = pages[currentPageIndex];
+        lastPage.appendChild(totalsBlock);
+        if (blockOverflows(lastPage, totalsBlock)) {
+          totalsBlock.remove();
+          if (currentPageIndex >= pages.length - 1) createOverflowPage();
+          currentPageIndex++;
+          pages[currentPageIndex].appendChild(totalsBlock);
+        }
+      }
+
+      // Start distribution — now handled by the for-loop above
+
+
+      // Hide completely empty pages, track visible count
+      let actualItemsPagesCount = 0;
+      pages.forEach((page, idx) => {
+        const tbody = getItemsTbody(page);
+        const hasRows = tbody && tbody.children.length > 0;
+        const hasTotals = totalsBlock && page.contains(totalsBlock);
+
+        // Hide empty items tables to avoid orphaned headers
+        const itemsTable = page.querySelector('.std-items-table, .delightgroupllc-table, .dg-items-table');
+        if (itemsTable) {
+          if (hasRows) {
+            itemsTable.style.display = 'table';
+          } else {
+            itemsTable.style.display = 'none';
+          }
+        }
+
+        if (hasRows || hasTotals || idx === 0) {
+          page.style.display = 'block';
+          actualItemsPagesCount = idx + 1;
+        } else {
+          page.style.display = 'none';
+        }
+      });
+
+      // Show/hide continuation notices
+      pages.forEach((page, idx) => {
+        if (page.style.display === 'none') return;
+        const isLastVisible = idx >= actualItemsPagesCount - 1;
+        page.querySelectorAll('.italic').forEach(el => {
+          if (el.textContent.includes('continued')) {
+            el.style.display = isLastVisible ? 'none' : 'block';
+          }
+        });
+      });
+
+      // Update page number footers
+      let visNum = 0;
+      pages.forEach((page) => {
+        if (page.style.display === 'none') return;
+        visNum++;
+        const showPage2Checkbox = document.getElementById('config-show-page-2');
+        const isPage2Visible = showPage2Checkbox ? showPage2Checkbox.checked : true;
+        const totalPages = isPage2Visible ? (actualItemsPagesCount + 1) : actualItemsPagesCount;
+        
+        const footerNum = page.querySelector('.print-page-footer-num');
+        if (footerNum) {
+          footerNum.innerHTML = `Page ${visNum} of <span class="dynamic-total-pages">${totalPages}</span>`;
+        }
+        
+        // Update the top continuation header page number
+        page.querySelectorAll('.dynamic-page-num').forEach(el => {
+          el.textContent = visNum.toString();
+        });
+      });
+
+      updateTotalPagesCount();
+    };
+
+    // Re-paginating on show technical specs change
+    document.getElementById('config-show-col-spec')?.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      document.querySelectorAll('.print-item-tech-spec').forEach(el => {
+        if (checked) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+      repaginate();
+    });
+
+    // Run repagination on template load
+    setTimeout(() => {
+      const unitsCheckbox = document.getElementById('config-show-col-units');
+      if (unitsCheckbox) {
+        unitsCheckbox.dispatchEvent(new Event('change'));
+      } else {
+        repaginate();
+      }
+    }, 200);
+
+    // Repaginate whenever layout changes
+    layoutSelector?.addEventListener('change', () => {
+      setTimeout(repaginate, 250);
+    });
 
     // Watermark customizer range inputs
     document.getElementById('config-watermark-opacity')?.addEventListener('input', (e) => {
@@ -1683,22 +2071,128 @@ const isTermChecked = (identifier: string): boolean => {
       });
     });
 
-    // Company Logo branding switcher
-    document.getElementById('config-branding-logo')?.addEventListener('change', (e) => {
-      const selected = e.target.value;
+    // Company Logo/Name branding switcher
+    const updateBranding = () => {
+      const selectedLogo = document.getElementById('config-branding-logo')?.value || 'auto';
+      const selectedName = document.getElementById('config-branding-name')?.value || 'auto';
+      const division = document.getElementById('print-root-container')?.getAttribute('data-division') || 'DTL';
+
+      // 1. Resolve logo URL
       let logoUrl = '/dgllclogosmall.png';
-      if (selected === 'dtl') logoUrl = '/dtllogo.jpg';
-      else if (selected === 'dgs') logoUrl = '/dgslogo.jpg';
-      else if (selected === 'dgllc') logoUrl = '/dgllclogolarge.png';
-      else {
+      if (selectedLogo === 'dtl') {
+        logoUrl = '/dtllogo.jpg';
+      } else if (selectedLogo === 'dgs') {
+        logoUrl = '/dgslogo.jpg';
+      } else if (selectedLogo === 'dgllc') {
+        logoUrl = '/dgllclogolarge.png';
+      } else {
         // Auto detect logo
-        const division = document.getElementById('print-root-container')?.getAttribute('data-division') || 'DTL';
         logoUrl = division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg';
       }
-      document.querySelectorAll('#print-company-logo, #print-company-logo-p2, #print-company-logo-std, #print-company-logo-std-p2, .company-card-tos-logo').forEach(img => {
+
+      // 2. Resolve company names
+      let currentCompanyEN = 'Delight Technical Lighting';
+      let currentCompanyAR = 'ديلايت للاضاءة الفنية';
+
+      if (selectedName === 'dgs') {
+        currentCompanyEN = 'Delight Greenscapes';
+        currentCompanyAR = 'ديلايت جرين سكيبس';
+      } else if (selectedName === 'dtl') {
+        currentCompanyEN = 'Delight Technical Lighting';
+        currentCompanyAR = 'ديلايت للاضاءة الفنية';
+      } else if (selectedName === 'dgllc') {
+        currentCompanyEN = 'Delight Group LLC';
+        currentCompanyAR = 'مجموعة ديلايت ش.ذ.م.م';
+      } else {
+        // Auto-detect name
+        if (division === 'DGS') {
+          currentCompanyEN = 'Delight Greenscapes';
+          currentCompanyAR = 'ديلايت جرين سكيبس';
+        } else {
+          currentCompanyEN = 'Delight Technical Lighting';
+          currentCompanyAR = 'ديلايت للاضاءة الفنية';
+        }
+      }
+
+      document.querySelectorAll('#print-company-logo, #print-company-logo-p2, #print-company-logo-std, #print-company-logo-std-p2, .company-card-tos-logo, .print-company-logo-subsequent').forEach(img => {
         img.src = logoUrl;
       });
+
+      // Dynamically update text fields
+      document.querySelectorAll('.dynamic-company-name-en').forEach(el => {
+        el.textContent = currentCompanyEN;
+      });
+      document.querySelectorAll('.dynamic-company-name-ar').forEach(el => {
+        el.textContent = currentCompanyAR;
+      });
+    };
+
+    document.getElementById('config-branding-logo')?.addEventListener('change', updateBranding);
+    document.getElementById('config-branding-name')?.addEventListener('change', updateBranding);
+
+    // Total Summary Display Mode switcher
+    const updateTotalsDisplay = () => {
+      const mode = document.getElementById('config-total-show-mode')?.value || 'both';
+      
+      const amountClasses = ['.print-total-subtotal', '.print-total-vat', '.print-total-discount', '.print-total-due-row'];
+      const quantityClasses = ['.print-total-quantity'];
+
+      amountClasses.forEach(cls => {
+        document.querySelectorAll(cls).forEach(el => {
+          if (mode === 'quantity') {
+            el.classList.add('hidden');
+          } else {
+            el.classList.remove('hidden');
+          }
+        });
+      });
+
+      quantityClasses.forEach(cls => {
+        document.querySelectorAll(cls).forEach(el => {
+          if (mode === 'amount') {
+            el.classList.add('hidden');
+          } else {
+            el.classList.remove('hidden');
+          }
+        });
+      });
+    };
+
+    document.getElementById('config-total-show-mode')?.addEventListener('change', updateTotalsDisplay);
+
+    // Dynamic total pages count updater
+    const updateTotalPagesCount = () => {
+      const showPage2Checkbox = document.getElementById('config-show-page-2');
+      const isPage2Visible = showPage2Checkbox ? showPage2Checkbox.checked : true;
+      
+      const layout = document.getElementById('layoutSelector')?.value || 'standard';
+      let itemsPagesCount = 1;
+      if (layout === 'delightgroupllc') {
+        const pages = document.querySelectorAll('#layout-delightgroupllc-wrapper .print-page');
+        const itemsPages = Array.from(pages).filter(p => !p.classList.contains('print-page-2-container'));
+        itemsPagesCount = itemsPages.length || 1;
+      } else {
+        const pages = document.querySelectorAll('#layout-standard-wrapper .print-page');
+        const itemsPages = Array.from(pages).filter(p => !p.classList.contains('print-page-2-container'));
+        itemsPagesCount = itemsPages.length || 1;
+      }
+
+      const totalPages = isPage2Visible ? (itemsPagesCount + 1) : itemsPagesCount;
+
+      document.querySelectorAll('.dynamic-total-pages').forEach(el => {
+        el.textContent = totalPages.toString();
+      });
+    };
+
+    document.getElementById('config-show-page-2')?.addEventListener('change', () => {
+      setTimeout(updateTotalPagesCount, 50);
     });
+    document.getElementById('layoutSelector')?.addEventListener('change', () => {
+      setTimeout(updateTotalPagesCount, 50);
+    });
+    
+    // Run on initial load/restore
+    setTimeout(updateTotalPagesCount, 150);
 
     // Header Logo size adjustment
     document.getElementById('config-header-logo-size')?.addEventListener('change', (e) => {
@@ -1730,14 +2224,34 @@ const isTermChecked = (identifier: string): boolean => {
       });
     });
 
-    // Signatures detail toggles
-    document.getElementById('sig-client')?.addEventListener('change', (e) => {
-      const checked = e.target.checked;
+    // Signatures detail toggles — smart receiver positioning
+    const updateReceiverPosition = () => {
+      const receiverEl = document.getElementById('sig-receiver');
+      const clientEl = document.getElementById('sig-client');
+      const receiverChecked = receiverEl ? receiverEl.checked : false;
+      const clientChecked = clientEl ? clientEl.checked : true;
+
+      // Customer sig column (left, standard)
       document.querySelectorAll('.print-sig-client-col').forEach(el => {
-        if (checked) el.classList.remove('hidden');
+        if (clientChecked) el.classList.remove('hidden');
         else el.classList.add('hidden');
       });
-    });
+
+      // Receiver-in-left slot (shown when receiver is on AND customer is OFF)
+      document.querySelectorAll('.print-sig-receiver-left').forEach(el => {
+        if (receiverChecked && !clientChecked) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+
+      // Receiver-in-bottom slot (shown when receiver is on AND customer is also on)
+      document.querySelectorAll('.print-sig-receiver-col').forEach(el => {
+        if (receiverChecked && clientChecked) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+    };
+
+    document.getElementById('sig-client')?.addEventListener('change', updateReceiverPosition);
+    document.getElementById('sig-receiver')?.addEventListener('change', updateReceiverPosition);
 
     document.getElementById('sig-company')?.addEventListener('change', (e) => {
       const checked = e.target.checked;
@@ -1762,6 +2276,14 @@ const isTermChecked = (identifier: string): boolean => {
       });
     });
 
+    document.getElementById('config-show-dn-note')?.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      document.querySelectorAll('.print-dn-material-condition-disclaimer').forEach(el => {
+        if (checked) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+    });
+
     // Electronic Signature toggle handler
     document.getElementById('config-electronic-sig')?.addEventListener('change', (e) => {
       const checked = e.target.checked;
@@ -1782,7 +2304,7 @@ const isTermChecked = (identifier: string): boolean => {
         if (sigPlacement) sigPlacement.disabled = false;
         
         // Refresh checkboxes
-        document.getElementById('sig-client')?.dispatchEvent(new Event('change'));
+        updateReceiverPosition();
         document.getElementById('sig-company')?.dispatchEvent(new Event('change'));
       }
     });
@@ -1879,11 +2401,26 @@ const isTermChecked = (identifier: string): boolean => {
       
       updateSidebarSignaturePreview(id);
 
-      if (id === 'custom') {
+      if (id === 'any') {
+        customWrapper?.classList.add('hidden');
+        document.querySelectorAll('#print-sig-name-std, #print-sig-name-arr').forEach(el => {
+          el.textContent = '';
+        });
+        document.querySelectorAll('.print-sig-paren-std, .print-sig-paren-arr').forEach(el => {
+          el.style.display = 'none';
+        });
+        document.querySelectorAll('.signature-image-render').forEach(el => {
+          el.src = '';
+          el.classList.add('hidden');
+        });
+      } else if (id === 'custom') {
         customWrapper?.classList.remove('hidden');
         const customVal = document.getElementById('config-custom-signature-name')?.value || '';
         document.querySelectorAll('#print-sig-name-std, #print-sig-name-arr').forEach(el => {
           el.textContent = customVal;
+        });
+        document.querySelectorAll('.print-sig-paren-std, .print-sig-paren-arr').forEach(el => {
+          el.style.display = customVal ? 'inline' : 'none';
         });
         document.querySelectorAll('.signature-image-render').forEach(el => {
           el.src = '';
@@ -1895,6 +2432,9 @@ const isTermChecked = (identifier: string): boolean => {
         if (!sig) return;
         document.querySelectorAll('#print-sig-name-std, #print-sig-name-arr').forEach(el => {
           el.textContent = sig.signatory_name || '';
+        });
+        document.querySelectorAll('.print-sig-paren-std, .print-sig-paren-arr').forEach(el => {
+          el.style.display = sig.signatory_name ? 'inline' : 'none';
         });
         document.querySelectorAll('.signature-image-render').forEach(el => {
           if (sig.signature_image) {
@@ -1912,6 +2452,9 @@ const isTermChecked = (identifier: string): boolean => {
       const val = e.target.value;
       document.querySelectorAll('#print-sig-name-std, #print-sig-name-arr').forEach(el => {
         el.textContent = val;
+      });
+      document.querySelectorAll('.print-sig-paren-std, .print-sig-paren-arr').forEach(el => {
+        el.style.display = val ? 'inline' : 'none';
       });
     });
 
@@ -1967,15 +2510,15 @@ const isTermChecked = (identifier: string): boolean => {
     document.getElementById('config-save-btn')?.addEventListener('click', () => {
       const config = {};
       const inputs = [
-        'layoutSelector', 'config-doc-type', 'config-branding-logo', 'config-show-logo',
+        'layoutSelector', 'config-doc-type', 'config-branding-logo', 'config-branding-name', 'config-total-show-mode', 'config-show-logo',
         'config-header-logo-size', 'config-show-logo-p2', 'config-terms-logo-size',
         'config-show-watermark', 'config-watermark-source', 'config-watermark-opacity', 'config-watermark-size',
         'config-show-cust-company', 'config-show-cust-address', 'config-show-cust-contact', 'config-show-cust-trn',
         'config-show-info-status', 'config-show-info-date', 'config-show-info-due',
         'config-show-col-ref', 'config-show-col-spec', 'config-show-col-price',
-        'config-show-subtotal', 'config-show-vat', 'config-show-discount', 'config-show-page-2',
-        'config-show-company-card-tos', 'config-sig-placement', 'sig-client', 'sig-company', 
-        'config-show-sig-image', 'config-show-stamp-box', 'config-show-disclaimer', 'config-electronic-sig',
+        'config-show-subtotal', 'config-show-vat', 'config-show-discount', 'config-show-total', 'config-show-total-qty', 'config-show-qty-words', 'config-show-dn-condition-note', 'config-show-page-2',
+        'config-show-company-card-tos', 'config-sig-placement', 'sig-client', 'sig-receiver', 'sig-company', 
+        'config-show-sig-image', 'config-show-stamp-box', 'config-show-disclaimer', 'config-show-dn-note', 'config-electronic-sig',
         'config-remittance-placement', 'config-bank-name', 'config-bank-acc-name', 'config-bank-acc', 'config-bank-iban', 'config-bank-swift',
         'config-bank-selector', 'config-signature-selector', 'config-address-selector', 'config-only-selected-tos'
       ];
@@ -2024,6 +2567,7 @@ const isTermChecked = (identifier: string): boolean => {
           el.dispatchEvent(new Event('change'));
           el.dispatchEvent(new Event('input'));
         });
+        setTimeout(repaginate, 50);
       } catch (err) {
         console.error('Error loading print config:', err);
       }
@@ -2034,10 +2578,10 @@ const isTermChecked = (identifier: string): boolean => {
     // Run filter
     applySelectedTOSFilter();
 
-    // Set initial sidebar signature preview based on the current selector value
-    const initialSigId = document.getElementById('config-signature-selector')?.value;
-    if (initialSigId) {
-      updateSidebarSignaturePreview(initialSigId);
+    // Set initial signature preview and trigger update based on current selector value
+    const sigSelector = document.getElementById('config-signature-selector');
+    if (sigSelector) {
+      sigSelector.dispatchEvent(new Event('change'));
     }
 
     // Auto print if requested via query param

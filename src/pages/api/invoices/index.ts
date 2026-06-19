@@ -34,6 +34,7 @@ const invoiceSchema = z.object({
   source_division: z.enum(['DTL', 'DGS', 'both']).optional().nullable(),
   issue_date: z.string().min(1, 'Issue date is required'),
   due_date: z.string().min(1, 'Due date is required'),
+  signatory_incharge: z.string().min(1, 'Signatory Incharge is required'),
   payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']).default('unpaid'),
   discount_type: z.enum(['percentage', 'fixed']).default('fixed'),
   discount_value: z.number().min(0).default(0),
@@ -76,6 +77,75 @@ export const GET: APIRoute = async ({ url }) => {
 export const POST: APIRoute = async ({ request }) => {
   try {
     const data = await request.json();
+
+    if (data.duplicateFrom) {
+      const sourceId = data.duplicateFrom;
+      const invRes = await query('SELECT * FROM invoices WHERE id = $1', [sourceId]);
+      if (invRes.rows.length === 0) {
+        return new Response(JSON.stringify({ error: 'Source invoice not found' }), { status: 404 });
+      }
+      const sourceInv = invRes.rows[0];
+
+      const itemsRes = await query('SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY id ASC', [sourceId]);
+      const sourceItems = itemsRes.rows;
+
+      const baseInvoiceNo = sourceInv.invoice_number.split('-DUP-')[0];
+      const dupCountRes = await query(
+        `SELECT invoice_number FROM invoices WHERE invoice_number = $1 OR invoice_number LIKE $2`,
+        [baseInvoiceNo, `${baseInvoiceNo}-DUP-%`]
+      );
+      
+      let nextSuffix = 1;
+      dupCountRes.rows.forEach((row: any) => {
+        const parts = row.invoice_number.split('-DUP-');
+        if (parts.length > 1) {
+          const suffixNum = parseInt(parts[1], 10);
+          if (!isNaN(suffixNum) && suffixNum >= nextSuffix) {
+            nextSuffix = suffixNum + 1;
+          }
+        }
+      });
+      const newInvoiceNumber = `${baseInvoiceNo}-DUP-${String(nextSuffix).padStart(2, '0')}`;
+
+      const duplicateInvoice = await withTransaction(async (client) => {
+        const insertRes = await client.query(
+          `INSERT INTO invoices (
+            invoice_number, customer_name, customer_email, customer_phone, company_name, company_vat,
+            billing_address, shipping_address, order_type, source_division,
+            issue_date, due_date, subtotal, gst_amount, discount_type, discount_value, discount_amount, total_amount,
+            payment_status, internal_notes, show_images, lpo_number, payment_terms, signatory_incharge
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+          RETURNING *`,
+          [
+            newInvoiceNumber, sourceInv.customer_name, sourceInv.customer_email || null,
+            sourceInv.customer_phone || null, sourceInv.company_name || null, sourceInv.company_vat || null,
+            sourceInv.billing_address || null, sourceInv.shipping_address || null,
+            sourceInv.order_type, sourceInv.source_division || null,
+            sourceInv.issue_date, sourceInv.due_date,
+            sourceInv.subtotal, sourceInv.gst_amount, sourceInv.discount_type, sourceInv.discount_value, sourceInv.discount_amount, sourceInv.total_amount,
+            'draft',
+            sourceInv.internal_notes || null, sourceInv.show_images, sourceInv.lpo_number || null, sourceInv.payment_terms || null, sourceInv.signatory_incharge || null
+          ]
+        );
+        const newInv = insertRes.rows[0];
+
+        for (const item of sourceItems) {
+          await client.query(
+            `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+            [
+              newInv.id, item.product_id || null, item.catalogue_ref || null, item.description,
+              item.tech_spec || null, item.quantity, item.unit_price, item.tax_type, item.tax_value,
+              item.tax_amount, item.total_price, item.item_image
+            ]
+          );
+        }
+        return newInv;
+      });
+
+      return new Response(JSON.stringify(duplicateInvoice), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+
     const parsed = invoiceSchema.parse(data);
 
     // Calculate totals
@@ -104,16 +174,35 @@ export const POST: APIRoute = async ({ request }) => {
 
     // ACID transaction
     const invoice = await withTransaction(async (client) => {
+      // Upsert company
+      let companyId = null;
+      if (parsed.company_name) {
+        const compRes = await client.query(
+          `INSERT INTO companies (name, vat_number, billing_address, shipping_address)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (name) DO UPDATE SET
+              vat_number = COALESCE(EXCLUDED.vat_number, companies.vat_number),
+              billing_address = COALESCE(EXCLUDED.billing_address, companies.billing_address),
+              shipping_address = COALESCE(EXCLUDED.shipping_address, companies.shipping_address)
+           RETURNING id`,
+          [parsed.company_name, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null]
+        );
+        companyId = compRes.rows[0].id;
+      }
+
       // Upsert customer
       await client.query(
-        `INSERT INTO customers (name, email, phone, company_name, billing_address, shipping_address)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO customers (name, email, phone, company_name, company_id, company_vat, billing_address, shipping_address)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (name) DO UPDATE SET
             email = COALESCE(EXCLUDED.email, customers.email),
             phone = COALESCE(EXCLUDED.phone, customers.phone),
             company_name = COALESCE(EXCLUDED.company_name, customers.company_name),
-            billing_address = COALESCE(EXCLUDED.billing_address, customers.billing_address)`,
-        [parsed.customer_name, parsed.customer_email || null, parsed.customer_phone || null, parsed.company_name || null, parsed.billing_address || null, parsed.shipping_address || null]
+            company_id = COALESCE(EXCLUDED.company_id, customers.company_id),
+            company_vat = COALESCE(EXCLUDED.company_vat, customers.company_vat),
+            billing_address = COALESCE(EXCLUDED.billing_address, customers.billing_address),
+            shipping_address = COALESCE(EXCLUDED.shipping_address, customers.shipping_address)`,
+        [parsed.customer_name, parsed.customer_email || null, parsed.customer_phone || null, parsed.company_name || null, companyId, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null]
       );
 
       const invRes = await client.query(
@@ -121,8 +210,8 @@ export const POST: APIRoute = async ({ request }) => {
           invoice_number, customer_name, customer_email, customer_phone, company_name, company_vat,
           billing_address, shipping_address, order_type, source_division,
           issue_date, due_date, subtotal, gst_amount, discount_type, discount_value, discount_amount, total_amount,
-          payment_status, internal_notes, show_images, lpo_number, payment_terms
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+          payment_status, internal_notes, show_images, lpo_number, payment_terms, signatory_incharge
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
         RETURNING *`,
         [invoice_number, parsed.customer_name, parsed.customer_email || null,
          parsed.customer_phone || null, parsed.company_name || null, parsed.company_vat || null,
@@ -130,7 +219,8 @@ export const POST: APIRoute = async ({ request }) => {
          parsed.order_type, parsed.source_division || null,
          parsed.issue_date, parsed.due_date,
          subtotal, totalTax, parsed.discount_type, parsed.discount_value, discount, total_amount, parsed.payment_status,
-         parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null]
+         parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null,
+         parsed.signatory_incharge]
       );
       const inv = invRes.rows[0];
 
