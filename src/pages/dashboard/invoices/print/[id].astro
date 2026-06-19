@@ -1845,7 +1845,7 @@ const isTermChecked = (identifier: string): boolean => {
       // Reserve fraction = 80px / 1123px ≈ 0.071 (7.1% from bottom)
       const PAGE_HEIGHT_PX = 1123; // 297mm at 96dpi — used only for reserve fraction
       const FOOTER_RESERVE_FRACTION = 110 / PAGE_HEIGHT_PX; // ~9.8%
-      const TOTALS_RESERVE_FRACTION = 350 / PAGE_HEIGHT_PX; // ~31% (ensures the tall totals box does not bleed over the footer margin)
+      const TOTALS_RESERVE_FRACTION = 110 / PAGE_HEIGHT_PX; // ~9.8%
 
       // FIX: Get the items tbody specifically — NOT the header/details/field table auto-generated tbodies.
       // Standard layout: .std-items-table
