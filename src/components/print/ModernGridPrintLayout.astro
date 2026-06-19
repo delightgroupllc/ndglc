@@ -20,7 +20,7 @@ interface Props {
 const { inv, items, settings, logoColor, isDGS, companyNameEN, companyNameAR, websiteURL, amountInWords, totalQty, totalQtyInWords = '', documentTitle, selectedClauses = [], signatureImage, isCustomerDeleted = false, dnNote = "DELIVERY NOTE : Customer must check good's condition and quantity at the time of delivery of the material" } = Astro.props;
 
 // Determine items fit limits
-const maxItemsPage1 = inv.order_type === 'delivery_note' ? 8 : 4;
+const maxItemsPage1 = 4;
 const maxItemsSubsequent = 10;
 
 // Split items list into pages
@@ -238,7 +238,8 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
 
         <!-- FOOTER / SIGNATURES (ON LAST PAGE ONLY) -->
         {isLastPage && (
-          <div class="delightgroupllc-inv-footer-group" style="display: table; page-break-inside: avoid; break-inside: avoid; width: 100%;">
+          <>
+          <div class="print-footer-math delightgroupllc-inv-footer-group" style="display: table; page-break-inside: avoid; break-inside: avoid; width: 100%;">
             <!-- DELIVERY NOTE FOOTER BLOCK -->
             <div class="dn-only-layout">
               <div class="delightgroupllc-dn-totals print-total-quantity">
@@ -248,9 +249,49 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
                 </div>
               </div>
               <p class="delightgroupllc-dn-note print-dn-material-condition-disclaimer text-center font-bold uppercase tracking-wide text-slate-600" style="font-size: 7.5pt; margin-top: 16px; margin-bottom: 24px;">{dnNote}</p>
+            </div>
 
+            <!-- INVOICE FOOTER BLOCK -->
+            <div class="inv-only-layout">
+              <div class="delightgroupllc-inv-bottom-grid">
+                <div class="delightgroupllc-inv-words-panel print-words-panel">
+                  <span class="font-bold text-muted uppercase tracking-wider" style="font-size: 7.5pt; display: block; margin-bottom: 5px;">Amount in words:</span>
+                  <span class="font-bold" style="font-size: 9.5pt; color: #000000;">{amountInWords}</span>
+                </div>
+                <div class="delightgroupllc-inv-totals-panel">
+                  <table class="delightgroupllc-inv-totals-table">
+                    <tr class="print-total-subtotal">
+                      <td>Total Amount</td>
+                      <td>{Number(inv.subtotal).toFixed(2)}</td>
+                    </tr>
+                    <tr class="print-total-discount">
+                      <td>Discount Amount</td>
+                      <td>{Number(inv.discount_amount).toFixed(2)}</td>
+                    </tr>
+                    <tr class="print-total-subtotal">
+                      <td>Taxable Amount</td>
+                      <td>{Number(Number(inv.subtotal) - Number(inv.discount_amount)).toFixed(2)}</td>
+                    </tr>
+                    <tr class="print-total-vat">
+                      <td>Vat Amount</td>
+                      <td>{Number(inv.gst_amount).toFixed(2)}</td>
+                    </tr>
+                    <tr class="print-total-quantity">
+                      <td>Total Quantity</td>
+                      <td style="padding-right: 32px;">{totalQty}</td>
+                    </tr>
+                    <tr style="font-weight: 800; font-size: 9.5pt; background-color: #f8fafc;" class="print-total-due print-total-due-row">
+                      <td>Total</td>
+                      <td style={`color: ${logoColor}; border-top: 1px solid #000000;`}>{Number(inv.total_amount).toFixed(2)}</td>
+                    </tr>
+                  </table>
+                </div>
               </div>
+            </div>
+          </div>
 
+          <div class="print-footer-sigs" style="display: table; page-break-inside: avoid; break-inside: avoid; width: 100%;">
+            <div class="dn-only-layout">
               <div class="delightgroupllc-dn-signatures print-signature-section mt-4">
                 <table style="width: 100%;">
                   <tr>
@@ -295,42 +336,7 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
 
             </div>
 
-            <!-- INVOICE FOOTER BLOCK -->
             <div class="inv-only-layout">
-              <div class="delightgroupllc-inv-bottom-grid">
-                <div class="delightgroupllc-inv-words-panel print-words-panel">
-                  <span class="font-bold text-muted uppercase tracking-wider" style="font-size: 7.5pt; display: block; margin-bottom: 5px;">Amount in words:</span>
-                  <span class="font-bold" style="font-size: 9.5pt; color: #000000;">{amountInWords}</span>
-                </div>
-                <div class="delightgroupllc-inv-totals-panel">
-                  <table class="delightgroupllc-inv-totals-table">
-                    <tr class="print-total-subtotal">
-                      <td>Total Amount</td>
-                      <td>{Number(inv.subtotal).toFixed(2)}</td>
-                    </tr>
-                    <tr class="print-total-discount">
-                      <td>Discount Amount</td>
-                      <td>{Number(inv.discount_amount).toFixed(2)}</td>
-                    </tr>
-                    <tr class="print-total-subtotal">
-                      <td>Taxable Amount</td>
-                      <td>{Number(Number(inv.subtotal) - Number(inv.discount_amount)).toFixed(2)}</td>
-                    </tr>
-                    <tr class="print-total-vat">
-                      <td>Vat Amount</td>
-                      <td>{Number(inv.gst_amount).toFixed(2)}</td>
-                    </tr>
-                    <tr class="print-total-quantity">
-                      <td>Total Quantity</td>
-                      <td style="padding-right: 32px;">{totalQty}</td>
-                    </tr>
-                    <tr style="font-weight: 800; font-size: 9.5pt; background-color: #f8fafc;" class="print-total-due print-total-due-row">
-                      <td>Total</td>
-                      <td style={`color: ${logoColor}; border-top: 1px solid #000000;`}>{Number(inv.total_amount).toFixed(2)}</td>
-                    </tr>
-                  </table>
-                </div>
-              </div>
 
               <div class="print-bank-block-p1" style="margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; font-size: 7.5pt; background: #f8fafc; page-break-inside: avoid; break-inside: avoid;">
                 <strong style={`display: block; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 5px; font-size: 8pt; color: ${logoColor}; text-transform: uppercase;`}>Remittance & Bank Instructions</strong>
@@ -398,6 +404,7 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
               </div>
             </div>
           </div>
+          </>
         )}
 
         <!-- Continuation Note -->

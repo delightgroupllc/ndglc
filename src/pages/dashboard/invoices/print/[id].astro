@@ -775,7 +775,7 @@ const isTermChecked = (identifier: string): boolean => {
     
     .delightgroupllc-watermark {
       position: absolute;
-      top: 45%;
+      top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       width: 380px;
@@ -1360,8 +1360,8 @@ const isTermChecked = (identifier: string): boolean => {
             <div>
               <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Bank Remittance Placement</label>
               <select id="config-remittance-placement" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
-                <option value="both" selected>Show on Page 1 & TOS Page</option>
-                <option value="page1">Show on Page 1 Only</option>
+                <option value="both" selected>Show on Last Page & TOS Page</option>
+                <option value="page1">Show on Last Page Only</option>
                 <option value="tos">Show on TOS Page Only</option>
                 <option value="none">Hide Remittance Entirely</option>
               </select>
@@ -1802,9 +1802,11 @@ const isTermChecked = (identifier: string): boolean => {
       const wrapper = document.getElementById(wrapperId);
       if (!wrapper) return;
 
-      // 1. Move totals & signatures block out of pages to redistribute at the end (before any pages are removed)
-      const totalsBlock = wrapper.querySelector('.std-totals-sigs-block, .delightgroupllc-inv-footer-group');
-      if (totalsBlock) totalsBlock.remove();
+      // 1. Move totals & signatures block out of pages to redistribute at the end
+      const mathBlock = wrapper.querySelector('.print-footer-math');
+      const sigsBlock = wrapper.querySelector('.print-footer-sigs');
+      if (mathBlock) mathBlock.remove();
+      if (sigsBlock) sigsBlock.remove();
 
       // 2. Gather all rows from all pages (including dynamic overflow pages) BEFORE removing the pages
       const allRows = [];
@@ -1826,7 +1828,8 @@ const isTermChecked = (identifier: string): boolean => {
       pages.forEach(p => { p.style.display = 'block'; });
 
       if (allRows.length === 0) {
-        if (totalsBlock) pages[pages.length - 1].appendChild(totalsBlock);
+        if (mathBlock) pages[pages.length - 1].appendChild(mathBlock);
+        if (sigsBlock) pages[pages.length - 1].appendChild(sigsBlock);
         return;
       }
 
@@ -1836,33 +1839,45 @@ const isTermChecked = (identifier: string): boolean => {
       });
 
       let currentPageIndex = 0;
+      let currentRowIndex = 0;
+
+      const specsChecked = document.getElementById('config-show-col-spec')?.checked;
+      let maxItemsPage1 = 5;
+      let maxItemsSubsequent = 14;
+
+      if (layout === 'delightgroupllc') {
+        if (specsChecked) {
+          maxItemsPage1 = 4;
+          maxItemsSubsequent = 5;
+        } else {
+          maxItemsPage1 = 8;
+          maxItemsSubsequent = 10;
+        }
+      } else {
+        if (specsChecked) {
+          maxItemsPage1 = 5;
+          maxItemsSubsequent = 14;
+        } else {
+          maxItemsPage1 = 8;
+          maxItemsSubsequent = 14;
+        }
+      }
 
       // Footer reserve as a fraction of page height — this is SCALE-INDEPENDENT.
-      // getBoundingClientRect returns visual pixels which change with CSS zoom/transforms.
-      // By using (rowBottom - pageTop) / pageHeight we compare fractions, invariant to any scaling.
-      // Continuation notice: bottom:55px, page number: bottom:30px, out of 297mm ≈ 1123px.
-      // Reserve fraction = 80px / 1123px ≈ 0.071 (7.1% from bottom)
-      // Reserve fraction = 80px / 1123px ≈ 0.071 (7.1% from bottom)
-      const PAGE_HEIGHT_PX = 1123; // 297mm at 96dpi — used only for reserve fraction
-      const FOOTER_RESERVE_FRACTION = 110 / PAGE_HEIGHT_PX; // ~9.8%
-      const TOTALS_RESERVE_FRACTION = 110 / PAGE_HEIGHT_PX; // ~9.8%
+      const PAGE_HEIGHT_PX = 1123; // 297mm at 96dpi
+      const FOOTER_RESERVE_FRACTION = 75 / PAGE_HEIGHT_PX; // ~6.6%
+      const TOTALS_RESERVE_FRACTION = 40 / PAGE_HEIGHT_PX; // ~3.5%
 
-      // FIX: Get the items tbody specifically — NOT the header/details/field table auto-generated tbodies.
-      // Standard layout: .std-items-table
-      // Modern Grid layout: .delightgroupllc-table (both invoice and delivery note variants)
       const getItemsTbody = (page) => {
         return page.querySelector('.std-items-table tbody') ||
                page.querySelector('.delightgroupllc-table tbody') ||
                page.querySelector('.dg-items-table tbody');
       };
 
-      // Scale-independent overflow: compare row bottom as a fraction of page height.
-      // Works correctly even when the preview is CSS-scaled/zoomed.
-      const rowOverflows = (page, tbody) => {
-        if (!tbody || !tbody.lastElementChild) return false;
+      const rowOverflows = (page, row) => {
         const pageRect = page.getBoundingClientRect();
         if (pageRect.height === 0) return false;
-        const rowBottom = tbody.lastElementChild.getBoundingClientRect().bottom;
+        const rowBottom = row.getBoundingClientRect().bottom;
         const fraction = (rowBottom - pageRect.top) / pageRect.height;
         return fraction > (1 - FOOTER_RESERVE_FRACTION);
       };
@@ -1875,28 +1890,21 @@ const isTermChecked = (identifier: string): boolean => {
         return fraction > (1 - TOTALS_RESERVE_FRACTION);
       };
 
-      // Dynamically create a new overflow continuation page when we run out of pre-rendered pages
       const createOverflowPage = () => {
-        // Clone the LAST page as template (it already has the compact continuation header)
         const templatePage = pages[pages.length - 1];
         const newPage = templatePage.cloneNode(true);
-        newPage.classList.add('dynamic-overflow-page'); // tag so we can clean up on re-run
+        newPage.classList.add('dynamic-overflow-page'); 
 
-        // Clear rows from the cloned tbody
         const clonedTbody = getItemsTbody(newPage);
-        if (clonedTbody) {
-          while (clonedTbody.firstChild) clonedTbody.removeChild(clonedTbody.firstChild);
-        }
+        if (clonedTbody) clonedTbody.innerHTML = '';
 
-        // Remove totals block if cloned
-        newPage.querySelector('.std-totals-sigs-block, .delightgroupllc-inv-footer-group')?.remove();
+        newPage.querySelector('.print-footer-math')?.remove();
+        newPage.querySelector('.print-footer-sigs')?.remove();
 
-        // Hide cloned continuation notice (will be shown/hidden at end)
         newPage.querySelectorAll('.italic').forEach(el => {
           if (el.textContent.includes('continued')) el.style.display = 'none';
         });
 
-        // Insert before TOS page, or append to container
         const container = wrapper.firstElementChild || wrapper;
         const tosPage = container.querySelector('.print-page-2-container');
         tosPage ? container.insertBefore(newPage, tosPage) : container.appendChild(newPage);
@@ -1905,55 +1913,73 @@ const isTermChecked = (identifier: string): boolean => {
         return newPage;
       };
 
-      // Iterative row distribution (avoids call-stack depth issues with many rows)
-      for (let i = 0; i < allRows.length; i++) {
-        const row = allRows[i];
+      while (currentRowIndex < allRows.length) {
+        let page = pages[currentPageIndex];
+        if (!page) page = createOverflowPage();
 
-        // Update item serial number
-        const sNoCell = row.firstElementChild;
-        if (sNoCell) sNoCell.textContent = (i + 1).toString();
-
-        const page = pages[currentPageIndex];
         const tbody = getItemsTbody(page);
-
-        // Safety: if this page has no items table (shouldn't happen), skip to next
         if (!tbody) {
-          if (currentPageIndex < pages.length - 1) { currentPageIndex++; }
-          else { createOverflowPage(); currentPageIndex++; }
-          i--; // retry this row
+          currentRowIndex++;
           continue;
         }
 
+        const row = allRows[currentRowIndex];
+        row.firstElementChild.textContent = (currentRowIndex + 1).toString();
         tbody.appendChild(row);
 
-        // Check if content now overflows (scale-independent fraction check)
-        if (rowOverflows(page, tbody)) {
-          if (tbody.children.length > 1) {
-            // Move this row to the next page
-            row.remove();
-            if (currentPageIndex >= pages.length - 1) createOverflowPage();
-            currentPageIndex++;
-            i--; // retry this row on the next page
-          }
-          // else: this row is the ONLY row — keep it, can't split further
-        }
-      }
+        const currentMax = (currentPageIndex === 0) ? maxItemsPage1 : maxItemsSubsequent;
 
-      // Place totals/signatures block on the last active page
-      if (totalsBlock) {
-        const lastPage = pages[currentPageIndex];
-        lastPage.appendChild(totalsBlock);
-        if (blockOverflows(lastPage, totalsBlock)) {
-          totalsBlock.remove();
+        if (rowOverflows(page, row) || tbody.children.length > currentMax) {
+          row.remove();
           if (currentPageIndex >= pages.length - 1) createOverflowPage();
           currentPageIndex++;
-          pages[currentPageIndex].appendChild(totalsBlock);
+        } else {
+          currentRowIndex++;
         }
       }
 
-      // Start distribution — now handled by the for-loop above
+      // Place blocks on the last active page
+      if (mathBlock) {
+        let lastPage = pages[currentPageIndex];
+        lastPage.appendChild(mathBlock);
+        
+        const totalItemsCount = allRows.length;
+        const isForcedFit = (totalItemsCount <= 10 && currentPageIndex <= 1);
 
+        if (!isForcedFit && blockOverflows(lastPage, mathBlock)) {
+          mathBlock.remove();
+          
+          const tbody = getItemsTbody(lastPage);
+          let orphanedRow = null;
+          if (tbody && tbody.children.length > 1) {
+            orphanedRow = tbody.lastElementChild;
+            orphanedRow.remove();
+          }
 
+          if (currentPageIndex >= pages.length - 1) createOverflowPage();
+          currentPageIndex++;
+
+          if (orphanedRow) {
+            const newTbody = getItemsTbody(pages[currentPageIndex]);
+            if (newTbody) newTbody.appendChild(orphanedRow);
+          }
+
+          pages[currentPageIndex].appendChild(mathBlock);
+        }
+      }
+
+      // Place signatures block
+      if (sigsBlock) {
+        let lastPage = pages[currentPageIndex];
+        lastPage.appendChild(sigsBlock);
+        if (blockOverflows(lastPage, sigsBlock)) {
+          sigsBlock.remove();
+          if (currentPageIndex >= pages.length - 1) createOverflowPage();
+          currentPageIndex++;
+          pages[currentPageIndex].appendChild(sigsBlock);
+        }
+      }
+      
       // Hide completely empty pages, track visible count
       let actualItemsPagesCount = 0;
       pages.forEach((page, idx) => {
