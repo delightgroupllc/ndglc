@@ -1764,6 +1764,10 @@ const isTermChecked = (identifier: string): boolean => {
          targetOrderType = 'standard';
          targetPrefix = 'INV-';
          promptMsg = 'Would you like to convert this order to a Tax Invoice (INV)?';
+      } else if (val === 'DELIVERY NOTE') {
+         targetOrderType = 'delivery_note';
+         targetPrefix = 'DLN-';
+         promptMsg = 'Would you like to convert this order to a Delivery Note (DLN)?';
       }
 
       const needsConversion = targetOrderType && (orderType !== targetOrderType || (currentInvoiceNumber && !currentInvoiceNumber.startsWith(targetPrefix)));
@@ -1789,6 +1793,16 @@ const isTermChecked = (identifier: string): boolean => {
               alert(`Error: ${err.message}`);
             }
           }
+          // If we reach here, user either cancelled or there was an error.
+          // Revert dropdown
+          const oldValMapping = {
+            'quotation': 'ESTIMATION / QUOTE',
+            'lpo': 'PRO FORMA INVOICE',
+            'delivery_note': 'DELIVERY NOTE',
+            'standard': 'TAX INVOICE'
+          };
+          e.target.value = oldValMapping[orderType || 'standard'] || 'TAX INVOICE';
+          return;
         }
       }
 

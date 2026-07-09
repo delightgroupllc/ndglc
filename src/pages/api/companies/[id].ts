@@ -159,6 +159,12 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
       const details = error.errors.map(e => e.message).join(', ');
       return new Response(JSON.stringify({ error: details, details: error.errors }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
+    if (error.code === '23505') {
+      let field = 'record';
+      if (error.constraint?.includes('name')) field = 'name';
+      else if (error.constraint?.includes('code')) field = 'code';
+      return new Response(JSON.stringify({ error: `A company with this ${field} already exists.` }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
     return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 };

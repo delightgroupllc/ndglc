@@ -43,6 +43,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     const result = await withTransaction(async (client) => {
       let companyId = null;
+      let isNewCompany = false;
       if (parsed.company_name) {
         // Check if company already exists
         const checkComp = await client.query('SELECT id FROM companies WHERE name = $1', [parsed.company_name]);
@@ -73,6 +74,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
             [parsed.company_name, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null, compCode]
           );
           companyId = compRes.rows[0].id;
+          isNewCompany = true;
         }
       }
 
@@ -96,6 +98,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
       );
       const customer = res.rows[0];
 
+      if (isNewCompany && companyId) {
+        await client.query('UPDATE companies SET default_customer_id = $1 WHERE id = $2', [customer.id, companyId]);
+      }
+
       // Insert Audit Log
       await client.query(
         `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
@@ -111,6 +117,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (error instanceof z.ZodError) {
       const details = error.errors.map(e => e.message).join(', ');
       return new Response(JSON.stringify({ error: details, details: error.errors }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (error.code === '23505') {
+      let field = 'record';
+      if (error.constraint?.includes('name')) field = 'name';
+      else if (error.constraint?.includes('code')) field = 'code';
+      else if (error.constraint?.includes('email')) field = 'email';
+      return new Response(JSON.stringify({ error: `A customer with this ${field} already exists.` }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
     return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }

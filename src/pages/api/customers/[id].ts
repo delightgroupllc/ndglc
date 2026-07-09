@@ -95,6 +95,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
         const code = parsed.code !== undefined ? parsed.code?.trim() : customer.code;
 
         let companyId = null;
+        let isNewCompany = false;
         if (company) {
           const checkComp = await client.query('SELECT id FROM companies WHERE name = $1', [company]);
           if (checkComp.rowCount > 0) {
@@ -123,6 +124,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
               [company, company_vat || null, billing || null, shipping || null, compCode]
             );
             companyId = compRes.rows[0].id;
+            isNewCompany = true;
           }
         }
 
@@ -132,6 +134,10 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
            WHERE id = $10 RETURNING *`,
           [name, email || null, phone || null, company || null, companyId, billing || null, shipping || null, company_vat || null, code || null, id]
         );
+
+        if (isNewCompany && companyId) {
+          await client.query('UPDATE companies SET default_customer_id = $1 WHERE id = $2', [id, companyId]);
+        }
 
         // Log edit action
         await client.query(
@@ -148,13 +154,20 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       const details = error.errors.map(e => e.message).join(', ');
-      return new Response(JSON.stringify({ error: details, details: error.errors }), { status: 400 });
+      return new Response(JSON.stringify({ error: details, details: error.errors }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (error.code === '23505') {
+      let field = 'record';
+      if (error.constraint?.includes('name')) field = 'name';
+      else if (error.constraint?.includes('code')) field = 'code';
+      else if (error.constraint?.includes('email')) field = 'email';
+      return new Response(JSON.stringify({ error: `A customer with this ${field} already exists.` }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
     if (error.message && error.message.startsWith('DUPLICATE_WARNING:')) {
       const msg = error.message.replace('DUPLICATE_WARNING: ', '');
       return new Response(JSON.stringify({ duplicateWarning: true, error: msg }), { status: 409, headers: { 'Content-Type': 'application/json' } });
     }
-    return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { status: 500 });
+    return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 };
 

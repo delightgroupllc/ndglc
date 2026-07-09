@@ -192,24 +192,46 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const rand = Math.floor(1000 + Math.random() * 9000);
-    const invoice_number = `INV-${new Date().getFullYear()}-${rand}`;
+    let prefix = 'INV';
+    if (parsed.order_type === 'quotation') prefix = 'EST';
+    else if (parsed.order_type === 'lpo') prefix = 'PRO';
+    else if (parsed.order_type === 'delivery_note') prefix = 'DLN';
+    const invoice_number = `${prefix}-${new Date().getFullYear()}-${rand}`;
 
     // ACID transaction
     const invoice = await withTransaction(async (client) => {
       // Upsert company
       let companyId = null;
       if (parsed.company_name) {
-        const compRes = await client.query(
-          `INSERT INTO companies (name, vat_number, billing_address, shipping_address)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (name) DO UPDATE SET
-              vat_number = COALESCE(EXCLUDED.vat_number, companies.vat_number),
-              billing_address = COALESCE(EXCLUDED.billing_address, companies.billing_address),
-              shipping_address = COALESCE(EXCLUDED.shipping_address, companies.shipping_address)
-           RETURNING id`,
-          [parsed.company_name, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null]
-        );
-        companyId = compRes.rows[0].id;
+        const checkComp = await client.query('SELECT id FROM companies WHERE name = $1', [parsed.company_name]);
+        if (checkComp.rowCount > 0) {
+          companyId = checkComp.rows[0].id;
+          await client.query(
+            `UPDATE companies SET
+               vat_number = COALESCE($1, vat_number),
+               billing_address = COALESCE($2, billing_address),
+               shipping_address = COALESCE($3, shipping_address)
+             WHERE id = $4`,
+            [parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null, companyId]
+          );
+        } else {
+          // Generate unique company code
+          let compCode = null;
+          const codesRes = await client.query("SELECT code FROM companies WHERE code LIKE 'COM-%'");
+          let max = 1000;
+          codesRes.rows.forEach(r => {
+            const num = parseInt(r.code.replace('COM-', ''), 10);
+            if (!isNaN(num) && num > max) max = num;
+          });
+          compCode = `COM-${max + 1}`;
+          const compRes = await client.query(
+            `INSERT INTO companies (name, vat_number, billing_address, shipping_address, code)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id`,
+            [parsed.company_name, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null, compCode]
+          );
+          companyId = compRes.rows[0].id;
+        }
       }
 
       // Upsert customer

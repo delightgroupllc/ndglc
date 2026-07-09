@@ -122,7 +122,8 @@ const companiesJson = JSON.stringify(companiesList);
               <datalist id="customer-datalist">
                 {customers.map(c => (
                   <option 
-                    value={c.name} 
+                    value={c.code ? `${c.name} (${c.code})` : c.name} 
+                    data-real-name={c.name}
                     data-code={c.code||''} 
                     data-company-code={c.company_code||''} 
                     data-email={c.email||''} 
@@ -141,61 +142,49 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Full Name <span class="text-rose-500">*</span></label>
-              <input type="text" id="inv-full-name" name="full_name_display" placeholder="Contact person name" readonly
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-600 px-3 py-2.5 text-sm cursor-default" />
-              <p class="text-[10px] text-slate-400">Auto-filled from customer selection</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Customer Code (ID)</label>
-              <input type="text" id="invoice-customer-code" readonly placeholder="CUS-XXXX"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-500 px-3 py-2.5 text-sm cursor-default font-mono" />
-              <p class="text-[10px] text-slate-400">Auto-assigned ID</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Code (ID)</label>
-              <input type="text" id="invoice-company-code" readonly placeholder="COM-XXXX"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 text-slate-500 px-3 py-2.5 text-sm cursor-default font-mono" />
-              <p class="text-[10px] text-slate-400">Auto-assigned ID</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address <span class="text-rose-500">*</span></label>
-              <input type="email" id="invoice-customer-email" name="customer_email"
-                placeholder="billing@company.com"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-              <p id="email-error" class="hidden text-[10px] font-semibold text-rose-500">Email address is required.</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number <span class="text-rose-500">*</span></label>
-              <input type="tel" id="invoice-customer-phone" name="customer_phone"
-                placeholder="+971 50 000 0000"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-              <p id="phone-error" class="hidden text-[10px] font-semibold text-rose-500">Phone number is required.</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name <span class="text-rose-500">*</span></label>
-              <input type="text" id="invoice-company-name" name="company_name" list="company-datalist"
-                placeholder="e.g. ACME Trading LLC"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" autocomplete="off" />
-              <datalist id="company-datalist">
-                {companiesList.map(c => (
-                  <option value={c.name} />
-                ))}
-              </datalist>
-              <p id="company-name-error" class="hidden text-[10px] font-semibold text-rose-500">Company name is required.</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company TIN / VAT Number <span class="text-rose-500">*</span></label>
-              <input type="text" id="invoice-company-vat" name="company_vat"
-                placeholder="e.g. 100xxxxxxxxx003"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-              <p id="company-vat-error" class="hidden text-[10px] font-semibold text-rose-500">Company TIN / VAT Number is required.</p>
+          <!-- Hidden System Fields -->
+          <input type="hidden" id="inv-full-name" name="full_name_display" />
+          <input type="hidden" id="invoice-customer-code" />
+          <input type="hidden" id="invoice-company-code" />
+
+          <!-- Expandable Contact Details -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
+            <h5 class="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
+              Contact & Tax Details
+            </h5>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address <span class="text-rose-500">*</span></label>
+                <input type="email" id="invoice-customer-email" name="customer_email" placeholder="billing@company.com"
+                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+                <p id="email-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number <span class="text-rose-500">*</span></label>
+                <input type="tel" id="invoice-customer-phone" name="customer_phone" placeholder="+971 50 000 0000"
+                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+                <p id="phone-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name <span class="text-rose-500">*</span></label>
+                <input type="text" id="invoice-company-name" name="company_name" list="company-datalist" placeholder="e.g. ACME LLC"
+                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" autocomplete="off" />
+                <datalist id="company-datalist">
+                  {companiesList.map(c => <option value={c.name} />)}
+                </datalist>
+                <p id="company-name-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">TIN / VAT <span class="text-rose-500">*</span></label>
+                <input type="text" id="invoice-company-vat" name="company_vat" placeholder="100xxxxxxxxx003"
+                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+                <p id="company-vat-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+              </div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
             <div class="space-y-1.5">
               <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Billing Address <span class="text-rose-500">*</span></label>
               <textarea id="invoice-billing-address" name="billing_address" rows="2"
@@ -204,11 +193,19 @@ const companiesJson = JSON.stringify(companiesList);
               <p id="billing-address-error" class="hidden text-[10px] font-semibold text-rose-500">Billing address is required.</p>
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Delivery / Shipping Address <span class="text-rose-500">*</span></label>
-              <textarea id="invoice-shipping-address" name="shipping_address" rows="2"
-                placeholder="Street, City, Country"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
-              <p id="shipping-address-error" class="hidden text-[10px] font-semibold text-rose-500">Delivery / shipping address is required.</p>
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Shipping Address <span class="text-rose-500">*</span></label>
+                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 cursor-pointer">
+                  <input type="checkbox" id="shipping-same-as-billing" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 w-3.5 h-3.5" checked />
+                  Same as Billing
+                </label>
+              </div>
+              <div id="shipping-address-container" class="hidden">
+                <textarea id="invoice-shipping-address" name="shipping_address" rows="2"
+                  placeholder="Street, City, Country"
+                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
+                <p id="shipping-address-error" class="hidden text-[10px] font-semibold text-rose-500">Shipping address is required.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1133,7 +1130,8 @@ const companiesJson = JSON.stringify(companiesList);
         const o = opt as HTMLOptionElement;
         if (o.value === val) {
           found = true;
-          (document.getElementById('inv-full-name') as HTMLInputElement).value = val;
+          const realName = o.getAttribute('data-real-name') || val;
+          (document.getElementById('inv-full-name') as HTMLInputElement).value = realName;
           (document.getElementById('invoice-customer-email') as HTMLInputElement).value = o.getAttribute('data-email') || '';
           (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = o.getAttribute('data-phone') || '';
           (document.getElementById('invoice-company-name') as HTMLInputElement).value = o.getAttribute('data-company') || '';
@@ -1178,7 +1176,8 @@ const companiesJson = JSON.stringify(companiesList);
       if (match) {
         const customerNameEl = document.getElementById('invoice-customer-name') as HTMLInputElement;
         if (match.default_customer_name && (forceOverwriteCustomer || !customerNameEl.value)) {
-          customerNameEl.value = match.default_customer_name;
+          const custCode = match.default_customer_code ? ` (${match.default_customer_code})` : '';
+          customerNameEl.value = match.default_customer_name + custCode;
           (document.getElementById('inv-full-name') as HTMLInputElement).value = match.default_customer_name;
           (document.getElementById('invoice-customer-email') as HTMLInputElement).value = match.default_customer_email || '';
           (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = match.default_customer_phone || '';
@@ -1217,6 +1216,17 @@ const companiesJson = JSON.stringify(companiesList);
       }
     });
 
+    // Shipping address toggle
+    const shippingToggle = document.getElementById('shipping-same-as-billing') as HTMLInputElement;
+    const shippingContainer = document.getElementById('shipping-address-container');
+    shippingToggle?.addEventListener('change', () => {
+      if (shippingToggle.checked) {
+        shippingContainer?.classList.add('hidden');
+      } else {
+        shippingContainer?.classList.remove('hidden');
+      }
+    });
+
     const updatePaymentTermsHiddenInput = () => {
       const checkboxes = document.querySelectorAll('.disclaimer-toggle-checkbox') as NodeListOf<HTMLInputElement>;
       const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.getAttribute('data-identifier'));
@@ -1240,7 +1250,9 @@ const companiesJson = JSON.stringify(companiesList);
         document.getElementById('invoice-modal-title')!.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit Invoice`;
         (document.getElementById('invoice-submit-btn') as HTMLButtonElement).textContent = 'Update Invoice';
         (document.getElementById('invoice-id') as HTMLInputElement).value = inv.id || '';
-        (document.getElementById('invoice-customer-name') as HTMLInputElement).value = inv.customer_name || '';
+        
+        const customerCodeStr = inv.customer_code ? ` (${inv.customer_code})` : '';
+        (document.getElementById('invoice-customer-name') as HTMLInputElement).value = (inv.customer_name || '') + customerCodeStr;
         (document.getElementById('inv-full-name') as HTMLInputElement).value = inv.customer_name || '';
         (document.getElementById('invoice-customer-email') as HTMLInputElement).value = inv.customer_email || '';
         (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = inv.customer_phone || '';
@@ -1265,6 +1277,19 @@ const companiesJson = JSON.stringify(companiesList);
         (document.getElementById('invoice-show-images') as HTMLInputElement).checked = !!inv.show_images;
         (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = inv.billing_address || '';
         (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = inv.shipping_address || '';
+        
+        // Handle Shipping Toggle on Load
+        const billingStr = (inv.billing_address || '').trim();
+        const shippingStr = (inv.shipping_address || '').trim();
+        if (shippingToggle) {
+          if (!shippingStr || billingStr === shippingStr) {
+            shippingToggle.checked = true;
+            shippingContainer?.classList.add('hidden');
+          } else {
+            shippingToggle.checked = false;
+            shippingContainer?.classList.remove('hidden');
+          }
+        }
         (document.getElementById('inv-order-type') as HTMLSelectElement).value = inv.order_type || 'proforma';
         (document.getElementById('inv-source-division') as HTMLSelectElement).value = inv.source_division || '';
         
@@ -1310,6 +1335,11 @@ const companiesJson = JSON.stringify(companiesList);
         (document.getElementById('invoice-show-images') as HTMLInputElement).checked = false;
         (document.getElementById('inv-discount-type') as HTMLSelectElement).value = 'fixed';
         (document.getElementById('inv-discount') as HTMLInputElement).value = '0';
+        
+        if (shippingToggle) {
+          shippingToggle.checked = true;
+          shippingContainer?.classList.add('hidden');
+        }
         
         toggleDueDateVisibility();
         toggleTOSVisibility();
@@ -1367,15 +1397,28 @@ const companiesJson = JSON.stringify(companiesList);
         }
       });
 
+      const billingVal = (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value.trim();
+      const isShippingSame = (document.getElementById('shipping-same-as-billing') as HTMLInputElement)?.checked;
+      const shippingVal = isShippingSame ? billingVal : (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value.trim();
+
+      // Clean customer name from "Name (CUS-XXXX)"
+      let finalCustomerName = (document.getElementById('invoice-customer-name') as HTMLInputElement).value.trim();
+      const realNameInput = (document.getElementById('inv-full-name') as HTMLInputElement).value.trim();
+      if (realNameInput && finalCustomerName.startsWith(realNameInput)) {
+        finalCustomerName = realNameInput;
+      } else {
+        finalCustomerName = finalCustomerName.replace(/\s*\(CUS-[a-zA-Z0-9-]+\)$/i, '');
+      }
+
       const payload: any = {
-        customer_name: (document.getElementById('invoice-customer-name') as HTMLInputElement).value.trim(),
+        customer_name: finalCustomerName,
         customer_email: (document.getElementById('invoice-customer-email') as HTMLInputElement).value.trim() || undefined,
         customer_phone: (document.getElementById('invoice-customer-phone') as HTMLInputElement).value.trim() || undefined,
         company_name: (document.getElementById('invoice-company-name') as HTMLInputElement).value.trim() || undefined,
         company_vat: (document.getElementById('invoice-company-vat') as HTMLInputElement).value.trim() || undefined,
         show_images: (document.getElementById('invoice-show-images') as HTMLInputElement).checked,
-        billing_address: (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value.trim() || undefined,
-        shipping_address: (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value.trim() || undefined,
+        billing_address: billingVal || undefined,
+        shipping_address: shippingVal || undefined,
         order_type: (document.getElementById('inv-order-type') as HTMLSelectElement).value,
         source_division: (document.getElementById('inv-source-division') as HTMLSelectElement).value || null,
         issue_date: (document.getElementById('invoice-issue-date') as HTMLInputElement).value,
