@@ -251,6 +251,43 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
     }
   }
 
+  // Secure API mutation routes
+  if (context.url.pathname.startsWith('/api/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(context.request.method)) {
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Authentication required' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const path = context.url.pathname;
+    const permissions = context.locals.permissions;
+    const roles = context.locals.roles;
+
+    const isAdmin = roles.includes('admin');
+    const isModerator = roles.includes('moderator');
+
+    if (!isAdmin) {
+      // Admin only modules
+      if (
+        path.startsWith('/api/users') ||
+        path.startsWith('/api/permissions') ||
+        path.startsWith('/api/merge') ||
+        path.startsWith('/api/legal') ||
+        path.startsWith('/api/settings')
+      ) {
+         return new Response(JSON.stringify({ error: 'Forbidden: Administrator privileges required' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // Role/Permission-based modules
+      if (
+        (path.startsWith('/api/products') && !permissions.includes('products.create') && !isModerator) ||
+        (path.startsWith('/api/categories') && !isModerator) ||
+        (path.startsWith('/api/inventory') && !permissions.includes('inventory.manage') && !isModerator) ||
+        (path.startsWith('/api/companies') && !permissions.includes('companies.manage') && !isModerator)
+      ) {
+         return new Response(JSON.stringify({ error: 'Forbidden: Insufficient privileges' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+      }
+    }
+  }
+
   // Secure all dashboard sub-routes
   if (context.url.pathname.startsWith('/dashboard')) {
     if (!userId) {
