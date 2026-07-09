@@ -301,6 +301,7 @@ try {
             <th class="px-6 py-4 font-semibold">Billing Address</th>
             <th class="px-6 py-4 font-semibold">Shipping Address</th>
             <th class="px-6 py-4 font-semibold text-center">Linked Customers</th>
+            <th class="px-6 py-4 font-semibold text-center">Status</th>
             <th class="px-6 py-4 font-semibold text-right">Actions</th>
           </tr>
         </thead>
@@ -314,7 +315,9 @@ try {
                 data-shipping={comp.shipping_address || ''}
                 data-code={comp.code || ''}
                 data-default-customer-id={comp.default_customer_id || ''}
-                data-customers={JSON.stringify(comp.customers_list || [])}>
+                data-customers={JSON.stringify(comp.customers_list || [])}
+                data-archived={comp.is_archived ? 'true' : 'false'}
+                data-deleted={comp.is_deleted ? 'true' : 'false'}>
               <td class="px-6 py-4 font-mono font-bold text-slate-900">
                 {comp.code || '—'}
               </td>
@@ -331,6 +334,17 @@ try {
               <td class="px-6 py-4 text-center font-bold text-cyan-600">
                 {comp.customer_count || 0}
               </td>
+              <td class="px-6 py-4 text-center">
+                <span id={'company-status-' + comp.id} class={'rounded px-1.5 py-0.5 text-2xs font-semibold uppercase transition-colors ' + (
+                  comp.is_deleted 
+                    ? 'bg-rose-500/10 text-rose-600'
+                    : comp.is_archived 
+                      ? 'bg-amber-500/10 text-amber-600' 
+                      : 'bg-emerald-500/10 text-emerald-600'
+                )}>
+                  {comp.is_deleted ? 'bin' : comp.is_archived ? 'archived' : 'active'}
+                </span>
+              </td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-3">
                   <button 
@@ -345,7 +359,7 @@ try {
           ))}
           {companies.length === 0 && (
             <tr>
-              <td colspan="6" class="px-6 py-8 text-center text-slate-400 italic">No companies found in database.</td>
+              <td colspan="8" class="px-6 py-8 text-center text-slate-400 italic">No companies found in database.</td>
             </tr>
           )}
         </tbody>
@@ -404,7 +418,10 @@ try {
         </div>
 
         <div class="flex justify-between items-center pt-4 border-t border-slate-100 mt-6">
-          <div>
+          <div class="flex gap-2">
+            <button type="button" id="btn-modal-archive-company" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 transition-colors">
+              <span id="btn-modal-archive-company-text">Archive</span>
+            </button>
             <button type="button" id="btn-modal-delete-company" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 transition-colors">
               Delete
             </button>
@@ -703,7 +720,21 @@ try {
           const vat = (row.getAttribute('data-vat') || '').toLowerCase();
           const billing = (row.getAttribute('data-billing') || '').toLowerCase();
           const shipping = (row.getAttribute('data-shipping') || '').toLowerCase();
-          if (name.includes(query) || vat.includes(query) || billing.includes(query) || shipping.includes(query)) {
+          const isArchived = row.getAttribute('data-archived') === 'true';
+          const isDeleted = row.getAttribute('data-deleted') === 'true';
+
+          let matchesSubTab = false;
+          if (customerSubTab === 'active') {
+            matchesSubTab = !isArchived && !isDeleted;
+          } else if (customerSubTab === 'archived') {
+            matchesSubTab = isArchived && !isDeleted;
+          } else if (customerSubTab === 'bin') {
+            matchesSubTab = isDeleted;
+          }
+
+          const matchesQuery = !query || name.includes(query) || vat.includes(query) || billing.includes(query) || shipping.includes(query);
+
+          if (matchesSubTab && matchesQuery) {
             (row as HTMLElement).classList.remove('hidden');
           } else {
             (row as HTMLElement).classList.add('hidden');
@@ -771,6 +802,10 @@ try {
       const filterGrp = document.getElementById('customer-filter-group');
       const sortSelect = document.getElementById('customer-sort-select');
       
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.replaceState({}, '', url.toString());
+
       const tabs = [btnTabUsers, btnTabCustomers, btnTabCompanies];
       tabs.forEach(btn => {
         btn?.classList.remove('bg-white', 'text-cyan-700', 'shadow-xs');
@@ -795,7 +830,7 @@ try {
         companiesContainer?.classList.remove('hidden');
         customersContainer?.classList.add('hidden');
         usersContainer?.classList.add('hidden');
-        if (filterGrp) filterGrp.style.display = 'none';
+        if (filterGrp) filterGrp.style.display = 'flex';
         if (sortSelect) sortSelect.style.display = 'none';
         if (btnCreateCompany) btnCreateCompany.style.display = 'inline-flex';
         if (btnCreateCustomer) btnCreateCustomer.style.display = 'none';
@@ -817,6 +852,10 @@ try {
     const switchCustomerSubTab = (subTab: 'active' | 'archived' | 'bin') => {
       customerSubTab = subTab;
       
+      const url = new URL(window.location.href);
+      url.searchParams.set('subtab', subTab);
+      window.history.replaceState({}, '', url.toString());
+
       const buttons = [btnCustActive, btnCustArchived, btnCustBin];
       buttons.forEach(btn => {
         btn?.classList.remove('bg-white', 'text-cyan-700', 'shadow-xs');
@@ -848,8 +887,9 @@ try {
     // Initialize layout to show customers first, or from URL param
     const urlParams = new URLSearchParams(window.location.search);
     const initTab = (urlParams.get('tab') as 'users' | 'customers' | 'companies') || 'customers';
+    const initSubTab = (urlParams.get('subtab') as 'active' | 'archived' | 'bin') || 'active';
     switchTab(initTab);
-    switchCustomerSubTab('active');
+    switchCustomerSubTab(initSubTab);
 
     searchInput?.addEventListener('input', filterList);
 
@@ -1147,6 +1187,7 @@ try {
         customersListContainer.appendChild(createCustomerEntryElement('', '', '', '', '', '', true));
       }
 
+      document.getElementById('btn-modal-archive-company')?.classList.add('hidden');
       document.getElementById('btn-modal-delete-company')?.classList.add('hidden');
       document.getElementById('btn-modal-merge-company')?.classList.add('hidden');
 
@@ -1196,16 +1237,47 @@ try {
         }
       }
 
-      const deleteBtn = document.getElementById('btn-modal-delete-company') as HTMLButtonElement | null;
-      if (deleteBtn) {
-        deleteBtn.setAttribute('data-id', id);
-        deleteBtn.classList.remove('hidden');
-      }
+      const isArchived = row.getAttribute('data-archived') === 'true';
+      const isDeleted = row.getAttribute('data-deleted') === 'true';
 
-      const mergeBtn = document.getElementById('btn-modal-merge-company') as HTMLButtonElement | null;
-      if (mergeBtn) {
-        mergeBtn.setAttribute('data-id', id);
-        mergeBtn.classList.remove('hidden');
+      const archiveBtn = document.getElementById('btn-modal-archive-company') as HTMLButtonElement | null;
+      const archiveText = document.getElementById('btn-modal-archive-company-text');
+      const deleteBtn = document.getElementById('btn-modal-delete-company') as HTMLButtonElement | null;
+
+      if (archiveBtn && archiveText && deleteBtn) {
+        archiveBtn.setAttribute('data-id', id);
+        deleteBtn.setAttribute('data-id', id);
+
+        const mergeBtn = document.getElementById('btn-modal-merge-company') as HTMLButtonElement | null;
+        if (mergeBtn) {
+           mergeBtn.setAttribute('data-id', id);
+           mergeBtn.classList.remove('hidden');
+        }
+
+        if (isDeleted) {
+          // In Bin: Show Restore & Delete Permanently
+          archiveBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/50 transition-colors';
+          archiveBtn.setAttribute('data-action', 'restore');
+          archiveText.textContent = 'Restore';
+          archiveBtn.classList.remove('hidden');
+
+          deleteBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 transition-colors';
+          deleteBtn.setAttribute('data-action', 'permanent_delete');
+          deleteBtn.textContent = 'Delete Permanently';
+          deleteBtn.classList.remove('hidden');
+        } else {
+          // Not in Bin: Show Archive/Unarchive & Delete
+          archiveBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 transition-colors';
+          archiveBtn.setAttribute('data-action', isArchived ? 'unarchive' : 'archive');
+          archiveBtn.setAttribute('data-archived', isArchived.toString());
+          archiveText.textContent = isArchived ? 'Unarchive' : 'Archive';
+          archiveBtn.classList.remove('hidden');
+
+          deleteBtn.className = 'px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 transition-colors';
+          deleteBtn.setAttribute('data-action', 'soft_delete');
+          deleteBtn.textContent = 'Delete';
+          deleteBtn.classList.remove('hidden');
+        }
       }
 
       companyEditModal?.classList.remove('hidden');
@@ -1362,35 +1434,96 @@ try {
       }
     });
 
-    // Delete Company Trigger
+    // Archive/Unarchive/Restore Company Trigger
+    document.getElementById('btn-modal-archive-company')?.addEventListener('click', async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const companyId = target.getAttribute('data-id') || '';
+      const action = target.getAttribute('data-action') || 'archive';
+      const isCurrentlyArchived = target.getAttribute('data-archived') === 'true';
+
+      target.disabled = true;
+      const textSpan = document.getElementById('btn-modal-archive-company-text');
+      const originalText = textSpan ? textSpan.textContent : '';
+      if (textSpan) textSpan.textContent = '...';
+
+      try {
+        const payloadAction = action === 'restore' ? 'restore' : (isCurrentlyArchived ? 'unarchive' : 'archive');
+        const res = await fetch('/api/companies/' + companyId, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: payloadAction })
+        });
+
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to update company status'));
+          if (textSpan) textSpan.textContent = originalText;
+        }
+      } catch (err) {
+        alert('Network error while updating company status.');
+        if (textSpan) textSpan.textContent = originalText;
+      } finally {
+        target.disabled = false;
+      }
+    });
+
+    // Delete / Permanent Delete Company Trigger
     document.getElementById('btn-modal-delete-company')?.addEventListener('click', async (e) => {
       const target = e.currentTarget as HTMLButtonElement;
       const companyId = target.getAttribute('data-id') || '';
+      const action = target.getAttribute('data-action') || 'soft_delete';
 
-      const proceed = await showConfirmDialog(
-        'Delete Company',
-        'Are you sure you want to permanently delete this company? This will unlink all associated customers and cannot be undone.',
-        'Delete Permanently',
-        true
-      );
-      if (!proceed) {
-        return;
+      let proceed = false;
+      if (action === 'permanent_delete') {
+        proceed = await showConfirmDialog(
+          'Delete Company Permanently',
+          'Are you sure you want to permanently delete this company? This action cannot be undone and will unlink all associated customers.',
+          'Delete Permanently',
+          true
+        );
+      } else {
+        // Soft delete (move to bin)
+        proceed = await showConfirmDialog(
+          'Move Company to Bin',
+          'Are you sure you want to move this company to the recycle bin?',
+          'Move to Bin',
+          true
+        );
       }
+      if (!proceed) return;
 
       target.disabled = true;
 
       try {
-        const res = await fetch('/api/companies/' + companyId, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'permanent_remove' })
-        });
+        if (action === 'permanent_delete') {
+          const res = await fetch('/api/companies/' + companyId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'permanent_remove' })
+          });
 
-        if (res.ok) {
-          window.location.href = window.location.pathname + '?tab=companies';
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            const err = await res.json();
+            alert('Error: ' + (err.error || 'Failed to delete company'));
+          }
         } else {
-          const err = await res.json();
-          alert('Error: ' + (err.error || 'Failed to delete company'));
+          // Soft delete
+          const res = await fetch('/api/companies/' + companyId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'trash' })
+          });
+
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            const err = await res.json();
+            alert('Error: ' + (err.error || 'Failed to move company to bin'));
+          }
         }
       } catch (err) {
         alert('Network error while processing deletion.');
@@ -1439,7 +1572,7 @@ try {
         const result = await res.json();
         if (res.ok) {
           alert(result.message || 'Companies merged successfully!');
-          window.location.href = window.location.pathname + '?tab=companies';
+          window.location.reload();
         } else {
           alert('Error: ' + (result.error || 'Failed to merge companies'));
         }
@@ -1592,7 +1725,7 @@ try {
         });
 
         if (res.ok) {
-          window.location.href = window.location.pathname + '?tab=customers';
+          window.location.reload();
         } else {
           const err = await res.json();
           alert('Error: ' + (err.error || 'Failed to update customer status'));
@@ -1661,7 +1794,7 @@ try {
           });
 
           if (res.ok) {
-            window.location.href = window.location.pathname + '?tab=customers';
+            window.location.reload();
           } else {
             const err = await res.json();
             alert('Error: ' + (err.error || 'Failed to delete customer'));
@@ -1675,7 +1808,7 @@ try {
           });
 
           if (res.ok) {
-            window.location.href = window.location.pathname + '?tab=customers';
+            window.location.reload();
           } else {
             const err = await res.json();
             alert('Error: ' + (err.error || 'Failed to move customer to bin'));
@@ -1728,7 +1861,7 @@ try {
         const result = await res.json();
         if (res.ok) {
           alert(result.message || 'Customers merged successfully!');
-          window.location.href = window.location.pathname + '?tab=customers';
+          window.location.reload();
         } else {
           alert('Error: ' + (result.error || 'Failed to merge customers'));
         }

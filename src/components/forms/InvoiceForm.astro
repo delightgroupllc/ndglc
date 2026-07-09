@@ -26,6 +26,7 @@ try {
     SELECT c.*, co.code as company_code 
     FROM customers c 
     LEFT JOIN companies co ON c.company_id = co.id 
+    WHERE c.is_deleted = false
     ORDER BY c.name ASC
   `);
   customers = custRes.rows;
@@ -37,9 +38,12 @@ try {
       cust.phone as default_customer_phone,
       cust.company_vat as default_customer_vat,
       cust.billing_address as default_customer_billing,
-      cust.shipping_address as default_customer_shipping
+      cust.shipping_address as default_customer_shipping,
+      cust.code as default_customer_code
     FROM companies co
     LEFT JOIN customers cust ON co.default_customer_id = cust.id
+    WHERE (co.is_archived = false OR co.is_archived IS NULL) 
+      AND (co.is_deleted = false OR co.is_deleted IS NULL)
     ORDER BY co.name ASC
   `);
   companiesList = compRes.rows;
@@ -101,8 +105,8 @@ const companiesJson = JSON.stringify(companiesList);
             <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Company</label>
             <select id="invoice-select-company" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 font-semibold text-slate-750">
               <option value="">-- All Companies --</option>
-              {Array.from(new Map(customers.filter(c => c.company_name).map(c => [c.company_name, c.company_code])).entries()).sort((a,b) => a[0].localeCompare(b[0])).map(([companyName, companyCode]) => (
-                <option value={companyName}>{companyName} {companyCode ? `(${companyCode})` : ''}</option>
+              {companiesList.map(comp => (
+                <option value={comp.name}>{comp.name} {comp.code ? `(${comp.code})` : ''}</option>
               ))}
             </select>
           </div>
@@ -1163,47 +1167,22 @@ const companiesJson = JSON.stringify(companiesList);
     custInput?.addEventListener('input', handleCustomerAutofill);
     custInput?.addEventListener('change', handleCustomerAutofill);
 
-    // Select Company dropdown change handler
-    const selectCompanyDropdown = document.getElementById('invoice-select-company') as HTMLSelectElement;
-    selectCompanyDropdown?.addEventListener('change', () => {
-      const selectedCompanyName = selectCompanyDropdown.value;
-      const datalist = document.getElementById('customer-datalist')!;
-      datalist.innerHTML = '';
-
-      if (selectedCompanyName) {
-        // Filter customers by selected company
-        const filtered = allCustomerOpts.filter(o => (o.getAttribute('data-company') || '') === selectedCompanyName);
-        filtered.forEach(o => datalist.appendChild(o.cloneNode(true)));
-
-        // Auto-populate company fields
-        const matchedCompany = allCompanies.find(c => c.name === selectedCompanyName);
-        if (matchedCompany) {
-          (document.getElementById('invoice-company-name') as HTMLInputElement).value = selectedCompanyName;
-          (document.getElementById('invoice-company-code') as HTMLInputElement).value = matchedCompany.code || '';
-          (document.getElementById('invoice-company-vat') as HTMLInputElement).value = matchedCompany.vat_number || '';
-          (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = matchedCompany.billing_address || '';
-          (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = matchedCompany.shipping_address || '';
-        }
-      } else {
-        // Reset: show all customers
-        allCustomerOpts.forEach(o => datalist.appendChild(o.cloneNode(true)));
-      }
-    });
-
     // Company autofill and customer list filtering
     const companyNameInput = document.getElementById('invoice-company-name') as HTMLInputElement;
-    const handleCompanyAutofill = () => {
+    const handleCompanyAutofill = (forceOverwriteCustomer = false) => {
       const val = companyNameInput.value.trim();
       const match = allCompanies.find(c => c.name === val);
       document.getElementById('new-company-note')?.classList.toggle('hidden', !!match || val.length === 0);
 
       // Autofill if matched
       if (match) {
-        if (match.default_customer_name && !(document.getElementById('invoice-customer-name') as HTMLInputElement).value) {
-          (document.getElementById('invoice-customer-name') as HTMLInputElement).value = match.default_customer_name;
+        const customerNameEl = document.getElementById('invoice-customer-name') as HTMLInputElement;
+        if (match.default_customer_name && (forceOverwriteCustomer || !customerNameEl.value)) {
+          customerNameEl.value = match.default_customer_name;
           (document.getElementById('inv-full-name') as HTMLInputElement).value = match.default_customer_name;
           (document.getElementById('invoice-customer-email') as HTMLInputElement).value = match.default_customer_email || '';
           (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = match.default_customer_phone || '';
+          (document.getElementById('invoice-customer-code') as HTMLInputElement).value = match.default_customer_code || '';
         }
         (document.getElementById('invoice-company-vat') as HTMLInputElement).value = match.default_customer_vat || match.vat_number || '';
         (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = match.default_customer_billing || match.billing_address || '';
@@ -1221,8 +1200,22 @@ const companiesJson = JSON.stringify(companiesList);
         : allCustomerOpts;
       filtered.forEach(o => datalist.appendChild(o.cloneNode(true)));
     };
-    companyNameInput?.addEventListener('input', handleCompanyAutofill);
-    companyNameInput?.addEventListener('change', handleCompanyAutofill);
+    companyNameInput?.addEventListener('input', () => handleCompanyAutofill(false));
+    companyNameInput?.addEventListener('change', () => handleCompanyAutofill(false));
+
+    // Select Company dropdown change handler
+    const selectCompanyDropdown = document.getElementById('invoice-select-company') as HTMLSelectElement;
+    selectCompanyDropdown?.addEventListener('change', () => {
+      const selectedCompanyName = selectCompanyDropdown.value;
+      if (selectedCompanyName) {
+        (document.getElementById('invoice-company-name') as HTMLInputElement).value = selectedCompanyName;
+        handleCompanyAutofill(true); // force overwrite customer fields since user explicitly picked a company
+      } else {
+        const datalist = document.getElementById('customer-datalist')!;
+        datalist.innerHTML = '';
+        allCustomerOpts.forEach(o => datalist.appendChild(o.cloneNode(true)));
+      }
+    });
 
     const updatePaymentTermsHiddenInput = () => {
       const checkboxes = document.querySelectorAll('.disclaimer-toggle-checkbox') as NodeListOf<HTMLInputElement>;

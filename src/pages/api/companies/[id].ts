@@ -11,7 +11,7 @@ const companySchema = z.object({
   code: z.string().optional().nullable(),
   default_customer_id: z.string().optional().nullable(),
   bypassDuplicateCheck: z.boolean().optional(),
-  action: z.enum(['permanent_remove']).optional(),
+  action: z.enum(['archive', 'unarchive', 'restore', 'trash', 'permanent_remove']).optional(),
   customers: z.array(z.object({
     code: z.string().optional().nullable(),
     name: z.string().min(1, 'Customer Name is required'),
@@ -31,22 +31,56 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
     const data = await request.json();
     const parsed = companySchema.parse(data);
 
-    if (parsed.action === 'permanent_remove') {
-      const result = await withTransaction(async (client) => {
-        const compRes = await client.query('SELECT name FROM companies WHERE id = $1', [id]);
-        if (compRes.rows.length === 0) throw new Error('Company not found');
-        const compName = compRes.rows[0].name;
+    if (parsed.action) {
+      if (parsed.action === 'permanent_remove') {
+        const result = await withTransaction(async (client) => {
+          const compRes = await client.query('SELECT name FROM companies WHERE id = $1', [id]);
+          if (compRes.rows.length === 0) throw new Error('Company not found');
+          const compName = compRes.rows[0].name;
 
-        await client.query('UPDATE customers SET company_id = NULL, company_name = NULL WHERE company_id = $1', [id]);
-        await client.query('DELETE FROM companies WHERE id = $1', [id]);
-        await client.query(
-          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
-           VALUES ('COMPANY_DELETE', 'companies', $1, $2, $3)`,
-          [id, `Deleted company: ${compName}`, locals.user?.id || null]
-        );
-        return { success: true };
-      });
-      return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } });
+          await client.query('UPDATE customers SET company_id = NULL, company_name = NULL WHERE company_id = $1', [id]);
+          await client.query('DELETE FROM companies WHERE id = $1', [id]);
+          await client.query(
+            `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+             VALUES ('COMPANY_DELETE', 'companies', $1, $2, $3)`,
+            [id, `Deleted company: ${compName}`, locals.user?.id || null]
+          );
+          return { success: true };
+        });
+        return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      if (parsed.action === 'archive' || parsed.action === 'unarchive') {
+        const isArchived = parsed.action === 'archive';
+        const result = await withTransaction(async (client) => {
+          const res = await client.query(
+            `UPDATE companies SET is_archived = $1 WHERE id = $2 RETURNING *`,
+            [isArchived, id]
+          );
+          await client.query(
+            `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+             VALUES ($1, 'companies', $2, $3, $4)`,
+            [isArchived ? 'COMPANY_ARCHIVE' : 'COMPANY_UNARCHIVE', id, `${isArchived ? 'Archived' : 'Unarchived'} company: ${res.rows[0].name}`, locals.user?.id || null]
+          );
+          return res.rows[0];
+        });
+        return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      } else {
+        const isDeleted = parsed.action === 'trash';
+        const result = await withTransaction(async (client) => {
+          const res = await client.query(
+            `UPDATE companies SET is_deleted = $1 WHERE id = $2 RETURNING *`,
+            [isDeleted, id]
+          );
+          await client.query(
+            `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+             VALUES ($1, 'companies', $2, $3, $4)`,
+            [isDeleted ? 'COMPANY_SOFT_DELETE' : 'COMPANY_RESTORE', id, `${isDeleted ? 'Soft-deleted' : 'Restored'} company: ${res.rows[0].name}`, locals.user?.id || null]
+          );
+          return res.rows[0];
+        });
+        return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
     }
 
     if (!data.bypassDuplicateCheck) {
