@@ -1,0 +1,74 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import InvoiceForm from '../../../components/forms/InvoiceForm.astro';
+
+const user = Astro.locals.user;
+const roles = Astro.locals.roles || [];
+const permissions = Astro.locals.permissions || [];
+const isAdmin = roles.includes('admin') || roles.includes('moderator') || permissions.includes('invoices.manage');
+
+if (!isAdmin) {
+  return Astro.redirect('/dashboard/invoices');
+}
+---
+
+<DashboardLayout title="Create Order" activeItem="invoices">
+  <div class="space-y-6 p-6 lg:p-8 w-full">
+    
+    <div class="flex items-center justify-between border-b border-slate-200 pb-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span id="page-title-text">Generate Order</span>
+        </h1>
+        <p class="text-slate-500 text-sm mt-1">Create a new Quotation, LPO, or Tax Invoice.</p>
+      </div>
+      <a href="/dashboard/invoices" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+        Back to Orders
+      </a>
+    </div>
+
+    <InvoiceForm />
+
+    <!-- Success Modal -->
+    <div id="invoice-success-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden text-center p-8 transform transition-all relative">
+        <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+        </div>
+        
+        <h3 class="text-2xl font-black text-slate-900 mb-2">Order Created!</h3>
+        <p class="text-sm text-slate-500 mb-6 font-semibold">
+          Order document <span id="success-invoice-num" class="font-bold text-slate-800"></span> has been saved.
+        </p>
+
+        <div class="grid grid-cols-2 gap-3 mb-6">
+          <a id="success-view-link" href="#" class="px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm flex flex-col items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+            View Details
+          </a>
+          <a id="success-print-link" href="#" target="_blank" class="px-4 py-3 bg-cyan-600 hover:bg-cyan-700 rounded-xl text-xs font-bold text-white transition-colors shadow-sm flex flex-col items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+            Print / PDF
+          </a>
+        </div>
+
+        <button id="success-close-btn" class="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors">
+          Back to Orders
+        </button>
+      </div>
+    </div>
+
+  </div>
+</DashboardLayout>
+
+<script>
+  document.addEventListener('astro:page-load', () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('edit')) {
+      const titleEl = document.getElementById('page-title-text');
+      if (titleEl) titleEl.textContent = 'Edit Order';
+    }
+  });
+</script>

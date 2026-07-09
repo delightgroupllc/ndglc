@@ -61,7 +61,19 @@ try {
     `SELECT * FROM product_images WHERE product_id = $1 ORDER BY is_primary DESC`,
     [productDetails.id]
   );
-  productDetails.images = imgRes.rows.map((r: any) => r.url);
+  
+  const optimizeUrl = (url: string) => {
+    if (!url) return '/noimage.jpg';
+    if (url.includes('images.unsplash.com')) {
+      const u = new URL(url);
+      u.searchParams.set('w', '1000');
+      u.searchParams.set('q', '85');
+      return u.toString();
+    }
+    return url;
+  };
+  
+  productDetails.images = [...new Set(imgRes.rows.map((r: any) => r.url))].map(optimizeUrl).slice(0, 3);
   if (productDetails.images.length === 0) {
     productDetails.images = ['/noimage.jpg'];
   }
@@ -224,6 +236,8 @@ if (Array.isArray(productDetails.specifications)) {
                 src={productDetails.images ? productDetails.images[0] : (productDetails.image_url || '/noimage.jpg')} 
                 alt={productDetails.name}
                 class="w-full h-full object-contain p-4 transition-all duration-300"
+                decoding="async"
+                fetchpriority="high"
               />
             </div>
             
@@ -235,7 +249,7 @@ if (Array.isArray(productDetails.specifications)) {
                     class={`thumbnail-btn h-16 w-16 shrink-0 rounded-lg border-2 overflow-hidden ${idx === 0 ? 'border-cyan-500' : 'border-transparent'} hover:border-cyan-400 transition-colors bg-slate-50`}
                     data-img={img}
                   >
-                    <img src={img} class="w-full h-full object-contain" />
+                    <img src={img} class="w-full h-full object-contain" loading="lazy" decoding="async" />
                   </button>
                 ))}
               </div>

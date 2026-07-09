@@ -13,13 +13,19 @@ let disclaimers: any[] = [];
 let settings: Record<string, string> = {};
 try {
   const prodRes = await query(`
-    SELECT p.id, p.name, p.sku, p.category_id, pi.url as image_url
+    SELECT p.id, p.name, p.sku, p.category_id, pi.url as image_url, d.name as division_name
     FROM products p
     LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
+    LEFT JOIN divisions d ON p.division_id = d.id
     ORDER BY p.name ASC
   `);
   products = prodRes.rows;
-  const catRes = await query('SELECT id, name FROM categories ORDER BY name ASC');
+  const catRes = await query(`
+    SELECT c.id, c.name, d.name as division_name 
+    FROM categories c 
+    LEFT JOIN divisions d ON c.division_id = d.id 
+    ORDER BY c.name ASC
+  `);
   categories = catRes.rows;
   console.log('InvoiceForm.astro: Products loaded:', products.length, 'Categories loaded:', categories.length);
   const custRes = await query(`
@@ -77,288 +83,323 @@ const disclaimersJson = JSON.stringify(disclaimers);
 const companiesJson = JSON.stringify(companiesList);
 ---
 
-<div id="invoice-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden">
+<form id="invoice-form" class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start pb-10" novalidate>
+  <input type="hidden" id="invoice-id" name="id" value="" />
 
-    <!-- Header -->
-    <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
-      <h3 id="invoice-modal-title" class="text-base font-bold text-slate-900 flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Generate Invoice
-      </h3>
-      <button id="close-invoice-modal" class="text-slate-400 hover:text-slate-700 rounded-lg p-1 hover:bg-slate-100 transition-all">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-      </button>
+  <!-- LEFT COLUMN: Config & Details -->
+  <div class="xl:col-span-4 space-y-6">
+    
+    <!-- CARD 1: Customer Information -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Customer Information</h4>
+      
+      <div class="space-y-4">
+        {/* Select Company */}
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Company</label>
+          <select id="invoice-select-company" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 font-semibold text-slate-750">
+            <option value="">-- All Companies --</option>
+            {companiesList.map(comp => (
+              <option value={comp.name}>{comp.name} {comp.code ? `(${comp.code})` : ''}</option>
+            ))}
+          </select>
+        </div>
+
+        <!-- Select Customer -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Customer</label>
+          <div class="relative">
+            <input type="text" id="invoice-customer-name" name="customer_name" list="customer-datalist"
+              placeholder="Type to search by name or code…"
+              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
+              autocomplete="off" />
+            <datalist id="customer-datalist">
+              {customers.map(c => (
+                <option 
+                  value={c.code ? `${c.name} (${c.code})` : c.name} 
+                  data-real-name={c.name}
+                  data-code={c.code||''} 
+                  data-company-code={c.company_code||''} 
+                  data-email={c.email||''} 
+                  data-phone={c.phone||''} 
+                  data-company={c.company_name||''} 
+                  data-vat={c.company_vat||''} 
+                  data-billing={c.billing_address||''} 
+                  data-shipping={c.shipping_address||''}
+                >
+                  {c.code || ''} - {c.company_name ? `${c.company_name} (${c.company_code || ''})` : 'Individual'}
+                </option>
+              ))}
+            </datalist>
+            <p id="new-customer-note" class="hidden mt-1 text-[10px] font-bold text-blue-600">✦ New customer — auto-linked to company on save.</p>
+            <p id="new-company-note" class="hidden mt-1 text-[10px] font-bold text-indigo-600">✦ New company — will be registered on save.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden System Fields -->
+      <input type="hidden" id="inv-full-name" name="full_name_display" />
+      <input type="hidden" id="invoice-customer-code" />
+      <input type="hidden" id="invoice-company-code" />
+
+      <!-- Expandable Contact Details -->
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-4 space-y-4">
+        <h5 class="text-xs font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
+          Contact & Tax Details
+        </h5>
+        
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address <span class="text-rose-500">*</span></label>
+          <input type="email" id="invoice-customer-email" name="customer_email" placeholder="billing@company.com"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+          <p id="email-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number <span class="text-rose-500">*</span></label>
+          <input type="tel" id="invoice-customer-phone" name="customer_phone" placeholder="+971 50 000 0000"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+          <p id="phone-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name <span class="text-rose-500">*</span></label>
+          <input type="text" id="invoice-company-name" name="company_name" list="company-datalist" placeholder="e.g. ACME LLC"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" autocomplete="off" />
+          <datalist id="company-datalist">
+            {companiesList.map(c => <option value={c.name} />)}
+          </datalist>
+          <p id="company-name-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">TIN / VAT <span class="text-rose-500">*</span></label>
+          <input type="text" id="invoice-company-vat" name="company_vat" placeholder="100xxxxxxxxx003"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+          <p id="company-vat-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+        </div>
+
+        <div class="space-y-1.5 pt-2">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Billing Address <span class="text-rose-500">*</span></label>
+          <textarea id="invoice-billing-address" name="billing_address" rows="2"
+            placeholder="Street, City, Country"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
+          <p id="billing-address-error" class="hidden text-[10px] font-semibold text-rose-500">Billing address is required.</p>
+        </div>
+        
+        <div class="space-y-1.5 pt-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Shipping Address <span class="text-rose-500">*</span></label>
+            <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 cursor-pointer">
+              <input type="checkbox" id="shipping-same-as-billing" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 w-3.5 h-3.5" checked />
+              Same as Billing
+            </label>
+          </div>
+          <div id="shipping-address-container" class="hidden">
+            <textarea id="invoice-shipping-address" name="shipping_address" rows="2"
+              placeholder="Street, City, Country"
+              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
+            <p id="shipping-address-error" class="hidden text-[10px] font-semibold text-rose-500">Shipping address is required.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Body -->
-    <div class="flex-1 overflow-y-auto">
-      <form id="invoice-form" class="divide-y divide-slate-100" novalidate>
-        <input type="hidden" id="invoice-id" name="id" value="" />
-
-        <!-- SECTION 1: Customer Information -->
-        <div class="p-6 space-y-4">
-          <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Customer Information</h4>
-
-          {/* Select Company */}
+    <!-- CARD 2: Metadata -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Metadata</h4>
+      
+      <div class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Order Type</label>
+          <select name="order_type" id="inv-order-type"
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+            <option value="standard">INV (Invoice)</option>
+            <option value="proforma">PFI - Pro Forma</option>
+            <option value="lpo">PO / LPO (Purchase Order)</option>
+            <option value="delivery_note">DLN (Delivery Note)</option>
+            <option value="tax_invoice">BILL - Commercial Bill</option>
+            <option value="quotation">EST - Estimation/Quote</option>
+          </select>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Source Division <span class="text-rose-500">*</span></label>
+          <select name="source_division" id="inv-source-division"
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+            <option value="">-- Select Division --</option>
+            <option value="DTL">Division DTL</option>
+            <option value="DGS">Division DGS</option>
+            <option value="both">Both Divisions</option>
+          </select>
+          <p id="source-division-error" class="hidden text-[10px] font-semibold text-rose-500">Source Division is required.</p>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
           <div class="space-y-1.5">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Company</label>
-            <select id="invoice-select-company" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 font-semibold text-slate-750">
-              <option value="">-- All Companies --</option>
-              {companiesList.map(comp => (
-                <option value={comp.name}>{comp.name} {comp.code ? `(${comp.code})` : ''}</option>
-              ))}
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Issue Date <span class="text-rose-500">*</span></label>
+            <input type="date" id="invoice-issue-date" name="issue_date"
+              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" />
+            <p id="issue-date-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+          </div>
+          <div class="space-y-1.5" id="due-date-container">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Due Date <span class="text-rose-500">*</span></label>
+            <input type="date" id="invoice-due-date" name="due_date"
+              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" />
+            <p id="due-date-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Signatory Incharge <span class="text-rose-500">*</span></label>
+          <select name="signatory_incharge" id="invoice-signatory-incharge"
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700">
+            <option value="">-- Select Signatory --</option>
+            <option value="any" selected>Any (Authorized Signatory Only)</option>
+            {signaturesList.map((s: any) => (
+              <option value={s.id}>{s.signatory_name} ({s.signatory_title})</option>
+            ))}
+          </select>
+          <p id="signatory-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+        </div>
+
+        <div class="space-y-1.5 pt-2 border-t border-slate-100">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Ref PO / LPO No</label>
+          <input type="text" id="invoice-lpo-number" name="lpo_number" placeholder="e.g. PO#00000859"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Quotation Ref</label>
+          <input type="text" id="invoice-quotation-ref" name="quotation_ref" placeholder="e.g. QT-2026-4819"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" />
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD 3: Disclaimers & Notes -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Notes & Terms</h4>
+      
+      <div class="space-y-4">
+        <details class="group space-y-3">
+          <summary class="text-xs font-black text-cyan-800 uppercase tracking-wider flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden p-4 bg-cyan-50/50 hover:bg-cyan-100/50 border border-cyan-100 rounded-xl transition-all shadow-sm">
+            <span class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Disclaimers & Terms (Page 2)
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-600 group-open:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+          
+          <div class="pt-2 pb-2 space-y-4">
+            <input type="hidden" id="invoice-payment-terms" name="payment_terms" value="" />
+            
+            <!-- DTL Terms -->
+            <div class="space-y-2" id="dtl-terms-group">
+              <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100">DTL Terms</span>
+              <div class="space-y-2">
+                {disclaimers.filter(d => d.division === 'dtl').map((d, idx) => (
+                  <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
+                    <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
+                    <div>
+                      <span class="text-xs font-bold text-slate-800 block">{d.title}</span>
+                      <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <!-- DGS Terms -->
+            <div class="space-y-2" id="dgs-terms-group">
+              <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100">DGS Terms</span>
+              <div class="space-y-2">
+                {disclaimers.filter(d => d.division === 'dgs').map((d, idx) => (
+                  <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
+                    <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
+                    <div>
+                      <span class="text-xs font-bold text-slate-800 block">{idx + 1}. {d.title}</span>
+                      <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <div class="space-y-2 pt-2 border-t border-slate-100">
+          <label class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Internal Notes</label>
+          <textarea name="internal_notes" id="inv-internal-notes" rows="3"
+            placeholder="Internal remarks (not shown on printed invoice)…"
+            class="w-full rounded-xl border border-slate-300 bg-slate-50 hover:bg-white transition-colors text-slate-900 p-4 text-sm focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 resize-y shadow-sm"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN: Items & Summary -->
+  <div class="xl:col-span-8 space-y-6">
+    
+    <!-- CARD 4: Line Items -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Items</h4>
+        <div class="flex items-center gap-4">
+          <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
+            <input type="checkbox" id="invoice-show-images" name="show_images" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+            Show Product Images
+          </label>
+          <button type="button" id="add-invoice-item-btn"
+            class="inline-flex items-center gap-1.5 text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-3 py-1.5 rounded-lg transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            Add Row
+          </button>
+        </div>
+      </div>
+
+      <script type="application/json" id="invoice-form-products-data" set:html={productsJson}></script>
+      <script type="application/json" id="invoice-form-categories-data" set:html={categoriesJson}></script>
+      <script type="application/json" id="invoice-form-disclaimers-data" set:html={disclaimersJson}></script>
+      <script type="application/json" id="invoice-form-companies-data" set:html={companiesJson}></script>
+
+      <div id="invoice-items-container" class="space-y-3 pt-2">
+        <!-- Rows injected by JS -->
+      </div>
+
+      <p id="items-error" class="hidden text-xs font-semibold text-rose-500 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mt-2">
+        ⚠ At least one complete line item is required.
+      </p>
+    </div>
+
+    <!-- CARD 5: Summary & Submission -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      
+      <!-- Summary Row -->
+      <div class="p-6 bg-slate-50 flex flex-col md:flex-row gap-8 justify-between">
+        
+        <!-- Payment Status -->
+        <div class="space-y-6 flex-1">
+          <div class="space-y-1.5 max-w-[200px]">
+            <label class="text-xs font-extrabold text-slate-400 uppercase tracking-widest block">Payment Status</label>
+            <select name="payment_status" id="invoice-payment-status"
+              class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 shadow-sm">
+              <option value="unpaid">Unpaid</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+              <option value="draft">Draft</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
-
-          <!-- Select Customer -->
-          <div class="space-y-1.5">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Customer</label>
-            <div class="relative">
-              <input type="text" id="invoice-customer-name" name="customer_name" list="customer-datalist"
-                placeholder="Type to search by name or code…"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
-                autocomplete="off" />
-              <datalist id="customer-datalist">
-                {customers.map(c => (
-                  <option 
-                    value={c.code ? `${c.name} (${c.code})` : c.name} 
-                    data-real-name={c.name}
-                    data-code={c.code||''} 
-                    data-company-code={c.company_code||''} 
-                    data-email={c.email||''} 
-                    data-phone={c.phone||''} 
-                    data-company={c.company_name||''} 
-                    data-vat={c.company_vat||''} 
-                    data-billing={c.billing_address||''} 
-                    data-shipping={c.shipping_address||''}
-                  >
-                    {c.code || ''} - {c.company_name ? `${c.company_name} (${c.company_code || ''})` : 'Individual'}
-                  </option>
-                ))}
-              </datalist>
-              <p id="new-customer-note" class="hidden mt-1 text-[10px] font-bold text-blue-600">✦ New customer — will be auto-registered and linked to the company on save.</p>
-              <p id="new-company-note" class="hidden mt-1 text-[10px] font-bold text-indigo-600">✦ New company — will be created and registered in the company registry on save.</p>
-            </div>
-          </div>
-
-          <!-- Hidden System Fields -->
-          <input type="hidden" id="inv-full-name" name="full_name_display" />
-          <input type="hidden" id="invoice-customer-code" />
-          <input type="hidden" id="invoice-company-code" />
-
-          <!-- Expandable Contact Details -->
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
-            <h5 class="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
-              Contact & Tax Details
-            </h5>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address <span class="text-rose-500">*</span></label>
-                <input type="email" id="invoice-customer-email" name="customer_email" placeholder="billing@company.com"
-                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-                <p id="email-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number <span class="text-rose-500">*</span></label>
-                <input type="tel" id="invoice-customer-phone" name="customer_phone" placeholder="+971 50 000 0000"
-                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-                <p id="phone-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name <span class="text-rose-500">*</span></label>
-                <input type="text" id="invoice-company-name" name="company_name" list="company-datalist" placeholder="e.g. ACME LLC"
-                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" autocomplete="off" />
-                <datalist id="company-datalist">
-                  {companiesList.map(c => <option value={c.name} />)}
-                </datalist>
-                <p id="company-name-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">TIN / VAT <span class="text-rose-500">*</span></label>
-                <input type="text" id="invoice-company-vat" name="company_vat" placeholder="100xxxxxxxxx003"
-                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-                <p id="company-vat-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Billing Address <span class="text-rose-500">*</span></label>
-              <textarea id="invoice-billing-address" name="billing_address" rows="2"
-                placeholder="Street, City, Country"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
-              <p id="billing-address-error" class="hidden text-[10px] font-semibold text-rose-500">Billing address is required.</p>
-            </div>
-            <div class="space-y-1.5">
-              <div class="flex items-center justify-between">
-                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Shipping Address <span class="text-rose-500">*</span></label>
-                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 cursor-pointer">
-                  <input type="checkbox" id="shipping-same-as-billing" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 w-3.5 h-3.5" checked />
-                  Same as Billing
-                </label>
-              </div>
-              <div id="shipping-address-container" class="hidden">
-                <textarea id="invoice-shipping-address" name="shipping_address" rows="2"
-                  placeholder="Street, City, Country"
-                  class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
-                <p id="shipping-address-error" class="hidden text-[10px] font-semibold text-rose-500">Shipping address is required.</p>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <!-- SECTION 2: Line Items -->
-        <div class="p-6 space-y-4">
-          <div class="flex items-center justify-between">
-            <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Item</h4>
-            <div class="flex items-center gap-4">
-              <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
-                <input type="checkbox" id="invoice-show-images" name="show_images" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                Show Product Images
-              </label>
-              <button type="button" id="add-invoice-item-btn"
-                class="inline-flex items-center gap-1.5 text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-3 py-1.5 rounded-lg transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                Add Row
-              </button>
-            </div>
-          </div>
-
-
-
-          <script type="application/json" id="invoice-form-products-data" set:html={productsJson}></script>
-          <script type="application/json" id="invoice-form-categories-data" set:html={categoriesJson}></script>
-          <script type="application/json" id="invoice-form-disclaimers-data" set:html={disclaimersJson}></script>
-          <script type="application/json" id="invoice-form-companies-data" set:html={companiesJson}></script>
-
-          <div id="invoice-items-container" class="space-y-2.5">
-            <!-- Rows injected by JS -->
-          </div>
-
-          <p id="items-error" class="hidden text-xs font-semibold text-rose-500 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
-            ⚠ At least one complete line item is required.
-          </p>
-        </div>
-
-        <!-- SECTION 3: Metadata -->
-        <div class="p-6 space-y-4">
-          <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Metadata</h4>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Order Type</label>
-              <select name="order_type" id="inv-order-type"
-                class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none">
-                <option value="standard">INV (Invoice)</option>
-                <option value="proforma">PFI - Pro Forma</option>
-                <option value="lpo">PO / LPO (Purchase Order)</option>
-                <option value="delivery_note">DLN (Delivery Note)</option>
-                <option value="tax_invoice">BILL - Commercial Bill</option>
-                <option value="quotation">EST - Estimation/Quote</option>
-              </select>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Source Division <span class="text-rose-500">*</span></label>
-              <select name="source_division" id="inv-source-division"
-                class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none">
-                <option value="">-- Select Division --</option>
-                <option value="DTL">Division DTL</option>
-                <option value="DGS">Division DGS</option>
-                <option value="both">Both Divisions</option>
-              </select>
-              <p id="source-division-error" class="hidden text-[10px] font-semibold text-rose-500">Source Division is required.</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Issue Date <span class="text-rose-500">*</span></label>
-              <input type="date" id="invoice-issue-date" name="issue_date"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
-              <p id="issue-date-error" class="hidden text-[10px] font-semibold text-rose-500">Issue date is required.</p>
-            </div>
-            <div class="space-y-1.5" id="due-date-container">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Delivery / Due Date <span class="text-rose-500">*</span></label>
-              <input type="date" id="invoice-due-date" name="due_date"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
-              <p id="due-date-error" class="hidden text-[10px] font-semibold text-rose-500">Due date is required.</p>
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Signatory Incharge <span class="text-rose-500">*</span></label>
-              <select name="signatory_incharge" id="invoice-signatory-incharge"
-                class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700">
-                <option value="">-- Select Signatory --</option>
-                <option value="any">Any (Authorized Signatory Only)</option>
-                {signaturesList.map((s: any) => (
-                  <option value={s.id}>{s.signatory_name} ({s.signatory_title})</option>
-                ))}
-              </select>
-              <p id="signatory-error" class="hidden text-[10px] font-semibold text-rose-500">Signatory Incharge is required.</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Reference PO / LPO No</label>
-              <input type="text" id="invoice-lpo-number" name="lpo_number" placeholder="e.g. PO#00000859"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Quotation Reference</label>
-              <input type="text" id="invoice-quotation-ref" name="quotation_ref" placeholder="e.g. QT-2026-4819"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
-            </div>
-          </div>
-            
-            <div class="space-y-3 pt-2">
-              <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Include Disclaimers & Terms (Page 2)</label>
-              <input type="hidden" id="invoice-payment-terms" name="payment_terms" value="" />
-                  <!-- DTL Terms -->
-              <div class="space-y-2 mt-2" id="dtl-terms-group">
-                <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100">DTL Division Terms</span>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {disclaimers.filter(d => d.division === 'dtl').map((d, idx) => (
-                    <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
-                       <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
-                      <div>
-                        <span class="text-xs font-bold text-slate-800 block">{d.title}</span>
-                        <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <!-- DGS Terms -->
-              <div class="space-y-2 mt-4" id="dgs-terms-group">
-                <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100">DGS Division Terms</span>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {disclaimers.filter(d => d.division === 'dgs').map((d, idx) => (
-                    <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
-                       <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
-                      <div>
-                        <span class="text-xs font-bold text-slate-800 block">{idx + 1}. {d.title}</span>
-                        <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Internal Notes</label>
-            <textarea name="internal_notes" id="inv-internal-notes" rows="2"
-              placeholder="Internal remarks (not shown on printed invoice)…"
-              class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none resize-none"></textarea>
-          </div>
-        </div>
-
-        <!-- SECTION 4: Summary -->
-        <div class="p-6 space-y-4">
-          <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Summary</h4>
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3 max-w-sm ml-auto">
+        <!-- Totals -->
+        <div class="space-y-3 flex-1 max-w-[300px]">
+          <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Totals</h4>
+          <div class="bg-white border border-slate-200 rounded-xl p-5 space-y-3 shadow-sm">
             <div class="flex justify-between text-sm text-slate-600">
               <span>Subtotal</span>
-              <span class="font-semibold"><span id="summary-subtotal">0.00</span> <span class="text-slate-400 text-xs">EXCL. VAT</span></span>
+              <span class="font-semibold"><span id="summary-subtotal">0.00</span> <span class="text-slate-400 text-[10px]">EXCL</span></span>
             </div>
             <div class="flex justify-between text-sm text-slate-600">
               <span>Tax / VAT</span>
@@ -367,59 +408,44 @@ const companiesJson = JSON.stringify(companiesList);
             <div class="flex justify-between text-sm text-slate-600 items-center gap-2">
               <div class="flex items-center gap-1.5">
                 <span class="font-medium">Discount</span>
-                <select id="inv-discount-type" name="discount_type" class="rounded border border-slate-300 bg-white px-1 py-0.5 text-xs font-semibold focus:outline-none text-slate-700">
+                <select id="inv-discount-type" name="discount_type" class="rounded border border-slate-300 bg-slate-50 px-1 py-0.5 text-xs font-semibold focus:outline-none text-slate-700">
                   <option value="fixed">AED</option>
                   <option value="percentage">%</option>
                 </select>
               </div>
               <input type="number" id="inv-discount" name="discount_value" min="0" step="0.01" value="0"
-                class="w-28 text-right rounded-lg border border-slate-300 bg-white text-slate-900 px-2 py-1.5 text-sm focus:border-cyan-500 focus:outline-none" />
+                class="w-20 text-right rounded border border-slate-300 bg-white text-slate-900 px-2 py-1 text-sm focus:border-cyan-500 focus:outline-none font-medium" />
             </div>
             <div class="border-t border-slate-200 pt-3 flex justify-between items-center">
               <span class="font-bold text-slate-900">Grand Total</span>
-              <span class="text-xl font-extrabold text-cyan-700">AED <span id="summary-total">0.00</span></span>
-            </div>
-          </div>
-
-          <!-- Payment Status -->
-          <div class="flex items-center gap-4 flex-wrap">
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Payment Status</label>
-              <select name="payment_status" id="invoice-payment-status"
-                class="rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none">
-                <option value="unpaid">Unpaid</option>
-                <option value="paid">Paid</option>
-                <option value="overdue">Overdue</option>
-                <option value="draft">Draft</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+              <span class="text-lg font-extrabold text-cyan-700">AED <span id="summary-total">0.00</span></span>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Form Messages -->
-        <div class="px-6 pb-2">
-          <div id="invoice-form-msg" class="hidden p-4 rounded-xl text-sm font-semibold"></div>
-        </div>
+      <!-- Form Messages -->
+      <div id="invoice-form-msg" class="hidden p-4 m-6 rounded-xl text-sm font-semibold"></div>
 
-        <!-- Footer Buttons -->
-        <div class="p-5 bg-slate-50 border-t border-slate-200 flex gap-3 justify-end shrink-0">
-          <button type="button" id="cancel-invoice-btn"
-            class="px-5 py-2.5 rounded-xl text-sm font-bold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors">
-            Cancel
-          </button>
-          <button type="button" id="invoice-draft-btn"
-            class="px-5 py-2.5 rounded-xl text-sm font-bold bg-amber-100 hover:bg-amber-200 text-amber-800 transition-colors">
-            Save as Draft
-          </button>
-          <button type="submit" id="invoice-submit-btn"
-            class="px-5 py-2.5 rounded-xl text-sm font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors shadow-sm">
-            Generate Invoice
-          </button>
-        </div>
-      </form>
+      <!-- Footer Buttons -->
+      <div class="p-5 border-t border-slate-200 flex flex-wrap gap-3 justify-end items-center bg-white">
+        <button type="button" id="cancel-invoice-btn"
+          class="px-5 py-2.5 rounded-xl text-sm font-bold bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors">
+          Cancel
+        </button>
+        <button type="button" id="invoice-draft-btn"
+          class="px-5 py-2.5 rounded-xl text-sm font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors">
+          Save as Draft
+        </button>
+        <button type="submit" id="invoice-submit-btn"
+          class="px-6 py-2.5 rounded-xl text-sm font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors shadow-sm">
+          Generate Invoice
+        </button>
+      </div>
+
     </div>
   </div>
+</form>
 </div>
 
 <!-- SUCCESS DIALOG MODAL -->
@@ -522,7 +548,12 @@ const companiesJson = JSON.stringify(companiesList);
         <!-- Product Image Upload -->
         <div class="space-y-1.5">
           <label class="image-upload-label text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block flex items-center">Upload Image (1:1 max 1000px)</label>
-          <input type="file" name="item_image_upload" accept="image/*" class="item-image-input w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 cursor-pointer" />
+          <div class="flex items-center gap-2">
+            <div class="existing-image-preview ${data.item_image && data.item_image !== '/no-image.svg' ? '' : 'hidden'} w-9 h-9 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+              <img src="${data.item_image && data.item_image !== '/no-image.svg' ? data.item_image : ''}" class="w-full h-full object-cover" />
+            </div>
+            <input type="file" name="item_image_upload" accept="image/*" class="item-image-input w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 cursor-pointer" />
+          </div>
         </div>
       </div>
 
@@ -580,6 +611,34 @@ const companiesJson = JSON.stringify(companiesList);
       </div>
     `;
 
+    // Global helper for auto-selecting source division based on ALL rows
+    const updateGlobalSourceDivision = () => {
+      const sourceDivisionSelect = document.getElementById('inv-source-division') as HTMLSelectElement;
+      if (!sourceDivisionSelect) return;
+      
+      const allRowInputs = document.querySelectorAll('input[name="item_product_id"]');
+      const divisions = new Set<string>();
+      
+      allRowInputs.forEach(input => {
+        const prodId = (input as HTMLInputElement).value;
+        if (prodId) {
+          const match = allProducts.find(p => String(p.id) === String(prodId));
+          if (match && match.division_name) {
+            const dName = match.division_name.toLowerCase();
+            if (dName.includes('technical') || dName.includes('dtl')) divisions.add('DTL');
+            if (dName.includes('greenscapes') || dName.includes('dgs')) divisions.add('DGS');
+          }
+        }
+      });
+      
+      if (divisions.has('DTL') && divisions.has('DGS')) {
+        sourceDivisionSelect.value = 'both';
+      } else if (divisions.has('DTL')) {
+        sourceDivisionSelect.value = 'DTL';
+      } else if (divisions.has('DGS')) {
+        sourceDivisionSelect.value = 'DGS';
+      }
+    };
     const categorySelect = div.querySelector('.item-category-select') as HTMLSelectElement;
     const nameDatalist = div.querySelector(`#products-name-datalist-${rowId}`) as HTMLElement;
     const refDatalist = div.querySelector(`#products-ref-datalist-${rowId}`) as HTMLElement;
@@ -608,6 +667,9 @@ const companiesJson = JSON.stringify(companiesList);
     // Bind Category change handler
     categorySelect.addEventListener('change', () => {
       filterDatalistOptions(categorySelect.value);
+      
+      // Auto-select Source Division based on all rows
+      updateGlobalSourceDivision();
       
       // If Category selected doesn't match current inputs, clear inputs
       const currentVal = descInput.value.trim();
@@ -651,6 +713,21 @@ const companiesJson = JSON.stringify(companiesList);
           categorySelect.value = match.category_id;
           filterDatalistOptions(match.category_id);
         }
+
+        // Auto-select Source Division across all rows
+        updateGlobalSourceDivision();
+
+        // Show existing image preview
+        const previewDiv = div.querySelector('.existing-image-preview');
+        const previewImg = previewDiv?.querySelector('img');
+        if (match.image_url && match.image_url !== '/no-image.svg') {
+          if (previewDiv && previewImg) {
+             previewImg.src = match.image_url;
+             previewDiv.classList.remove('hidden');
+          }
+        } else {
+          if (previewDiv) previewDiv.classList.add('hidden');
+        }
       }
     });
 
@@ -669,6 +746,21 @@ const companiesJson = JSON.stringify(companiesList);
           categorySelect.value = match.category_id;
           filterDatalistOptions(match.category_id);
         }
+
+        // Auto-select Source Division across all rows
+        updateGlobalSourceDivision();
+
+        // Show existing image preview
+        const previewDiv = div.querySelector('.existing-image-preview');
+        const previewImg = previewDiv?.querySelector('img');
+        if (match.image_url && match.image_url !== '/no-image.svg') {
+          if (previewDiv && previewImg) {
+             previewImg.src = match.image_url;
+             previewDiv.classList.remove('hidden');
+          }
+        } else {
+          if (previewDiv) previewDiv.classList.add('hidden');
+        }
       }
     });
 
@@ -676,6 +768,7 @@ const companiesJson = JSON.stringify(companiesList);
     div.querySelector('.remove-item-btn')?.addEventListener('click', () => {
       div.remove();
       recalcSummary();
+      updateGlobalSourceDivision();
     });
 
     // Image file upload base64 converter
@@ -715,6 +808,54 @@ const companiesJson = JSON.stringify(companiesList);
 
     return div;
   }
+
+  // =============================================
+  // ROW MANAGEMENT & AUTO-SELECTION
+  // =============================================
+  function updateGlobalSourceDivision() {
+    const rows = document.querySelectorAll('.invoice-item-row');
+    const divisionSelect = document.getElementById('inv-source-division') as HTMLSelectElement;
+    if (!divisionSelect) return;
+    
+    let hasDTL = false;
+    let hasDGS = false;
+    
+    rows.forEach(row => {
+      const prodId = (row.querySelector('input[name="item_product_id"]') as HTMLInputElement)?.value;
+      if (prodId) {
+        const prod = allProducts.find(p => p.id === prodId);
+        if (prod) {
+          const cat = allCategories.find(c => c.id === prod.category_id);
+          if (cat) {
+            if (cat.name?.toLowerCase().includes('dtl') || cat.division_id === 'DTL') hasDTL = true;
+            if (cat.name?.toLowerCase().includes('dgs') || cat.division_id === 'DGS') hasDGS = true;
+          }
+        }
+      }
+    });
+
+    let newDiv = '';
+    if (hasDTL && hasDGS) newDiv = 'both';
+    else if (hasDTL) newDiv = 'DTL';
+    else if (hasDGS) newDiv = 'DGS';
+    
+    if (divisionSelect.value !== newDiv) {
+      divisionSelect.value = newDiv;
+      divisionSelect.dispatchEvent(new Event('change'));
+    }
+  }
+
+  function addRow(data: any = {}) {
+    const container = document.getElementById('invoice-items-container');
+    if (container) {
+      container.appendChild(buildItemRow(data));
+      recalcSummary();
+      updateGlobalSourceDivision();
+    }
+  }
+
+  // Bind Add Row button
+  document.getElementById('add-invoice-item-btn')?.addEventListener('click', () => addRow());
 
   // =============================================
   // SUMMARY RECALCULATION
@@ -1019,60 +1160,12 @@ const companiesJson = JSON.stringify(companiesList);
   // SETUP (runs on load + re-runs on Astro nav)
   // =============================================
   const setupInvoiceForm = () => {
-    const modal = document.getElementById('invoice-modal-backdrop');
     const form = document.getElementById('invoice-form') as HTMLFormElement;
-    if (!modal || !form) return;
+    if (!form) return;
 
     const companySelect = document.getElementById('invoice-company-select') as HTMLSelectElement | null;
     const allCustomerOpts = Array.from(document.querySelectorAll('#customer-datalist option'));
 
-    const openModal = () => { modal.classList.remove('hidden'); modal.classList.add('flex'); };
-    const closeModal = () => {
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      form.reset();
-      (document.getElementById('invoice-id') as HTMLInputElement).value = '';
-      document.getElementById('invoice-modal-title')!.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cyan-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Generate Invoice`;
-      document.getElementById('invoice-items-container')!.innerHTML = '';
-      addRow();
-      recalcSummary();
-      document.getElementById('invoice-form-msg')?.classList.add('hidden');
-      document.getElementById('new-customer-note')?.classList.add('hidden');
-
-      // Clear validation styling and error messages
-      const fields = [
-        'invoice-customer-name', 'invoice-customer-email', 'invoice-customer-phone',
-        'invoice-company-name', 'invoice-company-vat', 'invoice-billing-address',
-        'invoice-shipping-address', 'invoice-issue-date', 'invoice-due-date',
-        'inv-discount', 'invoice-signatory-incharge', 'inv-source-division'
-      ];
-      fields.forEach(id => {
-        const el = document.getElementById(id);
-        el?.classList.remove('border-rose-400', 'bg-rose-50');
-      });
-
-      const errorIds = [
-        'email-error', 'phone-error', 'company-name-error', 'company-vat-error',
-        'billing-address-error', 'shipping-address-error', 'issue-date-error',
-        'due-date-error', 'signatory-error', 'source-division-error', 'items-error'
-      ];
-      errorIds.forEach(id => {
-        document.getElementById(id)?.classList.add('hidden');
-      });
-    };
-
-    document.getElementById('close-invoice-modal')?.addEventListener('click', closeModal);
-    document.getElementById('cancel-invoice-btn')?.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-
-    // Add row button
-    const addRow = (data: any = {}) => {
-      const container = document.getElementById('invoice-items-container');
-      if (container) container.appendChild(buildItemRow(data));
-    };
-    document.getElementById('add-invoice-item-btn')?.addEventListener('click', () => addRow());
-
-    // Discount changes affect summary
     // Discount changes affect summary
     document.getElementById('inv-discount')?.addEventListener('input', recalcSummary);
     document.getElementById('inv-discount-type')?.addEventListener('change', recalcSummary);
@@ -1098,24 +1191,39 @@ const companiesJson = JSON.stringify(companiesList);
     const dtlTermsGroup = document.getElementById('dtl-terms-group');
     const dgsTermsGroup = document.getElementById('dgs-terms-group');
 
-    const toggleTOSVisibility = () => {
+    let lastSelectedDiv = divisionSelect?.value;
+    const toggleTOSVisibility = (e?: Event) => {
       const selectedDiv = divisionSelect?.value;
+      const isManualChange = e?.type === 'change';
+      
       if (selectedDiv === 'DTL') {
         dtlTermsGroup?.classList.remove('hidden');
         dgsTermsGroup?.classList.add('hidden');
-        dgsTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
-          (cb as HTMLInputElement).checked = false;
-        });
+        if (isManualChange && lastSelectedDiv !== 'DTL') {
+           dgsTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
+           dtlTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = true);
+        }
       } else if (selectedDiv === 'DGS') {
         dgsTermsGroup?.classList.remove('hidden');
         dtlTermsGroup?.classList.add('hidden');
-        dtlTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
-          (cb as HTMLInputElement).checked = false;
-        });
-      } else {
+        if (isManualChange && lastSelectedDiv !== 'DGS') {
+           dtlTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
+           dgsTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = true);
+        }
+      } else if (selectedDiv === 'both') {
         dtlTermsGroup?.classList.remove('hidden');
         dgsTermsGroup?.classList.remove('hidden');
+        if (isManualChange && lastSelectedDiv !== 'both') {
+           document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = true);
+        }
+      } else {
+        dtlTermsGroup?.classList.add('hidden');
+        dgsTermsGroup?.classList.add('hidden');
+        if (isManualChange && lastSelectedDiv !== '') {
+           document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
+        }
       }
+      lastSelectedDiv = selectedDiv;
       updatePaymentTermsHiddenInput();
     };
     divisionSelect?.addEventListener('change', toggleTOSVisibility);
@@ -1240,115 +1348,135 @@ const companiesJson = JSON.stringify(companiesList);
       cb.addEventListener('change', updatePaymentTermsHiddenInput);
     });
 
-    // Listen for open event (new or edit)
-    document.addEventListener('open-invoice-modal', ((e: CustomEvent) => {
-      const inv = e.detail?.invoice;
-      const container = document.getElementById('invoice-items-container')!;
-      container.innerHTML = '';
-
-      if (inv) {
-        document.getElementById('invoice-modal-title')!.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit Invoice`;
-        (document.getElementById('invoice-submit-btn') as HTMLButtonElement).textContent = 'Update Invoice';
-        (document.getElementById('invoice-id') as HTMLInputElement).value = inv.id || '';
-        
-        const customerCodeStr = inv.customer_code ? ` (${inv.customer_code})` : '';
-        (document.getElementById('invoice-customer-name') as HTMLInputElement).value = (inv.customer_name || '') + customerCodeStr;
-        (document.getElementById('inv-full-name') as HTMLInputElement).value = inv.customer_name || '';
-        (document.getElementById('invoice-customer-email') as HTMLInputElement).value = inv.customer_email || '';
-        (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = inv.customer_phone || '';
-        (document.getElementById('invoice-company-name') as HTMLInputElement).value = inv.company_name || '';
-        (document.getElementById('invoice-company-vat') as HTMLInputElement).value = inv.company_vat || '';
-        (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = inv.lpo_number || '';
-        (document.getElementById('invoice-quotation-ref') as HTMLInputElement).value = inv.quotation_ref || '';
-        (document.getElementById('invoice-payment-terms') as HTMLInputElement).value = inv.payment_terms || '';
-        
-        let selectedDisclaimers = [];
-        try {
-          selectedDisclaimers = JSON.parse(inv.payment_terms || '[]');
-        } catch(err) {
-          selectedDisclaimers = [];
-        }
-        document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
-          const ident = cb.getAttribute('data-identifier') || '';
-          (cb as HTMLInputElement).checked = Array.isArray(selectedDisclaimers) && selectedDisclaimers.includes(ident);
-        });
-        updatePaymentTermsHiddenInput();
-
-        (document.getElementById('invoice-show-images') as HTMLInputElement).checked = !!inv.show_images;
-        (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = inv.billing_address || '';
-        (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = inv.shipping_address || '';
-        
-        // Handle Shipping Toggle on Load
-        const billingStr = (inv.billing_address || '').trim();
-        const shippingStr = (inv.shipping_address || '').trim();
-        if (shippingToggle) {
-          if (!shippingStr || billingStr === shippingStr) {
-            shippingToggle.checked = true;
-            shippingContainer?.classList.add('hidden');
-          } else {
-            shippingToggle.checked = false;
-            shippingContainer?.classList.remove('hidden');
+    // Fetch existing invoice if ?edit is in URL
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('edit');
+    if (editId) {
+      fetch(`/api/invoices/${editId}`)
+        .then(res => res.json())
+        .then(inv => {
+          if (inv.error) throw new Error(inv.error);
+          
+          (document.getElementById('invoice-submit-btn') as HTMLButtonElement).textContent = 'Update Invoice';
+          (document.getElementById('invoice-id') as HTMLInputElement).value = inv.id || '';
+          
+          const customerCodeStr = inv.customer_code ? ` (${inv.customer_code})` : '';
+          (document.getElementById('invoice-customer-name') as HTMLInputElement).value = (inv.customer_name || '') + customerCodeStr;
+          (document.getElementById('inv-full-name') as HTMLInputElement).value = inv.customer_name || '';
+          (document.getElementById('invoice-customer-email') as HTMLInputElement).value = inv.customer_email || '';
+          (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = inv.customer_phone || '';
+          (document.getElementById('invoice-company-name') as HTMLInputElement).value = inv.company_name || '';
+          (document.getElementById('invoice-company-vat') as HTMLInputElement).value = inv.company_vat || '';
+          (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = inv.lpo_number || '';
+          (document.getElementById('invoice-quotation-ref') as HTMLInputElement).value = inv.quotation_ref || '';
+          (document.getElementById('invoice-payment-terms') as HTMLInputElement).value = inv.payment_terms || '';
+          
+          let selectedDisclaimers = [];
+          try {
+            selectedDisclaimers = JSON.parse(inv.payment_terms || '[]');
+          } catch(err) {
+            selectedDisclaimers = [];
           }
-        }
-        (document.getElementById('inv-order-type') as HTMLSelectElement).value = inv.order_type || 'proforma';
-        (document.getElementById('inv-source-division') as HTMLSelectElement).value = inv.source_division || '';
-        
-        toggleDueDateVisibility();
-        toggleTOSVisibility();
-        (document.getElementById('invoice-issue-date') as HTMLInputElement).value = inv.issue_date ? new Date(inv.issue_date).toISOString().split('T')[0] : '';
-        (document.getElementById('invoice-due-date') as HTMLInputElement).value = inv.due_date ? new Date(inv.due_date).toISOString().split('T')[0] : '';
-        (document.getElementById('invoice-payment-status') as HTMLSelectElement).value = inv.payment_status || 'unpaid';
-        (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = inv.signatory_incharge || '';
+          document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
+            const ident = cb.getAttribute('data-identifier') || '';
+            (cb as HTMLInputElement).checked = Array.isArray(selectedDisclaimers) && selectedDisclaimers.includes(ident);
+          });
+          updatePaymentTermsHiddenInput();
 
-        // Trigger logic based on loaded type
-        const typeSelect = document.getElementById('inv-order-type') as HTMLSelectElement;
-        typeSelect.dispatchEvent(new Event('change'));
+          (document.getElementById('invoice-show-images') as HTMLInputElement).checked = !!inv.show_images;
+          (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = inv.billing_address || '';
+          (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = inv.shipping_address || '';
+          
+          const billingStr = (inv.billing_address || '').trim();
+          const shippingStr = (inv.shipping_address || '').trim();
+          if (shippingToggle) {
+            if (!shippingStr || billingStr === shippingStr) {
+              shippingToggle.checked = true;
+              shippingContainer?.classList.add('hidden');
+            } else {
+              shippingToggle.checked = false;
+              shippingContainer?.classList.remove('hidden');
+            }
+          }
 
-        (document.getElementById('inv-discount-type') as HTMLSelectElement).value = inv.discount_type || 'fixed';
-        (document.getElementById('inv-discount') as HTMLInputElement).value = inv.discount_value !== undefined ? inv.discount_value : (inv.discount_amount || '0');
-        (document.getElementById('inv-internal-notes') as HTMLTextAreaElement).value = inv.internal_notes || '';
+          (document.getElementById('inv-order-type') as HTMLSelectElement).value = inv.order_type || 'proforma';
+          (document.getElementById('inv-source-division') as HTMLSelectElement).value = inv.source_division || '';
+          
+          toggleDueDateVisibility();
+          toggleTOSVisibility();
+          (document.getElementById('invoice-issue-date') as HTMLInputElement).value = inv.issue_date ? new Date(inv.issue_date).toISOString().split('T')[0] : '';
+          (document.getElementById('invoice-due-date') as HTMLInputElement).value = inv.due_date ? new Date(inv.due_date).toISOString().split('T')[0] : '';
+          (document.getElementById('invoice-payment-status') as HTMLSelectElement).value = inv.payment_status || 'unpaid';
+          (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = inv.signatory_incharge || '';
 
-        const items = typeof inv.items_list === 'string' ? JSON.parse(inv.items_list) : (inv.items_list || []);
-        items.forEach((item: any) => addRow({
-          product_id: item.product_id,
-          catalogue_ref: item.catalogue_ref,
-          description: item.description,
-          tech_spec: item.tech_spec,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          tax_type: item.tax_type || 'percentage',
-          tax_value: item.tax_value !== undefined ? item.tax_value : (item.tax_rate ?? 5),
-        }));
-      } else {
-        (document.getElementById('invoice-submit-btn') as HTMLButtonElement).textContent = 'Generate Invoice';
-        (document.getElementById('invoice-issue-date') as HTMLInputElement).value = new Date().toISOString().split('T')[0];
-        (document.getElementById('invoice-company-vat') as HTMLInputElement).value = '';
-        (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = '';
-        (document.getElementById('invoice-payment-terms') as HTMLInputElement).value = '';
-        (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = '';
-        
-        document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
-          (cb as HTMLInputElement).checked = true;
+          const typeSelect = document.getElementById('inv-order-type') as HTMLSelectElement;
+          typeSelect.dispatchEvent(new Event('change'));
+
+          (document.getElementById('inv-discount-type') as HTMLSelectElement).value = inv.discount_type || 'fixed';
+          (document.getElementById('inv-discount') as HTMLInputElement).value = inv.discount_value !== undefined ? inv.discount_value : (inv.discount_amount || '0');
+          (document.getElementById('inv-internal-notes') as HTMLTextAreaElement).value = inv.internal_notes || '';
+
+          // Select matching company if any
+          const compMatch = allCompanies.find(c => c.name === inv.company_name);
+          if (compMatch) {
+             const selComp = document.getElementById('invoice-select-company') as HTMLSelectElement;
+             if (selComp) selComp.value = inv.company_name;
+             handleCompanyAutofill(false);
+          }
+
+          const container = document.getElementById('invoice-items-container')!;
+          container.innerHTML = '';
+          const items = typeof inv.items_list === 'string' ? JSON.parse(inv.items_list) : (inv.items_list || []);
+          items.forEach((item: any) => addRow({
+            product_id: item.product_id,
+            catalogue_ref: item.catalogue_ref,
+            description: item.description,
+            tech_spec: item.tech_spec,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            tax_type: item.tax_type || 'percentage',
+            tax_value: item.tax_value !== undefined ? item.tax_value : (item.tax_rate ?? 5),
+          }));
+          if (items.length === 0) {
+            addRow();
+          }
+          
+          recalcSummary();
+          updateGlobalSourceDivision();
+        })
+        .catch(err => {
+          console.error("Error loading invoice:", err);
+          alert("Failed to load invoice data.");
         });
-        updatePaymentTermsHiddenInput();
+    } else {
+      (document.getElementById('invoice-submit-btn') as HTMLButtonElement).textContent = 'Generate Invoice';
+      (document.getElementById('invoice-issue-date') as HTMLInputElement).value = new Date().toISOString().split('T')[0];
+      (document.getElementById('invoice-company-vat') as HTMLInputElement).value = '';
+      (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = '';
+      (document.getElementById('invoice-payment-terms') as HTMLInputElement).value = '';
+      (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = 'any';
+      
+      document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
+        (cb as HTMLInputElement).checked = false;
+      });
+      updatePaymentTermsHiddenInput();
 
-        (document.getElementById('invoice-show-images') as HTMLInputElement).checked = false;
-        (document.getElementById('inv-discount-type') as HTMLSelectElement).value = 'fixed';
-        (document.getElementById('inv-discount') as HTMLInputElement).value = '0';
-        
-        if (shippingToggle) {
-          shippingToggle.checked = true;
-          shippingContainer?.classList.add('hidden');
-        }
-        
-        toggleDueDateVisibility();
-        toggleTOSVisibility();
-        
-        addRow();
+      (document.getElementById('invoice-show-images') as HTMLInputElement).checked = false;
+      (document.getElementById('inv-discount-type') as HTMLSelectElement).value = 'fixed';
+      (document.getElementById('inv-discount') as HTMLInputElement).value = '0';
+      
+      if (shippingToggle) {
+        shippingToggle.checked = true;
+        shippingContainer?.classList.add('hidden');
       }
+      
+      toggleDueDateVisibility();
+      toggleTOSVisibility();
+      
+      document.getElementById('invoice-items-container')!.innerHTML = '';
+      addRow();
       recalcSummary();
-      openModal();
-    }) as EventListener);
+    }
 
     // Submit
     const submitInvoice = async (isDraft = false) => {
@@ -1464,7 +1592,7 @@ const companiesJson = JSON.stringify(companiesList);
           msg.classList.remove('hidden');
 
           if (isDraft) {
-            setTimeout(() => window.location.reload(), 900);
+            setTimeout(() => window.location.href = '/dashboard/invoices', 900);
           } else {
             // Hide main modal and show success modal
             const invoiceModal = document.getElementById('invoice-modal-backdrop');
@@ -1485,13 +1613,13 @@ const companiesJson = JSON.stringify(companiesList);
               
               successClose?.addEventListener('click', () => {
                 successModal.classList.add('hidden');
-                window.location.reload();
+                window.location.href = '/dashboard/invoices';
               });
 
               successModal.classList.remove('hidden');
               successModal.classList.add('flex');
             } else {
-              setTimeout(() => window.location.reload(), 900);
+              setTimeout(() => window.location.href = '/dashboard/invoices', 900);
             }
           }
         } else {

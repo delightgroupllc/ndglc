@@ -3,9 +3,9 @@ import { query, withTransaction, exportTableAsCSV } from '../../../lib/db';
 import { z } from 'zod';
 
 const productSchema = z.object({
-  name: z.string().min(1, 'Product name is required'),
-  sku: z.string().min(1, 'SKU is required').regex(/^[A-Z0-9\-_]+$/i, 'SKU must be alphanumeric with dashes only'),
-  slug: z.string().min(1, 'Slug is required').regex(/^[a-z0-9-]+$/, 'Slug must be lowercase with hyphens only'),
+  name: z.string().trim().min(1, 'Product name is required'),
+  sku: z.string().trim().toUpperCase().min(1, 'SKU is required').regex(/^[A-Z0-9\-_]+$/i, 'SKU must be alphanumeric with dashes only'),
+  slug: z.string().trim().toLowerCase().min(1, 'Slug is required').regex(/^[a-z0-9-]+$/, 'Slug must be lowercase with hyphens only'),
   division_id: z.string().uuid('Invalid division ID'),
   category_id: z.string().uuid('Invalid category ID'),
   description: z.string().optional(),
@@ -17,6 +17,10 @@ const productSchema = z.object({
   })).optional().default([]),
   featured: z.union([z.boolean(), z.string().transform(v => v === 'true')]),
   status: z.enum(['active', 'inactive', 'draft', 'deleted']),
+  images: z.array(z.object({
+    url: z.string().url(),
+    is_primary: z.boolean()
+  })).optional().default([])
 });
 
 export const GET: APIRoute = async ({ url }) => {
@@ -100,6 +104,14 @@ export const POST: APIRoute = async ({ request }) => {
          VALUES ($1, 0, 'Warehouse A', 10)`,
         [product.id]
       );
+
+      // Insert multiple images
+      for (const img of parsed.images) {
+        await client.query(
+          `INSERT INTO product_images (product_id, url, is_primary) VALUES ($1, $2, $3)`,
+          [product.id, img.url, img.is_primary]
+        );
+      }
 
       return product;
     });

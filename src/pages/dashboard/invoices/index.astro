@@ -1,6 +1,5 @@
 ---
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
-import InvoiceForm from '../../../components/forms/InvoiceForm.astro';
 import { query } from '../../../lib/db';
 import { FileSpreadsheet, PlusCircle, Search, Save, AlertTriangle, Printer, CheckCircle, Clock } from '@lucide/astro';
 
@@ -210,14 +209,13 @@ invoices = invoices.map(inv => {
         </div>
 
         {isAdmin && (
-          <button 
-            type="button" 
-            onclick="document.dispatchEvent(new CustomEvent('open-invoice-modal', { detail: { invoice: null } }))"
+          <a 
+            href="/dashboard/invoices/create"
             class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm shrink-0"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
             Create Order
-          </button>
+          </a>
         )}
       </div>
     </div>
@@ -290,7 +288,12 @@ invoices = invoices.map(inv => {
                         </span>
                       )}
                     </div>
-                    <div class="text-2xs font-extrabold text-slate-400 mt-1 uppercase tracking-wider">{inv.issue_date ? new Date(inv.issue_date).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
+                    <div class="text-[10px] font-extrabold text-slate-400 mt-1 uppercase tracking-wider">
+                      Issued: {inv.issue_date ? new Date(inv.issue_date).toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                      {inv.created_at && (
+                        <> • Created: {new Date(inv.created_at).toLocaleString('en-AE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+                      )}
+                    </div>
                   </td>
                   <td class="px-6 py-5 text-center">
                     <div class="font-black text-slate-800 text-[13px] tracking-tight">AED {Number(inv.total_amount).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
@@ -1405,7 +1408,9 @@ invoices = invoices.map(inv => {
       btn.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         const invData = JSON.parse(target.getAttribute('data-invoice') || '{}');
-        document.dispatchEvent(new CustomEvent('open-invoice-modal', { detail: { invoice: invData } }));
+        if (invData && invData.id) {
+          window.location.href = `/dashboard/invoices/create?edit=${invData.id}`;
+        }
       });
     });
 
@@ -1436,5 +1441,4 @@ invoices = invoices.map(inv => {
     });
   </script>
 
-  {isAdmin && <InvoiceForm />}
 </DashboardLayout>

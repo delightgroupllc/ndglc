@@ -14,7 +14,8 @@ import BulkProductForm from '../../components/forms/BulkProductForm.astro';
 try {
   const prodRes = await query(
     `SELECT p.*, c.name as category_name, c.slug as category_slug, d.name as division_name, d.slug as division_slug,
-       (SELECT url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as image_url
+       (SELECT url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1) as image_url,
+       (SELECT COALESCE(json_agg(json_build_object('url', url, 'is_primary', is_primary) ORDER BY is_primary DESC), '[]'::json) FROM product_images WHERE product_id = p.id) as images_json
      FROM products p
      JOIN categories c ON c.id = p.category_id
      JOIN divisions d ON d.id = p.division_id
@@ -61,10 +62,10 @@ try {
   rooms = ['Outdoor','Living room','Dining room','Kitchen','Bedroom','Bathroom'];
 
   products = [
-    { id: 'p1', name: 'HP-100 High-Pressure Stainless Ball Valve', sku: 'SKU-DTL-VALVE-001', slug: 'hp100-ball-valve', category_id: 'cat-1', division_id: 'div-1', category_name: 'Valves & Actuators', category_slug: 'valves-actuators', division_name: 'Division DTL', division_slug: 'dtl', status: 'active', featured: true, created_at: new Date().toISOString() },
-    { id: 'p2', name: 'CPX-500 Heavy-Duty Centrifugal Pump', sku: 'SKU-DTL-PUMP-002', slug: 'cpx500-centrifugal-pump', category_id: 'cat-2', division_id: 'div-1', category_name: 'Industrial Pumps', category_slug: 'industrial-pumps', division_name: 'Division DTL', division_slug: 'dtl', status: 'active', featured: false, created_at: new Date().toISOString() },
-    { id: 'p3', name: 'Vortex Cloud-Native Backup Storage Suite', sku: 'SKU-DGS-CLOUD-001', slug: 'vortex-cloud-backup', category_id: 'cat-3', division_id: 'div-2', category_name: 'Cloud Infrastructure', category_slug: 'cloud-infrastructure', division_name: 'Division DGS', division_slug: 'dgs', status: 'active', featured: true, created_at: new Date().toISOString() },
-    { id: 'p4', name: 'IronWall Industrial Firewall Appliance v4', sku: 'SKU-DGS-SEC-002', slug: 'ironwall-firewall-v4', category_id: 'cat-4', division_id: 'div-2', category_name: 'Cyber Security', category_slug: 'cyber-security', division_name: 'Division DGS', division_slug: 'dgs', status: 'active', featured: true, created_at: new Date().toISOString() }
+    { id: 'p1', name: 'HP-100 High-Pressure Stainless Ball Valve', sku: 'SKU-DTL-VALVE-001', slug: 'hp100-ball-valve', category_id: 'cat-1', division_id: 'div-1', category_name: 'Valves & Actuators', category_slug: 'valves-actuators', division_name: 'Division DTL', division_slug: 'dtl', status: 'active', featured: true, created_at: new Date().toISOString(), images_json: JSON.stringify([{ url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80', is_primary: true }]) },
+    { id: 'p2', name: 'CPX-500 Heavy-Duty Centrifugal Pump', sku: 'SKU-DTL-PUMP-002', slug: 'cpx500-centrifugal-pump', category_id: 'cat-2', division_id: 'div-1', category_name: 'Industrial Pumps', category_slug: 'industrial-pumps', division_name: 'Division DTL', division_slug: 'dtl', status: 'active', featured: false, created_at: new Date().toISOString(), images_json: JSON.stringify([{ url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80', is_primary: true }]) },
+    { id: 'p3', name: 'Vortex Cloud-Native Backup Storage Suite', sku: 'SKU-DGS-CLOUD-001', slug: 'vortex-cloud-backup', category_id: 'cat-3', division_id: 'div-2', category_name: 'Cloud Infrastructure', category_slug: 'cloud-infrastructure', division_name: 'Division DGS', division_slug: 'dgs', status: 'active', featured: true, created_at: new Date().toISOString(), images_json: JSON.stringify([{ url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80', is_primary: true }]) },
+    { id: 'p4', name: 'IronWall Industrial Firewall Appliance v4', sku: 'SKU-DGS-SEC-002', slug: 'ironwall-firewall-v4', category_id: 'cat-4', division_id: 'div-2', category_name: 'Cyber Security', category_slug: 'cyber-security', division_name: 'Division DGS', division_slug: 'dgs', status: 'active', featured: true, created_at: new Date().toISOString(), images_json: JSON.stringify([{ url: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=800&q=80', is_primary: true }]) }
   ];
 }
 ---
@@ -201,6 +202,7 @@ try {
                 data-featured={p.featured ? 'true' : 'false'}
                 data-specs={typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || [])}
                 data-image={p.image_url || ''}
+                data-images={p.images_json || '[]'}
               >
                 <td class="px-4 py-3">
                   <input type="checkbox" class="product-row-check rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" data-id={p.id} data-name={p.name} />
@@ -258,6 +260,7 @@ try {
           data-featured={p.featured ? 'true' : 'false'}
           data-specs={typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || [])}
           data-image={p.image_url || ''}
+          data-images={p.images_json || '[]'}
         >
           <!-- Card Checkbox -->
           <div class="absolute top-3 left-3 z-10 bg-white/90 border border-slate-200 rounded p-1 shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -322,10 +325,11 @@ try {
     <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm mt-6">
       <div class="flex items-center gap-2 text-xs text-slate-500 font-bold">
         <span>Show</span>
-        <select id="pagination-limit" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none">
-          <option value="10" selected>10 products</option>
-          <option value="25">25 products</option>
-        </select>
+        <div class="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden" id="pagination-limit-btns">
+          <button type="button" class="px-2.5 py-1 text-xs font-semibold hover:bg-slate-50 border-r border-slate-200 bg-slate-100 text-cyan-700 transition-colors" data-limit="10">10</button>
+          <button type="button" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 border-r border-slate-200 transition-colors" data-limit="25">25</button>
+          <button type="button" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors" data-limit="50">50</button>
+        </div>
         <span>per page</span>
       </div>
       <div class="text-xs text-slate-500 font-semibold">
@@ -509,12 +513,27 @@ try {
     // Pagination State
     let currentPage = 1;
     let itemsPerPage = 10;
-    const limitSelect = document.getElementById('pagination-limit') as HTMLSelectElement | null;
-    if (limitSelect) {
-      limitSelect.addEventListener('change', () => {
-        itemsPerPage = parseInt(limitSelect.value) || 10;
-        currentPage = 1;
-        filterAndSortProducts(false);
+    const limitBtns = document.getElementById('pagination-limit-btns');
+    if (limitBtns) {
+      limitBtns.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement).closest('button');
+        if (!btn) return;
+        const limit = btn.getAttribute('data-limit');
+        if (limit) {
+          itemsPerPage = parseInt(limit) || 10;
+          currentPage = 1;
+          
+          // Update visual state of buttons
+          const allBtns = limitBtns.querySelectorAll('button');
+          allBtns.forEach(b => {
+            b.classList.remove('bg-slate-100', 'text-cyan-700');
+            b.classList.add('text-slate-600');
+          });
+          btn.classList.add('bg-slate-100', 'text-cyan-700');
+          btn.classList.remove('text-slate-600');
+          
+          filterAndSortProducts(false);
+        }
       });
     }
 
