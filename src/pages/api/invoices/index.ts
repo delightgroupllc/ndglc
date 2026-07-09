@@ -194,7 +194,7 @@ export const POST: APIRoute = async ({ request }) => {
     const rand = Math.floor(1000 + Math.random() * 9000);
     let prefix = 'INV';
     if (parsed.order_type === 'quotation') prefix = 'EST';
-    else if (parsed.order_type === 'lpo') prefix = 'PRO';
+    else if (parsed.order_type === 'lpo' || parsed.order_type === 'proforma') prefix = 'PRO';
     else if (parsed.order_type === 'delivery_note') prefix = 'DLN';
     const invoice_number = `${prefix}-${new Date().getFullYear()}-${rand}`;
 
@@ -328,24 +328,30 @@ export const POST: APIRoute = async ({ request }) => {
             );
 
           }
-          
-          // Handle image upload if exists (optimized with sharp)
-          if (item.image_base64) {
-            try {
-              resolvedImage = await optimizeAndSaveImage(item.image_base64, productId);
+        } // Close if (!productId)
 
-              await client.query(
-                `INSERT INTO product_images (product_id, url, is_primary) VALUES ($1, $2, true)`,
-                [productId, resolvedImage]
-              );
-              
-              await client.query(
-                `UPDATE products SET image_url = $1 WHERE id = $2`,
-                [resolvedImage, productId]
-              );
-            } catch (imgErr) {
-              console.error('Error saving optimized product image:', imgErr);
-            }
+        // Handle image upload if exists (optimized with sharp) - works for existing products too!
+        if (item.image_base64 && productId) {
+          try {
+            resolvedImage = await optimizeAndSaveImage(item.image_base64, productId);
+
+            // Clean up old primary images for this product
+            await client.query(
+              `UPDATE product_images SET is_primary = false WHERE product_id = $1`,
+              [productId]
+            );
+
+            await client.query(
+              `INSERT INTO product_images (product_id, url, is_primary) VALUES ($1, $2, true)`,
+              [productId, resolvedImage]
+            );
+            
+            await client.query(
+              `UPDATE products SET image_url = $1 WHERE id = $2`,
+              [resolvedImage, productId]
+            );
+          } catch (imgErr) {
+            console.error('Error saving optimized product image:', imgErr);
           }
         }
 

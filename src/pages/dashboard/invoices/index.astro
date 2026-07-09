@@ -877,57 +877,75 @@ invoices = invoices.map(inv => {
     filterAndSortInvoices();
 
     // ── Intelligent Date Auto-Selector ─────────────────────────────────
-    // Walk backwards from today until we find a day with orders.
-    // If nothing found within the current calendar month → show All Time.
+    // Dynamically selects the smallest preset range containing at least 10 active orders:
+    // 1. Today
+    // 2. This Week
+    // 3. This Month
+    // If none of these contain 10 orders, select a Custom Range matching the most recent 10 orders.
+    // If total active orders is less than 10, default to All Time.
     function runIntelligentDateSelector() {
       if (!tbody) return;
 
-      // Collect all ISO dates from non-deleted, non-archived rows
-      const allDates = Array.from(tbody.querySelectorAll<HTMLElement>('.admin-invoice-row'))
+      // Get active rows, newest first
+      const activeRows = Array.from(tbody.querySelectorAll<HTMLElement>('.admin-invoice-row'))
         .filter(r => r.getAttribute('data-deleted') !== 'true' && r.getAttribute('data-archived') !== 'true')
-        .map(r => (r.getAttribute('data-date') || '').split('T')[0])
-        .filter(Boolean)
-        .sort()
-        .reverse(); // newest first
+        .sort((a, b) => new Date(b.getAttribute('data-date') || '').getTime() - new Date(a.getAttribute('data-date') || '').getTime());
 
-      if (allDates.length === 0) {
-        // No orders at all — show everything
-        return;
-      }
+      if (activeRows.length === 0) return;
+
+      // Under 10 orders total -> All Time
+      if (activeRows.length < 10) return;
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const toISO = (d: Date) => d.toISOString().split('T')[0];
 
-      // Current calendar month start
-      const monthStart = toISO(new Date(today.getFullYear(), today.getMonth(), 1));
       const todayISO = toISO(today);
 
-      // Walk back day by day looking for a match
-      let found: string | null = null;
-      const cursor = new Date(today);
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay());
+      const weekStartISO = toISO(weekStart);
 
-      for (let i = 0; i < 31; i++) {
-        const isoDay = toISO(cursor);
-        // Stop if we've gone before this month
-        if (isoDay < monthStart) break;
-        if (allDates.includes(isoDay)) {
-          found = isoDay;
-          break;
-        }
-        cursor.setDate(cursor.getDate() - 1);
-      }
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthStartISO = toISO(monthStart);
 
-      if (!found) {
-        // Nothing this month — stay on All Time (default)
+      // Helper to count active orders in a date range [startISO, endISO]
+      const countInRange = (start: string, end: string) => {
+        return activeRows.filter(r => {
+          const d = (r.getAttribute('data-date') || '').split('T')[0];
+          return d >= start && d <= end;
+        }).length;
+      };
+
+      const pickerEl = document.getElementById('invoices-date-picker');
+      if (!pickerEl) return;
+
+      // Step 1: Check Today
+      if (countInRange(todayISO, todayISO) >= 10) {
+        pickerEl.dispatchEvent(new CustomEvent('daterange-set', { detail: { preset: 'today' } }));
         return;
       }
 
-      // Apply the found date as a custom 1-day range via the picker API
-      const pickerEl = document.getElementById('invoices-date-picker');
-      if (pickerEl) {
+      // Step 2: Check This Week
+      if (countInRange(weekStartISO, todayISO) >= 10) {
+        pickerEl.dispatchEvent(new CustomEvent('daterange-set', { detail: { preset: 'week' } }));
+        return;
+      }
+
+      // Step 3: Check This Month
+      if (countInRange(monthStartISO, todayISO) >= 10) {
+        pickerEl.dispatchEvent(new CustomEvent('daterange-set', { detail: { preset: 'month' } }));
+        return;
+      }
+
+      // Step 4: Mixed / older -> Custom range matching the 10 most recent orders
+      const newestDateStr = (activeRows[0].getAttribute('data-date') || '').split('T')[0];
+      const tenthRow = activeRows[9];
+      const oldestDateStr = (tenthRow.getAttribute('data-date') || '').split('T')[0];
+
+      if (newestDateStr && oldestDateStr) {
         pickerEl.dispatchEvent(new CustomEvent('daterange-set', {
-          detail: { start: found, end: found }
+          detail: { start: oldestDateStr, end: newestDateStr }
         }));
       }
     }

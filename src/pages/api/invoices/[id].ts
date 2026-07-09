@@ -46,7 +46,30 @@ const invoiceSchema = z.object({
   items: z.array(itemSchema).min(1, 'At least one line item is required'),
 });
 
-export const PUT: APIRoute = async ({ params, request }) => {
+export const GET: APIRoute = async ({ params }) => {
+  try {
+    const id = params.id;
+    if (!id) return new Response(JSON.stringify({ error: 'ID required' }), { status: 400 });
+
+    const res = await query(
+      `SELECT i.*, 
+        (SELECT JSON_AGG(it ORDER BY it.id) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+       FROM invoices i WHERE i.id = $1`,
+      [id]
+    );
+
+    if (res.rows.length === 0) {
+      return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
+    }
+
+    return new Response(JSON.stringify(res.rows[0]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
+};
+
+
+export const PUT: APIRoute = async ({ params, request, locals }) => {
   try {
     const id = params.id;
     if (!id) return new Response(JSON.stringify({ error: 'ID required' }), { status: 400 });
@@ -75,9 +98,24 @@ export const PUT: APIRoute = async ({ params, request }) => {
     const total_amount = Math.max(0, subtotal + totalTax - discount);
 
     const updated = await withTransaction(async (client) => {
-      // Verify invoice exists before modifying
-      const check = await client.query('SELECT id FROM invoices WHERE id = $1 FOR UPDATE', [id]);
+      // Verify invoice exists before modifying and retrieve current invoice_number and order_type
+      const check = await client.query('SELECT order_type, invoice_number FROM invoices WHERE id = $1 FOR UPDATE', [id]);
       if (check.rows.length === 0) throw new Error('Invoice not found');
+      
+      const current = check.rows[0];
+      let newInvoiceNumber = current.invoice_number;
+
+      if (parsed.order_type !== current.order_type) {
+        if (parsed.order_type === 'quotation') {
+          newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'EST-');
+        } else if (parsed.order_type === 'lpo' || parsed.order_type === 'proforma') {
+          newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'PRO-');
+        } else if (parsed.order_type === 'delivery_note') {
+          newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'DLN-');
+        } else {
+          newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'INV-');
+        }
+      }
 
       // Upsert customer
       await client.query(
@@ -98,13 +136,15 @@ export const PUT: APIRoute = async ({ params, request }) => {
           billing_address=$6, shipping_address=$7, order_type=$8, source_division=$9,
           issue_date=$10, due_date=$11, subtotal=$12, gst_amount=$13,
           discount_type=$14, discount_value=$15, discount_amount=$16, total_amount=$17, payment_status=$18,
-          internal_notes=$19, show_images=$20, lpo_number=$21, payment_terms=$22, signatory_incharge=$23, updated_at=NOW()
-         WHERE id=$24 RETURNING *`,
+          internal_notes=$19, show_images=$20, lpo_number=$21, payment_terms=$22, signatory_incharge=$23, 
+          invoice_number=$24, updated_at=NOW()
+         WHERE id=$25 RETURNING *`,
         [parsed.customer_name, parsed.customer_email || null, parsed.customer_phone || null,
         parsed.company_name || null, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null,
         parsed.order_type, parsed.source_division || null, parsed.issue_date, parsed.due_date || parsed.issue_date,
         subtotal, totalTax, parsed.discount_type, parsed.discount_value, discount, total_amount, parsed.payment_status,
-        parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null, parsed.signatory_incharge, id]
+        parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null, parsed.signatory_incharge, 
+        newInvoiceNumber, id]
       );
 
       // Wipe and re-insert items (simpler + ACID-safe)
@@ -171,26 +211,32 @@ export const PUT: APIRoute = async ({ params, request }) => {
 
           }
 
-          // Handle image upload if exists (optimized with sharp)
-          if (item.image_base64) {
-            try {
-              resolvedImage = await optimizeAndSaveImage(item.image_base64, productId);
-
-              await client.query(
-                `INSERT INTO product_images (product_id, url, is_primary) VALUES ($1, $2, true)`,
-                [productId, resolvedImage]
-              );
-              
-              await client.query(
-                `UPDATE products SET image_url = $1 WHERE id = $2`,
-                [resolvedImage, productId]
-              );
-            } catch (imgErr) {
-              console.error('Error saving optimized product image:', imgErr);
-            }
-          }
-
         } // Close if (!productId)
+
+        // Handle image upload if exists (optimized with sharp) - works for existing products too!
+        if (item.image_base64 && productId) {
+          try {
+            resolvedImage = await optimizeAndSaveImage(item.image_base64, productId);
+
+            // Clean up old primary images for this product
+            await client.query(
+              `UPDATE product_images SET is_primary = false WHERE product_id = $1`,
+              [productId]
+            );
+
+            await client.query(
+              `INSERT INTO product_images (product_id, url, is_primary) VALUES ($1, $2, true)`,
+              [productId, resolvedImage]
+            );
+            
+            await client.query(
+              `UPDATE products SET image_url = $1 WHERE id = $2`,
+              [resolvedImage, productId]
+            );
+          } catch (imgErr) {
+            console.error('Error saving optimized product image:', imgErr);
+          }
+        }
 
         if (productId && !resolvedImage) {
           const imgRes = await client.query(
@@ -217,7 +263,7 @@ export const PUT: APIRoute = async ({ params, request }) => {
 
       // Inventory Deduction Logic
       const shouldDeduct = parsed.payment_status === 'paid' || parsed.order_type === 'delivery_note';
-      const prevInvoice = await client.query('SELECT inventory_deducted FROM invoices WHERE id = $1', [id]);
+      const prevInvoice = await client.query('SELECT inventory_deducted, order_type, payment_status, invoice_number FROM invoices WHERE id = $1', [id]);
       const alreadyDeducted = prevInvoice.rows[0]?.inventory_deducted;
 
       if (shouldDeduct && !alreadyDeducted) {
@@ -241,6 +287,24 @@ export const PUT: APIRoute = async ({ params, request }) => {
         await client.query('UPDATE invoices SET inventory_deducted = true WHERE id = $1', [id]);
         res.rows[0].inventory_deducted = true;
       }
+
+      // Add audit log record for this edit
+      let detailsMsg = 'Order details updated';
+      let actionType = 'INVOICE_UPDATE';
+
+      if (parsed.order_type !== current.order_type) {
+        detailsMsg = `Converted document ${current.invoice_number} from ${current.order_type} to ${parsed.order_type} (New Document No: ${newInvoiceNumber})`;
+        actionType = 'INVOICE_CONVERT';
+      } else if (parsed.payment_status !== current.payment_status) {
+        detailsMsg = `Status set to ${parsed.payment_status}`;
+        actionType = 'STATUS_CHANGE';
+      }
+
+      await client.query(
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+         VALUES ($1, 'invoices', $2, $3, $4)`,
+        [actionType, id, detailsMsg, locals.user?.id || null]
+      );
 
       return res.rows[0];
     });
@@ -300,13 +364,13 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
       let newInvoiceNumber = current.invoice_number;
 
       if (data.order_type === 'quotation') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|PRO|DLN)-/, 'EST-');
-      } else if (data.order_type === 'lpo') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|DLN)-/, 'PRO-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'EST-');
+      } else if (data.order_type === 'lpo' || data.order_type === 'proforma') {
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'PRO-');
       } else if (data.order_type === 'delivery_note') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO)-/, 'DLN-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'DLN-');
       } else {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(EST|PRO|DLN)-/, 'INV-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'INV-');
       }
 
       await withTransaction(async (client) => {

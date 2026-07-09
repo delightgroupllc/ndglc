@@ -59,16 +59,33 @@ try {
     }
   }
 
-  // Get order audit logs
-  logs = [
-    { action: 'Invoice Generated', date: inv?.created_at || inv?.issue_date, user: 'System' },
-    ...transactions.map(t => ({
-      action: `Payment of AED ${Number(t.amount).toLocaleString()} (${t.payment_method.replace('_', ' ')}) recorded`,
-      date: t.transaction_date,
-      user: 'System'
-    })),
-    { action: `Status set to ${inv?.payment_status}`, date: inv?.updated_at || inv?.created_at, user: 'System' }
-  ];
+  // Get true order audit logs from the database
+  const logsRes = await query(`
+    SELECT al.action, al.details, al.timestamp as date, COALESCE(u.name, 'System') as user
+    FROM audit_logs al
+    LEFT JOIN users u ON u.id = al.user_id
+    WHERE al.entity_id = $1 AND al.entity_type = 'invoices'
+    ORDER BY al.timestamp ASC
+  `, [id]);
+  
+  if (logsRes.rows.length > 0) {
+    logs = logsRes.rows.map(row => ({
+      action: row.details || row.action.replace(/_/g, ' '),
+      date: row.date,
+      user: row.user
+    }));
+  } else {
+    // Fallback if no audit logs exist yet
+    logs = [
+      { action: 'Invoice Generated', date: inv?.created_at || inv?.issue_date, user: 'System' },
+      ...transactions.map(t => ({
+        action: `Payment of AED ${Number(t.amount).toLocaleString()} (${t.payment_method.replace('_', ' ')}) recorded`,
+        date: t.transaction_date,
+        user: 'System'
+      })),
+      { action: `Status set to ${inv?.payment_status}`, date: inv?.updated_at || inv?.created_at, user: 'System' }
+    ];
+  }
 
 } catch (err: any) {
   console.warn('DB error in order details:', err.message);
@@ -327,9 +344,16 @@ const showArchiveAction = !isDraftOrUnconfirmed;
             <tbody class="divide-y divide-slate-100 text-slate-700">
               {items.map(item => (
                 <tr>
-                  <td class="py-3 font-medium">
-                    <span class="block">{item.description}</span>
-                    {item.catalogue_ref && <span class="text-[10px] text-slate-400 font-mono">REF: {item.catalogue_ref}</span>}
+                  <td class="py-3 font-medium flex items-center gap-3">
+                    {inv.show_images && (
+                      <div class="w-10 h-10 rounded border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center shrink-0 shadow-3xs">
+                        <img src={item.item_image || '/no-image.svg'} class="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div>
+                      <span class="block">{item.description}</span>
+                      {item.catalogue_ref && <span class="text-[10px] text-slate-400 font-mono">REF: {item.catalogue_ref}</span>}
+                    </div>
                   </td>
                   <td class="py-3 text-center">{item.quantity}</td>
                   <td class="py-3 text-right font-mono">AED {Number(item.unit_price).toLocaleString()}</td>
@@ -615,22 +639,33 @@ const showArchiveAction = !isDraftOrUnconfirmed;
   </div>
 </div>
 <!-- CONFIRMATION MODAL -->
-<div id="confirm-modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-  <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+<div id="confirm-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="bg-white w-full max-w-md rounded-xl shadow-xl overflow-hidden border border-slate-200/60 animate-in fade-in zoom-in-95 duration-200">
     <div class="p-6">
-      <div class="flex items-center gap-3 mb-4">
-        <div id="confirm-modal-icon-container" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0">
-          <AlertCircle id="confirm-modal-icon" class="w-5 h-5" />
+      <div class="flex items-center gap-4 mb-4">
+        <div id="confirm-modal-icon-container" class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-rose-50 text-rose-700">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
         </div>
-        <h3 id="confirm-modal-title" class="text-lg font-bold text-slate-800">Confirm Action</h3>
+        <div>
+          <h3 id="confirm-modal-title" class="text-base font-bold text-slate-800 tracking-tight leading-tight">Confirm Action</h3>
+          <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Authorization Required</p>
+        </div>
       </div>
-      <p id="confirm-modal-message" class="text-sm font-semibold text-slate-600 mb-6">Are you sure you want to proceed?</p>
       
-      <div class="flex justify-end gap-3">
-        <button type="button" id="confirm-cancel-btn" class="px-4 py-2 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
+      <p id="confirm-modal-message" class="text-sm font-medium text-slate-700 leading-normal mb-1">Would you like to convert this order?</p>
+      
+      <p class="text-[10px] font-medium text-slate-500 italic leading-normal mb-6">
+        Note: This action will freeze the current document state and create a linked document for review.
+      </p>
+      
+      <div class="flex justify-end items-center gap-3">
+        <button type="button" id="confirm-cancel-btn" class="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-850 hover:bg-slate-50 transition-colors">
           Cancel
         </button>
-        <button type="button" id="confirm-proceed-btn" class="px-4 py-2 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors">
+        <button type="button" id="confirm-proceed-btn" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-bold bg-cyan-50 hover:bg-cyan-100/80 text-cyan-800 transition-all border border-cyan-100/50 shadow-2xs">
+          <svg class="w-4 h-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Proceed
         </button>
       </div>

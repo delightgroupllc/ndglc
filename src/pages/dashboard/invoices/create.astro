@@ -68,8 +68,14 @@ if (!isAdmin) {
     const params = new URLSearchParams(window.location.search);
     const editId = params.get('edit');
     if (editId) {
+      // Update heading text
       const titleEl = document.getElementById('page-title-text');
-      if (titleEl) titleEl.textContent = 'Edit Order';
+      if (titleEl) titleEl.textContent = 'Editing Order';
+
+      // Update subtitle description text
+      const subtitleEl = document.querySelector('.space-y-6 > div > div > p');
+      if (subtitleEl) subtitleEl.textContent = 'Modify and update the existing order details.';
+
       // Update back button to go to the invoice detail page
       const backLinks = document.querySelectorAll('a[href="/dashboard/invoices"]');
       backLinks.forEach(link => {
@@ -80,3 +86,4 @@ if (!isAdmin) {
     }
   });
 </script>
+

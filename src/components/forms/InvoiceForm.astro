@@ -510,103 +510,111 @@ const companiesJson = JSON.stringify(companiesList);
       <datalist id="products-name-datalist-${rowId}"></datalist>
       <datalist id="products-ref-datalist-${rowId}"></datalist>
       
-      <!-- Row 1: Product Definition -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <!-- Category -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Category</label>
-          <select class="item-category-select w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 h-9">
-            <option value="">-- All Categories --</option>
-            ${categoryOptionsHtml}
-          </select>
-        </div>
-        <!-- Reference / Catalogue -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Reference / Catalogue</label>
-          <input type="text" name="item_ref" list="products-ref-datalist-${rowId}"
-            value="${data.catalogue_ref || ''}"
-            placeholder="Cat. ref / SKU"
-            class="item-ref-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
-        </div>
-        <!-- Item Name -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Item Name <span class="text-rose-500">*</span></label>
-          <input type="text" name="item_desc" required list="products-name-datalist-${rowId}"
-            value="${data.description || ''}"
-            placeholder="Item name *"
-            class="item-desc-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
-          <p class="desc-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
-        </div>
-        <!-- Technical Spec -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Technical Spec</label>
-          <input type="text" name="item_tech_spec"
-            value="${data.tech_spec || ''}"
-            placeholder="e.g. DN50, PN16, ANSI…"
-            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
-        </div>
-        <!-- Product Image Upload -->
-        <div class="space-y-1.5">
-          <label class="image-upload-label text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block flex items-center">Upload Image (1:1 max 1000px)</label>
-          <div class="flex items-center gap-2">
-            <div class="existing-image-preview ${data.item_image && data.item_image !== '/no-image.svg' ? '' : 'hidden'} w-9 h-9 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
-              <img src="${data.item_image && data.item_image !== '/no-image.svg' ? data.item_image : ''}" class="w-full h-full object-cover" />
+      <div class="flex flex-col md:flex-row gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50/30">
+        <!-- Left Col: Image (approx 20% width) -->
+        <div class="w-full md:w-1/5 space-y-2 border-r border-slate-100 pr-0 md:pr-4 flex flex-col justify-center">
+          <label class="image-upload-label text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Product Image</label>
+          <div class="flex flex-col items-center justify-center gap-3 p-3 bg-white border border-slate-200 rounded-xl shadow-2xs h-32 relative">
+            <div class="existing-image-preview w-16 h-16 rounded-lg bg-slate-50 border border-slate-150 overflow-hidden flex items-center justify-center">
+              <img src="${(data.item_image && data.item_image !== '/no-image.svg') ? data.item_image : '/no-image.svg'}" class="w-full h-full object-cover" />
             </div>
-            <input type="file" name="item_image_upload" accept="image/*" class="item-image-input w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 cursor-pointer" />
+            <label class="cursor-pointer bg-slate-100 hover:bg-cyan-50 border border-slate-200 hover:border-cyan-200 text-slate-600 hover:text-cyan-700 text-[10px] font-bold px-2 py-1 rounded transition-colors text-center w-full truncate">
+              Choose File
+              <input type="file" name="item_image_upload" accept="image/*" class="item-image-input hidden" />
+            </label>
           </div>
         </div>
-      </div>
 
-      <!-- Row 2: Pricing & Taxation -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 items-end">
-        <!-- Quantity -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Qty <span class="text-rose-500">*</span></label>
-          <input type="text" name="item_quantity" required
-            value="${data.quantity || ''}"
-            placeholder="Qty"
-            class="item-qty-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-center h-9" />
-          <p class="qty-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
-        </div>
-        <!-- Unit Price -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Unit Price (AED) <span class="text-rose-500">*</span></label>
-          <div class="relative">
-            <span class="absolute left-3 top-2.5 text-[10px] font-bold text-slate-400">AED</span>
-            <input type="text" name="item_price" required
-              value="${data.unit_price || ''}"
-              placeholder="0.00"
-              class="item-price-input w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
-          </div>
-          <p class="price-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
-        </div>
-        <!-- Tax Type -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Tax / VAT Type</label>
-          <select name="item_tax_type" class="item-tax-type-select w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 h-9">
-            <option value="percentage" ${(data.tax_type === 'percentage' || !data.tax_type) ? 'selected' : ''}>% Percentage</option>
-            <option value="fixed" ${data.tax_type === 'fixed' ? 'selected' : ''}>AED Fixed</option>
-          </select>
-        </div>
-        <!-- Tax Rate / Value -->
-        <div class="space-y-1.5">
-          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Tax Rate / Amount</label>
-          <input type="text" name="item_tax_value"
-            value="${data.tax_value !== undefined ? data.tax_value : (data.tax_rate !== undefined ? data.tax_rate : 5)}"
-            class="item-tax-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
-          <p class="tax-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
-        </div>
-        <!-- Subtotal & Remove -->
-        <div class="flex items-end justify-between gap-3 col-span-2 sm:col-span-1 md:col-span-1">
-          <div class="space-y-1.5 flex-1">
-            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Subtotal</label>
-            <div class="h-9 flex items-center">
-              <span class="item-subtotal text-sm font-extrabold text-cyan-700 tabular-nums font-mono">AED 0.00</span>
+        <!-- Right Col: Fields (approx 80% width) -->
+        <div class="w-full md:w-4/5 flex flex-col justify-between gap-4">
+          <!-- Row 1: Product Definition -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Category -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Category</label>
+              <select class="item-category-select w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 h-9">
+                <option value="">-- All Categories --</option>
+                ${categoryOptionsHtml}
+              </select>
+            </div>
+            <!-- Reference / Catalogue -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Reference / Catalogue</label>
+              <input type="text" name="item_ref" list="products-ref-datalist-${rowId}"
+                value="${data.catalogue_ref || ''}"
+                placeholder="Cat. ref / SKU"
+                class="item-ref-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
+            </div>
+            <!-- Item Name -->
+            <div class="space-y-1.5 md:col-span-2">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Item Name <span class="text-rose-500">*</span></label>
+              <input type="text" name="item_desc" required list="products-name-datalist-${rowId}"
+                value="${data.description || ''}"
+                placeholder="Item name *"
+                class="item-desc-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
+              <p class="desc-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
             </div>
           </div>
-          <button type="button" class="remove-item-btn text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg p-2 transition-colors border border-transparent hover:border-rose-100 self-end h-9 flex items-center justify-center shrink-0" title="Remove row">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
+
+          <!-- Row 2: Specs & Pricing & Taxation -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 items-end">
+            <!-- Technical Spec -->
+            <div class="space-y-1.5 md:col-span-2">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Technical Spec</label>
+              <input type="text" name="item_tech_spec"
+                value="${data.tech_spec || ''}"
+                placeholder="e.g. DN50, PN16, ANSI…"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
+            </div>
+            <!-- Quantity -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Qty <span class="text-rose-500">*</span></label>
+              <input type="text" name="item_quantity" required
+                value="${data.quantity || ''}"
+                placeholder="Qty"
+                class="item-qty-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-center h-9" />
+              <p class="qty-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
+            </div>
+            <!-- Unit Price -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Unit Price (AED) <span class="text-rose-500">*</span></label>
+              <div class="relative">
+                <span class="absolute left-3 top-2.5 text-[10px] font-bold text-slate-400">AED</span>
+                <input type="text" name="item_price" required
+                  value="${data.unit_price || ''}"
+                  placeholder="0.00"
+                  class="item-price-input w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
+              </div>
+              <p class="price-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
+            </div>
+            <!-- Tax Type -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Tax / VAT Type</label>
+              <select name="item_tax_type" class="item-tax-type-select w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 h-9">
+                <option value="percentage" ${(data.tax_type === 'percentage' || !data.tax_type) ? 'selected' : ''}>% Percentage</option>
+                <option value="fixed" ${data.tax_type === 'fixed' ? 'selected' : ''}>AED Fixed</option>
+              </select>
+            </div>
+            <!-- Tax Rate / Value & Subtotal / Remove -->
+            <div class="flex items-end justify-between gap-3">
+              <div class="space-y-1.5 flex-1">
+                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Tax Rate / Amount</label>
+                <input type="text" name="item_tax_value"
+                  value="${data.tax_value !== undefined ? data.tax_value : (data.tax_rate !== undefined ? data.tax_rate : 5)}"
+                  class="item-tax-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
+                <p class="tax-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
+              </div>
+              <div class="space-y-1.5 flex-1">
+                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Subtotal</label>
+                <div class="h-9 flex items-center">
+                  <span class="item-subtotal text-sm font-extrabold text-cyan-700 tabular-nums font-mono">AED 0.00</span>
+                </div>
+              </div>
+              <button type="button" class="remove-item-btn text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg p-2 transition-colors border border-transparent hover:border-rose-100 self-end h-9 flex items-center justify-center shrink-0" title="Remove row">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -652,13 +660,16 @@ const companiesJson = JSON.stringify(companiesList);
         ? allProducts.filter(p => p.category_id === selectedCatId)
         : allProducts;
 
-      nameDatalist.innerHTML = filtered.map(p => 
-        `<option value="${p.name}" data-id="${p.id}" data-sku="${p.sku || ''}" data-category="${p.category_id}"></option>`
-      ).join('');
+      nameDatalist.innerHTML = filtered.map(p => {
+        const safeName = (p.name || '').replace(/"/g, '&quot;');
+        return `<option value="${safeName}" data-id="${p.id}" data-sku="${p.sku || ''}" data-category="${p.category_id}"></option>`;
+      }).join('');
 
-      refDatalist.innerHTML = filtered.filter(p => p.sku).map(p => 
-        `<option value="${p.sku}" data-id="${p.id}" data-name="${p.name}" data-category="${p.category_id}"></option>`
-      ).join('');
+      refDatalist.innerHTML = filtered.filter(p => p.sku).map(p => {
+        const safeSku = (p.sku || '').replace(/"/g, '&quot;');
+        const safeName = (p.name || '').replace(/"/g, '&quot;');
+        return `<option value="${safeSku}" data-id="${p.id}" data-name="${safeName}" data-category="${p.category_id}"></option>`;
+      }).join('');
     };
 
     // Initialize datalists
@@ -699,11 +710,11 @@ const companiesJson = JSON.stringify(companiesList);
     div.querySelector('.item-tax-type-select')?.addEventListener('change', bindCalc);
 
     // SKU Autocomplete Handler
-    refInput.addEventListener('input', (e) => {
+    const handleSkuChange = (e: Event) => {
       const val = (e.target as HTMLInputElement).value.trim().toLowerCase();
       if (!val) return;
       
-      const match = allProducts.find(p => p.sku && p.sku.toLowerCase() === val);
+      const match = allProducts.find(p => p.sku && p.sku.trim().toLowerCase() === val);
       if (match) {
         descInput.value = match.name || '';
         prodIdInput.value = match.id || '';
@@ -720,23 +731,20 @@ const companiesJson = JSON.stringify(companiesList);
         // Show existing image preview
         const previewDiv = div.querySelector('.existing-image-preview');
         const previewImg = previewDiv?.querySelector('img');
-        if (match.image_url && match.image_url !== '/no-image.svg') {
-          if (previewDiv && previewImg) {
-             previewImg.src = match.image_url;
-             previewDiv.classList.remove('hidden');
-          }
-        } else {
-          if (previewDiv) previewDiv.classList.add('hidden');
+        if (previewImg) {
+          previewImg.src = (match.image_url && match.image_url !== '/no-image.svg') ? match.image_url : '/no-image.svg';
         }
       }
-    });
+    };
+    refInput.addEventListener('input', handleSkuChange);
+    refInput.addEventListener('change', handleSkuChange);
 
     // Name Autocomplete Handler
-    descInput.addEventListener('input', (e) => {
+    const handleNameChange = (e: Event) => {
       const val = (e.target as HTMLInputElement).value.trim().toLowerCase();
       if (!val) return;
       
-      const match = allProducts.find(p => p.name.toLowerCase() === val);
+      const match = allProducts.find(p => p.name && p.name.trim().toLowerCase() === val);
       if (match) {
         refInput.value = match.sku || '';
         prodIdInput.value = match.id || '';
@@ -753,16 +761,13 @@ const companiesJson = JSON.stringify(companiesList);
         // Show existing image preview
         const previewDiv = div.querySelector('.existing-image-preview');
         const previewImg = previewDiv?.querySelector('img');
-        if (match.image_url && match.image_url !== '/no-image.svg') {
-          if (previewDiv && previewImg) {
-             previewImg.src = match.image_url;
-             previewDiv.classList.remove('hidden');
-          }
-        } else {
-          if (previewDiv) previewDiv.classList.add('hidden');
+        if (previewImg) {
+          previewImg.src = (match.image_url && match.image_url !== '/no-image.svg') ? match.image_url : '/no-image.svg';
         }
       }
-    });
+    };
+    descInput.addEventListener('input', handleNameChange);
+    descInput.addEventListener('change', handleNameChange);
 
     // Remove row handler
     div.querySelector('.remove-item-btn')?.addEventListener('click', () => {
@@ -825,10 +830,16 @@ const companiesJson = JSON.stringify(companiesList);
       if (prodId) {
         const prod = allProducts.find(p => p.id === prodId);
         if (prod) {
+          // Check division name on the product directly
+          const divName = (prod.division_name || '').toLowerCase();
+          if (divName.includes('dtl') || divName.includes('technical lighting')) hasDTL = true;
+          if (divName.includes('dgs') || divName.includes('greenscapes')) hasDGS = true;
+
           const cat = allCategories.find(c => c.id === prod.category_id);
           if (cat) {
-            if (cat.name?.toLowerCase().includes('dtl') || cat.division_id === 'DTL') hasDTL = true;
-            if (cat.name?.toLowerCase().includes('dgs') || cat.division_id === 'DGS') hasDGS = true;
+            const catDiv = (cat.division_name || '').toLowerCase();
+            if (cat.name?.toLowerCase().includes('dtl') || cat.division_id === 'DTL' || catDiv.includes('dtl')) hasDTL = true;
+            if (cat.name?.toLowerCase().includes('dgs') || cat.division_id === 'DGS' || catDiv.includes('dgs')) hasDGS = true;
           }
         }
       }
@@ -839,7 +850,7 @@ const companiesJson = JSON.stringify(companiesList);
     else if (hasDTL) newDiv = 'DTL';
     else if (hasDGS) newDiv = 'DGS';
     
-    if (divisionSelect.value !== newDiv) {
+    if (newDiv && divisionSelect.value !== newDiv) {
       divisionSelect.value = newDiv;
       divisionSelect.dispatchEvent(new Event('change'));
     }
@@ -1199,27 +1210,27 @@ const companiesJson = JSON.stringify(companiesList);
       if (selectedDiv === 'DTL') {
         dtlTermsGroup?.classList.remove('hidden');
         dgsTermsGroup?.classList.add('hidden');
-        if (isManualChange && lastSelectedDiv !== 'DTL') {
+        if (lastSelectedDiv !== 'DTL') {
            dgsTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
            dtlTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = true);
         }
       } else if (selectedDiv === 'DGS') {
         dgsTermsGroup?.classList.remove('hidden');
         dtlTermsGroup?.classList.add('hidden');
-        if (isManualChange && lastSelectedDiv !== 'DGS') {
+        if (lastSelectedDiv !== 'DGS') {
            dtlTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
            dgsTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = true);
         }
       } else if (selectedDiv === 'both') {
         dtlTermsGroup?.classList.remove('hidden');
         dgsTermsGroup?.classList.remove('hidden');
-        if (isManualChange && lastSelectedDiv !== 'both') {
+        if (lastSelectedDiv !== 'both') {
            document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = true);
         }
       } else {
         dtlTermsGroup?.classList.add('hidden');
         dgsTermsGroup?.classList.add('hidden');
-        if (isManualChange && lastSelectedDiv !== '') {
+        if (lastSelectedDiv !== '') {
            document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
         }
       }
@@ -1357,8 +1368,15 @@ const companiesJson = JSON.stringify(companiesList);
         .then(inv => {
           if (inv.error) throw new Error(inv.error);
           
-          (document.getElementById('invoice-submit-btn') as HTMLButtonElement).textContent = 'Update Invoice';
+          (document.getElementById('invoice-submit-btn') as HTMLButtonElement).textContent = 'Update Order';
           (document.getElementById('invoice-id') as HTMLInputElement).value = inv.id || '';
+          
+          // Dynamically change page title to "Editing Order" instead of "Generate Order"
+          const pageTitleText = document.getElementById('page-title-text');
+          if (pageTitleText) {
+            pageTitleText.textContent = 'Editing Order';
+          }
+
           
           const customerCodeStr = inv.customer_code ? ` (${inv.customer_code})` : '';
           (document.getElementById('invoice-customer-name') as HTMLInputElement).value = (inv.customer_name || '') + customerCodeStr;
@@ -1436,6 +1454,7 @@ const companiesJson = JSON.stringify(companiesList);
             unit_price: item.unit_price,
             tax_type: item.tax_type || 'percentage',
             tax_value: item.tax_value !== undefined ? item.tax_value : (item.tax_rate ?? 5),
+            item_image: item.item_image,
           }));
           if (items.length === 0) {
             addRow();
@@ -1573,7 +1592,8 @@ const companiesJson = JSON.stringify(companiesList);
         });
 
         if (res.status === 409) {
-          const result = await res.json();
+          const cloneRes = res.clone();
+          const result = await cloneRes.json();
           if (confirm(result.error + '\n\nDo you want to proceed and save this invoice anyway?')) {
             payload.bypassDuplicateCheck = true;
             res = await fetch(url, {
@@ -1581,6 +1601,12 @@ const companiesJson = JSON.stringify(companiesList);
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload),
             });
+          } else {
+            // User cancelled duplicate creation - reset buttons and return
+            submitBtn.disabled = false;
+            draftBtn.disabled = false;
+            submitBtn.textContent = origSubmit;
+            return;
           }
         }
 
@@ -1640,6 +1666,18 @@ const companiesJson = JSON.stringify(companiesList);
     };
 
     form.addEventListener('submit', (e) => { e.preventDefault(); submitInvoice(false); });
+    
+    // Prevent Enter key from submitting the form when typing in text fields
+    form.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const target = e.target as HTMLElement;
+        // Allow Enter to submit only if pressed inside textarea fields or buttons
+        if (target.tagName !== 'TEXTAREA' && target.tagName !== 'BUTTON') {
+          e.preventDefault();
+        }
+      }
+    });
+
     document.getElementById('invoice-draft-btn')?.addEventListener('click', () => submitInvoice(true));
   };
 
