@@ -15,8 +15,8 @@ const companySchema = z.object({
   customers: z.array(z.object({
     code: z.string().optional().nullable(),
     name: z.string().min(1, 'Customer Name is required'),
-    email: z.string().optional().nullable(),
-    phone: z.string().optional().nullable(),
+    email: z.string().email('Invalid email format').optional().or(z.literal('')).nullable(),
+    phone: z.string().regex(/^\+?[\d\s\-()]{7,25}$/, 'Invalid phone number format (7-25 characters: digits, spaces, dashes, parentheses, or +)').optional().or(z.literal('')).nullable(),
     billing_address: z.string().optional().nullable(),
     shipping_address: z.string().optional().nullable(),
     is_default: z.boolean().default(false)
@@ -37,8 +37,8 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
         if (compRes.rows.length === 0) throw new Error('Company not found');
         const compName = compRes.rows[0].name;
 
-        await client.query('DELETE FROM companies WHERE id = $1', [id]);
         await client.query('UPDATE customers SET company_id = NULL, company_name = NULL WHERE company_id = $1', [id]);
+        await client.query('DELETE FROM companies WHERE id = $1', [id]);
         await client.query(
           `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
            VALUES ('COMPANY_DELETE', 'companies', $1, $2, $3)`,
@@ -140,11 +140,11 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
       if (compRes.rows.length === 0) throw new Error('Company not found');
       const compName = compRes.rows[0].name;
 
-      // Delete company
-      await client.query('DELETE FROM companies WHERE id = $1', [id]);
-
       // Unlink customers
       await client.query('UPDATE customers SET company_id = NULL, company_name = NULL WHERE company_id = $1', [id]);
+
+      // Delete company
+      await client.query('DELETE FROM companies WHERE id = $1', [id]);
 
       // Insert Audit Log
       await client.query(

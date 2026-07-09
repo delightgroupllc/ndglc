@@ -43,6 +43,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 
       if (parsed.action) {
         if (parsed.action === 'permanent_remove') {
+          await client.query('UPDATE companies SET default_customer_id = NULL WHERE default_customer_id = $1', [id]);
           await client.query('DELETE FROM customers WHERE id = $1', [id]);
           await client.query(
             `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
@@ -169,6 +170,7 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
       }
       const name = curRes.rows[0].name;
 
+      await client.query('UPDATE companies SET default_customer_id = NULL WHERE default_customer_id = $1', [id]);
       await client.query('DELETE FROM customers WHERE id = $1', [id]);
 
       // Log deletion

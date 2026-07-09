@@ -520,7 +520,145 @@ try {
     </div>
   </div>
 
+  <!-- CUSTOM CONFIRMATION MODAL -->
+  <div id="confirm-dialog-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4 animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-amber-50 rounded-lg text-amber-600">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <h3 id="confirm-modal-title" class="text-sm font-black text-slate-900 uppercase tracking-wider">Confirm Action</h3>
+      </div>
+      <p id="confirm-modal-message" class="text-xs text-slate-600 font-semibold leading-relaxed"></p>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" id="btn-confirm-cancel" class="px-4 py-2 rounded-lg text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
+          Cancel
+        </button>
+        <button type="button" id="btn-confirm-proceed" class="px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors shadow-sm">
+          Proceed
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM MERGE MODAL -->
+  <div id="merge-dialog-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4 animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-cyan-50 rounded-lg text-cyan-600">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+        </div>
+        <h3 id="merge-modal-title" class="text-sm font-black text-slate-900 uppercase tracking-wider">Merge Entities</h3>
+      </div>
+      <p id="merge-modal-description" class="text-xs text-slate-600 font-semibold leading-relaxed">
+        Enter the code of the primary entity to merge this duplicate into. All invoices and linked records will be updated to point to the primary entity, and this duplicate will be deleted.
+      </p>
+      
+      <div class="space-y-1">
+        <label id="merge-modal-label" class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Primary Entity Code *</label>
+        <input type="text" id="merge-primary-code-input" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" placeholder="e.g. CUS-1011" />
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" id="btn-merge-cancel" class="px-4 py-2 rounded-lg text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
+          Cancel
+        </button>
+        <button type="button" id="btn-merge-proceed" class="px-4 py-2 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors shadow-sm">
+          Merge Entities
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    const showConfirmDialog = (title: string, message: string, confirmText = 'Proceed', isDestructive = true): Promise<boolean> => {
+      const backdrop = document.getElementById('confirm-dialog-modal-backdrop');
+      const titleEl = document.getElementById('confirm-modal-title');
+      const msgEl = document.getElementById('confirm-modal-message');
+      const proceedBtn = document.getElementById('btn-confirm-proceed') as HTMLButtonElement | null;
+      const cancelBtn = document.getElementById('btn-confirm-cancel');
+
+      if (!backdrop || !titleEl || !msgEl || !proceedBtn || !cancelBtn) {
+        return Promise.resolve(false);
+      }
+
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      proceedBtn.textContent = confirmText;
+
+      if (isDestructive) {
+        proceedBtn.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors shadow-sm';
+      } else {
+        proceedBtn.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors shadow-sm';
+      }
+
+      backdrop.classList.remove('hidden');
+      backdrop.classList.add('flex');
+
+      return new Promise<boolean>((resolve) => {
+        const cleanup = (value: boolean) => {
+          backdrop.classList.add('hidden');
+          backdrop.classList.remove('flex');
+          proceedBtn.removeEventListener('click', onProceed);
+          cancelBtn.removeEventListener('click', onCancel);
+          resolve(value);
+        };
+
+        const onProceed = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+
+        proceedBtn.addEventListener('click', onProceed);
+        cancelBtn.addEventListener('click', onCancel);
+      });
+    };
+
+    const showMergeDialog = (title: string, description: string, label: string, placeholder: string, codePrefix: string): Promise<string | null> => {
+      const backdrop = document.getElementById('merge-dialog-modal-backdrop');
+      const titleEl = document.getElementById('merge-modal-title');
+      const descEl = document.getElementById('merge-modal-description');
+      const labelEl = document.getElementById('merge-modal-label');
+      const inputEl = document.getElementById('merge-primary-code-input') as HTMLInputElement | null;
+      const proceedBtn = document.getElementById('btn-merge-proceed');
+      const cancelBtn = document.getElementById('btn-merge-cancel');
+
+      if (!backdrop || !titleEl || !descEl || !labelEl || !inputEl || !proceedBtn || !cancelBtn) {
+        return Promise.resolve(null);
+      }
+
+      titleEl.textContent = title;
+      descEl.textContent = description;
+      labelEl.textContent = label;
+      inputEl.placeholder = placeholder;
+      inputEl.value = '';
+
+      backdrop.classList.remove('hidden');
+      backdrop.classList.add('flex');
+      inputEl.focus();
+
+      return new Promise<string | null>((resolve) => {
+        const cleanup = (value: string | null) => {
+          backdrop.classList.add('hidden');
+          backdrop.classList.remove('flex');
+          proceedBtn.removeEventListener('click', onProceed);
+          cancelBtn.removeEventListener('click', onCancel);
+          resolve(value);
+        };
+
+        const onProceed = () => {
+          const val = inputEl.value.trim().toUpperCase();
+          if (!val.startsWith(codePrefix)) {
+            alert(`Invalid code. Must start with ${codePrefix}`);
+            return;
+          }
+          cleanup(val);
+        };
+        const onCancel = () => cleanup(null);
+
+        proceedBtn.addEventListener('click', onProceed);
+        cancelBtn.addEventListener('click', onCancel);
+      });
+    };
+
     const searchInput = document.getElementById('admin-search-users') as HTMLInputElement | null;
     const userRows = document.querySelectorAll('.admin-user-row');
     const customerRows = document.querySelectorAll('.admin-customer-row');
@@ -1192,7 +1330,13 @@ try {
 
         if (res.status === 409) {
           const err = await res.json();
-          if (confirm((err.error || 'A similar company already exists.') + '\n\nDo you want to proceed and save anyway?')) {
+          const proceed = await showConfirmDialog(
+            'Duplicate Warning',
+            (err.error || 'A similar company already exists.') + '\n\nDo you want to proceed and save anyway?',
+            'Save Anyway',
+            false
+          );
+          if (proceed) {
             payload.bypassDuplicateCheck = true;
             res = await fetch(url, {
               method,
@@ -1223,7 +1367,13 @@ try {
       const target = e.currentTarget as HTMLButtonElement;
       const companyId = target.getAttribute('data-id') || '';
 
-      if (!confirm('Are you sure you want to permanently delete this company? This will unlink all associated customers and cannot be undone.')) {
+      const proceed = await showConfirmDialog(
+        'Delete Company',
+        'Are you sure you want to permanently delete this company? This will unlink all associated customers and cannot be undone.',
+        'Delete Permanently',
+        true
+      );
+      if (!proceed) {
         return;
       }
 
@@ -1255,16 +1405,22 @@ try {
       const companyId = target.getAttribute('data-id') || '';
       if (!companyId) return;
 
-      const targetCode = prompt('Enter the COMPANY CODE (e.g., COM-1398) of the primary company to merge this company into:');
+      const targetCode = await showMergeDialog(
+        'Merge Companies',
+        'Merge this duplicate company into a primary company. All linked customers and invoices will be reassigned to the primary company, and the current duplicate company will be deleted.',
+        'Primary Company Code *',
+        'e.g. COM-1398',
+        'COM-'
+      );
       if (!targetCode) return;
 
-      const cleanedCode = targetCode.trim().toUpperCase();
-      if (!cleanedCode.startsWith('COM-')) {
-        alert('Invalid company code. Must start with COM-');
-        return;
-      }
-
-      if (!confirm(`Are you sure you want to merge this company into ${cleanedCode}?\n\nThis will link all customers and invoices to ${cleanedCode} and delete the current company. This cannot be undone.`)) {
+      const proceed = await showConfirmDialog(
+        'Confirm Company Merge',
+        `Are you sure you want to merge this company into ${targetCode}? This will link all customers and invoices to ${targetCode} and delete the current company. This cannot be undone.`,
+        'Merge Company',
+        false
+      );
+      if (!proceed) {
         return;
       }
 
@@ -1275,7 +1431,7 @@ try {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             entityType: 'company',
-            primaryCode: cleanedCode,
+            primaryCode: targetCode,
             duplicateId: companyId
           })
         });
@@ -1369,7 +1525,13 @@ try {
 
         if (res.status === 409) {
           const err = await res.json();
-          if (confirm((err.error || 'A similar customer already exists.') + '\n\nDo you want to proceed and save anyway?')) {
+          const proceed = await showConfirmDialog(
+            'Duplicate Warning',
+            (err.error || 'A similar customer already exists.') + '\n\nDo you want to proceed and save anyway?',
+            'Save Anyway',
+            false
+          );
+          if (proceed) {
             payload.bypassDuplicateCheck = true;
             res = await fetch(url, {
               method,
@@ -1397,20 +1559,23 @@ try {
 
     // Archive/Unarchive/Restore Trigger
     document.getElementById('btn-modal-archive-customer')?.addEventListener('click', async (e) => {
-      console.log('Archive button clicked!');
-      alert('Archive button clicked!');
       const target = e.currentTarget as HTMLButtonElement;
       const customerId = target.getAttribute('data-id') || '';
       const action = target.getAttribute('data-action') || 'archive';
       const hasOrders = target.getAttribute('data-has-orders') === 'true';
       const isCurrentlyArchived = target.getAttribute('data-archived') === 'true';
-      console.log('Archive debug:', { customerId, action, hasOrders, isCurrentlyArchived });
 
       if (hasOrders) {
         const warnMsg = action === 'restore' 
           ? 'Warning: This customer has orders linked to them. Do you still want to restore them?'
           : 'Warning: This customer has orders linked to them. Modifying their status could affect historical billing. Do you still want to proceed?';
-        if (!confirm(warnMsg)) return;
+        const proceed = await showConfirmDialog(
+          action === 'restore' ? 'Restore Customer' : 'Archive Customer',
+          warnMsg,
+          action === 'restore' ? 'Restore' : 'Archive',
+          false
+        );
+        if (!proceed) return;
       }
 
       target.disabled = true;
@@ -1443,36 +1608,47 @@ try {
 
     // Delete / Permanent Delete Trigger
     document.getElementById('btn-modal-delete-customer')?.addEventListener('click', async (e) => {
-      console.log('Delete button clicked!');
-      alert('Delete button clicked!');
       const target = e.currentTarget as HTMLButtonElement;
       const customerId = target.getAttribute('data-id') || '';
       const action = target.getAttribute('data-action') || 'soft_delete';
       const hasOrders = target.getAttribute('data-has-orders') === 'true';
-      console.log('Delete debug:', { customerId, action, hasOrders });
 
+      let proceed = false;
       if (action === 'permanent_delete') {
         if (hasOrders) {
-          if (!confirm('Warning: This customer has orders linked to them. Permanently deleting this customer cannot be undone and will impact billing history. Do you still want to proceed?')) {
-            return;
-          }
+          proceed = await showConfirmDialog(
+            'Delete Customer Permanently',
+            'Warning: This customer has orders linked to them. Permanently deleting this customer cannot be undone and will impact billing history. Do you still want to proceed?',
+            'Delete Permanently',
+            true
+          );
         } else {
-          if (!confirm('Are you sure you want to permanently delete this customer? This action cannot be undone.')) {
-            return;
-          }
+          proceed = await showConfirmDialog(
+            'Delete Customer Permanently',
+            'Are you sure you want to permanently delete this customer? This action cannot be undone.',
+            'Delete Permanently',
+            true
+          );
         }
       } else {
         // Soft delete (move to bin)
         if (hasOrders) {
-          if (!confirm('Warning: This customer has orders linked to them. Deleting them could affect historical billing. Do you still want to proceed?')) {
-            return;
-          }
+          proceed = await showConfirmDialog(
+            'Move Customer to Bin',
+            'Warning: This customer has orders linked to them. Deleting them could affect historical billing. Do you still want to proceed?',
+            'Move to Bin',
+            true
+          );
         } else {
-          if (!confirm('Are you sure you want to move this customer to the recycle bin?')) {
-            return;
-          }
+          proceed = await showConfirmDialog(
+            'Move Customer to Bin',
+            'Are you sure you want to move this customer to the recycle bin?',
+            'Move to Bin',
+            true
+          );
         }
       }
+      if (!proceed) return;
 
       target.disabled = true;
 
@@ -1514,23 +1690,26 @@ try {
 
     // Merge Customer Trigger
     document.getElementById('btn-modal-merge-customer')?.addEventListener('click', async (e) => {
-      console.log('Merge button clicked!');
-      alert('Merge button clicked!');
       const target = e.currentTarget as HTMLButtonElement;
       const customerId = target.getAttribute('data-id') || '';
-      console.log('Merge debug:', { customerId });
       if (!customerId) return;
 
-      const targetCode = prompt('Enter the CUSTOMER CODE (e.g., CUS-1011) of the primary customer to merge this customer into:');
+      const targetCode = await showMergeDialog(
+        'Merge Customers',
+        'Merge this duplicate customer into a primary customer. All linked invoices will be reassigned to the primary customer, and the current duplicate customer will be deleted.',
+        'Primary Customer Code *',
+        'e.g. CUS-1011',
+        'CUS-'
+      );
       if (!targetCode) return;
 
-      const cleanedCode = targetCode.trim().toUpperCase();
-      if (!cleanedCode.startsWith('CUS-')) {
-        alert('Invalid customer code. Must start with CUS-');
-        return;
-      }
-
-      if (!confirm(`Are you sure you want to merge this customer into ${cleanedCode}?\n\nThis will re-link all invoices to ${cleanedCode} and delete the current customer. This cannot be undone.`)) {
+      const proceed = await showConfirmDialog(
+        'Confirm Customer Merge',
+        `Are you sure you want to merge this customer into ${targetCode}? This will re-link all invoices to ${targetCode} and delete the current customer. This cannot be undone.`,
+        'Merge Customer',
+        false
+      );
+      if (!proceed) {
         return;
       }
 
@@ -1541,7 +1720,7 @@ try {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             entityType: 'customer',
-            primaryCode: cleanedCode,
+            primaryCode: targetCode,
             duplicateId: customerId
           })
         });

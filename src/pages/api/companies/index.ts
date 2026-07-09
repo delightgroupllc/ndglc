@@ -13,8 +13,8 @@ const companySchema = z.object({
   customers: z.array(z.object({
     code: z.string().optional().nullable(),
     name: z.string().min(1, 'Customer Name is required'),
-    email: z.string().optional().nullable(),
-    phone: z.string().optional().nullable(),
+    email: z.string().email('Invalid email format').optional().or(z.literal('')).nullable(),
+    phone: z.string().regex(/^\+?[\d\s\-()]{7,25}$/, 'Invalid phone number format (7-25 characters: digits, spaces, dashes, parentheses, or +)').optional().or(z.literal('')).nullable(),
     billing_address: z.string().optional().nullable(),
     shipping_address: z.string().optional().nullable(),
     is_default: z.boolean().default(false)

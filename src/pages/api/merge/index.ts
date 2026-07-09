@@ -73,6 +73,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
           [primary.name, primary.email || null, primary.phone || null, duplicate.name]
         );
 
+        // Update default_customer_id on companies to primaryId if it was duplicateId
+        await client.query(
+          `UPDATE companies SET default_customer_id = $1 WHERE default_customer_id = $2`,
+          [primaryId, parsed.duplicateId]
+        );
+
         // 2. Delete duplicate customer
         await client.query(`DELETE FROM customers WHERE id = $1`, [parsed.duplicateId]);
 
