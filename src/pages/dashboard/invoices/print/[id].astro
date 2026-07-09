@@ -1746,19 +1746,40 @@ const isTermChecked = (identifier: string): boolean => {
       const root = document.getElementById('print-root-container');
       const orderType = root?.getAttribute('data-order-type');
       const invoiceId = root?.getAttribute('data-id');
+      const currentInvoiceNumber = root?.getAttribute('data-invoice-number');
 
-      if (val === 'ESTIMATION / QUOTE' && orderType !== 'quotation') {
+      let targetOrderType = null;
+      let targetPrefix = null;
+      let promptMsg = null;
+
+      if (val === 'ESTIMATION / QUOTE') {
+         targetOrderType = 'quotation';
+         targetPrefix = 'EST-';
+         promptMsg = 'Would you like to convert this order to an Estimation/Quotation (EST)?';
+      } else if (val === 'PRO FORMA INVOICE') {
+         targetOrderType = 'lpo';
+         targetPrefix = 'PRO-';
+         promptMsg = 'Would you like to convert this order to a Pro Forma Invoice (PRO)?';
+      } else if (val === 'TAX INVOICE') {
+         targetOrderType = 'standard';
+         targetPrefix = 'INV-';
+         promptMsg = 'Would you like to convert this order to a Tax Invoice (INV)?';
+      }
+
+      const needsConversion = targetOrderType && (orderType !== targetOrderType || (currentInvoiceNumber && !currentInvoiceNumber.startsWith(targetPrefix)));
+
+      if (needsConversion) {
         if (e.isTrusted) {
-          if (confirm('Would you like to convert this order to an Estimation/Quotation?')) {
+          if (confirm(promptMsg)) {
             try {
               const res = await fetch(`/api/invoices/${invoiceId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ order_type: 'quotation' })
+                body: JSON.stringify({ order_type: targetOrderType })
               });
               const result = await res.json();
               if (res.ok) {
-                alert('Order successfully converted to Estimation/Quotation!');
+                alert('Order successfully converted!');
                 window.location.reload();
                 return;
               } else {

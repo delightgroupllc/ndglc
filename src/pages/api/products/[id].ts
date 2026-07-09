@@ -16,7 +16,7 @@ const productSchema = z.object({
     value: z.string()
   })).optional().default([]),
   featured: z.string().transform((v) => v === 'true').or(z.boolean()),
-  status: z.enum(['active', 'inactive', 'draft'])
+  status: z.enum(['active', 'inactive', 'draft', 'deleted'])
 });
 
 export const PUT: APIRoute = async ({ params, request }) => {

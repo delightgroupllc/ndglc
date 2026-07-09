@@ -196,30 +196,27 @@ invoices = invoices.map(inv => {
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           Billing Workflow
         </button>
-        <button 
-          type="button" 
-          id="btn-show-archived"
-          class="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-3xs"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M21 8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M22 3H2v4h20V3z"/><path d="M10 12h4"/></svg>
-          Archived
-        </button>
-        <button 
-          type="button" 
-          id="btn-show-deleted"
-          class="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-3xs"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-          Trash
-        </button>
+        <!-- Sub-filters: Active, Archived, Bin -->
+        <div id="invoice-filter-group" class="flex gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 animate-fade-in shrink-0 hidden sm:flex">
+          <button id="btn-inv-active" class="px-3 py-1 text-xs font-bold text-cyan-700 bg-white rounded-md shadow-xs transition-all focus:outline-none">
+            Active
+          </button>
+          <button id="btn-inv-archived" class="px-3 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-md transition-all focus:outline-none">
+            Archived
+          </button>
+          <button id="btn-inv-bin" class="px-3 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-md transition-all focus:outline-none">
+            Bin (Trash)
+          </button>
+        </div>
+
         {isAdmin && (
           <button 
             type="button" 
             onclick="document.dispatchEvent(new CustomEvent('open-invoice-modal', { detail: { invoice: null } }))"
-            class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
+            class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm shrink-0"
           >
-            <PlusCircle class="h-4 w-4" />
-            Generate Invoice
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+            Create Order
           </button>
         )}
       </div>
@@ -794,49 +791,53 @@ invoices = invoices.map(inv => {
     sortSelect?.addEventListener('change', filterAndSortInvoices);
 
     // Sync header button states with status filter dropdown
-    const btnShowArchived = document.getElementById('btn-show-archived');
-    const btnShowDeleted = document.getElementById('btn-show-deleted');
+    const btnInvActive = document.getElementById('btn-inv-active');
+    const btnInvArchived = document.getElementById('btn-inv-archived');
+    const btnInvBin = document.getElementById('btn-inv-bin');
 
     function updateHeaderButtonsState() {
       const currentStatus = statusFilter?.value || '';
       
-      // Update Archived Button
-      if (currentStatus === 'archived') {
-        btnShowArchived?.classList.remove('bg-white', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-50');
-        btnShowArchived?.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-300', 'hover:bg-amber-100');
-      } else {
-        btnShowArchived?.classList.add('bg-white', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-50');
-        btnShowArchived?.classList.remove('bg-amber-50', 'text-amber-700', 'border-amber-300', 'hover:bg-amber-100');
-      }
+      const activeClass = ['text-cyan-700', 'bg-white', 'shadow-xs'];
+      const inactiveClass = ['text-slate-600', 'bg-transparent', 'shadow-none'];
 
-      // Update Deleted Button
-      if (currentStatus === 'deleted') {
-        btnShowDeleted?.classList.remove('bg-white', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-50');
-        btnShowDeleted?.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-300', 'hover:bg-rose-100');
-      } else {
-        btnShowDeleted?.classList.add('bg-white', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-50');
-        btnShowDeleted?.classList.remove('bg-rose-50', 'text-rose-700', 'border-rose-300', 'hover:bg-rose-100');
+      // Reset all buttons
+      [btnInvActive, btnInvArchived, btnInvBin].forEach(btn => {
+        if (!btn) return;
+        btn.classList.remove(...activeClass);
+        btn.classList.add(...inactiveClass);
+      });
+
+      // Apply active style
+      if (currentStatus === 'archived' && btnInvArchived) {
+        btnInvArchived.classList.remove(...inactiveClass);
+        btnInvArchived.classList.add(...activeClass);
+      } else if (currentStatus === 'deleted' && btnInvBin) {
+        btnInvBin.classList.remove(...inactiveClass);
+        btnInvBin.classList.add(...activeClass);
+      } else if (btnInvActive) {
+        btnInvActive.classList.remove(...inactiveClass);
+        btnInvActive.classList.add(...activeClass);
       }
     }
 
-    btnShowArchived?.addEventListener('click', () => {
+    btnInvActive?.addEventListener('click', () => {
       if (statusFilter) {
-        if (statusFilter.value === 'archived') {
-          statusFilter.value = '';
-        } else {
-          statusFilter.value = 'archived';
-        }
+        statusFilter.value = '';
         statusFilter.dispatchEvent(new Event('change'));
       }
     });
 
-    btnShowDeleted?.addEventListener('click', () => {
+    btnInvArchived?.addEventListener('click', () => {
       if (statusFilter) {
-        if (statusFilter.value === 'deleted') {
-          statusFilter.value = '';
-        } else {
-          statusFilter.value = 'deleted';
-        }
+        statusFilter.value = 'archived';
+        statusFilter.dispatchEvent(new Event('change'));
+      }
+    });
+
+    btnInvBin?.addEventListener('click', () => {
+      if (statusFilter) {
+        statusFilter.value = 'deleted';
         statusFilter.dispatchEvent(new Event('change'));
       }
     });

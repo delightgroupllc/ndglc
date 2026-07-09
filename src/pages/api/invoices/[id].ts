@@ -299,14 +299,15 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
       const oldType = current.order_type;
       let newInvoiceNumber = current.invoice_number;
 
-      if (data.order_type === 'quotation' && oldType !== 'quotation') {
-        if (newInvoiceNumber.startsWith('INV-')) {
-          newInvoiceNumber = newInvoiceNumber.replace('INV-', 'EST-');
-        }
-      } else if (data.order_type !== 'quotation' && oldType === 'quotation') {
-        if (newInvoiceNumber.startsWith('EST-')) {
-          newInvoiceNumber = newInvoiceNumber.replace('EST-', 'INV-');
-        }
+      if (data.order_type === 'quotation') {
+        if (newInvoiceNumber.startsWith('INV-')) newInvoiceNumber = newInvoiceNumber.replace('INV-', 'EST-');
+        if (newInvoiceNumber.startsWith('PRO-')) newInvoiceNumber = newInvoiceNumber.replace('PRO-', 'EST-');
+      } else if (data.order_type === 'lpo') {
+        if (newInvoiceNumber.startsWith('INV-')) newInvoiceNumber = newInvoiceNumber.replace('INV-', 'PRO-');
+        if (newInvoiceNumber.startsWith('EST-')) newInvoiceNumber = newInvoiceNumber.replace('EST-', 'PRO-');
+      } else {
+        if (newInvoiceNumber.startsWith('EST-')) newInvoiceNumber = newInvoiceNumber.replace('EST-', 'INV-');
+        if (newInvoiceNumber.startsWith('PRO-')) newInvoiceNumber = newInvoiceNumber.replace('PRO-', 'INV-');
       }
 
       await withTransaction(async (client) => {
