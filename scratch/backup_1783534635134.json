@@ -1,0 +1,2672 @@
+{
+  "companies": [
+    {
+      "id": "2b1bc3f6-e14a-4306-ad13-1deb102a17fe",
+      "name": "TESTING",
+      "vat_number": "",
+      "billing_address": "231231",
+      "shipping_address": "213313",
+      "created_at": "2026-06-19T11:59:31.573Z",
+      "code": "COM-1001",
+      "default_customer_id": null
+    },
+    {
+      "id": "de6e4dc3-82ac-458e-b93a-faf0cb5ae255",
+      "name": "TEST",
+      "vat_number": "",
+      "billing_address": "PALM JAMERA",
+      "shipping_address": "UAE",
+      "created_at": "2026-06-19T11:59:31.573Z",
+      "code": "COM-1003",
+      "default_customer_id": null
+    },
+    {
+      "id": "aff159ec-8889-4586-97ad-366537b74dad",
+      "name": "Curoscape Landscaping and Pools",
+      "vat_number": "",
+      "billing_address": "Easa Saleh Al Gurg Tower 1,Baniyas, Deira,325 Dubai",
+      "shipping_address": "",
+      "created_at": "2026-06-19T11:59:31.573Z",
+      "code": "COM-1004",
+      "default_customer_id": null
+    },
+    {
+      "id": "77ae3bf7-135b-4e3d-ac25-1a0a228a1e5d",
+      "name": "GOT",
+      "vat_number": "adw23",
+      "billing_address": "India",
+      "shipping_address": "India",
+      "created_at": "2026-06-19T11:59:31.573Z",
+      "code": "COM-1005",
+      "default_customer_id": null
+    },
+    {
+      "id": "5643cc14-e45a-48a1-b1ea-3eeedaa02bf9",
+      "name": "INNOCHEM INTERNATIONAL LLC",
+      "vat_number": "100003862800003",
+      "billing_address": "Ajman Industrial 1 - Ajman",
+      "shipping_address": "Ajman Industrial 1 - Ajman",
+      "created_at": "2026-06-26T09:20:20.593Z",
+      "code": "COM-1398",
+      "default_customer_id": null
+    },
+    {
+      "id": "6ebcbd40-99f9-47c3-99ae-5501d5d09275",
+      "name": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI",
+      "vat_number": "10004989700003",
+      "billing_address": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI,\nST.REGIS SAADIYAT ISLAND RESORT,GATE-C,PO BOX -54345-AUH",
+      "shipping_address": "ST.REGIS SAADIYAT ISLAND RESORT,GATE-C,PO BOX -54345-AUH",
+      "created_at": "2026-06-20T16:23:47.854Z",
+      "code": null,
+      "default_customer_id": null
+    },
+    {
+      "id": "0f56f02b-bd5c-4678-a7e1-d3eccac9a95e",
+      "name": "Test",
+      "vat_number": "adw23",
+      "billing_address": "test",
+      "shipping_address": "test",
+      "created_at": "2026-07-08T16:49:51.225Z",
+      "code": null,
+      "default_customer_id": null
+    },
+    {
+      "id": "ffa395cd-670c-42f6-92ec-d829c22322c5",
+      "name": "INNOCHEM INTERNATIOANL LLC",
+      "vat_number": "100003862800003",
+      "billing_address": "Ajman Industrial 1 - Ajman",
+      "shipping_address": "Ajman Industrial 1 - Ajman",
+      "created_at": "2026-06-26T09:33:09.765Z",
+      "code": null,
+      "default_customer_id": null
+    },
+    {
+      "id": "5e71d794-09a0-4db9-8c65-870931787604",
+      "name": "Khidmah",
+      "vat_number": null,
+      "billing_address": "a.zain@khidmah.com",
+      "shipping_address": "ABU DHABI",
+      "created_at": "2026-07-08T17:19:33.885Z",
+      "code": "COM-3085",
+      "default_customer_id": null
+    }
+  ],
+  "customers": [
+    {
+      "id": "c8fbbcd6-b416-4884-87b5-0948c251ea7a",
+      "name": "testuser",
+      "email": "testing@email.com",
+      "phone": "1234534221",
+      "billing_address": "test",
+      "shipping_address": "test",
+      "created_at": "2026-07-08T16:49:51.225Z",
+      "company_name": "Test",
+      "is_archived": false,
+      "is_deleted": false,
+      "company_vat": "adw23",
+      "company_id": "0f56f02b-bd5c-4678-a7e1-d3eccac9a95e",
+      "code": null
+    },
+    {
+      "id": "bea2de8b-5bbf-40c7-a69a-21aad8afdca8",
+      "name": "Kali",
+      "email": "great@gmaill.com",
+      "phone": "10298741094",
+      "billing_address": "djhoadi",
+      "shipping_address": "jdaowjdi",
+      "created_at": "2026-06-18T18:21:03.517Z",
+      "company_name": "WWE",
+      "is_archived": false,
+      "is_deleted": false,
+      "company_vat": "hkulh986798",
+      "company_id": null,
+      "code": "CUS-1004"
+    },
+    {
+      "id": "f049f06a-6e2e-4ad9-a308-b99f82aa80e8",
+      "name": "INNOCHEM INTERNATIONAL LLC",
+      "email": "bdm@innocheminternational.com",
+      "phone": "+971 55 561 5159",
+      "billing_address": "Ajman Industrial 1 - Ajman",
+      "shipping_address": "Ajman Industrial 1 - Ajman",
+      "created_at": "2026-06-26T09:33:09.765Z",
+      "company_name": "INNOCHEM INTERNATIOANL LLC",
+      "is_archived": false,
+      "is_deleted": false,
+      "company_vat": "100003862800003",
+      "company_id": "ffa395cd-670c-42f6-92ec-d829c22322c5",
+      "code": null
+    },
+    {
+      "id": "4eb45e90-3abd-4b75-8b58-a3a15c78a416",
+      "name": "Nakheel PJSC",
+      "email": "procure@nakheel.ae",
+      "phone": "+971 4 375 9000",
+      "billing_address": "Nakheel Sales Center, Dubai Marina, Dubai, UAE",
+      "shipping_address": "Palm Jumeirah Construction Zone C",
+      "created_at": "2026-05-28T07:50:24.301Z",
+      "company_name": null,
+      "is_archived": false,
+      "is_deleted": false,
+      "company_vat": null,
+      "company_id": null,
+      "code": "CUS-1001"
+    },
+    {
+      "id": "ed75ec79-73c1-4eb8-90d5-946ea37c1725",
+      "name": "Sobha Realty Group",
+      "email": "invoices@sobha.ae",
+      "phone": "+971 4 400 0000",
+      "billing_address": "Sobha Hartland Sales Gallery, Dubai, UAE",
+      "shipping_address": "Hartland Phase II Site Office",
+      "created_at": "2026-05-28T07:50:24.693Z",
+      "company_name": null,
+      "is_archived": false,
+      "is_deleted": false,
+      "company_vat": null,
+      "company_id": null,
+      "code": "CUS-1002"
+    },
+    {
+      "id": "0daeb587-63a8-4457-8bbb-b3637a0f5ca3",
+      "name": "RASED",
+      "email": "test2@email.com",
+      "phone": "2131234123",
+      "billing_address": "231231",
+      "shipping_address": "213313",
+      "created_at": "2026-06-18T17:57:19.172Z",
+      "company_name": "TESTING",
+      "is_archived": true,
+      "is_deleted": false,
+      "company_vat": null,
+      "company_id": "2b1bc3f6-e14a-4306-ad13-1deb102a17fe",
+      "code": "CUS-1003"
+    },
+    {
+      "id": "6c923150-df81-41e6-a5bc-71f926f8ffb7",
+      "name": "Arnold",
+      "email": "arnold@email.com",
+      "phone": "+91123456789",
+      "billing_address": "India",
+      "shipping_address": "India",
+      "created_at": "2026-05-26T16:50:25.232Z",
+      "company_name": "GOT",
+      "is_archived": false,
+      "is_deleted": false,
+      "company_vat": "adw23",
+      "company_id": "77ae3bf7-135b-4e3d-ac25-1a0a228a1e5d",
+      "code": "CUS-1008"
+    },
+    {
+      "id": "a240ccdb-bd75-43d8-962d-f25f7de25e4c",
+      "name": "Jonny",
+      "email": "john@email.com",
+      "phone": "+97123456789",
+      "billing_address": "PALM JAMERA",
+      "shipping_address": "UAE",
+      "created_at": "2026-06-18T16:15:28.719Z",
+      "company_name": "TEST",
+      "is_archived": false,
+      "is_deleted": false,
+      "company_vat": null,
+      "company_id": "de6e4dc3-82ac-458e-b93a-faf0cb5ae255",
+      "code": "CUS-1005"
+    },
+    {
+      "id": "042dc0bd-aec2-43d7-bb2b-e3117d4a87e8",
+      "name": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI",
+      "email": "Maurene.andres@stregis.com",
+      "phone": "0508850381",
+      "billing_address": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI,\nST.REGIS SAADIYAT ISLAND RESORT,GATE-C,PO BOX -54345-AUH",
+      "shipping_address": "ST.REGIS SAADIYAT ISLAND RESORT,GATE-C,PO BOX -54345-AUH",
+      "created_at": "2026-06-14T06:34:37.386Z",
+      "company_name": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI",
+      "is_archived": false,
+      "is_deleted": false,
+      "company_vat": "10004989700003",
+      "company_id": "6ebcbd40-99f9-47c3-99ae-5501d5d09275",
+      "code": "CUS-1006"
+    },
+    {
+      "id": "a0c30025-6b23-4a33-91df-142f4774c771",
+      "name": "M/s.Curoscape Landscaping and Pools",
+      "email": "info@curoscape.ae",
+      "phone": "+971 58 132 0964",
+      "billing_address": "Easa Saleh Al Gurg Tower 1,Baniyas, Deira,325 Dubai",
+      "shipping_address": null,
+      "created_at": "2026-06-18T12:49:55.592Z",
+      "company_name": "Curoscape Landscaping and Pools",
+      "is_archived": false,
+      "is_deleted": false,
+      "company_vat": null,
+      "company_id": "aff159ec-8889-4586-97ad-366537b74dad",
+      "code": "CUS-1007"
+    }
+  ],
+  "invoices": [
+    {
+      "id": "c3010444-1649-4227-99eb-54a382b7c35b",
+      "invoice_number": "INV-2026-0001",
+      "customer_name": "Nakheel PJSC",
+      "customer_email": "procure@nakheel.ae",
+      "customer_phone": "+971 4 375 9000",
+      "issue_date": "2026-05-10",
+      "due_date": "2026-06-10",
+      "payment_status": "paid",
+      "subtotal": 6700,
+      "gst_amount": 335,
+      "total_amount": 7035,
+      "created_at": "2026-05-28T07:51:10.949Z",
+      "updated_at": "2026-05-28T07:51:10.949Z",
+      "billing_address": "Nakheel Sales Center, Dubai Marina, Dubai, UAE",
+      "shipping_address": "Palm Jumeirah Construction Zone C",
+      "company_name": "Nakheel Procurement",
+      "order_type": "standard",
+      "source_division": "dtl",
+      "discount_amount": 0,
+      "internal_notes": "Initial B2B contract for lighting hardware supply.",
+      "company_vat": "TRN-100293847500003",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": true,
+      "lpo_number": null,
+      "payment_terms": null,
+      "inventory_deducted": true,
+      "signatory_incharge": null,
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "1d78b9d4-2cb3-4afe-8a9a-fefa5a0d3e6d",
+      "invoice_number": "INV-2026-0002",
+      "customer_name": "Sobha Realty Group",
+      "customer_email": "invoices@sobha.ae",
+      "customer_phone": "+971 4 400 0000",
+      "issue_date": "2026-05-20",
+      "due_date": "2026-06-20",
+      "payment_status": "unpaid",
+      "subtotal": 8200,
+      "gst_amount": 410,
+      "total_amount": 8610,
+      "created_at": "2026-05-28T07:51:11.317Z",
+      "updated_at": "2026-05-28T07:51:11.317Z",
+      "billing_address": "Sobha Hartland Sales Gallery, Dubai, UAE",
+      "shipping_address": "Hartland Phase II Site Office",
+      "company_name": "Sobha Corporate Supply",
+      "order_type": "standard",
+      "source_division": "dgs",
+      "discount_amount": 820,
+      "internal_notes": "Nursery delivery and planter logistics. Waiting for client confirmation.",
+      "company_vat": "TRN-100845920300002",
+      "discount_type": "percentage",
+      "discount_value": 10,
+      "show_images": true,
+      "lpo_number": null,
+      "payment_terms": null,
+      "inventory_deducted": false,
+      "signatory_incharge": null,
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "invoice_number": "INV-2026-4656",
+      "customer_name": "M/s.Curoscape Landscaping and Pools",
+      "customer_email": "info@curoscape.ae",
+      "customer_phone": "+971 58 132 0964",
+      "issue_date": "2026-06-18",
+      "due_date": "2026-06-20",
+      "payment_status": "draft",
+      "subtotal": 12739,
+      "gst_amount": 636.95,
+      "total_amount": 13375.95,
+      "created_at": "2026-06-18T12:49:55.592Z",
+      "updated_at": "2026-06-18T12:49:55.592Z",
+      "billing_address": "Easa Saleh Al Gurg Tower 1,Baniyas, Deira,325 Dubai",
+      "shipping_address": null,
+      "company_name": "Curoscape Landscaping and Pools",
+      "order_type": "standard",
+      "source_division": "DTL",
+      "discount_amount": 0,
+      "internal_notes": null,
+      "company_vat": "100008678300003",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": false,
+      "lpo_number": null,
+      "payment_terms": "[\"Acceptance of order\",\"Cancellation:\",\"Delivery:\",\"delivery-terms\",\"Designs:\",\"Force Majeure:\",\"general-terms\",\"Illustrations, Description, Dimensions, Weight, Volume:\",\"Installation :\",\"Liability\",\"Others\",\"payment-terms\",\"payment-terms-30d\",\"Returns:\",\"Samples:\",\"terms-and-conditions\",\"terms-of-use\",\"warranty\",\"warranty-liability\",\"Workmanship Warranty:\"]",
+      "inventory_deducted": false,
+      "signatory_incharge": null,
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "40df52fa-b93c-42b1-a264-0250f2297dbc",
+      "invoice_number": "INV-2026-2749",
+      "customer_name": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI",
+      "customer_email": "Maurene.andres@stregis.com",
+      "customer_phone": "0508850381",
+      "issue_date": "2026-07-07",
+      "due_date": "2026-07-21",
+      "payment_status": "draft",
+      "subtotal": 750,
+      "gst_amount": 37.5,
+      "total_amount": 787.5,
+      "created_at": "2026-07-07T12:03:27.629Z",
+      "updated_at": "2026-07-07T12:03:27.629Z",
+      "billing_address": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI,\nST.REGIS SAADIYAT ISLAND RESORT,GATE-C,PO BOX -54345-AUH",
+      "shipping_address": "ST.REGIS SAADIYAT ISLAND RESORT,GATE-C,PO BOX -54345-AUH",
+      "company_name": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI",
+      "order_type": "inquiry",
+      "source_division": "DTL",
+      "discount_amount": 0,
+      "internal_notes": null,
+      "company_vat": "10004989700003",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": false,
+      "lpo_number": null,
+      "payment_terms": "[\"general-terms\",\"Acceptance of order\",\"Illustrations, Description, Dimensions, Weight, Volume:\",\"Designs:\",\"Samples:\",\"Delivery:\",\"Cancellation:\",\"Returns:\",\"payment-terms\",\"Installation :\",\"Workmanship Warranty:\",\"warranty\",\"Liability\",\"Others\",\"Force Majeure:\"]",
+      "inventory_deducted": false,
+      "signatory_incharge": "sig_legacy_zz4sa332y",
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "297eb930-1aa3-4681-9ccc-80fa8503bcd8",
+      "invoice_number": "INV-2026-9940",
+      "customer_name": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI",
+      "customer_email": "Maurene.andres@stregis.com",
+      "customer_phone": "0508850381",
+      "issue_date": "2026-06-16",
+      "due_date": "2026-06-17",
+      "payment_status": "paid",
+      "subtotal": 630,
+      "gst_amount": 31.5,
+      "total_amount": 661.5,
+      "created_at": "2026-06-14T06:34:42.603Z",
+      "updated_at": "2026-06-18T13:08:33.158Z",
+      "billing_address": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI,\nST.REGIS SAADIYAT ISLAND RESORT,GATE-C,PO BOX -54345-AUH",
+      "shipping_address": null,
+      "company_name": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI",
+      "order_type": "lpo",
+      "source_division": "DTL",
+      "discount_amount": 0,
+      "internal_notes": null,
+      "company_vat": "10004989700003",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": false,
+      "lpo_number": "IJSX200193259",
+      "payment_terms": "[\"Acceptance of order\",\"Cancellation:\",\"Delivery:\",\"Designs:\",\"Force Majeure:\",\"general-terms\",\"Illustrations, Description, Dimensions, Weight, Volume:\",\"Installation :\",\"Liability\",\"Others\",\"payment-terms\",\"Returns:\",\"Samples:\",\"warranty\",\"Workmanship Warranty:\"]",
+      "inventory_deducted": true,
+      "signatory_incharge": null,
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "invoice_number": "INV-2026-4656-DUP-02",
+      "customer_name": "M/s.Curoscape Landscaping and Pools",
+      "customer_email": "info@curoscape.ae",
+      "customer_phone": "+971 58 132 0964",
+      "issue_date": "2026-06-18",
+      "due_date": "2026-06-20",
+      "payment_status": "cancelled",
+      "subtotal": 12739,
+      "gst_amount": 636.95,
+      "total_amount": 13375.95,
+      "created_at": "2026-06-19T20:08:31.063Z",
+      "updated_at": "2026-06-19T21:35:47.619Z",
+      "billing_address": "Easa Saleh Al Gurg Tower 1,Baniyas, Deira,325 Dubai",
+      "shipping_address": null,
+      "company_name": "Curoscape Landscaping and Pools",
+      "order_type": "standard",
+      "source_division": "DTL",
+      "discount_amount": 0,
+      "internal_notes": null,
+      "company_vat": "100008678300003",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": false,
+      "lpo_number": null,
+      "payment_terms": "[\"Acceptance of order\",\"Cancellation:\",\"Delivery:\",\"delivery-terms\",\"Designs:\",\"Force Majeure:\",\"general-terms\",\"Illustrations, Description, Dimensions, Weight, Volume:\",\"Installation :\",\"Liability\",\"Others\",\"payment-terms\",\"payment-terms-30d\",\"Returns:\",\"Samples:\",\"terms-and-conditions\",\"terms-of-use\",\"warranty\",\"warranty-liability\",\"Workmanship Warranty:\"]",
+      "inventory_deducted": false,
+      "signatory_incharge": null,
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "invoice_number": "INV-2026-8935",
+      "customer_name": "INNOCHEM INTERNATIONAL LLC",
+      "customer_email": "bdm@innocheminternational.com",
+      "customer_phone": "+971 55 561 5159",
+      "issue_date": "2026-06-24",
+      "due_date": "2026-07-16",
+      "payment_status": "draft",
+      "subtotal": 150923.55,
+      "gst_amount": 7546.177500000001,
+      "total_amount": 158469.72749999998,
+      "created_at": "2026-06-26T09:33:09.765Z",
+      "updated_at": "2026-06-26T10:30:32.486Z",
+      "billing_address": "Ajman Industrial 1 - Ajman",
+      "shipping_address": "Ajman Industrial 1 - Ajman",
+      "company_name": "INNOCHEM INTERNATIOANL LLC",
+      "order_type": "standard",
+      "source_division": "DTL",
+      "discount_amount": 0,
+      "internal_notes": null,
+      "company_vat": "100003862800003",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": false,
+      "lpo_number": null,
+      "payment_terms": "[\"general-terms\",\"Acceptance of order\",\"Illustrations, Description, Dimensions, Weight, Volume:\",\"Designs:\",\"Samples:\",\"Delivery:\",\"Cancellation:\",\"Returns:\",\"payment-terms\",\"Installation :\",\"Workmanship Warranty:\",\"warranty\",\"Liability\",\"Others\",\"Force Majeure:\"]",
+      "inventory_deducted": false,
+      "signatory_incharge": "sig_legacy_zz4sa332y",
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "238f4ad3-d45e-4432-a086-3cfc6d95d65d",
+      "invoice_number": "INV-2026-7712",
+      "customer_name": "M/s.Curoscape Landscaping and Pools",
+      "customer_email": "info@curoscape.ae",
+      "customer_phone": "+971 58 132 0964",
+      "issue_date": "2026-06-19",
+      "due_date": "2026-06-30",
+      "payment_status": "draft",
+      "subtotal": 4320,
+      "gst_amount": 216,
+      "total_amount": 4536,
+      "created_at": "2026-06-19T11:06:45.102Z",
+      "updated_at": "2026-06-19T19:27:20.031Z",
+      "billing_address": "Easa Saleh Al Gurg Tower 1,Baniyas, Deira,325 Dubai",
+      "shipping_address": "Easa Saleh Al Gurg Tower 1,Baniyas, Deira,325 Dubai",
+      "company_name": "Curoscape Landscaping and Pools",
+      "order_type": "standard",
+      "source_division": "DGS",
+      "discount_amount": 0,
+      "internal_notes": null,
+      "company_vat": "100008678300003",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": false,
+      "lpo_number": null,
+      "payment_terms": "[\"general-terms\",\"Acceptance of order\",\"Illustrations, Description, Dimensions, Weight, Volume:\",\"Designs:\",\"Samples:\",\"Delivery:\",\"Cancellation:\",\"Returns:\",\"payment-terms\",\"Installation :\",\"Workmanship Warranty:\",\"warranty\",\"Liability\",\"Others\",\"Force Majeure:\"]",
+      "inventory_deducted": false,
+      "signatory_incharge": "sig_legacy_zz4sa332y",
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "55464c3e-7cdf-4df2-8abd-4edfe696cb92",
+      "invoice_number": "INV-2026-8164",
+      "customer_name": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI",
+      "customer_email": "Maurene.andres@stregis.com",
+      "customer_phone": "0508850381",
+      "issue_date": "2026-06-20",
+      "due_date": "2026-06-24",
+      "payment_status": "draft",
+      "subtotal": 336,
+      "gst_amount": 16.8,
+      "total_amount": 352.8,
+      "created_at": "2026-06-20T16:23:47.854Z",
+      "updated_at": "2026-06-30T14:41:36.133Z",
+      "billing_address": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI,\nST.REGIS SAADIYAT ISLAND RESORT,GATE-C,PO BOX -54345-AUH",
+      "shipping_address": "ST.REGIS SAADIYAT ISLAND RESORT,GATE-C,PO BOX -54345-AUH",
+      "company_name": "ST.REGIS SAADIYAT ISLAND RESORT -ABU DHABI",
+      "order_type": "tax_invoice",
+      "source_division": "DTL",
+      "discount_amount": 0,
+      "internal_notes": null,
+      "company_vat": "10004989700003",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": false,
+      "lpo_number": null,
+      "payment_terms": "[\"general-terms\",\"Acceptance of order\",\"Illustrations, Description, Dimensions, Weight, Volume:\",\"Designs:\",\"Samples:\",\"Delivery:\",\"Cancellation:\",\"Returns:\",\"payment-terms\",\"Installation :\",\"Workmanship Warranty:\",\"warranty\",\"Liability\",\"Others\",\"Force Majeure:\"]",
+      "inventory_deducted": false,
+      "signatory_incharge": "sig_legacy_zz4sa332y",
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "invoice_number": "INV-2026-4656-DUP-01",
+      "customer_name": "M/s.Curoscape Landscaping and Pools",
+      "customer_email": "info@curoscape.ae",
+      "customer_phone": "+971 58 132 0964",
+      "issue_date": "2026-06-18",
+      "due_date": "2026-06-20",
+      "payment_status": "draft",
+      "subtotal": 12739,
+      "gst_amount": 636.95,
+      "total_amount": 13375.95,
+      "created_at": "2026-06-19T15:34:19.185Z",
+      "updated_at": "2026-07-08T16:45:11.726Z",
+      "billing_address": "Easa Saleh Al Gurg Tower 1,Baniyas, Deira,325 Dubai",
+      "shipping_address": "Easa Saleh Al Gurg Tower 1,Baniyas, Deira,325 Dubai",
+      "company_name": "Curoscape Landscaping and Pools",
+      "order_type": "standard",
+      "source_division": "DTL",
+      "discount_amount": 0,
+      "internal_notes": null,
+      "company_vat": "100008678300003",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": true,
+      "lpo_number": null,
+      "payment_terms": "[\"general-terms\",\"Acceptance of order\",\"Illustrations, Description, Dimensions, Weight, Volume:\",\"Designs:\",\"Samples:\",\"Delivery:\",\"Cancellation:\",\"Returns:\",\"payment-terms\",\"Installation :\",\"Workmanship Warranty:\",\"warranty\",\"Liability\",\"Others\",\"Force Majeure:\"]",
+      "inventory_deducted": false,
+      "signatory_incharge": "any",
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    },
+    {
+      "id": "8fbe0e56-f2b6-4514-b843-35ca5f5722e4",
+      "invoice_number": "INV-2026-7713",
+      "customer_name": "testuser",
+      "customer_email": "testing@email.com",
+      "customer_phone": "1234534221",
+      "issue_date": "2026-07-08",
+      "due_date": "2026-07-09",
+      "payment_status": "draft",
+      "subtotal": 11,
+      "gst_amount": 1.65,
+      "total_amount": 12.65,
+      "created_at": "2026-07-08T16:49:51.225Z",
+      "updated_at": "2026-07-08T16:49:51.225Z",
+      "billing_address": "test",
+      "shipping_address": "test",
+      "company_name": "Test",
+      "order_type": "standard",
+      "source_division": "DGS",
+      "discount_amount": 0,
+      "internal_notes": null,
+      "company_vat": "adw23",
+      "discount_type": "fixed",
+      "discount_value": 0,
+      "show_images": true,
+      "lpo_number": null,
+      "payment_terms": "[\"general-terms\",\"Acceptance of order\",\"Illustrations, Description, Dimensions, Weight, Volume:\",\"Designs:\",\"Samples:\",\"Delivery:\",\"Cancellation:\",\"Returns:\",\"payment-terms\",\"Installation :\",\"Workmanship Warranty:\",\"warranty\",\"Liability\",\"Others\",\"Force Majeure:\"]",
+      "inventory_deducted": false,
+      "signatory_incharge": "any",
+      "is_archived": false,
+      "is_deleted": false,
+      "quotation_ref": null
+    }
+  ],
+  "invoice_items": [
+    {
+      "id": "3803cc4d-3cc4-455a-b600-42609204f9f7",
+      "invoice_id": "8fbe0e56-f2b6-4514-b843-35ca5f5722e4",
+      "product_id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "description": "Ficus Lyrata Standard (Fiddle Leaf Fig) (1.5m to 1.7m Standard)",
+      "quantity": 1,
+      "unit_price": 11,
+      "total_price": 12.65,
+      "catalogue_ref": "SKU-DLT-PLT-001-S150",
+      "tech_spec": "a",
+      "tax_rate": 5,
+      "tax_amount": 1.65,
+      "tax_type": "percentage",
+      "tax_value": 15,
+      "item_image": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+      "id": "620819f5-6284-44f5-bd57-d5180bd0cbea",
+      "invoice_id": "c3010444-1649-4227-99eb-54a382b7c35b",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "description": "AeroTrack-12 Magnetic Spotlight System (Matte Black, 15W)",
+      "quantity": 20,
+      "unit_price": 250,
+      "total_price": 5000,
+      "catalogue_ref": null,
+      "tech_spec": null,
+      "tax_rate": 5,
+      "tax_amount": 250,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "d5a90563-fed6-4a7c-bc8f-d078112d38ce",
+      "invoice_id": "c3010444-1649-4227-99eb-54a382b7c35b",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "description": "SolarPath-65 Landscape Inground Spike (Stainless Steel, 15°)",
+      "quantity": 10,
+      "unit_price": 170,
+      "total_price": 1700,
+      "catalogue_ref": null,
+      "tech_spec": null,
+      "tax_rate": 5,
+      "tax_amount": 85,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "ee5eeac7-7230-4d8e-82b4-896aa754b596",
+      "invoice_id": "1d78b9d4-2cb3-4afe-8a9a-fefa5a0d3e6d",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "description": "Ficus Lyrata Standard (Fiddle Leaf Fig XL Specimen, Ceramic Pot)",
+      "quantity": 8,
+      "unit_price": 450,
+      "total_price": 3600,
+      "catalogue_ref": null,
+      "tech_spec": null,
+      "tax_rate": 5,
+      "tax_amount": 180,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "45f62ff2-1c70-4650-bde0-fb3c119bca5b",
+      "invoice_id": "1d78b9d4-2cb3-4afe-8a9a-fefa5a0d3e6d",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "description": "Elegance Fiberglass Planter (Matte Slate, Large)",
+      "quantity": 20,
+      "unit_price": 230,
+      "total_price": 4600,
+      "catalogue_ref": null,
+      "tech_spec": null,
+      "tax_rate": 5,
+      "tax_amount": 230,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "8335745c-6e8a-4b1e-8535-e1b2af290c60",
+      "invoice_id": "c3010444-1649-4227-99eb-54a382b7c35b",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "description": "AeroTrack-12 Magnetic Spotlight System (Matte Black, 15W)",
+      "quantity": 20,
+      "unit_price": 250,
+      "total_price": 5000,
+      "catalogue_ref": null,
+      "tech_spec": null,
+      "tax_rate": 5,
+      "tax_amount": 250,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "4fd1da7f-21a5-4906-8fb0-bc36aac3a221",
+      "invoice_id": "c3010444-1649-4227-99eb-54a382b7c35b",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "description": "SolarPath-65 Landscape Inground Spike (Stainless Steel, 15°)",
+      "quantity": 10,
+      "unit_price": 170,
+      "total_price": 1700,
+      "catalogue_ref": null,
+      "tech_spec": null,
+      "tax_rate": 5,
+      "tax_amount": 85,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "10557e30-0253-4ba6-b547-82394e45cba3",
+      "invoice_id": "1d78b9d4-2cb3-4afe-8a9a-fefa5a0d3e6d",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "description": "Ficus Lyrata Standard (Fiddle Leaf Fig XL Specimen, Ceramic Pot)",
+      "quantity": 8,
+      "unit_price": 450,
+      "total_price": 3600,
+      "catalogue_ref": null,
+      "tech_spec": null,
+      "tax_rate": 5,
+      "tax_amount": 180,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "031b80a1-d726-4d0b-80f7-284004f7625e",
+      "invoice_id": "1d78b9d4-2cb3-4afe-8a9a-fefa5a0d3e6d",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "description": "Elegance Fiberglass Planter (Matte Slate, Large)",
+      "quantity": 20,
+      "unit_price": 230,
+      "total_price": 4600,
+      "catalogue_ref": null,
+      "tech_spec": null,
+      "tax_rate": 5,
+      "tax_amount": 230,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "53ef006b-9880-40cd-9e3a-d1b8f09de64f",
+      "invoice_id": "297eb930-1aa3-4681-9ccc-80fa8503bcd8",
+      "product_id": "32dee02a-a8fc-4e3d-8c91-3bb978f91c95",
+      "description": "DTL-LED SPOT LIGHT",
+      "quantity": 6,
+      "unit_price": 105,
+      "total_price": 661.5,
+      "catalogue_ref": "DTL-74070",
+      "tech_spec": "DTL-LED SPOT LIGHT Power: 12W - CCT:3000k AC220-240 50/60Hz Material: Dia Cast Aluminum Lamp Type: COB LED -CRI>90-95 Cut Size: Dia 108mmxH95cm      855LM IP-20 Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 31.5,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "779edddb-698d-4a59-8559-0d3a5161a903",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Luminance-LED SPIKE LIGHT",
+      "quantity": 20,
+      "unit_price": 200,
+      "total_price": 4200,
+      "catalogue_ref": "LMN-112460",
+      "tech_spec": "LED SPIKE LIGHT NON-Dimmable Lamp Type: Cree LED Wattage: 5W   CCT: 3000K     Lumen: 274lm Beam Angle: 36° Voltage: 220-240VDimension: D:50 x H:148mm Material: Aluminum body IP: 65       Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 200,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "7524d548-6ef3-4806-86b1-d495a83ba090",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Luminance-UP DOWN WALL LIGHT",
+      "quantity": 9,
+      "unit_price": 240,
+      "total_price": 2268,
+      "catalogue_ref": "LMN-112530",
+      "tech_spec": "UP DOWN WALL LIGHT                                     Power: 2*6.5W - CCT:3000k AC-220-240 50/60Hz                   Material: Dia Cast Aluminum     Lamp Type: COB LED -CRI>80-85                           Cut Size: Dia-65xW-95xH-155 mm -863LM                 IP:65                                    Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 108,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "9045c85f-79f0-424d-9dfe-0be2c3f76cde",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Luminance LED In ground light",
+      "quantity": 14,
+      "unit_price": 190,
+      "total_price": 2793,
+      "catalogue_ref": "LMN-7209",
+      "tech_spec": "In ground light                                      Power: 1*3W - CCT:3000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>80                                 Cut Size:Dia 33mmxH43      54LM         IP:65                                      Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 133,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "3e9e8669-04e0-4780-a378-6d0acf38e6ad",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Luminance-Recessed Spotlight",
+      "quantity": 8,
+      "unit_price": 113,
+      "total_price": 949.2,
+      "catalogue_ref": "LMN-74091-12",
+      "tech_spec": "Recessed Spotlight NON-Dimmable Lamp Type: Cree LED Wattage: 12W   CCT: 3000K     Lumen: 690lm Beam Angle: 36° Voltage: 220-240VDimension: D:58 x H:68mm Material: Aluminum body + Clear Glass adjustable frame            IP: 44       Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 45.2,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "acdc6e49-ad38-4704-a4c0-6dcafbdfad3c",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Luminance-Strip light",
+      "quantity": 30,
+      "unit_price": 40,
+      "total_price": 1260,
+      "catalogue_ref": "LMN-Strip Lihgt",
+      "tech_spec": "Strip light NON-Dimmable Lamp Type: Cree LED Wattage: 14W/mtr      CCT: 3000K Lumen: 840lm/M  Beam Angle: 120º Voltage: DC24V Material:tape on the back Dimension:10meter Roll W:11.5mm IP: 65      Warranty: 3 Years",
+      "tax_rate": 5,
+      "tax_amount": 60,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "ca92aa61-04a9-4d8a-b8e4-742570986ea0",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Aluminium Strip Light Profile",
+      "quantity": 30,
+      "unit_price": 22,
+      "total_price": 693,
+      "catalogue_ref": "Aluminium Strip Profile",
+      "tech_spec": "LED Aluminium Profile for led strip light Material: Aluminum Alloy, PC zinc-alloy Dimension: L: 2500mm x W: 88mm x H: 32mm",
+      "tax_rate": 5,
+      "tax_amount": 33,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "da95fe26-f34a-4937-8142-258ddc1c83ee",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Mean Well LED Driver 150W",
+      "quantity": 1,
+      "unit_price": 130,
+      "total_price": 136.5,
+      "catalogue_ref": "LED Driver",
+      "tech_spec": "LED STRIP Light Driver Wattage: 150W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 6.5,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "e1df1cc0-0c95-46a9-9fcb-5a78dd92fc1b",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Mean Well LED Driver 100W",
+      "quantity": 3,
+      "unit_price": 100,
+      "total_price": 315,
+      "catalogue_ref": "LED Driver",
+      "tech_spec": "LED STRIP Light Driver Wattage: 100W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 15,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "f284ec23-e873-4cbe-a5f6-6f7a2f4c014a",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Mean Well LED Driver 60W",
+      "quantity": 1,
+      "unit_price": 65,
+      "total_price": 68.25,
+      "catalogue_ref": "LED Driver",
+      "tech_spec": "LED STRIP Light Driver Wattage: 60W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 3.25,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "d4350ae8-672f-480e-b81f-eb3c0101ea91",
+      "invoice_id": "9d45be7f-4ed6-46d0-b7c1-5c04e6f92108",
+      "product_id": null,
+      "description": "Transformer For Spike Light",
+      "quantity": 2,
+      "unit_price": 330,
+      "total_price": 693,
+      "catalogue_ref": "Transformer",
+      "tech_spec": "Transformer for Floor and spike light (220-240V AC, 50 60HZ, 1.36A Input Current, 300W Power rate, 0.96 Power factor, 12V AC, 50-60HZ, Output Voltage 25 A Max Output Current, Working TEMPERATURE: â‰¤ 85Â°, NEMA /UL: CLASS B",
+      "tax_rate": 5,
+      "tax_amount": 33,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "4fea6a42-03c1-4bfc-909e-92c89ff825da",
+      "invoice_id": "238f4ad3-d45e-4432-a086-3cfc6d95d65d",
+      "product_id": "c24a4ff2-43db-4fb6-89b6-03907b4ed928",
+      "description": "GRP CUBO POT 60",
+      "quantity": 12,
+      "unit_price": 360,
+      "total_price": 4536,
+      "catalogue_ref": "SKU-DGS-GRP POT60",
+      "tech_spec": "GRP Cubo Planter 60(L)X60(W)X60(Ht) White color",
+      "tax_rate": 5,
+      "tax_amount": 216,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "81e20cef-fe71-4177-a710-74c3a686bc41",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Mean Well LED Driver 150W",
+      "quantity": 1,
+      "unit_price": 130,
+      "total_price": 136.5,
+      "catalogue_ref": "LED Driver",
+      "tech_spec": "LED STRIP Light Driver Wattage: 150W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 6.5,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "cdc69e74-3f08-4a9e-8fb4-b33e92f15ad5",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Luminance-Recessed Spotlight",
+      "quantity": 8,
+      "unit_price": 113,
+      "total_price": 949.2,
+      "catalogue_ref": "LMN-74091-12",
+      "tech_spec": "Recessed Spotlight NON-Dimmable Lamp Type: Cree LED Wattage: 12W   CCT: 3000K     Lumen: 690lm Beam Angle: 36° Voltage: 220-240VDimension: D:58 x H:68mm Material: Aluminum body + Clear Glass adjustable frame            IP: 44       Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 45.2,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "6617a02d-d0b7-41ca-8a27-393477cdc8ea",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Luminance LED In ground light",
+      "quantity": 14,
+      "unit_price": 190,
+      "total_price": 2793,
+      "catalogue_ref": "LMN-7209",
+      "tech_spec": "In ground light                                      Power: 1*3W - CCT:3000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>80                                 Cut Size:Dia 33mmxH43      54LM         IP:65                                      Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 133,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "04949822-9cd7-4f06-9a98-53b84562458d",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Transformer For Spike Light",
+      "quantity": 2,
+      "unit_price": 330,
+      "total_price": 693,
+      "catalogue_ref": "Transformer",
+      "tech_spec": "Transformer for Floor and spike light (220-240V AC, 50 60HZ, 1.36A Input Current, 300W Power rate, 0.96 Power factor, 12V AC, 50-60HZ, Output Voltage 25 A Max Output Current, Working TEMPERATURE: â‰¤ 85Â°, NEMA /UL: CLASS B",
+      "tax_rate": 5,
+      "tax_amount": 33,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "5aae60e1-9130-4ecf-b721-7c58bd59fe75",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Luminance-LED SPIKE LIGHT",
+      "quantity": 20,
+      "unit_price": 200,
+      "total_price": 4200,
+      "catalogue_ref": "LMN-112460",
+      "tech_spec": "LED SPIKE LIGHT NON-Dimmable Lamp Type: Cree LED Wattage: 5W   CCT: 3000K     Lumen: 274lm Beam Angle: 36° Voltage: 220-240VDimension: D:50 x H:148mm Material: Aluminum body IP: 65       Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 200,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "1eb38ee3-904f-474d-8b1c-ad79ee6017a4",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Luminance-UP DOWN WALL LIGHT",
+      "quantity": 9,
+      "unit_price": 240,
+      "total_price": 2268,
+      "catalogue_ref": "LMN-112530",
+      "tech_spec": "UP DOWN WALL LIGHT                                     Power: 2*6.5W - CCT:3000k AC-220-240 50/60Hz                   Material: Dia Cast Aluminum     Lamp Type: COB LED -CRI>80-85                           Cut Size: Dia-65xW-95xH-155 mm -863LM                 IP:65                                    Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 108,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "a472aab1-3b38-4bc0-8665-357efc3179de",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Aluminium Strip Light Profile",
+      "quantity": 30,
+      "unit_price": 22,
+      "total_price": 693,
+      "catalogue_ref": "Aluminium Strip Profile",
+      "tech_spec": "LED Aluminium Profile for led strip light Material: Aluminum Alloy, PC zinc-alloy Dimension: L: 2500mm x W: 88mm x H: 32mm",
+      "tax_rate": 5,
+      "tax_amount": 33,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "22207c47-5e4c-4653-a3f2-c647957f2824",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Mean Well LED Driver 100W",
+      "quantity": 3,
+      "unit_price": 100,
+      "total_price": 315,
+      "catalogue_ref": "LED Driver",
+      "tech_spec": "LED STRIP Light Driver Wattage: 100W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 15,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "12665029-2fd5-41a6-babc-2e41e8d445bd",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Mean Well LED Driver 60W",
+      "quantity": 1,
+      "unit_price": 65,
+      "total_price": 68.25,
+      "catalogue_ref": "LED Driver",
+      "tech_spec": "LED STRIP Light Driver Wattage: 60W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 3.25,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "9c07ae29-441d-49e1-bb74-f2f4d3550d1b",
+      "invoice_id": "f52bd98d-39b3-40ff-85e5-7d1b30236526",
+      "product_id": null,
+      "description": "Luminance-Strip light",
+      "quantity": 30,
+      "unit_price": 40,
+      "total_price": 1260,
+      "catalogue_ref": "LMN-Strip Lihgt",
+      "tech_spec": "Strip light NON-Dimmable Lamp Type: Cree LED Wattage: 14W/mtr      CCT: 3000K Lumen: 840lm/M  Beam Angle: 120º Voltage: DC24V Material:tape on the back Dimension:10meter Roll W:11.5mm IP: 65      Warranty: 3 Years",
+      "tax_rate": 5,
+      "tax_amount": 60,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "53e81f3c-ba6d-4a3e-b2eb-717ecbaecdd6",
+      "invoice_id": "55464c3e-7cdf-4df2-8abd-4edfe696cb92",
+      "product_id": "32dee02a-a8fc-4e3d-8c91-3bb978f91c95",
+      "description": "LED Driver",
+      "quantity": 6,
+      "unit_price": 56,
+      "total_price": 352.8,
+      "catalogue_ref": "DTL-EN-12TD-C280",
+      "tech_spec": "EN 12w ,280mA,IP20 Triac dimmable Led Driver",
+      "tax_rate": 5,
+      "tax_amount": 16.8,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "5cf9ab19-071a-448f-a612-33f39a43d388",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "D1",
+      "quantity": 254,
+      "unit_price": 73.95,
+      "total_price": 19722.465,
+      "catalogue_ref": "LMN-111765/20",
+      "tech_spec": "LED Down light                                      Power: 20W - CCT:4000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>90-95                           Cut Size:160*60 mm                IP:20           1295LM                           Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 939.165,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "13cecb50-aad4-4ff4-90ce-bce7146545d3",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "D2",
+      "quantity": 188,
+      "unit_price": 52.7,
+      "total_price": 10402.98,
+      "catalogue_ref": "LMN-111765/15W",
+      "tech_spec": "LED Down LIGHT                                     Power: 15W - CCT:4000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>90-95                           Cut Size:160*60 mm                IP:20          761LM                             Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 495.38000000000005,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "02d07893-1f81-451b-9a21-81fde10d6dad",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "D3",
+      "quantity": 129,
+      "unit_price": 52.7,
+      "total_price": 7138.215,
+      "catalogue_ref": "LMN-111765/15",
+      "tech_spec": "LED Down LIGHT                                     Power: 15W - CCT:4000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>90-95                           Cut Size:140*58mm                IP:20         761LM                            Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 339.915,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "5ca9ea18-0cc3-4d12-8163-1af55ef977e4",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "D4",
+      "quantity": 76,
+      "unit_price": 73.95,
+      "total_price": 5901.21,
+      "catalogue_ref": "LMN-111765/20",
+      "tech_spec": "LED Down LIGHT                                     Power: 20W - CCT:4000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>90-95                           Cut Size:160*60mm                IP:20           1295LM                           Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 281.01,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "2512580d-8323-4676-92c3-24448ac67902",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "D5",
+      "quantity": 511,
+      "unit_price": 43.35,
+      "total_price": 23259.4425,
+      "catalogue_ref": "LMN-111765/10",
+      "tech_spec": "LED Down LIGHT                                     Power: 10W - CCT:4000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>90-95                           Cut Size:105*52mm                IP:20           638LM                            Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 1107.5925000000002,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "b45fa7a9-a916-48d4-8106-8d58f8977db3",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "D6",
+      "quantity": 38,
+      "unit_price": 87.55,
+      "total_price": 3493.245,
+      "catalogue_ref": "LMN-111660-2x2",
+      "tech_spec": "LED SPOT LIGHT                                     Power: 2*5W - CCT:4000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>90-95                           Cut Size:97*54*50 mm                IP:20       975LM                               Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 166.34500000000003,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "9cb5ef76-a0e4-42d4-aa45-d2f3f3237bb3",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "L1",
+      "quantity": 52,
+      "unit_price": 69.95,
+      "total_price": 3819.27,
+      "catalogue_ref": "LMN-TRP13-1200-40W",
+      "tech_spec": "LUMINANCE LED BATTEN LIGHT 40W                                                                                                                                                                                                                                                                                                                              SMD LED, 40 W power  220-240V AC, 50/60Hz  CCT: 4000K,120`beam angle,Life time Hours 50,000,Power factor >0.9  CRI: >90 Poly carbonate material/aluminum extruded on lamp housing,Opal diffuser  IP 65 IK08 Dimension: L1280 x W14 x H86 mm                                                                                                                                                                                                                                                                                                                  Warranty 5 Years",
+      "tax_rate": 5,
+      "tax_amount": 181.87,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "35579397-5b3b-42fb-b299-89e8647b70d2",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "L2",
+      "quantity": 181,
+      "unit_price": 29.75,
+      "total_price": 5653.9875,
+      "catalogue_ref": "LuminanceStrip light",
+      "tech_spec": "Luminance-Strip light NON-Dimmable Lamp Type: Cree LED Wattage:9.6W/mtr      CCT: 4000K Lumen: 840lm/M  Beam Angle: 120º Voltage: DC24V Material:tape on the back Dimension:10meter Roll W:11.5mm IP: 65      Warranty: 5 Years",
+      "tax_rate": 5,
+      "tax_amount": 269.2375,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "1a883917-b0b1-48d1-9c42-0f782d951900",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "L2/1",
+      "quantity": 20,
+      "unit_price": 90,
+      "total_price": 1890,
+      "catalogue_ref": "LED DRIVER",
+      "tech_spec": "LED STRIP Light Driver Wattage: 100W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 90,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "dc1e550a-3175-425f-8293-d7065a324c36",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "L2/2",
+      "quantity": 181,
+      "unit_price": 18.7,
+      "total_price": 3553.935,
+      "catalogue_ref": "Aluminium Profile",
+      "tech_spec": "LED Aluminium Profile for led strip light Material: Aluminum Alloy, PC zinc-alloy Dimension: L: 2500mm x W: 88mm x H: 32mm",
+      "tax_rate": 5,
+      "tax_amount": 169.235,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "99446eff-8363-4a2d-9cf3-b5bc7fff9cec",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "L3",
+      "quantity": 535,
+      "unit_price": 35,
+      "total_price": 19661.25,
+      "catalogue_ref": "LuminanceStrip light",
+      "tech_spec": "Luminance-Strip light NON-Dimmable Lamp Type: Cree LED Wattage:20W/mtr      CCT: 4000K Lumen: 840lm/M  Beam Angle: 120º Voltage: DC24V Material:tape on the back Dimension:10meter Roll W:11.5mm IP: 65      Warranty: 5Years",
+      "tax_rate": 5,
+      "tax_amount": 936.25,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "635ac76f-4612-4086-86e1-57ad00cc2183",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "L3/1",
+      "quantity": 110,
+      "unit_price": 90,
+      "total_price": 10395,
+      "catalogue_ref": "LED DRIVER",
+      "tech_spec": "LED STRIP Light Driver Wattage: 100W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 495,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "7fa25083-d72e-4d48-bc48-2d8b0c973573",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "L3/2",
+      "quantity": 535,
+      "unit_price": 18.7,
+      "total_price": 10504.725,
+      "catalogue_ref": "Aluminium Profile",
+      "tech_spec": "LED Aluminium Profile for led strip light Material: Aluminum Alloy, PC zinc-alloy Dimension: L: 2500mm x W: 88mm x H: 32mm",
+      "tax_rate": 5,
+      "tax_amount": 500.225,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "6ad84732-196a-4f25-8972-18c02734f2e9",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "P1",
+      "quantity": 42,
+      "unit_price": 104.55,
+      "total_price": 4610.655,
+      "catalogue_ref": "LMN-78030/15W",
+      "tech_spec": "LED Suspended light                                Power: 15W - CCT:4000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>90-95                           Cut Size: 80*45mm                IP:54       865LM                               Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 219.55499999999998,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "2690585a-17e4-4f88-bb63-ba9248b7afa0",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "FL1",
+      "quantity": 164,
+      "unit_price": 69.95,
+      "total_price": 12045.390000000001,
+      "catalogue_ref": "LMN-60x60CK19",
+      "tech_spec": "LUMINANCE LED PANEL LIGHT 40W                                                                                                                                                                                                                                                                                                                        4000 K Color temperature 220-240V AC, 50/60 Hz Philips Flicker Free Driver Life time Hours 50000 110° beam angle, PF>0.95, CRI >90, Surface mounted or Suspended installation option,Aluminum powder coated white finish  Dimension: L 595 mm x W 595 mm, IP 44                                                                                                                                                                                                                                                                                                                                                                            Warranty 5 Years",
+      "tax_rate": 5,
+      "tax_amount": 573.59,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "f1f7eda0-4cba-40eb-88b5-69787d3e46fa",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "FL2",
+      "quantity": 22,
+      "unit_price": 69.95,
+      "total_price": 1615.845,
+      "catalogue_ref": "LMN-60x60CK19",
+      "tech_spec": "LUMINANCE LED PANEL LIGHT 40W                                                                                                                                                                                                                                                                                                                        4000 K Color temperature 220-240V AC, 50/60 Hz Philips Flicker Free Driver Life time Hours 50000 110° beam angle, PF>0.95, CRI >90, Surface mounted or Suspended installation option,Aluminum powder coated white finish  Dimension: L 595 mm x W 595 mm, IP 44                                                                                                                                                                                                                                                                                                                                                                            Warranty 5 Years",
+      "tax_rate": 5,
+      "tax_amount": 76.94500000000001,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "a1c54554-9c23-4895-a84c-762125e78321",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "NL",
+      "quantity": 30,
+      "unit_price": 117.3,
+      "total_price": 3694.95,
+      "catalogue_ref": "LMN-112650",
+      "tech_spec": "Luminance-Recessed Spotlight NON-Dimmable LED SPOT LIGHT                                     Power: 7W - CCT:4000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>90-95                           Cut Size: 48.5×100×32mm                IP:65            55LM                          Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 175.95000000000002,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "7bd14afb-2e50-4e40-9096-9c8e9bf7e287",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "S1",
+      "quantity": 95,
+      "unit_price": 64.6,
+      "total_price": 6443.849999999999,
+      "catalogue_ref": "LMN-7409112",
+      "tech_spec": "Luminance-Recessed Spotlight NON-Dimmable Lamp Type: Cree LED Wattage: 12W   CCT: 4000K     Lumen: 690lm Beam Angle: 36° Voltage: 220240VDimension:100*49*32mm   Material: Aluminium+Stainless Steel #316          IP: 65       Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 306.84999999999997,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "17fd8e83-4ecd-41fd-aa1a-93cdc3686291",
+      "invoice_id": "1884578e-5f8c-4470-b50d-b142599ca139",
+      "product_id": null,
+      "description": "ML",
+      "quantity": 95,
+      "unit_price": 46.75,
+      "total_price": 4663.3125,
+      "catalogue_ref": "LMN-27C600-12W",
+      "tech_spec": "LUMINANCE LED MIRROR LIGHT 12W                                                                                                                                                                                                                                                                                                                           SMD LED , 12W  220-240V AC, 50/60Hz     CCT: 4000K,Beam angle: 100 °, Life time Hours 50,000 Power factor >0.9 CRI: >90, Surface Mounted   Body Material: Aluminum+   Opal diffuser, IP 44  Dimension: 60cm                                                                                                                                                                                                                                                                                                                                                                                Warranty 5 Years",
+      "tax_rate": 5,
+      "tax_amount": 222.0625,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "212cb19c-4dea-4437-9dbc-942e0da98a68",
+      "invoice_id": "40df52fa-b93c-42b1-a264-0250f2297dbc",
+      "product_id": "32dee02a-a8fc-4e3d-8c91-3bb978f91c95",
+      "description": "MATIAS RECESSWS DOWNLIGHT",
+      "quantity": 10,
+      "unit_price": 75,
+      "total_price": 787.5,
+      "catalogue_ref": "SKU -19163",
+      "tech_spec": "SKU-Recessed Spotlight NON-Dimmable Lamp Type: Epistar LED Wattage: 5W-8W Dual  CCT: 27000K/3000K/4000K/5000K    Lumen: 460-540lm(5w),720-840lm(8) Beam Angle: 38° Voltage: 220-240VDimension: D:90 x H:40mm Material: Iron+ PC Boby Clear Glass adjustable frame            IP: 65       Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 37.5,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "cf800b9b-ddb6-4e7f-9d16-8409f94dcbb0",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Luminance-Recessed Spotlight",
+      "quantity": 8,
+      "unit_price": 113,
+      "total_price": 949.2,
+      "catalogue_ref": "LMN-74091-12",
+      "tech_spec": "Recessed Spotlight NON-Dimmable Lamp Type: Cree LED Wattage: 12W   CCT: 3000K     Lumen: 690lm Beam Angle: 36° Voltage: 220-240VDimension: D:58 x H:68mm Material: Aluminum body + Clear Glass adjustable frame            IP: 44       Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 45.2,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "10cfeb36-4807-4f0a-b1bf-4885dc0a984e",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Luminance-UP DOWN WALL LIGHT",
+      "quantity": 9,
+      "unit_price": 240,
+      "total_price": 2268,
+      "catalogue_ref": "LMN-112530",
+      "tech_spec": "UP DOWN WALL LIGHT                                     Power: 2*6.5W - CCT:3000k AC-220-240 50/60Hz                   Material: Dia Cast Aluminum     Lamp Type: COB LED -CRI>80-85                           Cut Size: Dia-65xW-95xH-155 mm -863LM                 IP:65                                    Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 108,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "d08f1848-0b48-4fb7-a318-d8226d4647a6",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Luminance-LED SPIKE LIGHT",
+      "quantity": 20,
+      "unit_price": 200,
+      "total_price": 4200,
+      "catalogue_ref": "LMN-112460",
+      "tech_spec": "LED SPIKE LIGHT NON-Dimmable Lamp Type: Cree LED Wattage: 5W   CCT: 3000K     Lumen: 274lm Beam Angle: 36° Voltage: 220-240VDimension: D:50 x H:148mm Material: Aluminum body IP: 65       Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 200,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "fe58e887-b0ac-4fc1-9489-2188d45fc549",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Luminance LED In ground light",
+      "quantity": 14,
+      "unit_price": 190,
+      "total_price": 2793,
+      "catalogue_ref": "LMN-7209",
+      "tech_spec": "In ground light                                      Power: 1*3W - CCT:3000k  AC220-240 50/60Hz                   Material:Dia Cast Aluminium     Lamp Type:COB LED -CRI>80                                 Cut Size:Dia 33mmxH43      54LM         IP:65                                      Warranty: 5 years",
+      "tax_rate": 5,
+      "tax_amount": 133,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "4b2199e0-c779-4076-83a3-1c4dd9c9805a",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Luminance-Strip light",
+      "quantity": 30,
+      "unit_price": 40,
+      "total_price": 1260,
+      "catalogue_ref": "LMN-Strip Lihgt",
+      "tech_spec": "Strip light NON-Dimmable Lamp Type: Cree LED Wattage: 14W/mtr      CCT: 3000K Lumen: 840lm/M  Beam Angle: 120º Voltage: DC24V Material:tape on the back Dimension:10meter Roll W:11.5mm IP: 65      Warranty: 3 Years",
+      "tax_rate": 5,
+      "tax_amount": 60,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "6ade8dd5-1c35-4d54-a548-59a58da3a6c1",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Aluminium Strip Light Profile",
+      "quantity": 30,
+      "unit_price": 22,
+      "total_price": 693,
+      "catalogue_ref": "Aluminium Strip Profile",
+      "tech_spec": "LED Aluminium Profile for led strip light Material: Aluminum Alloy, PC zinc-alloy Dimension: L: 2500mm x W: 88mm x H: 32mm",
+      "tax_rate": 5,
+      "tax_amount": 33,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "0f5cd59f-897b-4246-b9d4-9fb8a379f464",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Transformer For Spike Light",
+      "quantity": 2,
+      "unit_price": 330,
+      "total_price": 693,
+      "catalogue_ref": "Transformer",
+      "tech_spec": "Transformer for Floor and spike light (220-240V AC, 50 60HZ, 1.36A Input Current, 300W Power rate, 0.96 Power factor, 12V AC, 50-60HZ, Output Voltage 25 A Max Output Current, Working TEMPERATURE: â‰¤ 85Â°, NEMA /UL: CLASS B",
+      "tax_rate": 5,
+      "tax_amount": 33,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "99a4555b-fff1-4153-8215-dbff4844fd6d",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Mean Well LED Driver 150W",
+      "quantity": 1,
+      "unit_price": 130,
+      "total_price": 136.5,
+      "catalogue_ref": "LED Driver",
+      "tech_spec": "LED STRIP Light Driver Wattage: 150W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 6.5,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "f423c682-93b8-4baa-a81e-67942a7fcd90",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Mean Well LED Driver 100W",
+      "quantity": 3,
+      "unit_price": 100,
+      "total_price": 315,
+      "catalogue_ref": "LED Driver",
+      "tech_spec": "LED STRIP Light Driver Wattage: 100W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 15,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    },
+    {
+      "id": "e42fee58-8f49-40d1-a79d-0942904da6b2",
+      "invoice_id": "36d60ba7-3c4d-4923-8b9f-7fe24476daa1",
+      "product_id": null,
+      "description": "Mean Well LED Driver 60W",
+      "quantity": 1,
+      "unit_price": 65,
+      "total_price": 68.25,
+      "catalogue_ref": "LED Driver",
+      "tech_spec": "LED STRIP Light Driver Wattage: 60W Output Voltage: DC24V Warranty: 1 Year",
+      "tax_rate": 5,
+      "tax_amount": 3.25,
+      "tax_type": "percentage",
+      "tax_value": 5,
+      "item_image": null
+    }
+  ],
+  "products": [
+    {
+      "id": "6bd8be8d-6d6b-4f71-8fc0-19d048b15f28",
+      "category_id": "e20d178a-f624-4e41-8ad6-f3f9b5c21635",
+      "division_id": "7137ed66-d259-489c-90e0-71969fa09f6b",
+      "name": "AeroTrack-12 Magnetic Spotlight System",
+      "sku": "SKU-DLT-LGT-001",
+      "slug": "aerotrack-spotlight",
+      "description": "Architectural magnetic track spotlight system, featuring warm-dimming Bridgelux LEDs and high CRI (>90) for outstanding retail and residential interiors.",
+      "specifications": [
+        {
+          "key": "Light Source",
+          "value": "High-CRI Bridgelux COB LED"
+        },
+        {
+          "key": "Color Rendering",
+          "value": "CRI > 90"
+        },
+        {
+          "key": "Dimming Type",
+          "value": "Triac / 0-10V / DALI dimmable"
+        },
+        {
+          "key": "Beam Angle",
+          "value": "15° / 24° / 36° Adjustable"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-25T10:02:24.920Z",
+      "updated_at": "2026-05-25T10:02:24.920Z",
+      "image_url": null,
+      "ideal_room": null
+    },
+    {
+      "id": "b181dbe4-4f36-4683-8092-b63971ccd93e",
+      "category_id": "6c8f4aa2-2cc9-4a0c-84e3-50bc464362b3",
+      "division_id": "7137ed66-d259-489c-90e0-71969fa09f6b",
+      "name": "SolarPath-65 Landscape Inground Spike",
+      "sku": "SKU-DLT-LGT-002",
+      "slug": "solarpath-inground",
+      "description": "IP67 weather-sealed landscape spike spotlight, engineered from structural marine stainless steel to counter high temperatures and salinity in coastal Emirate soils.",
+      "specifications": [
+        {
+          "key": "Ingress Protection",
+          "value": "IP67 Waterproof rating"
+        },
+        {
+          "key": "Body Material",
+          "value": "Grade 316 Marine Stainless Steel"
+        },
+        {
+          "key": "Voltage Input",
+          "value": "24V DC Low Voltage"
+        },
+        {
+          "key": "Color Temp",
+          "value": "3000K Warm White"
+        }
+      ],
+      "featured": false,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-25T10:02:25.176Z",
+      "updated_at": "2026-05-25T10:02:25.176Z",
+      "image_url": null,
+      "ideal_room": null
+    },
+    {
+      "id": "34d109da-4ad0-4232-b7eb-f6d60accc7ab",
+      "category_id": "520ec04b-a6fc-4b72-ab06-6d8f6e17e013",
+      "division_id": "b019bb85-2b89-43b6-863b-a9360aa8adc9",
+      "name": "Ficus Lyrata Standard (Fiddle Leaf Fig)",
+      "sku": "SKU-DLT-PLT-001",
+      "slug": "ficus-lyrata",
+      "description": "Premium statement foliage plant, fully acclimated to local UAE environments, outstanding for premium villa lobbies and corporate office interiors.",
+      "specifications": [
+        {
+          "key": "Common Name",
+          "value": "Fiddle Leaf Fig"
+        },
+        {
+          "key": "Approx. Height",
+          "value": "1.8m to 2.2m"
+        },
+        {
+          "key": "Light Requirement",
+          "value": "Bright, indirect indoor light"
+        },
+        {
+          "key": "Watering Frequency",
+          "value": "Once every 7-10 days"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-25T10:02:25.396Z",
+      "updated_at": "2026-05-25T10:02:25.396Z",
+      "image_url": null,
+      "ideal_room": null
+    },
+    {
+      "id": "7c1926c2-5dcb-4d42-bad1-b8cbd6f4339d",
+      "category_id": "e07f9c79-2c65-4132-b400-667f9ac97d7d",
+      "division_id": "b019bb85-2b89-43b6-863b-a9360aa8adc9",
+      "name": "Elegance Fiberglass Planter (Matte Slate)",
+      "sku": "SKU-DLT-POT-002",
+      "slug": "elegance-fiberglass-planter",
+      "description": "Architectural grade double-walled fiberglass planter in sleek matte slate finish, engineered to resist UV solar fade under intense Middle Eastern sun exposures.",
+      "specifications": [
+        {
+          "key": "Material",
+          "value": "Reinforced Double-Walled Fiberglass"
+        },
+        {
+          "key": "Finish Type",
+          "value": "Matte UV-Resistant Slate Grey"
+        },
+        {
+          "key": "Dimensions",
+          "value": "45cm Diameter x 90cm Height"
+        },
+        {
+          "key": "Environment",
+          "value": "Suitable for both indoor & outdoor lobbies"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-25T10:02:25.636Z",
+      "updated_at": "2026-05-25T10:02:25.636Z",
+      "image_url": null,
+      "ideal_room": null
+    },
+    {
+      "id": "e7c91cbb-0c2d-4eec-803b-35f99d8ca15c",
+      "category_id": "6c8f4aa2-2cc9-4a0c-84e3-50bc464362b3",
+      "division_id": "7137ed66-d259-489c-90e0-71969fa09f6b",
+      "name": "SolarPath-65 Landscape Inground Spike (M60)",
+      "sku": "SKU-DLT-LGT-002-M60",
+      "slug": "solarpath-inground-m60",
+      "description": "IP67 weather-sealed landscape spike spotlight, engineered from structural grade 316 marine stainless steel to counter high humidity, heat, and salinity in coastal GCC soil environments.",
+      "specifications": [
+        {
+          "key": "IP Waterproof Rating",
+          "value": "IP67 Weatherproof Sealed"
+        },
+        {
+          "key": "Chassis Material",
+          "value": "Polished Marine Bronze"
+        },
+        {
+          "key": "Operating Voltage",
+          "value": "24V DC Low Voltage"
+        },
+        {
+          "key": "Beam Angle",
+          "value": "60 Degrees Wide Flood"
+        },
+        {
+          "key": "Color Temp",
+          "value": "3000K Warm White"
+        },
+        {
+          "key": "Lumens Output",
+          "value": "1800 lm"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-28T07:49:35.553Z",
+      "updated_at": "2026-05-28T07:49:35.553Z",
+      "image_url": null,
+      "ideal_room": "Façades & Garden, Outdoor Pathway, Turf Spikes"
+    },
+    {
+      "id": "32dee02a-a8fc-4e3d-8c91-3bb978f91c95",
+      "category_id": "e07f9c79-2c65-4132-b400-667f9ac97d7d",
+      "division_id": "b019bb85-2b89-43b6-863b-a9360aa8adc9",
+      "name": "TREONE",
+      "sku": "DTL",
+      "slug": "one-tree",
+      "description": "",
+      "specifications": [],
+      "featured": false,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-25T18:26:14.011Z",
+      "updated_at": "2026-05-25T18:26:14.011Z",
+      "image_url": null,
+      "ideal_room": null
+    },
+    {
+      "id": "86f864d7-a4b7-4ac7-849e-a3354fd1a319",
+      "category_id": "e07f9c79-2c65-4132-b400-667f9ac97d7d",
+      "division_id": "7137ed66-d259-489c-90e0-71969fa09f6b",
+      "name": "TEST",
+      "sku": "DTL-101",
+      "slug": "dgsoneoone",
+      "description": "",
+      "specifications": [
+        {
+          "key": "Light ",
+          "value": "ACID"
+        },
+        {
+          "key": "Lumen",
+          "value": "100Watts"
+        }
+      ],
+      "featured": false,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-25T19:14:00.979Z",
+      "updated_at": "2026-05-25T19:14:00.979Z",
+      "image_url": null,
+      "ideal_room": null
+    },
+    {
+      "id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "category_id": "520ec04b-a6fc-4b72-ab06-6d8f6e17e013",
+      "division_id": "b019bb85-2b89-43b6-863b-a9360aa8adc9",
+      "name": "Ficus Lyrata Standard (Fiddle Leaf Fig) (2.2m to 2.5m Specimen Tree)",
+      "sku": "SKU-DLT-PLT-001-XL240",
+      "slug": "ficus-lyrata-xl240",
+      "description": "Premium architectural statement foliage plant, fully acclimated to local UAE desert air conditioning parameters. Features thick, glossy violin-shaped leaves on tall sturdy single stems.",
+      "specifications": [
+        {
+          "key": "Botanical Family",
+          "value": "Moraceae"
+        },
+        {
+          "key": "Approx. Height",
+          "value": "2.2m to 2.5m Specimen Tree"
+        },
+        {
+          "key": "Pot Dimension",
+          "value": "50cm Ceramic Premium Vase"
+        },
+        {
+          "key": "Solar Requirement",
+          "value": "Bright, indirect filtered light"
+        },
+        {
+          "key": "Irrigation Pattern",
+          "value": "Once every 8 days (Check moisture)"
+        },
+        {
+          "key": "Origin",
+          "value": "Acclimated in Desert Group Nursery UAE"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-28T07:49:36.173Z",
+      "updated_at": "2026-05-28T07:49:36.173Z",
+      "image_url": null,
+      "ideal_room": "Living Room, Office Lobby, Hotel Reception"
+    },
+    {
+      "id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "category_id": "e20d178a-f624-4e41-8ad6-f3f9b5c21635",
+      "division_id": "7137ed66-d259-489c-90e0-71969fa09f6b",
+      "name": "AeroTrack-12 Magnetic Spotlight System (Alabaster Matte White)",
+      "sku": "SKU-DLT-LGT-001-W24",
+      "slug": "aerotrack-spotlight-w24",
+      "description": "Architectural grade magnetic track spotlight system, featuring warm-dimming Bridgelux LEDs and high CRI (>90) for outstanding retail and residential interiors.",
+      "specifications": [
+        {
+          "key": "Color Finish",
+          "value": "Alabaster Matte White"
+        },
+        {
+          "key": "Wattage Output",
+          "value": "24 Watts COB LED"
+        },
+        {
+          "key": "Color Temperature",
+          "value": "Warm-Dim (2700K - 1800K)"
+        },
+        {
+          "key": "Beam Angle",
+          "value": "36 Degrees Medium Flood"
+        },
+        {
+          "key": "CRI Metric",
+          "value": "CRI > 95"
+        },
+        {
+          "key": "Dimming Protocol",
+          "value": "Phase-Cut / Triac Dimming"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-28T07:49:34.961Z",
+      "updated_at": "2026-05-28T07:49:34.961Z",
+      "image_url": null,
+      "ideal_room": "Living Room, Showroom, Retail Display"
+    },
+    {
+      "id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "category_id": "6c8f4aa2-2cc9-4a0c-84e3-50bc464362b3",
+      "division_id": "7137ed66-d259-489c-90e0-71969fa09f6b",
+      "name": "SolarPath-65 Landscape Inground Spike (S15)",
+      "sku": "SKU-DLT-LGT-002-S15",
+      "slug": "solarpath-inground-s15",
+      "description": "IP67 weather-sealed landscape spike spotlight, engineered from structural grade 316 marine stainless steel to counter high humidity, heat, and salinity in coastal GCC soil environments.",
+      "specifications": [
+        {
+          "key": "IP Waterproof Rating",
+          "value": "IP67 Weatherproof Sealed"
+        },
+        {
+          "key": "Chassis Material",
+          "value": "Grade 316 Marine Stainless Steel"
+        },
+        {
+          "key": "Operating Voltage",
+          "value": "24V DC Low Voltage (Safe)"
+        },
+        {
+          "key": "Beam Angle",
+          "value": "15 Degrees Narrow Spotlight"
+        },
+        {
+          "key": "Color Temp",
+          "value": "2700K Ultra Warm White"
+        },
+        {
+          "key": "Lumens Output",
+          "value": "1200 lm"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-28T07:49:35.253Z",
+      "updated_at": "2026-05-28T07:49:35.253Z",
+      "image_url": null,
+      "ideal_room": "Façades & Garden, Outdoor Pathway, Turf Spikes"
+    },
+    {
+      "id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "category_id": "e20d178a-f624-4e41-8ad6-f3f9b5c21635",
+      "division_id": "7137ed66-d259-489c-90e0-71969fa09f6b",
+      "name": "AeroTrack-12 Magnetic Spotlight System (Anodized Matte Black)",
+      "sku": "SKU-DLT-LGT-001-B15",
+      "slug": "aerotrack-spotlight-b15",
+      "description": "Architectural grade magnetic track spotlight system, featuring warm-dimming Bridgelux LEDs and high CRI (>90) for outstanding retail and residential interiors.",
+      "specifications": [
+        {
+          "key": "Color Finish",
+          "value": "Anodized Matte Black"
+        },
+        {
+          "key": "Wattage Output",
+          "value": "15 Watts COB LED"
+        },
+        {
+          "key": "Color Temperature",
+          "value": "3000K Warm White"
+        },
+        {
+          "key": "Beam Angle",
+          "value": "24 Degrees Spot"
+        },
+        {
+          "key": "CRI Metric",
+          "value": "CRI > 92 (High Fidelity)"
+        },
+        {
+          "key": "Dimming Protocol",
+          "value": "DALI-2 / 0-10V Dimming Support"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-28T07:49:34.713Z",
+      "updated_at": "2026-05-28T07:49:34.713Z",
+      "image_url": null,
+      "ideal_room": "Living Room, Showroom, Retail Display"
+    },
+    {
+      "id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "category_id": "520ec04b-a6fc-4b72-ab06-6d8f6e17e013",
+      "division_id": "b019bb85-2b89-43b6-863b-a9360aa8adc9",
+      "name": "Ficus Lyrata Standard (Fiddle Leaf Fig) (1.5m to 1.7m Standard)",
+      "sku": "SKU-DLT-PLT-001-S150",
+      "slug": "ficus-lyrata-s150",
+      "description": "Premium architectural statement foliage plant, fully acclimated to local UAE desert air conditioning parameters. Features thick, glossy violin-shaped leaves on tall sturdy single stems.",
+      "specifications": [
+        {
+          "key": "Botanical Family",
+          "value": "Moraceae"
+        },
+        {
+          "key": "Approx. Height",
+          "value": "1.5m to 1.7m Standard"
+        },
+        {
+          "key": "Pot Dimension",
+          "value": "30cm Nursery Container"
+        },
+        {
+          "key": "Solar Requirement",
+          "value": "Bright, indirect morning sunlight"
+        },
+        {
+          "key": "Irrigation Pattern",
+          "value": "Once every 7 to 10 days (Allow soil to dry)"
+        },
+        {
+          "key": "Origin",
+          "value": "Acclimated in Desert Group Nursery UAE"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-28T07:49:35.873Z",
+      "updated_at": "2026-05-28T07:49:35.873Z",
+      "image_url": null,
+      "ideal_room": "Living Room, Office Lobby, Hotel Reception"
+    },
+    {
+      "id": "559566dc-041f-495c-a352-c876ff7302d9",
+      "category_id": "e07f9c79-2c65-4132-b400-667f9ac97d7d",
+      "division_id": "b019bb85-2b89-43b6-863b-a9360aa8adc9",
+      "name": "Elegance Fiberglass Planter (Matte) (Sleek Matte Alabaster White)",
+      "sku": "SKU-DLT-POT-002-WHT-M",
+      "slug": "elegance-fiberglass-planter-wht-m",
+      "description": "Architectural-grade double-walled reinforced fiberglass planter, engineered with advanced UV-inhibitors to resist cracking and color fading under intensive direct GCC solar exposure.",
+      "specifications": [
+        {
+          "key": "Raw Material",
+          "value": "UV-Stabilized Double-Walled Fiberglass"
+        },
+        {
+          "key": "Color Finish",
+          "value": "Sleek Matte Alabaster White"
+        },
+        {
+          "key": "Planter Size",
+          "value": "Medium (40cm Dia x 75cm Height)"
+        },
+        {
+          "key": "Net Weight",
+          "value": "5.2 kg (Empty)"
+        },
+        {
+          "key": "Water Drainage",
+          "value": "Pre-drilled bottom holes"
+        },
+        {
+          "key": "Thermal Defense",
+          "value": "Double-walled airspace acts as root insulation"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-28T07:49:36.773Z",
+      "updated_at": "2026-05-28T07:49:36.773Z",
+      "image_url": null,
+      "ideal_room": "Outdoor Patio, Executive Suite, Residential Balcony"
+    },
+    {
+      "id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "category_id": "e07f9c79-2c65-4132-b400-667f9ac97d7d",
+      "division_id": "b019bb85-2b89-43b6-863b-a9360aa8adc9",
+      "name": "Elegance Fiberglass Planter (Matte) (Textured Matte Slate Grey)",
+      "sku": "SKU-DLT-POT-002-SLT-L",
+      "slug": "elegance-fiberglass-planter-slt-l",
+      "description": "Architectural-grade double-walled reinforced fiberglass planter, engineered with advanced UV-inhibitors to resist cracking and color fading under intensive direct GCC solar exposure.",
+      "specifications": [
+        {
+          "key": "Raw Material",
+          "value": "UV-Stabilized Double-Walled Fiberglass"
+        },
+        {
+          "key": "Color Finish",
+          "value": "Textured Matte Slate Grey"
+        },
+        {
+          "key": "Planter Size",
+          "value": "Large (50cm Dia x 100cm Height)"
+        },
+        {
+          "key": "Net Weight",
+          "value": "8.5 kg (Empty)"
+        },
+        {
+          "key": "Water Drainage",
+          "value": "Pre-drilled bottom holes with rubber plugs"
+        },
+        {
+          "key": "Thermal Defense",
+          "value": "Double-walled airspace acts as root insulation"
+        }
+      ],
+      "featured": true,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-28T07:49:36.457Z",
+      "updated_at": "2026-05-28T07:49:36.457Z",
+      "image_url": null,
+      "ideal_room": "Outdoor Patio, Executive Suite, Residential Balcony"
+    },
+    {
+      "id": "b2b208c6-1682-4129-9ca3-070a64cb7511",
+      "category_id": "91e6fdca-4c2e-4c18-8928-648753c2d55f",
+      "division_id": "7137ed66-d259-489c-90e0-71969fa09f6b",
+      "name": "CPX-900 Hydraulic Submersible Pump",
+      "sku": "SKU-DTL-PUMP-900",
+      "slug": "cpx-900-hydraulic-submersible-pump",
+      "description": "Submersible hydraulic fluid transfer pump.",
+      "specifications": [],
+      "featured": false,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-29T02:17:10.403Z",
+      "updated_at": "2026-05-29T02:17:10.403Z",
+      "image_url": null,
+      "ideal_room": null
+    },
+    {
+      "id": "c24a4ff2-43db-4fb6-89b6-03907b4ed928",
+      "category_id": "e07f9c79-2c65-4132-b400-667f9ac97d7d",
+      "division_id": "7137ed66-d259-489c-90e0-71969fa09f6b",
+      "name": "Modern Fiberstone Planter Pot",
+      "sku": "SKU-DGS-POT-003",
+      "slug": "modern-fiberstone-planter-pot",
+      "description": "Lightweight architectural fiberglass plant container.",
+      "specifications": [],
+      "featured": false,
+      "status": "active",
+      "seo_title": null,
+      "seo_description": null,
+      "created_at": "2026-05-29T02:17:10.859Z",
+      "updated_at": "2026-05-29T02:17:10.859Z",
+      "image_url": null,
+      "ideal_room": null
+    }
+  ],
+  "product_images": [
+    {
+      "id": "eb8aa86a-f11f-425f-a819-7116c2542065",
+      "product_id": "6bd8be8d-6d6b-4f71-8fc0-19d048b15f28",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "67e52e1f-6176-47e2-9766-36e9bba07ebc",
+      "product_id": "b181dbe4-4f36-4683-8092-b63971ccd93e",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "4b2fe782-fc89-48e8-836b-9c2ed703073f",
+      "product_id": "34d109da-4ad0-4232-b7eb-f6d60accc7ab",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "2678bcd4-72c1-4859-8535-d2a7d470c4e0",
+      "product_id": "7c1926c2-5dcb-4d42-bad1-b8cbd6f4339d",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "924006f4-d8e9-4bb3-86be-253097cd65e4",
+      "product_id": "6bd8be8d-6d6b-4f71-8fc0-19d048b15f28",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "76c14bda-bbc4-4686-9b1f-d72e2d862e27",
+      "product_id": "b181dbe4-4f36-4683-8092-b63971ccd93e",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "c16002c8-fa12-49f5-b467-d85ec08407ce",
+      "product_id": "34d109da-4ad0-4232-b7eb-f6d60accc7ab",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "8fa3c65a-d64a-4655-b05a-7ef0cac6a0ad",
+      "product_id": "7c1926c2-5dcb-4d42-bad1-b8cbd6f4339d",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "8f89fafa-a1bb-4921-b74b-208ce3eebea2",
+      "product_id": "6bd8be8d-6d6b-4f71-8fc0-19d048b15f28",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "4020b0bf-393a-43dc-843b-a3c2e943ebe7",
+      "product_id": "b181dbe4-4f36-4683-8092-b63971ccd93e",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "36323082-ffcf-436b-9f33-57d47bceb2f4",
+      "product_id": "34d109da-4ad0-4232-b7eb-f6d60accc7ab",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "6a8e2bea-66e1-44ed-b9ff-ccd3fea7cc6f",
+      "product_id": "7c1926c2-5dcb-4d42-bad1-b8cbd6f4339d",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "e80b893a-feac-48a4-833b-e339dc7e3bc3",
+      "product_id": "6bd8be8d-6d6b-4f71-8fc0-19d048b15f28",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "aa7e248e-4370-4be0-9b51-4d2c428ddb30",
+      "product_id": "b181dbe4-4f36-4683-8092-b63971ccd93e",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "f2170424-9893-4366-bb6f-a68647a3cd5d",
+      "product_id": "34d109da-4ad0-4232-b7eb-f6d60accc7ab",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "8418e6df-0196-4128-81d9-b981fe616e42",
+      "product_id": "7c1926c2-5dcb-4d42-bad1-b8cbd6f4339d",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "99b0a1fb-aebe-4378-9d40-2d823f6dedd9",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "f111ceb2-1620-4ce0-925e-052b37217321",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "77a664b8-e8b8-4712-a38b-2da6fb894f67",
+      "product_id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "883ad3ba-9745-406c-8319-76bcf7631f70",
+      "product_id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "70fae395-5e9e-43c6-9721-0e04e2be061a",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "url": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "43218a83-8d8b-4d63-85b0-102f4f84c495",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "url": "https://images.unsplash.com/photo-1558403194-611308249627?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "a7ea03b8-8798-4de7-95bf-5ffe738bdc8a",
+      "product_id": "e7c91cbb-0c2d-4eec-803b-35f99d8ca15c",
+      "url": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "50e2c955-2314-4abd-9dab-b0e4e41df4e9",
+      "product_id": "e7c91cbb-0c2d-4eec-803b-35f99d8ca15c",
+      "url": "https://images.unsplash.com/photo-1558403194-611308249627?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "e922d5b3-ff12-47fa-9c02-a90642d67360",
+      "product_id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "eaf9633e-4828-4f58-844d-384b38a0753e",
+      "product_id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "url": "https://images.unsplash.com/photo-1597055181300-e3633a207518?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "5c9b5b86-7a12-4c04-b9f7-a083ad6d4e48",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "3571eb25-ea8c-44c7-9cfb-137c928b98c3",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "url": "https://images.unsplash.com/photo-1597055181300-e3633a207518?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "1c17adee-8c4a-4f05-abc8-c8829761c8da",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "726b12d0-0e53-4340-a4cf-1de744db1fa0",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "url": "https://images.unsplash.com/photo-1524486361537-8ad156b40098?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "cb1ba500-5124-4388-a078-e199352f4342",
+      "product_id": "559566dc-041f-495c-a352-c876ff7302d9",
+      "url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "fa85d4da-ecd3-4e0b-bbd0-7e375da7f3f6",
+      "product_id": "559566dc-041f-495c-a352-c876ff7302d9",
+      "url": "https://images.unsplash.com/photo-1524486361537-8ad156b40098?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "31fde185-2ff3-4e3e-88b9-27e084f44741",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "ce9121a8-2f80-4761-b6a6-8eb7f862c47c",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "27476ee5-3862-4e78-bbb8-9d1c867566df",
+      "product_id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "3eea56bc-53a2-4d64-a832-3dcbbcddd331",
+      "product_id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "1a1f6292-53b8-4fde-b506-667182a97ca5",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "url": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "3b59fcff-cf0e-49db-b4e7-0f684f791b4c",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "url": "https://images.unsplash.com/photo-1558403194-611308249627?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "0e601129-b1e7-450d-a989-ea9a905c5bc5",
+      "product_id": "e7c91cbb-0c2d-4eec-803b-35f99d8ca15c",
+      "url": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "762f12cc-2cd7-4a59-b0fa-8177be105cb2",
+      "product_id": "e7c91cbb-0c2d-4eec-803b-35f99d8ca15c",
+      "url": "https://images.unsplash.com/photo-1558403194-611308249627?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "c5a947ae-6987-4586-bf87-608cc3aaedb7",
+      "product_id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "fe0df5f6-d54b-49d0-9c56-d3959b0b2308",
+      "product_id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "url": "https://images.unsplash.com/photo-1597055181300-e3633a207518?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "e53bc6e0-0e69-45be-a2ff-d34496d2894c",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "497186c2-5d37-4a7b-8a06-4831af2b9104",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "url": "https://images.unsplash.com/photo-1597055181300-e3633a207518?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "49cd9969-08f4-4095-b68c-174f973371a4",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "34fde340-6f10-4cb8-9889-52a028d4e746",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "url": "https://images.unsplash.com/photo-1524486361537-8ad156b40098?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "1f25db26-e7ad-40e2-84cb-c2ecc16ff382",
+      "product_id": "559566dc-041f-495c-a352-c876ff7302d9",
+      "url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "02570bf4-7938-4873-a21c-098694d728da",
+      "product_id": "559566dc-041f-495c-a352-c876ff7302d9",
+      "url": "https://images.unsplash.com/photo-1524486361537-8ad156b40098?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "1f26c690-d226-49f6-bab6-82a9a0bc0b9a",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "01e11408-c575-44a3-b9e0-43af8563e8c8",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "d8a08c67-4e05-4284-907e-04823c3b05aa",
+      "product_id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "c9162c52-cb47-4b34-b7f2-22a30552937c",
+      "product_id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "3d395057-6fb0-40f6-b00c-4b16f184e1ae",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "url": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "b03a7cab-e9f2-40d3-a034-0d79ace5e183",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "url": "https://images.unsplash.com/photo-1558403194-611308249627?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "4488da5c-245d-49e8-b83c-49c10097b210",
+      "product_id": "e7c91cbb-0c2d-4eec-803b-35f99d8ca15c",
+      "url": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "ce44fd90-df34-4b69-9786-e15c45e2503a",
+      "product_id": "e7c91cbb-0c2d-4eec-803b-35f99d8ca15c",
+      "url": "https://images.unsplash.com/photo-1558403194-611308249627?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "82387c20-95ed-49e8-a470-392f3f3dcaf6",
+      "product_id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "ac2aa60c-0530-4ca1-ba3b-941e73f5b540",
+      "product_id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "url": "https://images.unsplash.com/photo-1597055181300-e3633a207518?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "6e81c3da-e52b-4711-97b7-00ebfcb22c8e",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "0e58278c-173d-4e6c-bfd1-6776715f6676",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "url": "https://images.unsplash.com/photo-1597055181300-e3633a207518?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "1b13ce0b-9bf9-41f5-b26c-5fd0288542f6",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "08109eba-e2f5-4843-88a9-2e12c4d4560e",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "url": "https://images.unsplash.com/photo-1524486361537-8ad156b40098?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "29f6d2eb-0098-4e5a-911e-80a6cecd0f99",
+      "product_id": "559566dc-041f-495c-a352-c876ff7302d9",
+      "url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "e43ef559-36f0-4092-9088-f635bce906f7",
+      "product_id": "559566dc-041f-495c-a352-c876ff7302d9",
+      "url": "https://images.unsplash.com/photo-1524486361537-8ad156b40098?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "7c5de5f8-6808-45d7-a0bc-a601ee3324a0",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "9773dc89-60be-41f5-ac71-8cfe1b23ce5d",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "8ee46585-1b73-4897-b2af-ef3477358948",
+      "product_id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "59188d79-a523-47c4-92a3-42960327b5dd",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "b288fe19-800c-4a94-8281-b42d49945e8a",
+      "product_id": "6de4af35-b815-48f1-b007-b688e0abf32a",
+      "url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "9b6b40d0-fcca-4cf0-841e-19b327b5e950",
+      "product_id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "url": "https://images.unsplash.com/photo-1565814636199-ae8133055c1c?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "56863596-9b7b-4d14-8d51-c509ea624bad",
+      "product_id": "e49f2ed0-711d-4249-8d14-1b98069cbd82",
+      "url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "009294b9-0d2d-4cb9-9fa4-8cb8152b62e7",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "url": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "681bafc8-d9be-4670-83c4-304214cf176d",
+      "product_id": "f87010c3-06d5-4d21-b4e1-0331e379a845",
+      "url": "https://images.unsplash.com/photo-1558403194-611308249627?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "2a549cd5-aae9-4046-8d45-cfa1de69bdd9",
+      "product_id": "e7c91cbb-0c2d-4eec-803b-35f99d8ca15c",
+      "url": "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "7b3c14eb-a6b3-4fa5-abb8-923db46501f4",
+      "product_id": "e7c91cbb-0c2d-4eec-803b-35f99d8ca15c",
+      "url": "https://images.unsplash.com/photo-1558403194-611308249627?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "cd545b5d-2bb3-4ffd-906d-7c1a06fc5ad5",
+      "product_id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "a04532b2-77b2-4665-9697-21da7e5b3829",
+      "product_id": "fe68b21a-cbc4-4f30-bf45-b4c32dbb0d02",
+      "url": "https://images.unsplash.com/photo-1597055181300-e3633a207518?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "1708fdbf-2978-401e-b75d-0610e5b36ab7",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "url": "https://images.unsplash.com/photo-1545241047-6083a3684587?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "864deb1b-8196-496c-9603-d9e4bfe1ee41",
+      "product_id": "9aefffe0-4c57-4b1e-99ff-c3e2798a0d82",
+      "url": "https://images.unsplash.com/photo-1597055181300-e3633a207518?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "e0169f7a-f5d1-4a7a-83f1-c7d4c5befe37",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "cb1b85e1-681b-4392-b2e8-e2256e1f9988",
+      "product_id": "9759e4bd-1976-41ab-a120-7318d7dcc153",
+      "url": "https://images.unsplash.com/photo-1524486361537-8ad156b40098?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    },
+    {
+      "id": "2fc19f7c-8616-40c7-9149-e55c201a9a79",
+      "product_id": "559566dc-041f-495c-a352-c876ff7302d9",
+      "url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?auto=format&fit=crop&w=800&q=80",
+      "is_primary": true
+    },
+    {
+      "id": "53f2ce2a-7d75-4702-a945-5cea743235f7",
+      "product_id": "559566dc-041f-495c-a352-c876ff7302d9",
+      "url": "https://images.unsplash.com/photo-1524486361537-8ad156b40098?auto=format&fit=crop&w=800&q=80",
+      "is_primary": false
+    }
+  ]
+}

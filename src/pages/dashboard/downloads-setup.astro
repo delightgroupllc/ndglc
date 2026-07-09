@@ -15,6 +15,7 @@ let downloadsSetup: any = {
   ctaDescription: '',
   ctaBtnText: '',
   ctaBtnLink: '',
+  googleDriveLink: '',
   fileView: {
     layout:    'grid',    // grid | list | scroll
     division:  'all',     // all | dtl | dgs | sidebyside
@@ -53,7 +54,7 @@ const fv = downloadsSetup.fileView;
       </div>
 
       <!-- Form -->
-      <form id="downloads-form" class="p-4 space-y-4 flex-1">
+      <form id="downloads-form" class="p-4 space-y-4 flex-1" data-drive-link={downloadsSetup.googleDriveLink || ''}>
 
         <!-- PAGE HEADER -->
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -207,6 +208,7 @@ const fv = downloadsSetup.fileView;
 
   <script>
     const form    = document.getElementById('downloads-form') as HTMLFormElement;
+    (window as any).googleDriveLinkPreserved = form.getAttribute('data-drive-link') || '';
     const saveBtn = document.getElementById('save-downloads') as HTMLButtonElement;
     const saveMsg = document.getElementById('save-msg') as HTMLElement;
 
@@ -281,6 +283,7 @@ const fv = downloadsSetup.fileView;
         ctaDescription: data.get('ctaDescription') || '',
         ctaBtnText: data.get('ctaBtnText') || '',
         ctaBtnLink: data.get('ctaBtnLink') || '',
+        googleDriveLink: (window as any).googleDriveLinkPreserved || '',
         fileView: {
           layout:    data.get('fileLayout')    || 'grid',
           division:  data.get('fileDivision')  || 'all',

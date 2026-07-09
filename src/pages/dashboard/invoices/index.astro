@@ -259,7 +259,13 @@ invoices = invoices.map(inv => {
                     <div class="font-extrabold text-slate-900 text-sm tracking-tight">{inv.invoice_number}</div>
                     <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
                       <span class="inline-block px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-500 text-[9px] font-black uppercase tracking-wider">
-                        {inv.order_type === 'quotation' ? 'Estimation' : (inv.order_type === 'lpo' ? 'LPO' : (inv.order_type === 'inquiry' ? 'Inquiry' : (inv.order_type === 'proforma' ? 'Pro Forma' : (inv.order_type === 'delivery_note' ? 'Delivery Note' : 'Tax Invoice'))))}
+                        {inv.order_type === 'proforma' ? 'Pro Forma' : 
+                         inv.order_type === 'lpo' ? 'LPO' : 
+                         inv.order_type === 'delivery_note' ? 'Delivery Note' : 
+                         inv.order_type === 'tax_invoice' ? 'Commercial Bill' :
+                         inv.order_type === 'standard' ? 'Invoice' :
+                         inv.order_type === 'quotation' ? 'Estimation' :
+                         inv.order_type === 'inquiry' ? 'Inquiry' : 'Invoice'}
                       </span>
                       <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">{inv.source_division || 'DTL'}</span>
                       {inv.invoice_number && inv.invoice_number.toUpperCase().includes('DUP') && (
@@ -621,6 +627,30 @@ invoices = invoices.map(inv => {
     </div>
   </div>
 
+  <!-- CONFIRMATION MODAL -->
+  <div id="confirm-modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div class="p-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div id="confirm-modal-icon-container" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0">
+            <svg id="confirm-modal-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <h3 id="confirm-modal-title" class="text-lg font-bold text-slate-800">Confirm Action</h3>
+        </div>
+        <p id="confirm-modal-message" class="text-sm font-semibold text-slate-600 mb-6">Are you sure you want to proceed?</p>
+        
+        <div class="flex justify-end gap-3">
+          <button type="button" id="confirm-cancel-btn" class="px-4 py-2 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
+            Cancel
+          </button>
+          <button type="button" id="confirm-proceed-btn" class="px-4 py-2 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors">
+            Proceed
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   
   <div id="audit-modal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
@@ -642,6 +672,44 @@ invoices = invoices.map(inv => {
 
               
   <script>
+    // --- Confirmation Modal Helper ---
+    (window as any).showConfirm = (message: string, title: string = 'Confirm Action', isDestructive: boolean = false): Promise<boolean> => {
+      return new Promise((resolve) => {
+        const confirmModal = document.getElementById('confirm-modal-backdrop')!;
+        const confirmTitle = document.getElementById('confirm-modal-title')!;
+        const confirmMessage = document.getElementById('confirm-modal-message')!;
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn')!;
+        const confirmProceedBtn = document.getElementById('confirm-proceed-btn')!;
+        const iconContainer = document.getElementById('confirm-modal-icon-container')!;
+
+        confirmTitle.textContent = title;
+        confirmMessage.textContent = message;
+
+        if (isDestructive) {
+          iconContainer.className = 'w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-rose-100 text-rose-600';
+          confirmProceedBtn.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors';
+        } else {
+          iconContainer.className = 'w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-amber-100 text-amber-600';
+          confirmProceedBtn.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors';
+        }
+
+        confirmModal.classList.remove('hidden');
+        confirmModal.classList.add('flex');
+
+        const cleanup = () => {
+          confirmProceedBtn.removeEventListener('click', onProceed);
+          confirmCancelBtn.removeEventListener('click', onCancel);
+          confirmModal.classList.add('hidden');
+          confirmModal.classList.remove('flex');
+        };
+
+        const onProceed = () => { cleanup(); resolve(true); };
+        const onCancel = () => { cleanup(); resolve(false); };
+
+        confirmProceedBtn.addEventListener('click', onProceed);
+        confirmCancelBtn.addEventListener('click', onCancel);
+      });
+    };
     const showAuditModal = (num, status, date, timeline) => {
       document.getElementById('audit-num').textContent = `REF: ${num}`;
       const tContainer = document.getElementById('audit-timeline');
@@ -777,6 +845,7 @@ invoices = invoices.map(inv => {
     
     // Initial run
     updateHeaderButtonsState();
+    filterAndSortInvoices();
 
     // Delete / Archive / Restore functionality
     document.querySelectorAll('.delete-btn, .archive-btn').forEach(btn => {
@@ -803,7 +872,8 @@ invoices = invoices.map(inv => {
           body = { is_archived: false };
         }
 
-        if (!confirm(confirmMsg)) return;
+        const isConfirmed = await (window as any).showConfirm(confirmMsg, 'Confirm Action', action === 'soft_delete');
+        if (!isConfirmed) return;
 
         const originalText = target.innerHTML;
         target.disabled = true;
@@ -837,7 +907,8 @@ invoices = invoices.map(inv => {
         const num = target.getAttribute('data-num') || '';
         if (!id) return;
 
-        if (!confirm(`Are you absolutely sure you want to permanently delete order ${num}? This action cannot be undone and will erase all data for this invoice.`)) return;
+        const isConfirmed = await (window as any).showConfirm(`Are you absolutely sure you want to permanently delete order ${num}? This action cannot be undone and will erase all data for this invoice.`, 'Permanent Delete', true);
+        if (!isConfirmed) return;
 
         const originalText = target.innerHTML;
         target.disabled = true;
@@ -867,7 +938,9 @@ invoices = invoices.map(inv => {
       btn.addEventListener('click', async (e) => {
         const target = e.currentTarget as HTMLButtonElement;
         const id = target.getAttribute('data-id');
-        if (!id || !confirm('Are you sure you want to duplicate this order?')) return;
+        if (!id) return;
+        const isConfirmed = await (window as any).showConfirm('Are you sure you want to duplicate this order?');
+        if (!isConfirmed) return;
 
         const originalText = target.innerHTML;
         target.disabled = true;
@@ -899,7 +972,8 @@ invoices = invoices.map(inv => {
       btn.addEventListener('click', async (e) => {
         const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
         if (!id) return;
-        if (!confirm('Are you sure you want to CONFIRM payment for this order?')) return;
+        const isConfirmed = await (window as any).showConfirm('Are you sure you want to CONFIRM payment for this order?');
+        if (!isConfirmed) return;
         try {
           // Fetch invoice to update status
           const res = await fetch(`/api/invoices`);
@@ -932,7 +1006,8 @@ invoices = invoices.map(inv => {
       btn.addEventListener('click', async (e) => {
         const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
         if (!id) return;
-        if (!confirm('Convert this document into a Commercial TAX INVOICE (Bill) instantly?')) return;
+        const isConfirmed = await (window as any).showConfirm('Convert this document into a Commercial TAX INVOICE (Bill) instantly?');
+        if (!isConfirmed) return;
         try {
           const res = await fetch(`/api/invoices`);
           const invoices = await res.json();
@@ -1339,7 +1414,8 @@ invoices = invoices.map(inv => {
         const invoiceId = target.getAttribute('data-id') || '';
         const num = target.getAttribute('data-num') || '';
         if (!invoiceId) return;
-        if (!confirm(`Are you sure you want to cancel order ${num}? This action cannot be easily undone.`)) return;
+        const isConfirmed = await (window as any).showConfirm(`Are you sure you want to cancel order ${num}? This action cannot be easily undone.`, 'Cancel Order', true);
+        if (!isConfirmed) return;
         try {
           const res = await fetch(`/api/invoices/${invoiceId}`, {
             method: 'PATCH',

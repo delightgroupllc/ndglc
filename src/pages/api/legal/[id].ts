@@ -6,7 +6,8 @@ const artifactSchema = z.object({
   title: z.string().min(1),
   identifier: z.string().min(1),
   type: z.enum(['public', 'order_clause', 'both']),
-  content: z.string().min(1)
+  content: z.string().min(1),
+  division: z.string().optional().nullable()
 });
 
 export const PUT: APIRoute = async ({ params, request }) => {
@@ -18,8 +19,8 @@ export const PUT: APIRoute = async ({ params, request }) => {
     const parsed = artifactSchema.parse(data);
 
     const res = await query(
-      `UPDATE legal_artifacts SET title = $1, identifier = $2, type = $3, content = $4, updated_at = NOW() WHERE id = $5 RETURNING *`,
-      [parsed.title, parsed.identifier, parsed.type, parsed.content, id]
+      `UPDATE legal_artifacts SET title = $1, identifier = $2, type = $3, content = $4, division = $5, updated_at = NOW() WHERE id = $6 RETURNING *`,
+      [parsed.title, parsed.identifier, parsed.type, parsed.content, parsed.division || null, id]
     );
 
     if (res.rowCount === 0) {

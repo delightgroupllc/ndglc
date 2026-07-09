@@ -33,7 +33,8 @@ try {
 
   const compRes = await query(`
     SELECT c.*, 
-      (SELECT COUNT(*) FROM customers cust WHERE cust.company_id = c.id) as customer_count
+      (SELECT COUNT(*) FROM customers cust WHERE cust.company_id = c.id) as customer_count,
+      (SELECT JSON_AGG(cust) FROM (SELECT id, name, email, phone, code, billing_address, shipping_address FROM customers WHERE company_id = c.id AND is_deleted = false) cust) as customers_list
     FROM companies c
     ORDER BY c.name ASC
   `);
@@ -311,7 +312,9 @@ try {
                 data-vat={comp.vat_number || ''}
                 data-billing={comp.billing_address || ''}
                 data-shipping={comp.shipping_address || ''}
-                data-code={comp.code || ''}>
+                data-code={comp.code || ''}
+                data-default-customer-id={comp.default_customer_id || ''}
+                data-customers={JSON.stringify(comp.customers_list || [])}>
               <td class="px-6 py-4 font-mono font-bold text-slate-900">
                 {comp.code || '—'}
               </td>
@@ -353,7 +356,7 @@ try {
 
   <!-- CREATE / EDIT COMPANY MODAL -->
   <div id="edit-company-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 animate-fade-in">
-    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto">
       <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
         <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-violet-500"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -382,19 +385,21 @@ try {
           <input type="text" id="edit-company-vat" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
         </div>
 
-        <div class="space-y-2">
-          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Billing Addresses</label>
-          <div id="company-billing-addresses-list" class="space-y-2"></div>
-          <button type="button" id="btn-add-company-billing" class="inline-flex items-center gap-1 text-2xs font-bold text-cyan-600 hover:text-cyan-700 bg-transparent border-0 cursor-pointer">
-            <Plus class="w-3.5 h-3.5" /> Add another billing address
-          </button>
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Billing Address</label>
+          <textarea id="edit-company-billing" rows="2" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors resize-none"></textarea>
         </div>
 
-        <div class="space-y-2">
-          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Shipping / Delivery Addresses</label>
-          <div id="company-shipping-addresses-list" class="space-y-2"></div>
-          <button type="button" id="btn-add-company-shipping" class="inline-flex items-center gap-1 text-2xs font-bold text-cyan-600 hover:text-cyan-700 bg-transparent border-0 cursor-pointer">
-            <Plus class="w-3.5 h-3.5" /> Add another shipping address
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Shipping / Delivery Address</label>
+          <textarea id="edit-company-shipping" rows="2" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors resize-none"></textarea>
+        </div>
+
+        <div class="space-y-3 border-t border-slate-100 pt-4">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Inline Customers / Contact Persons</label>
+          <div id="company-inline-customers-list" class="space-y-2.5"></div>
+          <button type="button" id="btn-add-company-customer" class="inline-flex items-center gap-1 text-2xs font-bold text-cyan-600 hover:text-cyan-700 bg-transparent border-0 cursor-pointer">
+            <Plus class="w-3.5 h-3.5" /> Add inline customer
           </button>
         </div>
 
@@ -402,6 +407,9 @@ try {
           <div>
             <button type="button" id="btn-modal-delete-company" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 transition-colors">
               Delete
+            </button>
+            <button type="button" id="btn-modal-merge-company" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 transition-colors ml-2">
+              Merge
             </button>
           </div>
           <div class="flex gap-3">
@@ -459,7 +467,16 @@ try {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="space-y-1">
             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company Name</label>
-            <input type="text" id="edit-customer-company" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
+            <select id="edit-customer-company-select" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors">
+              <option value="">No Company</option>
+              {companies.map(c => (
+                <option value={c.name} data-vat={c.vat_number || ''}>{c.name}</option>
+              ))}
+              <option value="_CREATE_NEW_">+ Create New Company</option>
+            </select>
+            <input type="text" id="edit-customer-company-custom" placeholder="New Company Name" class="hidden w-full mt-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors" />
+            <!-- Keep original input hidden so we can use its ID for API payload easily -->
+            <input type="hidden" id="edit-customer-company" />
           </div>
           <div class="space-y-1">
             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Company TIN / VAT Number</label>
@@ -485,6 +502,9 @@ try {
             </button>
             <button type="button" id="btn-modal-delete-customer" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 transition-colors">
               Delete
+            </button>
+            <button type="button" id="btn-modal-merge-customer" class="hidden px-3 py-2 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 transition-colors ml-2">
+              Merge
             </button>
           </div>
           <div class="flex gap-3">
@@ -687,8 +707,10 @@ try {
     btnCustArchived?.addEventListener('click', () => switchCustomerSubTab('archived'));
     btnCustBin?.addEventListener('click', () => switchCustomerSubTab('bin'));
 
-    // Initialize layout to show customers first
-    switchTab('customers');
+    // Initialize layout to show customers first, or from URL param
+    const urlParams = new URLSearchParams(window.location.search);
+    const initTab = (urlParams.get('tab') as 'users' | 'customers' | 'companies') || 'customers';
+    switchTab(initTab);
     switchCustomerSubTab('active');
 
     searchInput?.addEventListener('input', filterList);
@@ -724,9 +746,18 @@ try {
       if (elShipping) elShipping.value = '';
       if (elCode) elCode.value = '';
 
+      const elCompanySelect = document.getElementById('edit-customer-company-select') as HTMLSelectElement | null;
+      const elCompanyCustom = document.getElementById('edit-customer-company-custom') as HTMLInputElement | null;
+      if (elCompanySelect) elCompanySelect.value = '';
+      if (elCompanyCustom) {
+        elCompanyCustom.value = '';
+        elCompanyCustom.classList.add('hidden');
+      }
+
       // Hide actions for new record
       document.getElementById('btn-modal-archive-customer')?.classList.add('hidden');
       document.getElementById('btn-modal-delete-customer')?.classList.add('hidden');
+      document.getElementById('btn-modal-merge-customer')?.classList.add('hidden');
 
       editModal?.classList.remove('hidden');
       editModal?.classList.add('flex');
@@ -768,6 +799,29 @@ try {
       if (elShipping) elShipping.value = shipping;
       if (elCode) elCode.value = row.getAttribute('data-code') || '';
 
+      const elCompanySelect = document.getElementById('edit-customer-company-select') as HTMLSelectElement | null;
+      const elCompanyCustom = document.getElementById('edit-customer-company-custom') as HTMLInputElement | null;
+      
+      if (elCompanySelect && company) {
+        // Try to select existing option
+        const options = Array.from(elCompanySelect.options);
+        const matches = options.some(opt => opt.value === company);
+        if (matches) {
+          elCompanySelect.value = company;
+          if (elCompanyCustom) elCompanyCustom.classList.add('hidden');
+        } else {
+          // Company doesn't exist in options, it's a custom one
+          elCompanySelect.value = '_CREATE_NEW_';
+          if (elCompanyCustom) {
+            elCompanyCustom.value = company;
+            elCompanyCustom.classList.remove('hidden');
+          }
+        }
+      } else if (elCompanySelect) {
+        elCompanySelect.value = '';
+        if (elCompanyCustom) elCompanyCustom.classList.add('hidden');
+      }
+
       // Show actions for existing record
       const archiveBtn = document.getElementById('btn-modal-archive-customer') as HTMLButtonElement | null;
       const archiveText = document.getElementById('btn-modal-archive-text');
@@ -779,6 +833,12 @@ try {
         
         deleteBtn.setAttribute('data-id', id);
         deleteBtn.setAttribute('data-has-orders', hasOrders.toString());
+ 
+        const mergeBtn = document.getElementById('btn-modal-merge-customer') as HTMLButtonElement | null;
+        if (mergeBtn) {
+           mergeBtn.setAttribute('data-id', id);
+           mergeBtn.classList.remove('hidden');
+        }
 
         if (isDeleted) {
           // In Bin: Show Restore & Delete Permanently
@@ -814,7 +874,40 @@ try {
       editModal?.classList.add('hidden');
       editModal?.classList.remove('flex');
       customerForm?.reset();
+      const elCompanyCustom = document.getElementById('edit-customer-company-custom');
+      if (elCompanyCustom) elCompanyCustom.classList.add('hidden');
     };
+
+    // Handle company select change
+    document.getElementById('edit-customer-company-select')?.addEventListener('change', (e) => {
+      const select = e.target as HTMLSelectElement;
+      const customInput = document.getElementById('edit-customer-company-custom') as HTMLInputElement;
+      const hiddenInput = document.getElementById('edit-customer-company') as HTMLInputElement;
+      const vatInput = document.getElementById('edit-customer-vat') as HTMLInputElement;
+
+      if (select.value === '_CREATE_NEW_') {
+        customInput.classList.remove('hidden');
+        hiddenInput.value = customInput.value;
+        if (vatInput) vatInput.value = ''; // Clear VAT for new company
+      } else {
+        customInput.classList.add('hidden');
+        hiddenInput.value = select.value;
+        if (vatInput && select.value) {
+          const selectedOption = select.options[select.selectedIndex];
+          vatInput.value = selectedOption.getAttribute('data-vat') || '';
+        } else if (vatInput) {
+          vatInput.value = '';
+        }
+      }
+    });
+
+    // Update hidden input when custom input changes
+    document.getElementById('edit-customer-company-custom')?.addEventListener('input', (e) => {
+      const hiddenInput = document.getElementById('edit-customer-company') as HTMLInputElement;
+      if (hiddenInput) {
+        hiddenInput.value = (e.target as HTMLInputElement).value;
+      }
+    });
 
     createBtn?.addEventListener('click', openCreateModal);
     closeBtn?.addEventListener('click', closeEditModal);
@@ -836,30 +929,61 @@ try {
     const companyModalTitleText = document.getElementById('company-modal-title-text');
     const companyCreateBtn = document.getElementById('btn-create-company');
 
-    const createAddressEntryElement = (value = '') => {
+    const customersListContainer = document.getElementById('company-inline-customers-list');
+
+    const createCustomerEntryElement = (name = '', email = '', phone = '', code = '', billing = '', shipping = '', isDefault = false) => {
       const container = document.createElement('div');
-      container.className = 'flex gap-2 items-start address-entry';
+      container.className = 'relative bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3';
       container.innerHTML = `
-        <textarea class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-900 focus:border-cyan-500 focus:outline-none transition-colors resize-none" rows="1" placeholder="Enter address...">${value}</textarea>
-        <button type="button" class="btn-remove-address text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition-all shrink-0 mt-0.5" title="Remove Address">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-        </button>
+        <button type="button" class="remove-cust-btn absolute top-3 right-3 text-slate-400 hover:text-rose-500 font-bold text-lg border-0 bg-transparent cursor-pointer">×</button>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Customer Code</label>
+            <input type="text" placeholder="e.g. CUS-1001" class="cust-code-input w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-cyan-500" value="${code}" />
+          </div>
+          <div class="space-y-1">
+            <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Customer Name *</label>
+            <input type="text" placeholder="Full Name" required class="cust-name-input w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-cyan-500" value="${name}" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Email Address</label>
+            <input type="email" placeholder="email@address.com" class="cust-email-input w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-cyan-500" value="${email}" />
+          </div>
+          <div class="space-y-1">
+            <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Phone Number</label>
+            <input type="text" placeholder="Phone" class="cust-phone-input w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-cyan-500" value="${phone}" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Billing Address</label>
+            <textarea placeholder="Billing address" rows="2" class="cust-billing-input w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-cyan-500 resize-none">${billing}</textarea>
+          </div>
+          <div class="space-y-1">
+            <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Shipping Address</label>
+            <textarea placeholder="Shipping address" rows="2" class="cust-shipping-input w-full rounded-md border border-slate-250 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-cyan-500 resize-none">${shipping}</textarea>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="company_default_customer" class="cust-default-radio rounded text-cyan-600 focus:ring-0" ${isDefault ? 'checked' : ''} />
+            <span class="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Default / Autofill Customer for this Company</span>
+          </label>
+        </div>
       `;
-      container.querySelector('.btn-remove-address')?.addEventListener('click', () => {
-        container.remove();
-      });
+      container.querySelector('.remove-cust-btn')?.addEventListener('click', () => container.remove());
       return container;
     };
 
-    const billingList = document.getElementById('company-billing-addresses-list');
-    const shippingList = document.getElementById('company-shipping-addresses-list');
 
-    document.getElementById('btn-add-company-billing')?.addEventListener('click', () => {
-      billingList?.appendChild(createAddressEntryElement(''));
-    });
-
-    document.getElementById('btn-add-company-shipping')?.addEventListener('click', () => {
-      shippingList?.appendChild(createAddressEntryElement(''));
+    document.getElementById('btn-add-company-customer')?.addEventListener('click', () => {
+      customersListContainer?.appendChild(createCustomerEntryElement('', '', '', '', '', '', customersListContainer.children.length === 0));
     });
 
     const openCompanyCreateModal = () => {
@@ -875,16 +999,18 @@ try {
       if (elVat) elVat.value = '';
       if (elCode) elCode.value = '';
 
-      if (billingList) {
-        billingList.innerHTML = '';
-        billingList.appendChild(createAddressEntryElement(''));
-      }
-      if (shippingList) {
-        shippingList.innerHTML = '';
-        shippingList.appendChild(createAddressEntryElement(''));
+      const elBilling = document.getElementById('edit-company-billing') as HTMLTextAreaElement | null;
+      const elShipping = document.getElementById('edit-company-shipping') as HTMLTextAreaElement | null;
+
+      if (elBilling) elBilling.value = '';
+      if (elShipping) elShipping.value = '';
+      if (customersListContainer) {
+        customersListContainer.innerHTML = '';
+        customersListContainer.appendChild(createCustomerEntryElement('', '', '', '', '', '', true));
       }
 
       document.getElementById('btn-modal-delete-company')?.classList.add('hidden');
+      document.getElementById('btn-modal-merge-company')?.classList.add('hidden');
 
       companyEditModal?.classList.remove('hidden');
       companyEditModal?.classList.add('flex');
@@ -904,27 +1030,44 @@ try {
       const elName = document.getElementById('edit-company-name') as HTMLInputElement | null;
       const elVat = document.getElementById('edit-company-vat') as HTMLInputElement | null;
       const elCode = document.getElementById('edit-company-code') as HTMLInputElement | null;
+      const elBilling = document.getElementById('edit-company-billing') as HTMLTextAreaElement | null;
+      const elShipping = document.getElementById('edit-company-shipping') as HTMLTextAreaElement | null;
 
       if (elId) elId.value = id;
       if (elName) elName.value = name;
       if (elVat) elVat.value = vat;
       if (elCode) elCode.value = code;
+      if (elBilling) elBilling.value = billing;
+      if (elShipping) elShipping.value = shipping;
 
-      if (billingList) {
-        billingList.innerHTML = '';
-        const items = billing ? billing.split(' ||| ') : [''];
-        items.forEach(val => billingList.appendChild(createAddressEntryElement(val)));
-      }
-      if (shippingList) {
-        shippingList.innerHTML = '';
-        const items = shipping ? shipping.split(' ||| ') : [''];
-        items.forEach(val => shippingList.appendChild(createAddressEntryElement(val)));
+      const defaultCustomerId = row.getAttribute('data-default-customer-id') || '';
+      let customersArr = [];
+      try {
+        customersArr = JSON.parse(row.getAttribute('data-customers') || '[]');
+      } catch (e) {}
+
+      if (customersListContainer) {
+        customersListContainer.innerHTML = '';
+        if (customersArr.length === 0) {
+          customersListContainer.appendChild(createCustomerEntryElement('', '', '', '', '', '', true));
+        } else {
+          customersArr.forEach((c: any) => {
+            const isDefault = c.id === defaultCustomerId;
+            customersListContainer.appendChild(createCustomerEntryElement(c.name, c.email, c.phone, c.code || '', c.billing_address || '', c.shipping_address || '', isDefault));
+          });
+        }
       }
 
       const deleteBtn = document.getElementById('btn-modal-delete-company') as HTMLButtonElement | null;
       if (deleteBtn) {
         deleteBtn.setAttribute('data-id', id);
         deleteBtn.classList.remove('hidden');
+      }
+
+      const mergeBtn = document.getElementById('btn-modal-merge-company') as HTMLButtonElement | null;
+      if (mergeBtn) {
+        mergeBtn.setAttribute('data-id', id);
+        mergeBtn.classList.remove('hidden');
       }
 
       companyEditModal?.classList.remove('hidden');
@@ -963,20 +1106,70 @@ try {
       const elCode = document.getElementById('edit-company-code') as HTMLInputElement | null;
 
       const id = elId?.value || '';
+      const elBilling = document.getElementById('edit-company-billing') as HTMLTextAreaElement | null;
+      const elShipping = document.getElementById('edit-company-shipping') as HTMLTextAreaElement | null;
+      const customerRows = customersListContainer 
+        ? Array.from(customersListContainer.children) 
+        : [];
       
-      const billingAddresses = billingList 
-        ? Array.from(billingList.querySelectorAll('textarea')).map(txt => txt.value.trim()).filter(v => v)
-        : [];
-      const shippingAddresses = shippingList
-        ? Array.from(shippingList.querySelectorAll('textarea')).map(txt => txt.value.trim()).filter(v => v)
-        : [];
+      const customersPayload = [];
+      let validationFailed = false;
+
+      for (const r of customerRows) {
+        const nameVal = (r.querySelector('.cust-name-input') as HTMLInputElement).value.trim();
+        if (!nameVal) continue; // Skip empty rows
+        
+        const codeVal = (r.querySelector('.cust-code-input') as HTMLInputElement).value.trim();
+        const emailVal = (r.querySelector('.cust-email-input') as HTMLInputElement).value.trim();
+        const phoneVal = (r.querySelector('.cust-phone-input') as HTMLInputElement).value.trim();
+        const billingVal = (r.querySelector('.cust-billing-input') as HTMLTextAreaElement).value.trim();
+        const shippingVal = (r.querySelector('.cust-shipping-input') as HTMLTextAreaElement).value.trim();
+        const isDefault = (r.querySelector('.cust-default-radio') as HTMLInputElement).checked;
+        
+        if (emailVal) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(emailVal)) {
+            alert(`Invalid email format for customer: ${nameVal}`);
+            validationFailed = true;
+            break;
+          }
+        }
+        
+        if (phoneVal) {
+          const phoneRegex = /^\+?[\d\s\-()]{7,25}$/;
+          if (!phoneRegex.test(phoneVal)) {
+            alert(`Invalid phone number format for customer: ${nameVal}. Allowed: 7-25 characters comprising digits, spaces, hyphens, parentheses, or +`);
+            validationFailed = true;
+            break;
+          }
+        }
+
+        customersPayload.push({ 
+          code: codeVal || null,
+          name: nameVal, 
+          email: emailVal || null, 
+          phone: phoneVal || null, 
+          billing_address: billingVal || null,
+          shipping_address: shippingVal || null,
+          is_default: isDefault 
+        });
+      }
+
+      if (validationFailed) {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Details';
+        }
+        return;
+      }
 
       const payload = {
         name: elName?.value.trim() || '',
         vat_number: elVat?.value.trim() || null,
-        billing_address: billingAddresses.length > 0 ? billingAddresses.join(' ||| ') : null,
-        shipping_address: shippingAddresses.length > 0 ? shippingAddresses.join(' ||| ') : null,
+        billing_address: elBilling?.value.trim() || null,
+        shipping_address: elShipping?.value.trim() || null,
         code: elCode?.value.trim() || null,
+        customers: customersPayload
       };
 
       if (!payload.name) {
@@ -991,14 +1184,26 @@ try {
       try {
         const url = id ? '/api/companies/' + id : '/api/companies';
         const method = id ? 'PUT' : 'POST';
-        const res = await fetch(url, {
+        let res = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 
+        if (res.status === 409) {
+          const err = await res.json();
+          if (confirm((err.error || 'A similar company already exists.') + '\n\nDo you want to proceed and save anyway?')) {
+            payload.bypassDuplicateCheck = true;
+            res = await fetch(url, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+          }
+        }
+
         if (res.ok) {
-          window.location.reload();
+          window.location.href = window.location.pathname + '?tab=companies';
         } else {
           const err = await res.json();
           alert('Error: ' + (err.error || 'Failed to save company details'));
@@ -1026,17 +1231,64 @@ try {
 
       try {
         const res = await fetch('/api/companies/' + companyId, {
-          method: 'DELETE'
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'permanent_remove' })
         });
 
         if (res.ok) {
-          window.location.reload();
+          window.location.href = window.location.pathname + '?tab=companies';
         } else {
           const err = await res.json();
           alert('Error: ' + (err.error || 'Failed to delete company'));
         }
       } catch (err) {
         alert('Network error while processing deletion.');
+      } finally {
+        target.disabled = false;
+      }
+    });
+
+    // Merge Company Trigger
+    document.getElementById('btn-modal-merge-company')?.addEventListener('click', async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const companyId = target.getAttribute('data-id') || '';
+      if (!companyId) return;
+
+      const targetCode = prompt('Enter the COMPANY CODE (e.g., COM-1398) of the primary company to merge this company into:');
+      if (!targetCode) return;
+
+      const cleanedCode = targetCode.trim().toUpperCase();
+      if (!cleanedCode.startsWith('COM-')) {
+        alert('Invalid company code. Must start with COM-');
+        return;
+      }
+
+      if (!confirm(`Are you sure you want to merge this company into ${cleanedCode}?\n\nThis will link all customers and invoices to ${cleanedCode} and delete the current company. This cannot be undone.`)) {
+        return;
+      }
+
+      target.disabled = true;
+      try {
+        const res = await fetch('/api/merge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityType: 'company',
+            primaryCode: cleanedCode,
+            duplicateId: companyId
+          })
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          alert(result.message || 'Companies merged successfully!');
+          window.location.href = window.location.pathname + '?tab=companies';
+        } else {
+          alert('Error: ' + (result.error || 'Failed to merge companies'));
+        }
+      } catch (err: any) {
+        alert('Error: ' + err.message);
       } finally {
         target.disabled = false;
       }
@@ -1051,6 +1303,7 @@ try {
       }
 
       const elId = document.getElementById('edit-customer-id') as HTMLInputElement | null;
+      const elCode = document.getElementById('edit-customer-code') as HTMLInputElement | null;
       const elName = document.getElementById('edit-customer-name') as HTMLInputElement | null;
       const elEmail = document.getElementById('edit-customer-email') as HTMLInputElement | null;
       const elPhone = document.getElementById('edit-customer-phone') as HTMLInputElement | null;
@@ -1061,6 +1314,7 @@ try {
 
       const id = elId?.value || '';
       const payload = {
+        code: elCode?.value.trim() || null,
         name: elName?.value.trim() || '',
         email: elEmail?.value.trim() || null,
         phone: elPhone?.value.trim() || null,
@@ -1107,14 +1361,26 @@ try {
       try {
         const url = id ? '/api/customers/' + id : '/api/customers';
         const method = id ? 'PUT' : 'POST';
-        const res = await fetch(url, {
+        let res = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 
+        if (res.status === 409) {
+          const err = await res.json();
+          if (confirm((err.error || 'A similar customer already exists.') + '\n\nDo you want to proceed and save anyway?')) {
+            payload.bypassDuplicateCheck = true;
+            res = await fetch(url, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+          }
+        }
+
         if (res.ok) {
-          window.location.reload();
+          window.location.href = window.location.pathname + '?tab=customers';
         } else {
           const err = await res.json();
           alert('Error: ' + (err.error || 'Failed to save customer details'));
@@ -1131,11 +1397,14 @@ try {
 
     // Archive/Unarchive/Restore Trigger
     document.getElementById('btn-modal-archive-customer')?.addEventListener('click', async (e) => {
+      console.log('Archive button clicked!');
+      alert('Archive button clicked!');
       const target = e.currentTarget as HTMLButtonElement;
       const customerId = target.getAttribute('data-id') || '';
       const action = target.getAttribute('data-action') || 'archive';
       const hasOrders = target.getAttribute('data-has-orders') === 'true';
       const isCurrentlyArchived = target.getAttribute('data-archived') === 'true';
+      console.log('Archive debug:', { customerId, action, hasOrders, isCurrentlyArchived });
 
       if (hasOrders) {
         const warnMsg = action === 'restore' 
@@ -1158,7 +1427,7 @@ try {
         });
 
         if (res.ok) {
-          window.location.reload();
+          window.location.href = window.location.pathname + '?tab=customers';
         } else {
           const err = await res.json();
           alert('Error: ' + (err.error || 'Failed to update customer status'));
@@ -1174,10 +1443,13 @@ try {
 
     // Delete / Permanent Delete Trigger
     document.getElementById('btn-modal-delete-customer')?.addEventListener('click', async (e) => {
+      console.log('Delete button clicked!');
+      alert('Delete button clicked!');
       const target = e.currentTarget as HTMLButtonElement;
       const customerId = target.getAttribute('data-id') || '';
       const action = target.getAttribute('data-action') || 'soft_delete';
       const hasOrders = target.getAttribute('data-has-orders') === 'true';
+      console.log('Delete debug:', { customerId, action, hasOrders });
 
       if (action === 'permanent_delete') {
         if (hasOrders) {
@@ -1207,11 +1479,13 @@ try {
       try {
         if (action === 'permanent_delete') {
           const res = await fetch('/api/customers/' + customerId, {
-            method: 'DELETE'
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'permanent_remove' })
           });
 
           if (res.ok) {
-            window.location.reload();
+            window.location.href = window.location.pathname + '?tab=customers';
           } else {
             const err = await res.json();
             alert('Error: ' + (err.error || 'Failed to delete customer'));
@@ -1221,11 +1495,11 @@ try {
           const res = await fetch('/api/customers/' + customerId, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'delete' })
+            body: JSON.stringify({ action: 'trash' })
           });
 
           if (res.ok) {
-            window.location.reload();
+            window.location.href = window.location.pathname + '?tab=customers';
           } else {
             const err = await res.json();
             alert('Error: ' + (err.error || 'Failed to move customer to bin'));
@@ -1233,6 +1507,54 @@ try {
         }
       } catch (err) {
         alert('Network error while processing deletion.');
+      } finally {
+        target.disabled = false;
+      }
+    });
+
+    // Merge Customer Trigger
+    document.getElementById('btn-modal-merge-customer')?.addEventListener('click', async (e) => {
+      console.log('Merge button clicked!');
+      alert('Merge button clicked!');
+      const target = e.currentTarget as HTMLButtonElement;
+      const customerId = target.getAttribute('data-id') || '';
+      console.log('Merge debug:', { customerId });
+      if (!customerId) return;
+
+      const targetCode = prompt('Enter the CUSTOMER CODE (e.g., CUS-1011) of the primary customer to merge this customer into:');
+      if (!targetCode) return;
+
+      const cleanedCode = targetCode.trim().toUpperCase();
+      if (!cleanedCode.startsWith('CUS-')) {
+        alert('Invalid customer code. Must start with CUS-');
+        return;
+      }
+
+      if (!confirm(`Are you sure you want to merge this customer into ${cleanedCode}?\n\nThis will re-link all invoices to ${cleanedCode} and delete the current customer. This cannot be undone.`)) {
+        return;
+      }
+
+      target.disabled = true;
+      try {
+        const res = await fetch('/api/merge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityType: 'customer',
+            primaryCode: cleanedCode,
+            duplicateId: customerId
+          })
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          alert(result.message || 'Customers merged successfully!');
+          window.location.href = window.location.pathname + '?tab=customers';
+        } else {
+          alert('Error: ' + (result.error || 'Failed to merge customers'));
+        }
+      } catch (err: any) {
+        alert('Error: ' + err.message);
       } finally {
         target.disabled = false;
       }

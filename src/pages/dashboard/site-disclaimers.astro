@@ -12,7 +12,7 @@ try {
   console.error("DB Offline", e);
 }
 
-function getCategory(identifier: string): 'page1' | 'tos' | 'website' {
+function getCategory(identifier: string, division: string | null): 'page1' | 'tos_dtl' | 'tos_dgs' | 'website' {
   const id = (identifier || '').toLowerCase().trim();
   if (
     id.includes('privacy-policy') || 
@@ -26,11 +26,15 @@ function getCategory(identifier: string): 'page1' | 'tos' | 'website' {
     id === 'disclaimer' || 
     id === 'payment-terms-30d' || 
     id === 'warranty-liability' || 
-    id === 'delivery-terms'
+    id === 'delivery-terms' ||
+    id === 'delivery-note-disclaimer'
   ) {
     return 'page1';
   }
-  return 'tos';
+  if (division === 'dgs') {
+    return 'tos_dgs';
+  }
+  return 'tos_dtl';
 }
 ---
 
@@ -96,11 +100,19 @@ function getCategory(identifier: string): 'page1' | 'tos' | 'website' {
       </button>
       <button 
         type="button"
-        onclick="setActiveTab('tos')"
-        id="tab-tos"
+        onclick="setActiveTab('tos_dtl')"
+        id="tab-tos_dtl"
         class="tab-btn pb-3 px-1 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all focus:outline-none"
       >
-        Terms of Sale (TOS)
+        DTL Terms of Sale (TOS)
+      </button>
+      <button 
+        type="button"
+        onclick="setActiveTab('tos_dgs')"
+        id="tab-tos_dgs"
+        class="tab-btn pb-3 px-1 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all focus:outline-none"
+      >
+        DGS Terms of Sale (TOS)
       </button>
       <button 
         type="button"
@@ -114,10 +126,11 @@ function getCategory(identifier: string): 'page1' | 'tos' | 'website' {
 
     <div id="artifacts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
       {artifacts.map((artifact) => (
-        <div class="artifact-card bg-white rounded-xl border border-slate-200 p-6 flex flex-col justify-between hover:shadow-md transition-shadow group" data-title={artifact.title} data-updated={new Date(artifact.updated_at || artifact.created_at || Date.now()).getTime()} data-category={getCategory(artifact.identifier)}>
+        <div class="artifact-card bg-white rounded-xl border border-slate-200 p-6 flex flex-col justify-between hover:shadow-md transition-shadow group" data-title={artifact.title} data-updated={new Date(artifact.updated_at || artifact.created_at || Date.now()).getTime()} data-category={getCategory(artifact.identifier, artifact.division)} data-division={artifact.division || ''}>
           <div class="space-y-4">
             <span class="inline-block px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wider">
               {artifact.type === 'both' ? 'Public & Order Clause' : artifact.type === 'public' ? 'Public Artifact' : 'Order Clause'}
+              {artifact.division ? ` • ${artifact.division.toUpperCase()}` : ''}
             </span>
             <div>
               <h3 class="text-sm font-black text-slate-900 uppercase tracking-wide">{artifact.title}</h3>
@@ -170,6 +183,17 @@ function getCategory(identifier: string): 'page1' | 'tos' | 'website' {
               <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Title</label>
               <input type="text" id="artifact-title" name="title" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors" />
             </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Division</label>
+              <select id="artifact-division" name="division" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 focus:bg-white focus:border-blue-500 focus:outline-none transition-colors">
+                <option value="">Universal / None</option>
+                <option value="dtl">Delight Technical Lighting (DTL)</option>
+                <option value="dgs">Delight Greenscapes (DGS)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="space-y-1.5 flex flex-col justify-end">
               <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Visibility / Type</label>
               <div class="flex items-center gap-6 h-[42px] px-1">
@@ -248,12 +272,14 @@ function getCategory(identifier: string): 'page1' | 'tos' | 'website' {
 
       (document.getElementById('artifact-identifier') as HTMLInputElement).value = art.identifier;
       (document.getElementById('artifact-content') as HTMLTextAreaElement).value = art.content;
+      (document.getElementById('artifact-division') as HTMLSelectElement).value = art.division || '';
       deleteBtn?.classList.remove('hidden');
       deleteBtn?.classList.add('flex');
     } else {
       if (titleEl) titleEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M12 5v14"/><path d="M5 12h14"/></svg> New Artifact';
       (document.getElementById('artifact-type-public') as HTMLInputElement).checked = true;
       (document.getElementById('artifact-type-order') as HTMLInputElement).checked = false;
+      (document.getElementById('artifact-division') as HTMLSelectElement).value = '';
       deleteBtn?.classList.add('hidden');
       deleteBtn?.classList.remove('flex');
     }
@@ -302,7 +328,8 @@ function getCategory(identifier: string): 'page1' | 'tos' | 'website' {
           title: data.title,
           type: typeVal,
           identifier: data.identifier,
-          content: data.content
+          content: data.content,
+          division: data.division || null
         })
       });
 

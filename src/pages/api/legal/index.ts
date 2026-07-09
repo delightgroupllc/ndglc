@@ -6,7 +6,8 @@ const artifactSchema = z.object({
   title: z.string().min(1),
   identifier: z.string().min(1),
   type: z.enum(['public', 'order_clause', 'both']),
-  content: z.string().min(1)
+  content: z.string().min(1),
+  division: z.string().optional().nullable()
 });
 
 export const GET: APIRoute = async () => {
@@ -24,8 +25,8 @@ export const POST: APIRoute = async ({ request }) => {
     const parsed = artifactSchema.parse(data);
 
     const res = await query(
-      `INSERT INTO legal_artifacts (title, identifier, type, content) VALUES ($1, $2, $3, $4) RETURNING *`,
-      [parsed.title, parsed.identifier, parsed.type, parsed.content]
+      `INSERT INTO legal_artifacts (title, identifier, type, content, division) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [parsed.title, parsed.identifier, parsed.type, parsed.content, parsed.division || null]
     );
 
     return new Response(JSON.stringify(res.rows[0]), { status: 201, headers: { 'Content-Type': 'application/json' } });

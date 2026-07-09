@@ -92,7 +92,7 @@ const isTermActive = (identifier: string): boolean => {
                     <span class="print-info-duplicate">Status: <span style="border: 1.5px solid #ef4444; color: #ef4444; padding: 1px 6px; font-size: 8pt; font-weight: 800; text-transform: uppercase; border-radius: 2px; display: inline-block; margin-bottom: 4px;">DUPLICATE</span><br/></span>
                   )}
                   <span class="print-info-date">Issue Date: <span class="font-bold">{inv.issue_date}</span><br></span>
-                  {inv.due_date && <span class="print-info-due">Due Date: <span class="font-bold">{inv.due_date}</span><br></span>}
+                  {inv.due_date && <span class={`print-info-due ${inv.order_type !== 'delivery_note' ? 'hidden' : ''}`}>Due Date: <span class="font-bold">{inv.due_date}</span><br></span>}
                   {inv.lpo_number && <span class="print-info-status">Ref LPO No: <span class="font-mono font-bold">{inv.lpo_number}</span><br></span>}
                   <span class="print-info-status">Division: <span class="font-bold">{inv.source_division || 'DTL'}</span></span>
                 </div>
@@ -150,7 +150,8 @@ const isTermActive = (identifier: string): boolean => {
           <thead>
             <tr>
               <th style="text-align: left; width: 5%;">#</th>
-              <th style="text-align: left; width: 45%;">Item Description / Spec</th>
+              <th class={`product-image-column ${inv.show_images ? '' : 'hidden'}`} style="text-align: left; width: 10%;">Image</th>
+              <th style="text-align: left; width: 45%;" class="print-col-desc">Item Description / Spec</th>
               <th style="text-align: center; width: 10%;">Qty</th>
               <th style="text-align: right; width: 15%;" class="print-col-price">Unit Price</th>
               <th style="text-align: right; width: 10%;" class="print-col-price">VAT</th>
@@ -165,6 +166,9 @@ const isTermActive = (identifier: string): boolean => {
               return (
                 <tr class="item-row-render">
                   <td>{globalIdx}</td>
+                  <td class={`product-image-column ${inv.show_images ? '' : 'hidden'}`} style="text-align: center; vertical-align: middle;">
+                    <img src={item.item_image || '/no-image.svg'} style="max-width: 45px; max-height: 45px; object-fit: contain; border-radius: 4px;" />
+                  </td>
                   <td>
                     <span class="font-semibold" style="color: #0f172a;">{item.description}</span>
                     {item.catalogue_ref && <span class="text-muted font-mono print-item-cat-ref" style="font-size: 8pt; display: block;">Cat Ref: {item.catalogue_ref}</span>}

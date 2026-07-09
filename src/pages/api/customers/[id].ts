@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { pool, withTransaction } from '../../../lib/db';
 import { z } from 'zod';
+import { getSimilarity } from '../companies/index';
 
 const customerSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
@@ -11,7 +12,8 @@ const customerSchema = z.object({
   billing_address: z.string().optional().nullable(),
   shipping_address: z.string().optional().nullable(),
   code: z.string().optional().nullable(),
-  action: z.enum(['archive', 'unarchive', 'delete', 'restore']).optional(),
+  action: z.enum(['archive', 'unarchive', 'delete', 'restore', 'trash', 'permanent_remove']).optional(),
+  bypassDuplicateCheck: z.boolean().optional(),
 });
 
 export const PUT: APIRoute = async ({ params, request, locals }) => {
@@ -30,7 +32,25 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
       }
       const customer = curRes.rows[0];
 
+      if (parsed.name && parsed.name !== customer.name && !data.bypassDuplicateCheck) {
+        const existing = await client.query("SELECT name FROM customers WHERE is_deleted = false AND id != $1", [id]);
+        for (const row of existing.rows) {
+          if (getSimilarity(parsed.name, row.name) > 0.9 && parsed.name.toLowerCase() !== row.name.toLowerCase()) {
+            throw new Error(`DUPLICATE_WARNING: A customer with a very similar name already exists: "${row.name}"`);
+          }
+        }
+      }
+
       if (parsed.action) {
+        if (parsed.action === 'permanent_remove') {
+          await client.query('DELETE FROM customers WHERE id = $1', [id]);
+          await client.query(
+            `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+             VALUES ('CUSTOMER_DELETE', 'customers', $1, $2, $3)`,
+            [id, `Permanently removed customer: ${customer.name}`, locals.user?.id || null]
+          );
+          return { success: true, message: 'Customer permanently removed' };
+        }
         if (parsed.action === 'archive' || parsed.action === 'unarchive') {
           const isArchived = parsed.action === 'archive';
           const res = await client.query(
@@ -47,7 +67,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
 
           return res.rows[0];
         } else {
-          const isDeleted = parsed.action === 'delete';
+          const isDeleted = parsed.action === 'delete' || parsed.action === 'trash';
           const res = await client.query(
             `UPDATE customers SET is_deleted = $1 WHERE id = $2 RETURNING *`,
             [isDeleted, id]
@@ -88,17 +108,13 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
             );
           } else {
             let compCode = null;
-            let isUnique = false;
-            let attempts = 0;
-            while (!isUnique && attempts < 100) {
-              const randomNum = Math.floor(1000 + Math.random() * 9000);
-              compCode = `COM-${randomNum}`;
-              const check = await client.query('SELECT 1 FROM companies WHERE code = $1', [compCode]);
-              if (check.rowCount === 0) {
-                isUnique = true;
-              }
-              attempts++;
-            }
+            const codesRes = await client.query("SELECT code FROM companies WHERE code LIKE 'COM-%'");
+            let max = 1000;
+            codesRes.rows.forEach(r => {
+              const num = parseInt(r.code.replace('COM-', ''), 10);
+              if (!isNaN(num) && num > max) max = num;
+            });
+            compCode = `COM-${max + 1}`;
             const compRes = await client.query(
               `INSERT INTO companies (name, vat_number, billing_address, shipping_address, code)
                VALUES ($1, $2, $3, $4, $5)
@@ -132,6 +148,10 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
     if (error instanceof z.ZodError) {
       const details = error.errors.map(e => e.message).join(', ');
       return new Response(JSON.stringify({ error: details, details: error.errors }), { status: 400 });
+    }
+    if (error.message && error.message.startsWith('DUPLICATE_WARNING:')) {
+      const msg = error.message.replace('DUPLICATE_WARNING: ', '');
+      return new Response(JSON.stringify({ duplicateWarning: true, error: msg }), { status: 409, headers: { 'Content-Type': 'application/json' } });
     }
     return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { status: 500 });
   }

@@ -185,10 +185,13 @@ const showArchiveAction = !isDraftOrUnconfirmed;
           </span>
         </div>
         <p class="text-sm text-slate-500 font-medium mt-1">
-          {inv.order_type === 'quotation' ? 'Estimation / Quotation' : 
-           inv.order_type === 'lpo' ? 'LPO (Purchase Order)' : 
+          {inv.order_type === 'proforma' ? 'Pro Forma Invoice' : 
+           inv.order_type === 'lpo' ? 'PO / LPO (Purchase Order)' : 
            inv.order_type === 'delivery_note' ? 'Delivery Note' : 
-           inv.order_type === 'inquiry' ? 'Inquiry' : 'Tax Invoice'}
+           inv.order_type === 'tax_invoice' ? 'Commercial Bill' :
+           inv.order_type === 'standard' ? 'Invoice' :
+           inv.order_type === 'quotation' ? 'Estimation / Quotation' :
+           inv.order_type === 'inquiry' ? 'Inquiry' : 'Invoice'}
           • {inv.source_division || 'DTL'}
         </p>
       </div>
@@ -234,6 +237,16 @@ const showArchiveAction = !isDraftOrUnconfirmed;
           <Printer class="h-4 w-4" />
           Print / Download PDF
         </a>
+        {inv.payment_status !== 'cancelled' && (
+          <button 
+            type="button" 
+            id="cancel-order-btn"
+            class="inline-flex items-center justify-center gap-1.5 border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
+          >
+            <AlertCircle class="h-4 w-4" />
+            Cancel Order
+          </button>
+        )}
         <button 
           type="button" 
           id="duplicate-invoice-btn"
@@ -602,9 +615,63 @@ const showArchiveAction = !isDraftOrUnconfirmed;
     </form>
   </div>
 </div>
+<!-- CONFIRMATION MODAL -->
+<div id="confirm-modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div class="p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div id="confirm-modal-icon-container" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0">
+          <AlertCircle id="confirm-modal-icon" class="w-5 h-5" />
+        </div>
+        <h3 id="confirm-modal-title" class="text-lg font-bold text-slate-800">Confirm Action</h3>
+      </div>
+      <p id="confirm-modal-message" class="text-sm font-semibold text-slate-600 mb-6">Are you sure you want to proceed?</p>
+      
+      <div class="flex justify-end gap-3">
+        <button type="button" id="confirm-cancel-btn" class="px-4 py-2 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
+          Cancel
+        </button>
+        <button type="button" id="confirm-proceed-btn" class="px-4 py-2 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors">
+          Proceed
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
   const invoiceId = window.location.pathname.split('/').pop();
+
+  // Custom Confirmation UI
+  const confirmModal = document.getElementById('confirm-modal-backdrop');
+  const confirmMsg = document.getElementById('confirm-modal-message');
+  const confirmProceedBtn = document.getElementById('confirm-proceed-btn');
+  const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+
+  function showConfirm(message: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!confirmModal || !confirmMsg || !confirmProceedBtn || !confirmCancelBtn) {
+        resolve(window.confirm(message));
+        return;
+      }
+      confirmMsg.textContent = message;
+      confirmModal.classList.remove('hidden');
+      confirmModal.classList.add('flex');
+
+      const cleanup = () => {
+        confirmProceedBtn.removeEventListener('click', onProceed);
+        confirmCancelBtn.removeEventListener('click', onCancel);
+        confirmModal.classList.add('hidden');
+        confirmModal.classList.remove('flex');
+      };
+
+      const onProceed = () => { cleanup(); resolve(true); };
+      const onCancel = () => { cleanup(); resolve(false); };
+
+      confirmProceedBtn.addEventListener('click', onProceed);
+      confirmCancelBtn.addEventListener('click', onCancel);
+    });
+  }
 
   // Modal controls
   const paymentModal = document.getElementById('payment-modal-backdrop');
@@ -677,11 +744,14 @@ const showArchiveAction = !isDraftOrUnconfirmed;
   });
 
   // Convert Actions
-  const convertInvoiceBtn = document.getElementById('convert-invoice-btn');
-  const convertDeliveryBtn = document.getElementById('convert-delivery-btn');
+  const convertOrder = async (btn: HTMLButtonElement) => {
+    const targetType = btn.getAttribute('data-target');
+    const isConfirmed = await showConfirm(`Are you sure you want to convert this document to a ${targetType?.replace('_', ' ')}?`);
+    if (!isConfirmed) return;
 
-  const convertOrder = async (targetType: string) => {
-    if (!confirm(`Are you sure you want to convert this document to a ${targetType.replace('_', ' ')}?`)) return;
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Converting...';
 
     try {
       const res = await fetch(`/api/invoices/${invoiceId}`, {
@@ -694,11 +764,13 @@ const showArchiveAction = !isDraftOrUnconfirmed;
       window.location.reload();
     } catch (err: any) {
       alert(err.message || 'Error converting order');
+      btn.disabled = false;
+      btn.innerHTML = originalContent;
     }
   };
 
-  convertInvoiceBtn?.addEventListener('click', () => convertOrder('tax_invoice'));
-  convertDeliveryBtn?.addEventListener('click', () => convertOrder('delivery_note'));
+  document.getElementById('convert-invoice-btn')?.addEventListener('click', (e) => convertOrder(e.currentTarget as HTMLButtonElement));
+  document.getElementById('convert-delivery-btn')?.addEventListener('click', (e) => convertOrder(e.currentTarget as HTMLButtonElement));
 
   // Copy IBAN button helper
   document.querySelectorAll('.copy-iban-btn').forEach(btn => {
@@ -723,7 +795,8 @@ const showArchiveAction = !isDraftOrUnconfirmed;
   document.getElementById('duplicate-invoice-btn')?.addEventListener('click', async () => {
     const btn = document.getElementById('duplicate-invoice-btn') as HTMLButtonElement;
     const invoiceId = btn.getAttribute('data-id');
-    if (!confirm('Create a duplicate of this order?')) return;
+    const isConfirmed = await showConfirm('Create a duplicate of this order?');
+    if (!isConfirmed) return;
     btn.disabled = true;
     const originalContent = btn.innerHTML;
     btn.textContent = 'Duplicating...';
@@ -751,34 +824,25 @@ const showArchiveAction = !isDraftOrUnconfirmed;
   document.getElementById('archive-invoice-btn')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget as HTMLButtonElement;
     const action = btn.getAttribute('data-action');
-    console.log(`[Archive Button] Clicked! Action: ${action}`);
-    if (!confirm(`Are you sure you want to ${action?.toLowerCase()} this document?`)) {
-      console.log(`[Archive Button] User cancelled confirmation.`);
-      return;
-    }
+    const isConfirmed = await showConfirm(`Are you sure you want to ${action?.toLowerCase()} this document?`);
+    if (!isConfirmed) return;
 
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = 'Processing...';
 
     try {
-      console.log(`[Archive Button] Sending PATCH request to /api/invoices/${invoiceId}...`);
-      const startTime = performance.now();
       const res = await fetch(`/api/invoices/${invoiceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_archived: action === 'ARCHIVE' })
       });
-      console.log(`[Archive Button] Received response in ${Math.round(performance.now() - startTime)}ms. Status: ${res.status}`);
       if (res.ok) {
-        console.log(`[Archive Button] Success! Reloading page...`);
         window.location.reload();
       } else {
-        console.error(`[Archive Button] Request failed!`);
         alert('Operation failed.');
       }
     } catch (err) {
-      console.error(`[Archive Button] Network/Fetch error:`, err);
       alert('Error executing operation.');
     } finally {
       btn.disabled = false;
@@ -788,33 +852,24 @@ const showArchiveAction = !isDraftOrUnconfirmed;
 
   // Delete button handler (Soft Delete)
   document.getElementById('delete-invoice-btn')?.addEventListener('click', async (e) => {
-    console.log(`[Delete Button] Clicked!`);
-    if (!confirm('Are you sure you want to move this document to trash?')) {
-      console.log(`[Delete Button] User cancelled confirmation.`);
-      return;
-    }
+    const isConfirmed = await showConfirm('Are you sure you want to move this document to trash?');
+    if (!isConfirmed) return;
     const btn = e.currentTarget as HTMLButtonElement;
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = 'Deleting...';
     try {
-      console.log(`[Delete Button] Sending PATCH request to /api/invoices/${invoiceId}...`);
-      const startTime = performance.now();
       const res = await fetch(`/api/invoices/${invoiceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_deleted: true })
       });
-      console.log(`[Delete Button] Received response in ${Math.round(performance.now() - startTime)}ms. Status: ${res.status}`);
       if (res.ok) {
-        console.log(`[Delete Button] Success! Reloading page...`);
         window.location.reload();
       } else {
-        console.error(`[Delete Button] Request failed!`);
         alert('Operation failed.');
       }
     } catch (err) {
-      console.error(`[Delete Button] Network/Fetch error:`, err);
       alert('Error executing operation.');
     } finally {
       btn.disabled = false;
@@ -824,11 +879,9 @@ const showArchiveAction = !isDraftOrUnconfirmed;
 
   // Restore button handler
   document.getElementById('restore-invoice-btn')?.addEventListener('click', async (e) => {
-    console.log(`[Restore Button] Clicked!`);
-    if (!confirm('Are you sure you want to restore this document from trash?')) {
-      console.log(`[Restore Button] User cancelled confirmation.`);
-      return;
-    }
+    const isConfirmed = await showConfirm('Are you sure you want to restore this document from trash?');
+    if (!isConfirmed) return;
+    
     const btn = e.currentTarget as HTMLButtonElement;
     const originalText = btn.innerHTML;
     btn.disabled = true;
@@ -861,7 +914,8 @@ const showArchiveAction = !isDraftOrUnconfirmed;
   // Permanent Delete button handler
   document.getElementById('perm-delete-invoice-btn')?.addEventListener('click', async (e) => {
     console.log(`[Perm Delete Button] Clicked!`);
-    if (!confirm('Are you absolutely sure you want to permanently delete this order? This action cannot be undone.')) {
+    const isConfirmed = await showConfirm('Are you absolutely sure you want to permanently delete this order? This action cannot be undone.');
+    if (!isConfirmed) {
       console.log(`[Perm Delete Button] User cancelled confirmation.`);
       return;
     }
@@ -904,6 +958,35 @@ const showArchiveAction = !isDraftOrUnconfirmed;
       convertDeliveryBtn.click();
     } else {
       convertOrder('delivery_note');
+    }
+  });
+  // Cancel Order button handler
+  document.getElementById('cancel-order-btn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const isConfirmed = await showConfirm('Are you sure you want to cancel this order? It will restore deducted inventory.');
+    if (!isConfirmed) return;
+
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Cancelling...';
+
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_status: 'cancelled' })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert('Failed to cancel the order.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error executing operation.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
     }
   });
 </script>

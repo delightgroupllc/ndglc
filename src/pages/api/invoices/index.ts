@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { query, withTransaction, exportTableAsCSV } from '../../../lib/db';
 import { z } from 'zod';
+import { optimizeAndSaveImage } from '../../../lib/imageOptimizer';
 
 const itemSchema = z.object({
   description: z.string().min(1, 'Item name is required'),
@@ -19,21 +20,22 @@ const itemSchema = z.object({
   tax_value: z.number({ 
     invalid_type_error: 'Tax value must be a valid number' 
   }).min(0, 'Tax value cannot be negative').default(5),
+  image_base64: z.string().optional().nullable(),
 });
 
 const invoiceSchema = z.object({
   customer_name: z.string().min(1, 'Customer name is required'),
-  customer_email: z.string().email('Invalid email format').min(1, 'Email address is required'),
-  customer_phone: z.string().min(1, 'Phone number is required').regex(/^\+?[\d\s\-()]{7,25}$/, 'Invalid phone number format (7-25 characters comprising digits, spaces, hyphens, parentheses, or +)'),
-  company_name: z.string().min(1, 'Company name is required'),
-  company_vat: z.string().min(1, 'Company TIN / VAT Number is required').regex(/^[a-zA-Z0-9\s\-]+$/, 'Only alphanumeric characters, spaces, and hyphens allowed'),
+  customer_email: z.string().email('Invalid email format').optional().nullable().or(z.literal('')),
+  customer_phone: z.string().regex(/^\+?[\d\s\-()]{7,25}$/, 'Invalid phone number format').optional().nullable().or(z.literal('')),
+  company_name: z.string().optional().nullable().or(z.literal('')),
+  company_vat: z.string().regex(/^[a-zA-Z0-9\s\-]+$/, 'Only alphanumeric characters allowed').optional().nullable().or(z.literal('')),
   show_images: z.boolean().default(false),
-  billing_address: z.string().min(1, 'Billing address is required'),
-  shipping_address: z.string().min(1, 'Delivery / shipping address is required'),
+  billing_address: z.string().optional().nullable().or(z.literal('')),
+  shipping_address: z.string().optional().nullable().or(z.literal('')),
   order_type: z.enum(['standard', 'quotation', 'proforma', 'service', 'recurring', 'lpo', 'tax_invoice', 'inquiry', 'delivery_note', 'commercial_invoice', 'payment']).default('standard'),
   source_division: z.enum(['DTL', 'DGS', 'both']).optional().nullable(),
   issue_date: z.string().min(1, 'Issue date is required'),
-  due_date: z.string().min(1, 'Due date is required'),
+  due_date: z.string().optional().nullable().or(z.literal('')),
   signatory_incharge: z.string().min(1, 'Signatory Incharge is required'),
   payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']).default('unpaid'),
   discount_type: z.enum(['percentage', 'fixed']).default('fixed'),
@@ -41,6 +43,7 @@ const invoiceSchema = z.object({
   internal_notes: z.string().optional(),
   lpo_number: z.string().optional().nullable(),
   payment_terms: z.string().optional().nullable(),
+  bypassDuplicateCheck: z.boolean().optional(),
   items: z.array(itemSchema).min(1, 'At least one line item is required'),
 });
 
@@ -169,6 +172,25 @@ export const POST: APIRoute = async ({ request }) => {
     }
     const total_amount = Math.max(0, subtotal + totalTax - discount);
 
+    if (!data.bypassDuplicateCheck) {
+      const today = new Date().toISOString().split('T')[0];
+      const dupInvoiceRes = await query(
+        `SELECT id, invoice_number FROM invoices 
+         WHERE customer_name = $1 
+         AND total_amount = $2 
+         AND issue_date = $3 
+         AND is_deleted = false 
+         LIMIT 1`,
+        [parsed.customer_name, total_amount, parsed.issue_date || today]
+      );
+      if (dupInvoiceRes.rows.length > 0) {
+        return new Response(JSON.stringify({ 
+          duplicateWarning: true, 
+          error: `An identical invoice (${dupInvoiceRes.rows[0].invoice_number}) was already created today for ${parsed.customer_name} with total ${total_amount}. Do you want to proceed anyway?` 
+        }), { status: 409, headers: { 'Content-Type': 'application/json' } });
+      }
+    }
+
     const rand = Math.floor(1000 + Math.random() * 9000);
     const invoice_number = `INV-${new Date().getFullYear()}-${rand}`;
 
@@ -217,7 +239,7 @@ export const POST: APIRoute = async ({ request }) => {
          parsed.customer_phone || null, parsed.company_name || null, parsed.company_vat || null,
          parsed.billing_address || null, parsed.shipping_address || null,
          parsed.order_type, parsed.source_division || null,
-         parsed.issue_date, parsed.due_date,
+         parsed.issue_date, parsed.due_date || parsed.issue_date,
          subtotal, totalTax, parsed.discount_type, parsed.discount_value, discount, total_amount, parsed.payment_status,
          parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null,
          parsed.signatory_incharge]
@@ -241,22 +263,88 @@ export const POST: APIRoute = async ({ request }) => {
           lineTax = item.tax_value;
         }
 
-        // Dynamically resolve product thumbnail image
+        // Dynamically resolve product
+        let productId = item.product_id;
         let resolvedImage = null;
-        if (item.product_id) {
+
+        if (!productId) {
+          // Check if SKU or Name already exists
+          let matchedProd = null;
+          if (item.catalogue_ref) {
+            const pSku = await client.query('SELECT id FROM products WHERE LOWER(sku) = LOWER($1) LIMIT 1', [item.catalogue_ref]);
+            if (pSku.rows.length > 0) matchedProd = pSku.rows[0];
+          }
+          if (!matchedProd) {
+            const pName = await client.query('SELECT id FROM products WHERE LOWER(name) = LOWER($1) LIMIT 1', [item.description]);
+            if (pName.rows.length > 0) matchedProd = pName.rows[0];
+          }
+
+          if (matchedProd) {
+            productId = matchedProd.id;
+          } else {
+            // Auto-create product
+            const divRes = await client.query("SELECT id FROM divisions ORDER BY name ASC LIMIT 1");
+            const catRes = await client.query("SELECT id FROM categories ORDER BY name ASC LIMIT 1");
+            const divisionId = divRes.rows[0]?.id || null;
+            const categoryId = catRes.rows[0]?.id || null;
+
+            const sku = item.catalogue_ref || `PROD-${Math.floor(100000 + Math.random() * 900000)}`;
+            const slug = item.description.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `prod-${Math.floor(100000 + Math.random() * 900000)}`;
+
+            const insProdRes = await client.query(
+              `INSERT INTO products (category_id, division_id, name, sku, slug, description, specifications, featured, status)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+              [categoryId, divisionId, item.description, sku.toUpperCase(), slug, 'Auto-created from invoice', '[]', false, 'active']
+            );
+            productId = insProdRes.rows[0].id;
+
+            // Initialize inventory row
+            await client.query(
+              `INSERT INTO inventory (product_id, stock_level, warehouse_location, low_stock_threshold)
+               VALUES ($1, 0, 'Warehouse A', 10)`,
+              [productId]
+            );
+
+          }
+          
+          // Handle image upload if exists (optimized with sharp)
+          if (item.image_base64) {
+            try {
+              resolvedImage = await optimizeAndSaveImage(item.image_base64, productId);
+
+              await client.query(
+                `INSERT INTO product_images (product_id, url, is_primary) VALUES ($1, $2, true)`,
+                [productId, resolvedImage]
+              );
+              
+              await client.query(
+                `UPDATE products SET image_url = $1 WHERE id = $2`,
+                [resolvedImage, productId]
+              );
+            } catch (imgErr) {
+              console.error('Error saving optimized product image:', imgErr);
+            }
+          }
+        }
+
+        if (productId && !resolvedImage) {
           const imgRes = await client.query(
             `SELECT url FROM product_images WHERE product_id = $1 AND is_primary = true LIMIT 1`,
-            [item.product_id]
+            [productId]
           );
           if (imgRes.rows.length > 0) {
             resolvedImage = imgRes.rows[0].url;
           }
         }
 
+        if (!resolvedImage) {
+          resolvedImage = '/no-image.svg';
+        }
+
         await client.query(
           `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-          [inv.id, item.product_id || null, item.catalogue_ref || null, item.description,
+          [inv.id, productId, item.catalogue_ref || null, item.description,
            item.tech_spec || null, item.quantity, item.unit_price, item.tax_type, item.tax_value,
            lineTax, lineTotal + lineTax, resolvedImage]
         );

@@ -8,6 +8,7 @@ const { invoice } = Astro.props;
 let products: any[] = [];
 let categories: any[] = [];
 let customers: any[] = [];
+let companiesList: any[] = [];
 let disclaimers: any[] = [];
 let settings: Record<string, string> = {};
 try {
@@ -28,7 +29,21 @@ try {
     ORDER BY c.name ASC
   `);
   customers = custRes.rows;
-  const legalRes = await query(`SELECT id, identifier, title, content, type FROM legal_artifacts WHERE show_in_invoice = TRUE ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
+  
+  const compRes = await query(`
+    SELECT co.*, 
+      cust.name as default_customer_name,
+      cust.email as default_customer_email,
+      cust.phone as default_customer_phone,
+      cust.company_vat as default_customer_vat,
+      cust.billing_address as default_customer_billing,
+      cust.shipping_address as default_customer_shipping
+    FROM companies co
+    LEFT JOIN customers cust ON co.default_customer_id = cust.id
+    ORDER BY co.name ASC
+  `);
+  companiesList = compRes.rows;
+  const legalRes = await query(`SELECT id, identifier, title, content, type, division FROM legal_artifacts WHERE show_in_invoice = TRUE ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
   disclaimers = legalRes.rows;
 
   const settingsRes = await query('SELECT key, value FROM settings');
@@ -55,6 +70,7 @@ if (signaturesList.length === 0 && settings.signatory_name) {
 const productsJson = JSON.stringify(products);
 const categoriesJson = JSON.stringify(categories);
 const disclaimersJson = JSON.stringify(disclaimers);
+const companiesJson = JSON.stringify(companiesList);
 ---
 
 <div id="invoice-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
@@ -156,9 +172,14 @@ const disclaimersJson = JSON.stringify(disclaimers);
             </div>
             <div class="space-y-1.5">
               <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name <span class="text-rose-500">*</span></label>
-              <input type="text" id="invoice-company-name" name="company_name"
+              <input type="text" id="invoice-company-name" name="company_name" list="company-datalist"
                 placeholder="e.g. ACME Trading LLC"
-                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
+                class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" autocomplete="off" />
+              <datalist id="company-datalist">
+                {companiesList.map(c => (
+                  <option value={c.name} />
+                ))}
+              </datalist>
               <p id="company-name-error" class="hidden text-[10px] font-semibold text-rose-500">Company name is required.</p>
             </div>
             <div class="space-y-1.5">
@@ -210,6 +231,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
           <script type="application/json" id="invoice-form-products-data" set:html={productsJson}></script>
           <script type="application/json" id="invoice-form-categories-data" set:html={categoriesJson}></script>
           <script type="application/json" id="invoice-form-disclaimers-data" set:html={disclaimersJson}></script>
+          <script type="application/json" id="invoice-form-companies-data" set:html={companiesJson}></script>
 
           <div id="invoice-items-container" class="space-y-2.5">
             <!-- Rows injected by JS -->
@@ -228,16 +250,12 @@ const disclaimersJson = JSON.stringify(disclaimers);
               <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Order Type</label>
               <select name="order_type" id="inv-order-type"
                 class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none">
-                <option value="inquiry">Inquiry (Buyer) — "I need 100 widgets. How much?"</option>
-                <option value="quotation">Quotation (Seller) — "Here is the price and terms."</option>
-                <option value="proforma">Pro Forma Invoice (Seller) — "Here is the confirmed bill for your approval/customs."</option>
-                <option value="lpo">Purchase Order / LPO (Buyer) — "I officially order these. Here is my PO number."</option>
-                <option value="delivery_note">Goods Receipt / Delivery Note (Buyer) — "I have received the items. They look good."</option>
-                <option value="tax_invoice">Commercial Invoice (Seller) — "The items are delivered. Please pay now."</option>
-                <option value="payment">Payment (Buyer) — "Funds are transferred to the seller."</option>
-                <option value="standard">Standard Order</option>
-                <option value="service">Service Invoice</option>
-                <option value="recurring">Recurring</option>
+                <option value="standard">INV (Invoice)</option>
+                <option value="proforma">PFI - Pro Forma</option>
+                <option value="lpo">PO / LPO (Purchase Order)</option>
+                <option value="delivery_note">DLN (Delivery Note)</option>
+                <option value="tax_invoice">BILL - Commercial Bill</option>
+                <option value="quotation">EST - Estimation/Quote</option>
               </select>
             </div>
             <div class="space-y-1.5">
@@ -257,7 +275,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
               <p id="issue-date-error" class="hidden text-[10px] font-semibold text-rose-500">Issue date is required.</p>
             </div>
-            <div class="space-y-1.5">
+            <div class="space-y-1.5" id="due-date-container">
               <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Delivery / Due Date <span class="text-rose-500">*</span></label>
               <input type="date" id="invoice-due-date" name="due_date"
                 class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none" />
@@ -292,19 +310,36 @@ const disclaimersJson = JSON.stringify(disclaimers);
             <div class="space-y-3 pt-2">
               <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Include Disclaimers & Terms (Page 2)</label>
               <input type="hidden" id="invoice-payment-terms" name="payment_terms" value="" />
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="invoice-disclaimers-toggles">
-                {disclaimers.map((d, idx) => (
-                  <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300">
-                    <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
-                    <div>
-                      <span class="text-xs font-bold text-slate-800 block">{idx + 1}. {d.title}</span>
-                      <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
-                    </div>
-                  </label>
-                ))}
-                {disclaimers.length === 0 && (
-                  <p class="text-xs text-slate-400 italic">No disclaimers or legal clauses configured on site disclaimers page.</p>
-                )}
+                  <!-- DTL Terms -->
+              <div class="space-y-2 mt-2" id="dtl-terms-group">
+                <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100">DTL Division Terms</span>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {disclaimers.filter(d => d.division === 'dtl').map((d, idx) => (
+                    <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
+                       <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
+                      <div>
+                        <span class="text-xs font-bold text-slate-800 block">{d.title}</span>
+                        <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <!-- DGS Terms -->
+              <div class="space-y-2 mt-4" id="dgs-terms-group">
+                <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100">DGS Division Terms</span>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {disclaimers.filter(d => d.division === 'dgs').map((d, idx) => (
+                    <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
+                       <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
+                      <div>
+                        <span class="text-xs font-bold text-slate-800 block">{idx + 1}. {d.title}</span>
+                        <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -421,6 +456,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
   // Parse global products and categories datasets
   const allProducts: any[] = JSON.parse(document.getElementById('invoice-form-products-data')?.textContent || '[]');
   const allCategories: any[] = JSON.parse(document.getElementById('invoice-form-categories-data')?.textContent || '[]');
+  const allCompanies: any[] = JSON.parse(document.getElementById('invoice-form-companies-data')?.textContent || '[]');
 
   // =============================================
   // ITEM ROW TEMPLATE
@@ -481,6 +517,11 @@ const disclaimersJson = JSON.stringify(disclaimers);
             value="${data.tech_spec || ''}"
             placeholder="e.g. DN50, PN16, ANSI…"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
+        </div>
+        <!-- Product Image Upload -->
+        <div class="space-y-1.5">
+          <label class="image-upload-label text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block flex items-center">Upload Image (1:1 max 1000px)</label>
+          <input type="file" name="item_image_upload" accept="image/*" class="item-image-input w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 cursor-pointer" />
         </div>
       </div>
 
@@ -636,6 +677,38 @@ const disclaimersJson = JSON.stringify(disclaimers);
       recalcSummary();
     });
 
+    // Image file upload base64 converter
+    const fileInput = div.querySelector('.item-image-input') as HTMLInputElement;
+    const uploadLabel = div.querySelector('.image-upload-label') as HTMLLabelElement;
+    fileInput?.addEventListener('change', (e) => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        const submitBtn = document.getElementById('invoice-submit-btn') as HTMLButtonElement;
+        const draftBtn = document.getElementById('invoice-draft-btn') as HTMLButtonElement;
+        
+        if (submitBtn) submitBtn.disabled = true;
+        if (draftBtn) draftBtn.disabled = true;
+        if (uploadLabel) uploadLabel.innerHTML = 'Processing image <span class="animate-pulse text-cyan-500 font-bold ml-1">...</span>';
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          div.setAttribute('data-image-base64', event.target?.result as string);
+          if (uploadLabel) uploadLabel.innerHTML = 'Upload Image (1:1 max 1000px) <span class="text-emerald-500 font-bold ml-1">✓ Ready</span>';
+          if (submitBtn) submitBtn.disabled = false;
+          if (draftBtn) draftBtn.disabled = false;
+        };
+        reader.onerror = () => {
+          if (uploadLabel) uploadLabel.innerHTML = 'Upload Image (1:1 max 1000px) <span class="text-rose-500 font-bold ml-1">✕ Failed</span>';
+          if (submitBtn) submitBtn.disabled = false;
+          if (draftBtn) draftBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        div.removeAttribute('data-image-base64');
+        if (uploadLabel) uploadLabel.innerHTML = 'Upload Image (1:1 max 1000px)';
+      }
+    });
+
     // Initial calc if data given
     if (data.quantity && data.unit_price) setTimeout(bindCalc, 0);
 
@@ -705,12 +778,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
     const emailInput = document.getElementById('invoice-customer-email') as HTMLInputElement;
     const emailError = document.getElementById('email-error');
     const emailVal = emailInput?.value?.trim();
-    if (!emailVal) {
-      if (emailError) emailError.textContent = 'Email address is required.';
-      emailError?.classList.remove('hidden');
-      emailInput?.classList.add('border-rose-400');
-      valid = false;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
       if (emailError) emailError.textContent = 'Enter a valid email address.';
       emailError?.classList.remove('hidden');
       emailInput?.classList.add('border-rose-400');
@@ -724,12 +792,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
     const phoneInput = document.getElementById('invoice-customer-phone') as HTMLInputElement;
     const phoneError = document.getElementById('phone-error');
     const phoneVal = phoneInput?.value?.trim();
-    if (!phoneVal) {
-      if (phoneError) phoneError.textContent = 'Phone number is required.';
-      phoneError?.classList.remove('hidden');
-      phoneInput?.classList.add('border-rose-400');
-      valid = false;
-    } else if (!/^\+?[\d\s\-()]{7,25}$/.test(phoneVal)) {
+    if (phoneVal && !/^\+?[\d\s\-()]{7,25}$/.test(phoneVal)) {
       if (phoneError) phoneError.textContent = 'Invalid phone number format (7-25 characters comprising digits, spaces, hyphens, parentheses, or +).';
       phoneError?.classList.remove('hidden');
       phoneInput?.classList.add('border-rose-400');
@@ -739,18 +802,11 @@ const disclaimersJson = JSON.stringify(disclaimers);
       phoneInput?.classList.remove('border-rose-400');
     }
 
-    // Company Name validation
+    // Company Name validation (Optional)
     const companyNameInput = document.getElementById('invoice-company-name') as HTMLInputElement;
     const companyNameError = document.getElementById('company-name-error');
-    const companyNameVal = companyNameInput?.value?.trim();
-    if (!companyNameVal) {
-      companyNameError?.classList.remove('hidden');
-      companyNameInput?.classList.add('border-rose-400');
-      valid = false;
-    } else {
-      companyNameError?.classList.add('hidden');
-      companyNameInput?.classList.remove('border-rose-400');
-    }
+    companyNameError?.classList.add('hidden');
+    companyNameInput?.classList.remove('border-rose-400');
 
     // Company VAT / TRN validation
     const companyVatInput = document.getElementById('invoice-company-vat') as HTMLInputElement;
@@ -771,31 +827,17 @@ const disclaimersJson = JSON.stringify(disclaimers);
       companyVatInput?.classList.remove('border-rose-400');
     }
 
-    // Billing Address validation
+    // Billing Address validation (Optional)
     const billingInput = document.getElementById('invoice-billing-address') as HTMLTextAreaElement;
     const billingError = document.getElementById('billing-address-error');
-    const billingVal = billingInput?.value?.trim();
-    if (!billingVal) {
-      billingError?.classList.remove('hidden');
-      billingInput?.classList.add('border-rose-400');
-      valid = false;
-    } else {
-      billingError?.classList.add('hidden');
-      billingInput?.classList.remove('border-rose-400');
-    }
+    billingError?.classList.add('hidden');
+    billingInput?.classList.remove('border-rose-400');
 
-    // Shipping Address validation
+    // Shipping Address validation (Optional)
     const shippingInput = document.getElementById('invoice-shipping-address') as HTMLTextAreaElement;
     const shippingError = document.getElementById('shipping-address-error');
-    const shippingVal = shippingInput?.value?.trim();
-    if (!shippingVal) {
-      shippingError?.classList.remove('hidden');
-      shippingInput?.classList.add('border-rose-400');
-      valid = false;
-    } else {
-      shippingError?.classList.add('hidden');
-      shippingInput?.classList.remove('border-rose-400');
-    }
+    shippingError?.classList.add('hidden');
+    shippingInput?.classList.remove('border-rose-400');
 
     // Issue date
     const issueDateInput = document.getElementById('invoice-issue-date') as HTMLInputElement;
@@ -809,17 +851,11 @@ const disclaimersJson = JSON.stringify(disclaimers);
       issueDateInput?.classList.remove('border-rose-400');
     }
 
-    // Due date
+    // Due date (Optional)
     const dueDateInput = document.getElementById('invoice-due-date') as HTMLInputElement;
     const dueDateError = document.getElementById('due-date-error');
-    if (!dueDateInput?.value) {
-      dueDateError?.classList.remove('hidden');
-      dueDateInput?.classList.add('border-rose-400');
-      valid = false;
-    } else {
-      dueDateError?.classList.add('hidden');
-      dueDateInput?.classList.remove('border-rose-400');
-    }
+    dueDateError?.classList.add('hidden');
+    dueDateInput?.classList.remove('border-rose-400');
 
     // Discount input validation
     const discountInput = document.getElementById('inv-discount') as HTMLInputElement;
@@ -843,17 +879,11 @@ const disclaimersJson = JSON.stringify(disclaimers);
       signatorySelect?.classList.remove('border-rose-400');
     }
 
-    // Source Division validation
+    // Source Division validation (Optional)
     const sourceDivisionSelect = document.getElementById('inv-source-division') as HTMLSelectElement;
     const sourceDivisionError = document.getElementById('source-division-error');
-    if (!sourceDivisionSelect?.value) {
-      sourceDivisionError?.classList.remove('hidden');
-      sourceDivisionSelect?.classList.add('border-rose-400');
-      valid = false;
-    } else {
-      sourceDivisionError?.classList.add('hidden');
-      sourceDivisionSelect?.classList.remove('border-rose-400');
-    }
+    sourceDivisionError?.classList.add('hidden');
+    sourceDivisionSelect?.classList.remove('border-rose-400');
 
     // Line items — at least one must have desc + qty + price
     const itemsError = document.getElementById('items-error');
@@ -992,6 +1022,9 @@ const disclaimersJson = JSON.stringify(disclaimers);
     const form = document.getElementById('invoice-form') as HTMLFormElement;
     if (!modal || !form) return;
 
+    const companySelect = document.getElementById('invoice-company-select') as HTMLSelectElement | null;
+    const allCustomerOpts = Array.from(document.querySelectorAll('#customer-datalist option'));
+
     const openModal = () => { modal.classList.remove('hidden'); modal.classList.add('flex'); };
     const closeModal = () => {
       modal.classList.add('hidden');
@@ -1043,24 +1076,52 @@ const disclaimersJson = JSON.stringify(disclaimers);
     document.getElementById('inv-discount')?.addEventListener('input', recalcSummary);
     document.getElementById('inv-discount-type')?.addEventListener('change', recalcSummary);
 
-    // Company selector filtering
-    const companySelect = document.getElementById('invoice-select-company') as HTMLSelectElement;
-    const allCustomerOpts = Array.from(document.querySelectorAll('#customer-datalist option')) as HTMLOptionElement[];
-    const knownCompanies = new Set(allCustomerOpts.map(o => o.getAttribute('data-company') || '').filter(Boolean));
 
-    companySelect?.addEventListener('change', () => {
-      const selected = companySelect.value;
-      const datalist = document.getElementById('customer-datalist')!;
-      datalist.innerHTML = '';
-      const filtered = selected
-        ? allCustomerOpts.filter(o => (o.getAttribute('data-company') || '') === selected)
-        : allCustomerOpts;
-      filtered.forEach(o => datalist.appendChild(o.cloneNode(true)));
-    });
+    // Order Type & Due Date visibility toggle
+    const orderTypeSelect = document.getElementById('inv-order-type') as HTMLSelectElement;
+    const dueDateContainer = document.getElementById('due-date-container');
+    const dueDateInput = document.getElementById('invoice-due-date') as HTMLInputElement;
+
+    const toggleDueDateVisibility = () => {
+      if (orderTypeSelect?.value === 'delivery_note') {
+        dueDateContainer?.classList.remove('hidden');
+      } else {
+        dueDateContainer?.classList.add('hidden');
+        if (dueDateInput) dueDateInput.value = '';
+      }
+    };
+    orderTypeSelect?.addEventListener('change', toggleDueDateVisibility);
+
+    // Division & Terms of Sale toggle
+    const divisionSelect = document.getElementById('inv-source-division') as HTMLSelectElement;
+    const dtlTermsGroup = document.getElementById('dtl-terms-group');
+    const dgsTermsGroup = document.getElementById('dgs-terms-group');
+
+    const toggleTOSVisibility = () => {
+      const selectedDiv = divisionSelect?.value;
+      if (selectedDiv === 'DTL') {
+        dtlTermsGroup?.classList.remove('hidden');
+        dgsTermsGroup?.classList.add('hidden');
+        dgsTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
+          (cb as HTMLInputElement).checked = false;
+        });
+      } else if (selectedDiv === 'DGS') {
+        dgsTermsGroup?.classList.remove('hidden');
+        dtlTermsGroup?.classList.add('hidden');
+        dtlTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
+          (cb as HTMLInputElement).checked = false;
+        });
+      } else {
+        dtlTermsGroup?.classList.remove('hidden');
+        dgsTermsGroup?.classList.remove('hidden');
+      }
+      updatePaymentTermsHiddenInput();
+    };
+    divisionSelect?.addEventListener('change', toggleTOSVisibility);
 
     // Customer autocomplete fill
     const custInput = document.getElementById('invoice-customer-name') as HTMLInputElement;
-    custInput?.addEventListener('input', () => {
+    const handleCustomerAutofill = () => {
       const val = custInput.value.trim();
       const opts = document.querySelectorAll('#customer-datalist option');
       let found = false;
@@ -1077,6 +1138,18 @@ const disclaimersJson = JSON.stringify(disclaimers);
           (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = o.getAttribute('data-shipping') || '';
           (document.getElementById('invoice-customer-code') as HTMLInputElement).value = o.getAttribute('data-code') || '';
           (document.getElementById('invoice-company-code') as HTMLInputElement).value = o.getAttribute('data-company-code') || '';
+
+          // Also auto-select the company in the company dropdown
+          const companyName = o.getAttribute('data-company') || '';
+          const companySelect = document.getElementById('invoice-select-company') as HTMLSelectElement;
+          if (companySelect && companyName) {
+            const options = Array.from(companySelect.options);
+            const match = options.find(opt => opt.value === companyName);
+            if (match) {
+              companySelect.value = companyName;
+              companySelect.dispatchEvent(new Event('change'));
+            }
+          }
         }
       });
       if (!found) {
@@ -1086,15 +1159,70 @@ const disclaimersJson = JSON.stringify(disclaimers);
         (document.getElementById('invoice-company-code') as HTMLInputElement).value = '';
       }
       document.getElementById('new-customer-note')?.classList.toggle('hidden', found || val.length === 0);
+    };
+    custInput?.addEventListener('input', handleCustomerAutofill);
+    custInput?.addEventListener('change', handleCustomerAutofill);
+
+    // Select Company dropdown change handler
+    const selectCompanyDropdown = document.getElementById('invoice-select-company') as HTMLSelectElement;
+    selectCompanyDropdown?.addEventListener('change', () => {
+      const selectedCompanyName = selectCompanyDropdown.value;
+      const datalist = document.getElementById('customer-datalist')!;
+      datalist.innerHTML = '';
+
+      if (selectedCompanyName) {
+        // Filter customers by selected company
+        const filtered = allCustomerOpts.filter(o => (o.getAttribute('data-company') || '') === selectedCompanyName);
+        filtered.forEach(o => datalist.appendChild(o.cloneNode(true)));
+
+        // Auto-populate company fields
+        const matchedCompany = allCompanies.find(c => c.name === selectedCompanyName);
+        if (matchedCompany) {
+          (document.getElementById('invoice-company-name') as HTMLInputElement).value = selectedCompanyName;
+          (document.getElementById('invoice-company-code') as HTMLInputElement).value = matchedCompany.code || '';
+          (document.getElementById('invoice-company-vat') as HTMLInputElement).value = matchedCompany.vat_number || '';
+          (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = matchedCompany.billing_address || '';
+          (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = matchedCompany.shipping_address || '';
+        }
+      } else {
+        // Reset: show all customers
+        allCustomerOpts.forEach(o => datalist.appendChild(o.cloneNode(true)));
+      }
     });
 
-    // Show new company note when company name doesn't match known companies
+    // Company autofill and customer list filtering
     const companyNameInput = document.getElementById('invoice-company-name') as HTMLInputElement;
-    companyNameInput?.addEventListener('input', () => {
-      const compVal = companyNameInput.value.trim();
-      const isNewCompany = compVal.length > 0 && !knownCompanies.has(compVal);
-      document.getElementById('new-company-note')?.classList.toggle('hidden', !isNewCompany);
-    });
+    const handleCompanyAutofill = () => {
+      const val = companyNameInput.value.trim();
+      const match = allCompanies.find(c => c.name === val);
+      document.getElementById('new-company-note')?.classList.toggle('hidden', !!match || val.length === 0);
+
+      // Autofill if matched
+      if (match) {
+        if (match.default_customer_name && !(document.getElementById('invoice-customer-name') as HTMLInputElement).value) {
+          (document.getElementById('invoice-customer-name') as HTMLInputElement).value = match.default_customer_name;
+          (document.getElementById('inv-full-name') as HTMLInputElement).value = match.default_customer_name;
+          (document.getElementById('invoice-customer-email') as HTMLInputElement).value = match.default_customer_email || '';
+          (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = match.default_customer_phone || '';
+        }
+        (document.getElementById('invoice-company-vat') as HTMLInputElement).value = match.default_customer_vat || match.vat_number || '';
+        (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = match.default_customer_billing || match.billing_address || '';
+        (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = match.default_customer_shipping || match.shipping_address || '';
+        (document.getElementById('invoice-company-code') as HTMLInputElement).value = match.code || '';
+      } else {
+        (document.getElementById('invoice-company-code') as HTMLInputElement).value = '';
+      }
+
+      // Filter customer datalist by company
+      const datalist = document.getElementById('customer-datalist')!;
+      datalist.innerHTML = '';
+      const filtered = val
+        ? allCustomerOpts.filter(o => (o.getAttribute('data-company') || '').toLowerCase().includes(val.toLowerCase()))
+        : allCustomerOpts;
+      filtered.forEach(o => datalist.appendChild(o.cloneNode(true)));
+    };
+    companyNameInput?.addEventListener('input', handleCompanyAutofill);
+    companyNameInput?.addEventListener('change', handleCompanyAutofill);
 
     const updatePaymentTermsHiddenInput = () => {
       const checkboxes = document.querySelectorAll('.disclaimer-toggle-checkbox') as NodeListOf<HTMLInputElement>;
@@ -1144,12 +1272,20 @@ const disclaimersJson = JSON.stringify(disclaimers);
         (document.getElementById('invoice-show-images') as HTMLInputElement).checked = !!inv.show_images;
         (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = inv.billing_address || '';
         (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = inv.shipping_address || '';
-        (document.getElementById('inv-order-type') as HTMLSelectElement).value = inv.order_type || 'standard';
+        (document.getElementById('inv-order-type') as HTMLSelectElement).value = inv.order_type || 'proforma';
         (document.getElementById('inv-source-division') as HTMLSelectElement).value = inv.source_division || '';
+        
+        toggleDueDateVisibility();
+        toggleTOSVisibility();
         (document.getElementById('invoice-issue-date') as HTMLInputElement).value = inv.issue_date ? new Date(inv.issue_date).toISOString().split('T')[0] : '';
         (document.getElementById('invoice-due-date') as HTMLInputElement).value = inv.due_date ? new Date(inv.due_date).toISOString().split('T')[0] : '';
         (document.getElementById('invoice-payment-status') as HTMLSelectElement).value = inv.payment_status || 'unpaid';
         (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = inv.signatory_incharge || '';
+
+        // Trigger logic based on loaded type
+        const typeSelect = document.getElementById('inv-order-type') as HTMLSelectElement;
+        typeSelect.dispatchEvent(new Event('change'));
+
         (document.getElementById('inv-discount-type') as HTMLSelectElement).value = inv.discount_type || 'fixed';
         (document.getElementById('inv-discount') as HTMLInputElement).value = inv.discount_value !== undefined ? inv.discount_value : (inv.discount_amount || '0');
         (document.getElementById('inv-internal-notes') as HTMLTextAreaElement).value = inv.internal_notes || '';
@@ -1181,6 +1317,10 @@ const disclaimersJson = JSON.stringify(disclaimers);
         (document.getElementById('invoice-show-images') as HTMLInputElement).checked = false;
         (document.getElementById('inv-discount-type') as HTMLSelectElement).value = 'fixed';
         (document.getElementById('inv-discount') as HTMLInputElement).value = '0';
+        
+        toggleDueDateVisibility();
+        toggleTOSVisibility();
+        
         addRow();
       }
       recalcSummary();
@@ -1218,6 +1358,7 @@ const disclaimersJson = JSON.stringify(disclaimers);
         const ref = (row.querySelector('input[name="item_ref"]') as HTMLInputElement)?.value?.trim();
         const techSpec = (row.querySelector('input[name="item_tech_spec"]') as HTMLInputElement)?.value?.trim();
         const productId = (row.querySelector('input[name="item_product_id"]') as HTMLInputElement)?.value;
+        const imageBase64 = row.getAttribute('data-image-base64');
         if (desc && qty >= 1 && price >= 0) {
           items.push({ 
             description: desc, 
@@ -1227,7 +1368,8 @@ const disclaimersJson = JSON.stringify(disclaimers);
             tax_type: taxType, 
             catalogue_ref: ref || null, 
             tech_spec: techSpec || null, 
-            product_id: productId || null 
+            product_id: productId || null,
+            image_base64: imageBase64 || null
           });
         }
       });
@@ -1260,11 +1402,24 @@ const disclaimersJson = JSON.stringify(disclaimers);
       const method = id ? 'PUT' : 'POST';
 
       try {
-        const res = await fetch(url, {
+        let res = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+
+        if (res.status === 409) {
+          const result = await res.json();
+          if (confirm(result.error + '\n\nDo you want to proceed and save this invoice anyway?')) {
+            payload.bypassDuplicateCheck = true;
+            res = await fetch(url, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+          }
+        }
+
         const result = await res.json();
 
         if (res.ok) {

@@ -82,9 +82,17 @@ try {
 
   // Fetch all disclaimers/clauses
   try {
-    const legalRes = await query(`SELECT title, content, identifier, type, show_in_invoice FROM legal_artifacts ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
+    const legalRes = await query(`SELECT title, content, identifier, type, show_in_invoice, division FROM legal_artifacts ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
     const allClauses = legalRes.rows;
-    selectedClauses = allClauses.filter((c: any) => c.show_in_invoice === true);
+    
+    const activeDivision = (inv.source_division || '').toLowerCase();
+    selectedClauses = allClauses.filter((c: any) => {
+      if (!c.show_in_invoice) return false;
+      if (activeDivision === 'dgs') return c.division === 'dgs';
+      if (activeDivision === 'dtl') return c.division === 'dtl';
+      return true;
+    });
+
     // Extract delivery note disclaimer specifically (any identifier containing 'delivery-note')
     const dnClause = allClauses.find((c: any) => c.identifier === 'delivery-note-disclaimer' || c.identifier === 'delivery-terms' || c.identifier === 'dn-disclaimer');
     if (dnClause) {
@@ -102,12 +110,14 @@ if (!inv) {
   return Astro.redirect('/dashboard/invoices');
 }
 
-const showTaxInvoice = Number(inv.gst_amount) > 0 || inv.order_type === 'tax_invoice';
-const documentTitle = inv.order_type === 'quotation' ? 'QUOTATION / ESTIMATE' : 
-                      inv.order_type === 'lpo' ? 'LOCAL PURCHASE ORDER' : 
+const documentTitle = inv.order_type === 'proforma' ? 'PRO FORMA' : 
+                      inv.order_type === 'lpo' ? 'PURCHASE ORDER' : 
                       inv.order_type === 'delivery_note' ? 'DELIVERY NOTE' : 
+                      inv.order_type === 'tax_invoice' ? 'COMMERCIAL BILL' :
+                      inv.order_type === 'standard' ? 'INVOICE' :
+                      inv.order_type === 'quotation' ? 'QUOTATION / ESTIMATE' :
                       inv.order_type === 'inquiry' ? 'INQUIRY' :
-                      showTaxInvoice ? 'TAX INVOICE' : 'COMMERCIAL INVOICE';
+                      'INVOICE';
 
 // Number to Words converter (compliant with AED Dirhams and Fils)
 function numberToWords(num: number): string {
@@ -982,7 +992,7 @@ const isTermChecked = (identifier: string): boolean => {
 </head>
 <body>
   
-  <div id="print-root-container" data-grand-total={inv.total_amount} data-division={inv.source_division || 'DTL'} class="flex h-screen overflow-hidden print:h-auto print:overflow-visible print:block">
+  <div id="print-root-container" data-grand-total={inv.total_amount} data-division={inv.source_division || 'DTL'} data-order-type={inv.order_type} data-id={inv.id} data-invoice-number={inv.invoice_number} class="flex h-screen overflow-hidden print:h-auto print:overflow-visible print:block">
     
     <!-- LEFT: Document Canvas (Simulated A4 Pages) -->
     <div class="flex-1 overflow-y-auto bg-slate-200/50 p-8 flex flex-col items-center gap-8 custom-scrollbar print:p-0 print:bg-white print:block">
@@ -1487,6 +1497,10 @@ const isTermChecked = (identifier: string): boolean => {
                 <span>Show Disclaimer Text</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-product-images" checked={inv.show_images} class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Product Images</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="config-show-duplicate-tag" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Show "Duplicate" Status</span>
               </label>
@@ -1726,8 +1740,37 @@ const isTermChecked = (identifier: string): boolean => {
     }
 
     // Dynamic document title override
-    document.getElementById('config-doc-type')?.addEventListener('change', (e) => {
+    document.getElementById('config-doc-type')?.addEventListener('change', async (e) => {
       const val = e.target.value;
+      
+      const root = document.getElementById('print-root-container');
+      const orderType = root?.getAttribute('data-order-type');
+      const invoiceId = root?.getAttribute('data-id');
+
+      if (val === 'ESTIMATION / QUOTE' && orderType !== 'quotation') {
+        if (e.isTrusted) {
+          if (confirm('Would you like to convert this order to an Estimation/Quotation?')) {
+            try {
+              const res = await fetch(`/api/invoices/${invoiceId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_type: 'quotation' })
+              });
+              const result = await res.json();
+              if (res.ok) {
+                alert('Order successfully converted to Estimation/Quotation!');
+                window.location.reload();
+                return;
+              } else {
+                alert(`Error: ${result.error || 'Failed to convert order'}`);
+              }
+            } catch (err) {
+              alert(`Error: ${err.message}`);
+            }
+          }
+        }
+      }
+
       document.querySelectorAll('.delightgroupllc-doc-title, .std-doc-title').forEach(el => {
         el.textContent = val;
       });
@@ -1765,23 +1808,37 @@ const isTermChecked = (identifier: string): boolean => {
           }
         });
 
+        const dueCb = document.getElementById('config-show-info-due');
+        if (dueCb && !dueCb.checked) {
+          dueCb.checked = true;
+          dueCb.dispatchEvent(new Event('change'));
+        }
+
         const remittanceSelect = document.getElementById('config-remittance-placement');
         if (remittanceSelect && remittanceSelect.value !== 'none') {
           remittanceSelect.value = 'none';
           remittanceSelect.dispatchEvent(new Event('change'));
         }
-      } else if (val === 'TAX INVOICE') {
-        const dnNoteCb = document.getElementById('config-show-dn-condition-note');
-        if (dnNoteCb && dnNoteCb.checked) {
-          dnNoteCb.checked = false;
-          dnNoteCb.dispatchEvent(new Event('change'));
+      } else {
+        const dueCb = document.getElementById('config-show-info-due');
+        if (dueCb && dueCb.checked) {
+          dueCb.checked = false;
+          dueCb.dispatchEvent(new Event('change'));
         }
-        const layoutVal = document.getElementById('layoutSelector')?.value || 'standard';
-        if (layoutVal === 'standard') {
-          const qtyWordsCb = document.getElementById('config-show-qty-words');
-          if (qtyWordsCb && qtyWordsCb.checked) {
-            qtyWordsCb.checked = false;
-            qtyWordsCb.dispatchEvent(new Event('change'));
+
+        if (val === 'TAX INVOICE') {
+          const dnNoteCb = document.getElementById('config-show-dn-condition-note');
+          if (dnNoteCb && dnNoteCb.checked) {
+            dnNoteCb.checked = false;
+            dnNoteCb.dispatchEvent(new Event('change'));
+          }
+          const layoutVal = document.getElementById('layoutSelector')?.value || 'standard';
+          if (layoutVal === 'standard') {
+            const qtyWordsCb = document.getElementById('config-show-qty-words');
+            if (qtyWordsCb && qtyWordsCb.checked) {
+              qtyWordsCb.checked = false;
+              qtyWordsCb.dispatchEvent(new Event('change'));
+            }
           }
         }
       }
@@ -1805,6 +1862,7 @@ const isTermChecked = (identifier: string): boolean => {
 
     // Register simple class visibility toggles
     setupToggle('config-show-logo', 'print-logo-container');
+    setupToggle('config-show-product-images', 'product-image-column');
     setupToggle('config-show-sig-image', 'signature-image-render');
     setupToggle('config-show-logo-p2', 'print-logo-container-p2');
     setupToggle('config-show-watermark', 'print-watermark');

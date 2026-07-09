@@ -29,6 +29,9 @@ async function update() {
         phone TEXT,
         billing_address TEXT,
         shipping_address TEXT,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        is_archived BOOLEAN DEFAULT false,
+        is_deleted BOOLEAN DEFAULT false,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
       );
     `);
@@ -36,6 +39,8 @@ async function update() {
     // Alter invoices
     await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS billing_address TEXT;`);
     await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS shipping_address TEXT;`);
+    await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT false;`);
+    await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;`);
     
     // Add check constraint back
     await pool.query(`ALTER TABLE invoices ADD CONSTRAINT invoices_payment_status_check CHECK (payment_status IN ('paid', 'unpaid', 'overdue', 'cancelled', 'draft'));`);

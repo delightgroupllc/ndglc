@@ -4,6 +4,8 @@ import DownloadForm from '../../components/forms/DownloadForm.astro';
 import { query } from '../../lib/db';
 import { DownloadCloud, PlusCircle, Search, Save, AlertTriangle, ShieldCheck, Trash, Edit } from '@lucide/astro';
 
+let googleDriveLink = "";
+let downloadsSetup: any = null;
 let downloads: any[] = [];
 let dbConnected = true;
 
@@ -11,6 +13,13 @@ try {
   const res = await query('SELECT * FROM downloads ORDER BY created_at DESC');
   downloads = res.rows;
 
+  const setupRes = await query("SELECT value FROM settings WHERE key = 'downloads_setup'");
+  if (setupRes.rows.length > 0) {
+    try {
+      downloadsSetup = JSON.parse(setupRes.rows[0].value);
+      googleDriveLink = downloadsSetup.googleDriveLink || "";
+    } catch {}
+  }
 } catch (err: any) {
   console.warn('Database offline, running mock downloads manager:', err.message);
   dbConnected = false;
@@ -49,14 +58,37 @@ try {
           class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
         />
       </div>
-      <button 
-        type="button" 
-        onclick="document.dispatchEvent(new CustomEvent('open-download-modal', { detail: { download: null } }))"
-        class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm"
-      >
-        <PlusCircle class="h-4 w-4" />
-        Register Resource
-      </button>
+      <div id="downloads-setup-data" data-setup={JSON.stringify(downloadsSetup || {})} class="hidden"></div>
+
+      <div class="flex items-center gap-2">
+        <button 
+          type="button" 
+          id="btn-configure-drive"
+          class="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          Configure Drive Link
+        </button>
+        {googleDriveLink && (
+          <a 
+            href={googleDriveLink} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-750 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm"
+          >
+            <DownloadCloud class="h-4 w-4" />
+            Open Google Drive
+          </a>
+        )}
+        <button 
+          type="button" 
+          onclick="document.dispatchEvent(new CustomEvent('open-download-modal', { detail: { download: null } }))"
+          class="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm"
+        >
+          <PlusCircle class="h-4 w-4" />
+          Register Resource
+        </button>
+      </div>
     </div>
 
     <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
@@ -123,6 +155,43 @@ try {
     </div>
   </div>
 
+  <!-- CONFIGURE GOOGLE DRIVE LINK MODAL -->
+  <div id="drive-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+        <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-blue-500"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+          Configure Google Drive Link
+        </h3>
+        <button id="close-drive-modal" class="text-slate-400 hover:text-slate-700 rounded-lg p-1 hover:bg-slate-100 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <!-- Body -->
+      <form id="drive-link-form" class="p-6 space-y-4" onsubmit="return false;">
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Google Drive Folder Link</label>
+          <input 
+            type="url" 
+            id="drive-link-input" 
+            placeholder="https://drive.google.com/..." 
+            class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" 
+            value={googleDriveLink}
+          />
+        </div>
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+          <button type="button" id="btn-cancel-drive" class="px-4 py-2 rounded-lg text-xs font-bold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors">
+            Cancel
+          </button>
+          <button type="submit" id="btn-save-drive" class="px-4 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-750 text-white transition-colors shadow-sm">
+            Save Link
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const searchInput = document.getElementById('admin-search-downloads') as HTMLInputElement | null;
     const rows = document.querySelectorAll('.admin-download-row');
@@ -167,6 +236,63 @@ try {
           target.disabled = false;
         }
       });
+    });
+
+    // Google Drive Link Settings logic
+    const driveModal = document.getElementById('drive-modal-backdrop');
+    const btnConfigureDrive = document.getElementById('btn-configure-drive');
+    const closeDriveModal = document.getElementById('close-drive-modal');
+    const btnCancelDrive = document.getElementById('btn-cancel-drive');
+    const driveForm = document.getElementById('drive-link-form') as HTMLFormElement | null;
+    const driveInput = document.getElementById('drive-link-input') as HTMLInputElement | null;
+    const btnSaveDrive = document.getElementById('btn-save-drive') as HTMLButtonElement | null;
+
+    btnConfigureDrive?.addEventListener('click', () => {
+      driveModal?.classList.remove('hidden');
+      driveModal?.classList.add('flex');
+    });
+
+    const closeDrive = () => {
+      driveModal?.classList.add('hidden');
+      driveModal?.classList.remove('flex');
+    };
+
+    closeDriveModal?.addEventListener('click', closeDrive);
+    btnCancelDrive?.addEventListener('click', closeDrive);
+    driveModal?.addEventListener('click', (e) => { if (e.target === driveModal) closeDrive(); });
+
+    driveForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!btnSaveDrive || !driveInput) return;
+
+      btnSaveDrive.disabled = true;
+      btnSaveDrive.textContent = 'Saving...';
+
+      try {
+        const dataEl = document.getElementById('downloads-setup-data');
+        const currentSetup = JSON.parse(dataEl?.getAttribute('data-setup') || '{}');
+        currentSetup.googleDriveLink = driveInput.value.trim();
+
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            downloads_setup: JSON.stringify(currentSetup)
+          })
+        });
+
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          alert('Failed to save Google Drive Link');
+          btnSaveDrive.disabled = false;
+          btnSaveDrive.textContent = 'Save Link';
+        }
+      } catch (err) {
+        alert('Error saving Google Drive Link');
+        btnSaveDrive.disabled = false;
+        btnSaveDrive.textContent = 'Save Link';
+      }
     });
   </script>
 </DashboardLayout>

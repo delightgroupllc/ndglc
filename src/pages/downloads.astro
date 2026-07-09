@@ -58,39 +58,11 @@ const defaultDownloadsSetup = {
   ctaTitle: "Have a specific requirement?",
   ctaDescription: "Our technical team is available for deep-dive consultations regarding custom specifications, large-scale integrations, and material compliance for your unique project needs.",
   ctaBtnText: "Contact Our Team",
-  ctaBtnLink: "/contact"
+  ctaBtnLink: "/contact",
+  googleDriveLink: ""
 };
 
 const setup = downloadsSetup || defaultDownloadsSetup;
-
-
-// Fallback to match mockup exact data structure
-if (dtlDownloads.length === 0) {
-  dtlDownloads = [
-    { title: 'Technical Catalog 2024', type: 'PDF', size: '12.4 MB', icon: FileText, url: '/downloads/dtl-indoor-catalog.pdf' },
-    { title: 'Brand Assets', type: 'ZIP', size: '45.8 MB', icon: PenTool, url: '/downloads/dtl-brand-assets.zip' },
-    { title: 'Sustainability Certs', type: 'PDF', size: '3.2 MB', icon: Leaf, url: '/downloads/dtl-sustainability.pdf' },
-  ];
-} else {
-  // Map icons to dynamic database downloads for a unified look
-  dtlDownloads = dtlDownloads.map((item, idx) => ({
-    ...item,
-    icon: idx % 3 === 0 ? FileText : idx % 3 === 1 ? PenTool : Leaf
-  }));
-}
-
-if (dgsDownloads.length === 0) {
-  dgsDownloads = [
-    { title: 'CAD Spec Library', type: 'DWG/RVT', size: '156 MB', icon: Compass, url: '/downloads/dgs-cad-library.zip' },
-    { title: 'Texture Maps', type: 'TIF', size: '89.1 MB', icon: Layers, url: '/downloads/dgs-texture-maps.zip' },
-    { title: 'Install Manuals', type: 'PDF', size: '18.5 MB', icon: BookOpen, url: '/downloads/dgs-install-manual.pdf' },
-  ];
-} else {
-  dgsDownloads = dgsDownloads.map((item, idx) => ({
-    ...item,
-    icon: idx % 3 === 0 ? Compass : idx % 3 === 1 ? Layers : BookOpen
-  }));
-}
 ---
 
 <Layout title="Download Center" description="Access our technical specifications, brand assets, and sustainability reports.">
@@ -111,6 +83,13 @@ if (dgsDownloads.length === 0) {
           <p class="text-slate-600 font-semibold text-sm sm:text-base leading-relaxed max-w-2xl">
             {setup.description}
           </p>
+          {setup.googleDriveLink && (
+            <div class="pt-4">
+              <a href={setup.googleDriveLink} target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-8 py-4 bg-[#0f2d1d] hover:bg-[#071b11] text-white font-extrabold text-xs uppercase tracking-widest rounded-md transition-colors shadow-md">
+                Open Google Drive
+              </a>
+            </div>
+          )}
         </div>
         <!-- Right Image Column -->
         <div class="md:col-span-4 flex justify-end">

@@ -197,8 +197,9 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
           <thead>
             <tr>
               <th style="width: 5%; text-align: center;">S/No</th>
+              <th class={`product-image-column ${inv.show_images ? '' : 'hidden'}`} style="width: 10%; text-align: center;">Image</th>
               <th style="width: 10%; text-align: center;" class="print-item-cat-ref"><span class="inv-only-layout-inline">SKU</span><span class="dn-only-layout-inline">SKU No</span></th>
-              <th style="width: 37%; text-align: left;">Product Description</th>
+              <th style="width: 37%; text-align: left;" class="print-col-desc">Product Description</th>
               <th style="width: 6%; text-align: center;" class="print-col-units">Units</th>
               <th style="width: 6%; text-align: center;"><span class="inv-only-layout-inline">Qty</span><span class="dn-only-layout-inline">Quantity</span></th>
               <th style="width: 8%; text-align: right;" class="print-col-price">Unit Price</th>
@@ -215,6 +216,9 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
               return (
                 <tr class="item-row-render">
                   <td class="text-center">{globalIdx}</td>
+                  <td class={`product-image-column ${inv.show_images ? '' : 'hidden'}`} style="text-align: center; vertical-align: middle;">
+                    <img src={item.item_image || '/no-image.svg'} style="max-width: 45px; max-height: 45px; object-fit: contain; border-radius: 4px;" />
+                  </td>
                   <td class="text-center font-mono print-item-cat-ref">{item.catalogue_ref || '—'}</td>
                   <td class="font-bold uppercase">
                     <span class="block">{item.description}</span>
