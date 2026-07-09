@@ -1588,11 +1588,13 @@ const companiesJson = JSON.stringify(companiesList);
 
         if (res.ok) {
           msg.className = 'p-4 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
-          msg.textContent = isDraft ? '✓ Draft saved.' : `✓ Invoice ${result.invoice_number || ''} generated successfully!`;
+          msg.textContent = isDraft ? '✓ Draft saved.' : (id ? `✓ Order ${result.invoice_number || ''} updated successfully!` : `✓ Invoice ${result.invoice_number || ''} generated successfully!`);
           msg.classList.remove('hidden');
 
-          if (isDraft) {
-            setTimeout(() => window.location.href = '/dashboard/invoices', 900);
+          if (isDraft || id) {
+            // For drafts or updates: redirect back to the orders list or detail page
+            const dest = id ? `/dashboard/invoices/${id}` : '/dashboard/invoices';
+            setTimeout(() => window.location.href = dest, 900);
           } else {
             // Hide main modal and show success modal
             const invoiceModal = document.getElementById('invoice-modal-backdrop');

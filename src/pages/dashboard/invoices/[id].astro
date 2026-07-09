@@ -4,7 +4,6 @@ import { query } from '../../../lib/db';
 import { 
   ArrowLeft, Printer, FileDown, Plus, CreditCard, Banknote, Calendar, Tag, CheckCircle2, AlertCircle, Copy, Archive, RefreshCw, Trash2
 } from '@lucide/astro';
-import InvoiceForm from '../../../components/forms/InvoiceForm.astro';
 
 const { id } = Astro.params;
 
@@ -782,12 +781,13 @@ const showArchiveAction = !isDraftOrUnconfirmed;
     });
   });
 
-  // Edit invoice modal dispatch trigger
+  // Edit invoice: redirect to the dedicated create/edit page
   document.getElementById('edit-invoice-btn')?.addEventListener('click', () => {
-    const invDataStr = document.getElementById('edit-invoice-btn')?.getAttribute('data-invoice');
+    const btn = document.getElementById('edit-invoice-btn');
+    const invDataStr = btn?.getAttribute('data-invoice');
     if (invDataStr) {
       const invData = JSON.parse(invDataStr);
-      document.dispatchEvent(new CustomEvent('open-invoice-modal', { detail: { invoice: invData } }));
+      window.location.href = `/dashboard/invoices/create?edit=${invData.id}`;
     }
   });
 
@@ -991,5 +991,4 @@ const showArchiveAction = !isDraftOrUnconfirmed;
   });
 </script>
 
-<InvoiceForm invoice={inv} />
 </DashboardLayout>

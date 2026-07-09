@@ -2,6 +2,7 @@
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 import { query } from '../../../lib/db';
 import { FileSpreadsheet, PlusCircle, Search, Save, AlertTriangle, Printer, CheckCircle, Clock } from '@lucide/astro';
+import DateRangePicker from '../../../components/ui/DateRangePicker.astro';
 
 const user = Astro.locals.user;
 const roles = Astro.locals.roles || [];
@@ -154,37 +155,40 @@ invoices = invoices.map(inv => {
 
   <div class="space-y-6 p-6 lg:p-8">
     <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 border-b border-slate-200 pb-4">
-      <div class="flex flex-wrap items-center gap-2 flex-grow max-w-3xl">
-        <div class="relative flex-grow max-w-xs">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <input 
-            type="text" 
-            id="admin-search-invoices"
-            placeholder="Search by client or INV#..." 
-            class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
-          />
-        </div>
-        <select id="filter-invoice-status" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
-          <option value="">All Statuses</option>
-          <option value="paid">Paid</option>
-          <option value="unpaid">Unpaid</option>
-          <option value="overdue">Overdue</option>
-          <option value="draft">Draft</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="archived">Archived</option>
-          <option value="deleted">Deleted</option>
-        </select>
-        <select id="filter-invoice-division" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
-          <option value="">All Divisions</option>
-          <option value="DTL">Division DTL</option>
-          <option value="DGS">Division DGS</option>
-        </select>
-        <select id="sort-invoices" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
-          <option value="newest">Newest Issued</option>
-          <option value="oldest">Oldest Issued</option>
-          <option value="amount-desc">Total: High to Low</option>
-          <option value="amount-asc">Total: Low to High</option>
-        </select>
+      <!-- Search + Filters -->
+      <div class="flex flex-wrap items-center gap-2 flex-grow">
+          <div class="relative flex-grow max-w-xs">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input 
+              type="text" 
+              id="admin-search-invoices"
+              placeholder="Search by client or INV#..." 
+              class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+            />
+          </div>
+          <select id="filter-invoice-status" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
+            <option value="">All Statuses</option>
+            <option value="paid">Paid</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="overdue">Overdue</option>
+            <option value="draft">Draft</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="archived">Archived</option>
+            <option value="deleted">Deleted</option>
+          </select>
+          <select id="filter-invoice-division" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
+            <option value="">All Divisions</option>
+            <option value="DTL">Division DTL</option>
+            <option value="DGS">Division DGS</option>
+          </select>
+          <select id="sort-invoices" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
+            <option value="newest">Newest Issued</option>
+            <option value="oldest">Oldest Issued</option>
+            <option value="amount-desc">Total: High to Low</option>
+            <option value="amount-asc">Total: Low to High</option>
+          </select>
+          <!-- Date Range Picker (dropdown, inline with other filters) -->
+          <DateRangePicker id="invoices-date-picker" />
       </div>
       <div class="flex gap-2 shrink-0">
         <button 
@@ -219,6 +223,7 @@ invoices = invoices.map(inv => {
         )}
       </div>
     </div>
+
 
     <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
@@ -742,6 +747,8 @@ invoices = invoices.map(inv => {
       const status = statusFilter?.value || '';
       const division = divisionFilter?.value || '';
       const sort = sortSelect?.value || 'newest';
+      const drpStart = (window as any)._drpInvoiceStart || null;
+      const drpEnd = (window as any)._drpInvoiceEnd || null;
 
       rows.forEach(row => {
         const name = row.getAttribute('data-name')?.toLowerCase() || '';
@@ -750,6 +757,7 @@ invoices = invoices.map(inv => {
         const rowDiv = row.getAttribute('data-div') || '';
         const isArchived = row.getAttribute('data-archived') === 'true';
         const isDeleted = row.getAttribute('data-deleted') === 'true';
+        const rowDate = row.getAttribute('data-date') || '';
 
         const matchesSearch = !query || name.includes(query) || num.includes(query);
         const matchesDiv = !division || rowDiv === division || (rowDiv === 'both');
@@ -763,7 +771,15 @@ invoices = invoices.map(inv => {
           matchesStatus = !isArchived && !isDeleted && (!status || rowStatus === status);
         }
 
-        if (matchesSearch && matchesStatus && matchesDiv) {
+        let matchesDate = true;
+        if (drpStart && drpEnd && rowDate) {
+          const d = rowDate.split('T')[0];
+          matchesDate = d >= drpStart && d <= drpEnd;
+        } else if (drpStart && rowDate) {
+          matchesDate = rowDate.split('T')[0] >= drpStart;
+        }
+
+        if (matchesSearch && matchesStatus && matchesDiv && matchesDate) {
           (row as HTMLElement).classList.remove('hidden');
         } else {
           (row as HTMLElement).classList.add('hidden');
@@ -792,6 +808,15 @@ invoices = invoices.map(inv => {
     statusFilter?.addEventListener('change', filterAndSortInvoices);
     divisionFilter?.addEventListener('change', filterAndSortInvoices);
     sortSelect?.addEventListener('change', filterAndSortInvoices);
+
+    // Wire up the date range picker
+    document.addEventListener('daterange-change', (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail.pickerId !== 'invoices-date-picker') return;
+      (window as any)._drpInvoiceStart = detail.start;
+      (window as any)._drpInvoiceEnd = detail.end;
+      filterAndSortInvoices();
+    });
 
     // Sync header button states with status filter dropdown
     const btnInvActive = document.getElementById('btn-inv-active');
@@ -850,6 +875,65 @@ invoices = invoices.map(inv => {
     // Initial run
     updateHeaderButtonsState();
     filterAndSortInvoices();
+
+    // ── Intelligent Date Auto-Selector ─────────────────────────────────
+    // Walk backwards from today until we find a day with orders.
+    // If nothing found within the current calendar month → show All Time.
+    function runIntelligentDateSelector() {
+      if (!tbody) return;
+
+      // Collect all ISO dates from non-deleted, non-archived rows
+      const allDates = Array.from(tbody.querySelectorAll<HTMLElement>('.admin-invoice-row'))
+        .filter(r => r.getAttribute('data-deleted') !== 'true' && r.getAttribute('data-archived') !== 'true')
+        .map(r => (r.getAttribute('data-date') || '').split('T')[0])
+        .filter(Boolean)
+        .sort()
+        .reverse(); // newest first
+
+      if (allDates.length === 0) {
+        // No orders at all — show everything
+        return;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const toISO = (d: Date) => d.toISOString().split('T')[0];
+
+      // Current calendar month start
+      const monthStart = toISO(new Date(today.getFullYear(), today.getMonth(), 1));
+      const todayISO = toISO(today);
+
+      // Walk back day by day looking for a match
+      let found: string | null = null;
+      const cursor = new Date(today);
+
+      for (let i = 0; i < 31; i++) {
+        const isoDay = toISO(cursor);
+        // Stop if we've gone before this month
+        if (isoDay < monthStart) break;
+        if (allDates.includes(isoDay)) {
+          found = isoDay;
+          break;
+        }
+        cursor.setDate(cursor.getDate() - 1);
+      }
+
+      if (!found) {
+        // Nothing this month — stay on All Time (default)
+        return;
+      }
+
+      // Apply the found date as a custom 1-day range via the picker API
+      const pickerEl = document.getElementById('invoices-date-picker');
+      if (pickerEl) {
+        pickerEl.dispatchEvent(new CustomEvent('daterange-set', {
+          detail: { start: found, end: found }
+        }));
+      }
+    }
+
+    // Small delay to let the picker initialize first
+    setTimeout(runIntelligentDateSelector, 50);
 
     // Delete / Archive / Restore functionality
     document.querySelectorAll('.delete-btn, .archive-btn').forEach(btn => {

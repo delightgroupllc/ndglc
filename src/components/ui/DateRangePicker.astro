@@ -1,0 +1,224 @@
+---
+interface Props {
+  id?: string;
+  class?: string;
+}
+const { id = 'date-range-picker', class: className = '' } = Astro.props;
+---
+
+<div id={id} class={`date-range-picker relative inline-block ${className}`}>
+
+  <!-- Trigger Button -->
+  <button type="button" class="drp-trigger inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors shadow-sm focus:outline-none">
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 shrink-0">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <span class="drp-label">All Time</span>
+    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="drp-chevron text-slate-400 transition-transform duration-150 shrink-0">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+
+  <!-- Dropdown Panel -->
+  <div class="drp-panel hidden absolute left-0 top-full mt-1.5 z-50 bg-white border border-slate-200 rounded-xl shadow-xl min-w-[200px] overflow-hidden" style="min-width:220px">
+
+    <!-- Presets list -->
+    <div class="py-1">
+      <button type="button" data-preset="all"        class="drp-item drp-active w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 transition-colors">All Time        <span class="drp-check hidden text-cyan-500">✓</span></button>
+      <button type="button" data-preset="today"      class="drp-item w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 transition-colors">Today           <span class="drp-check hidden text-cyan-500">✓</span></button>
+      <button type="button" data-preset="yesterday"  class="drp-item w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 transition-colors">Yesterday       <span class="drp-check hidden text-cyan-500">✓</span></button>
+      <button type="button" data-preset="week"       class="drp-item w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 transition-colors">This Week       <span class="drp-check hidden text-cyan-500">✓</span></button>
+      <button type="button" data-preset="month"      class="drp-item w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 transition-colors">This Month      <span class="drp-check hidden text-cyan-500">✓</span></button>
+      <button type="button" data-preset="last_month" class="drp-item w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 transition-colors">Last Month      <span class="drp-check hidden text-cyan-500">✓</span></button>
+      <button type="button" data-preset="custom"     class="drp-item w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between gap-2 transition-colors">Custom Range    <span class="drp-check hidden text-cyan-500">✓</span></button>
+    </div>
+
+    <!-- Custom date inputs (shown when Custom is selected) -->
+    <div class="drp-custom-section hidden border-t border-slate-100 px-3 py-3 space-y-2 bg-slate-50">
+      <div class="flex items-center gap-2">
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider w-7 shrink-0">From</label>
+        <input type="date" class="drp-start flex-1 text-xs border border-slate-200 rounded-md px-2 py-1.5 focus:outline-none focus:border-cyan-500 text-slate-700 font-medium bg-white" />
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider w-7 shrink-0">To</label>
+        <input type="date" class="drp-end flex-1 text-xs border border-slate-200 rounded-md px-2 py-1.5 focus:outline-none focus:border-cyan-500 text-slate-700 font-medium bg-white" />
+      </div>
+      <button type="button" class="drp-apply w-full py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold rounded-md transition-colors">Apply Range</button>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .drp-item { color: #475569; }
+  .drp-item:hover { background: #f8fafc; color: #0f172a; }
+  .drp-item.drp-active { color: #0891b2; background: #f0fdff; }
+  .drp-item.drp-active .drp-check { display: inline !important; }
+  .drp-panel.open { display: block; }
+  .drp-trigger.active { border-color: #0891b2; color: #0891b2; background: #f0fdff; }
+  .drp-trigger.active svg { color: #0891b2; }
+</style>
+
+<script>
+  function initDateRangePicker(container: HTMLElement) {
+    if ((container as any)._drpInited) return;
+    (container as any)._drpInited = true;
+
+    const trigger  = container.querySelector<HTMLButtonElement>('.drp-trigger')!;
+    const panel    = container.querySelector<HTMLElement>('.drp-panel')!;
+    const label    = container.querySelector<HTMLElement>('.drp-label')!;
+    const chevron  = container.querySelector<HTMLElement>('.drp-chevron')!;
+    const items    = container.querySelectorAll<HTMLButtonElement>('.drp-item');
+    const customSec = container.querySelector<HTMLElement>('.drp-custom-section')!;
+    const startInput = container.querySelector<HTMLInputElement>('.drp-start')!;
+    const endInput   = container.querySelector<HTMLInputElement>('.drp-end')!;
+    const applyBtn   = container.querySelector<HTMLButtonElement>('.drp-apply')!;
+
+    let isOpen = false;
+
+    // ── Toggle panel ─────────────────────────────────────────────────────
+    function openPanel() {
+      isOpen = true;
+      panel.classList.remove('hidden');
+      panel.classList.add('open');
+      chevron.style.transform = 'rotate(180deg)';
+    }
+    function closePanel() {
+      isOpen = false;
+      panel.classList.add('hidden');
+      panel.classList.remove('open');
+      chevron.style.transform = '';
+    }
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isOpen ? closePanel() : openPanel();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!container.contains(e.target as Node)) closePanel();
+    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function toISO(d: Date) { return d.toISOString().split('T')[0]; }
+    function todayDate() { const n = new Date(); n.setHours(0,0,0,0); return n; }
+    function fmtDate(s: string) {
+      return new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function setActive(preset: string) {
+      items.forEach(item => item.classList.toggle('drp-active', item.getAttribute('data-preset') === preset));
+    }
+
+    function setLabel(text: string, isFiltered: boolean) {
+      label.textContent = text;
+      if (isFiltered) {
+        trigger.classList.add('active');
+      } else {
+        trigger.classList.remove('active');
+      }
+    }
+
+    function fire(start: string | null, end: string | null, preset: string) {
+      const detail = { start, end, preset, pickerId: container.id };
+      container.dispatchEvent(new CustomEvent('daterange-change', { bubbles: true, detail }));
+      document.dispatchEvent(new CustomEvent('daterange-change', { detail }));
+    }
+
+    // ── Apply preset ──────────────────────────────────────────────────────
+    function applyPreset(preset: string, silent = false) {
+      const today = todayDate();
+
+      if (preset !== 'custom') {
+        customSec.classList.add('hidden');
+      }
+
+      let start: string | null = null;
+      let end: string | null = null;
+      let lbl = 'All Time';
+
+      if (preset === 'all') {
+        setActive('all');
+        setLabel('All Time', false);
+        if (!silent) { closePanel(); fire(null, null, 'all'); }
+        return;
+      } else if (preset === 'today') {
+        start = end = toISO(today);
+        lbl = 'Today';
+      } else if (preset === 'yesterday') {
+        const d = new Date(today); d.setDate(d.getDate() - 1);
+        start = end = toISO(d);
+        lbl = 'Yesterday';
+      } else if (preset === 'week') {
+        const d = new Date(today); d.setDate(today.getDate() - today.getDay());
+        start = toISO(d); end = toISO(today);
+        lbl = 'This Week';
+      } else if (preset === 'month') {
+        start = toISO(new Date(today.getFullYear(), today.getMonth(), 1));
+        end = toISO(today);
+        lbl = 'This Month';
+      } else if (preset === 'last_month') {
+        start = toISO(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+        end = toISO(new Date(today.getFullYear(), today.getMonth(), 0));
+        lbl = 'Last Month';
+      } else if (preset === 'custom') {
+        setActive('custom');
+        customSec.classList.remove('hidden');
+        if (!startInput.value) startInput.value = toISO(new Date(today.getFullYear(), today.getMonth(), 1));
+        if (!endInput.value)   endInput.value   = toISO(today);
+        return; // wait for Apply
+      }
+
+      setActive(preset);
+      setLabel(lbl, true);
+      if (!silent) { closePanel(); fire(start, end, preset); }
+      else fire(start, end, preset);
+    }
+
+    items.forEach(item => {
+      item.addEventListener('click', () => applyPreset(item.getAttribute('data-preset')!));
+    });
+
+    applyBtn.addEventListener('click', () => {
+      const start = startInput.value;
+      const end   = endInput.value;
+      if (!start || !end) return;
+      setActive('custom');
+      const lbl = start === end ? fmtDate(start) : `${fmtDate(start)} – ${fmtDate(end)}`;
+      setLabel(lbl, true);
+      closePanel();
+      fire(start, end, 'custom');
+    });
+
+    // ── External API: listen for 'daterange-set' on the element ──────────
+    container.addEventListener('daterange-set', (e: Event) => {
+      const detail = (e as CustomEvent).detail as { start?: string; end?: string; preset?: string };
+
+      if (detail.preset) {
+        applyPreset(detail.preset);
+        return;
+      }
+      if (detail.start && detail.end) {
+        const { start, end } = detail;
+        // Update inputs
+        startInput.value = start;
+        endInput.value   = end;
+        setActive('custom');
+        const lbl = start === end ? fmtDate(start) : `${fmtDate(start)} – ${fmtDate(end)}`;
+        setLabel(lbl, true);
+        fire(start, end, 'custom');
+      }
+    });
+  }
+
+  function initAll() {
+    document.querySelectorAll<HTMLElement>('.date-range-picker').forEach(initDateRangePicker);
+  }
+  document.addEventListener('astro:page-load', initAll);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAll);
+  } else {
+    initAll();
+  }
+</script>
+
