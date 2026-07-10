@@ -1,0 +1,539 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+
+let warehouses: any[] = [];
+let dbConnected = true;
+
+try {
+  const whRes = await query(
+    `SELECT w.*, 
+            COALESCE(COUNT(i.id), 0) as unique_products, 
+            COALESCE(SUM(i.stock_level), 0) as total_stock
+     FROM warehouses w
+     LEFT JOIN inventory i ON i.warehouse_id = w.id
+     GROUP BY w.id
+     ORDER BY w.name ASC`
+  );
+  warehouses = whRes.rows;
+} catch (err: any) {
+  console.warn('Database offline, running mock warehouses:', err.message);
+  dbConnected = false;
+  warehouses = [
+    { id: '1', name: 'Warehouse Alpha', code: 'WH-A', address: 'Al Quoz Logistics Hub', status: 'active', unique_products: 15, total_stock: 450 },
+    { id: '2', name: 'Warehouse Beta', code: 'WH-B', address: 'Jebel Ali Depot B', status: 'active', unique_products: 8, total_stock: 120 },
+    { id: '3', name: 'Warehouse Delta', code: 'WH-D', address: 'Sharjah Industrial Zone', status: 'archived', unique_products: 4, total_stock: 80 }
+  ];
+}
+---
+
+<DashboardLayout title="Storehouse Facilities" activeItem="inventory">
+  <div class="space-y-8 p-6 lg:p-8 w-full">
+    
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5 mb-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <a href="/dashboard/inventory" class="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors" title="Back to Inventory">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </a>
+          <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            Storehouse Facilities (Warehouses)
+          </h1>
+        </div>
+        <p class="text-slate-500 text-sm mt-2 ml-9">Configure physical warehouse branches, monitor active storage loads, and manage codes.</p>
+      </div>
+      
+      <div class="flex items-center gap-3 ml-9 sm:ml-0">
+        <a 
+          href="/dashboard/inventory" 
+          class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 uppercase tracking-wider"
+        >
+          &larr; Back to Inventory
+        </a>
+        <button 
+          id="add-warehouse-btn" 
+          class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 uppercase tracking-wider"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Storehouse
+        </button>
+      </div>
+    </div>
+
+    <!-- Offline DB Warning -->
+    {!dbConnected && (
+      <div class="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-700 font-semibold shadow-sm">
+        <span class="font-extrabold uppercase block">PostgreSQL Connection Offline</span>
+        Running in mock warehouse mode. Actions will not persist.
+      </div>
+    )}
+
+    <!-- View Tabs (Active, Archive, Trash) -->
+    <div class="flex border-b border-slate-200">
+      <button 
+        id="tab-active" 
+        class="tab-btn border-b-2 border-cyan-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-cyan-600 transition-all focus:outline-none"
+      >
+        Active Storehouses
+      </button>
+      <button 
+        id="tab-archived" 
+        class="tab-btn border-b-2 border-transparent px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition-all focus:outline-none"
+      >
+        Archived
+      </button>
+      <button 
+        id="tab-deleted" 
+        class="tab-btn border-b-2 border-transparent px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-850 transition-all focus:outline-none"
+      >
+        Trash (Deleted)
+      </button>
+    </div>
+
+    <!-- Warehouses Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="warehouses-grid">
+      {warehouses.map(wh => (
+        <div 
+          class="warehouse-card bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[200px]"
+          data-status={wh.status || 'active'}
+          data-id={wh.id}
+          data-name={wh.name}
+          data-code={wh.code}
+          data-address={wh.address || ''}
+        >
+          <div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <span class="text-2xs font-black bg-cyan-50 border border-cyan-100 text-cyan-600 rounded-lg px-2.5 py-1.5 font-mono">{wh.code}</span>
+                {wh.is_default && (
+                  <span class="text-[9px] font-black bg-emerald-500 text-white rounded-lg px-2 py-0.5 uppercase tracking-wider shadow-sm flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                    Default
+                  </span>
+                )}
+              </div>
+              <div class="flex items-center gap-2">
+                <span class={`rounded px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider border ${
+                  wh.status === 'archived' 
+                    ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' 
+                    : wh.status === 'deleted' 
+                      ? 'bg-rose-500/10 text-rose-600 border-rose-500/20' 
+                      : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                }`}>
+                  {wh.status || 'active'}
+                </span>
+              </div>
+            </div>
+            
+            <h3 class="text-base font-black text-slate-850 mt-4 leading-tight">{wh.name}</h3>
+            <p class="text-xs text-slate-500 mt-1 font-semibold">{wh.address || 'No Address Listed'}</p>
+          </div>
+
+          <div class="pt-4 border-t border-slate-100 mt-5 flex items-center justify-between">
+            <div class="flex gap-4">
+              <div>
+                <p class="text-[9px] font-black text-slate-450 uppercase tracking-wider">Unique SKUs</p>
+                <p class="text-sm font-bold text-slate-800 mt-0.5">{wh.unique_products}</p>
+              </div>
+              <div>
+                <p class="text-[9px] font-black text-slate-455 uppercase tracking-wider">Total Stock</p>
+                <p class="text-sm font-bold text-cyan-650 mt-0.5 font-mono">{wh.total_stock} <span class="text-3xs font-semibold text-slate-400">units</span></p>
+              </div>
+            </div>
+
+            <!-- Action buttons dynamically shown/hidden by JS depending on status -->
+            <div class="flex items-center gap-2">
+              {wh.status !== 'archived' && wh.status !== 'deleted' && (
+                <>
+                  {!wh.is_default && (
+                    <button 
+                      data-id={wh.id}
+                      class="set-default-wh-btn text-2xs font-extrabold text-cyan-600 hover:text-cyan-705 px-2 py-1 rounded hover:bg-cyan-50 uppercase tracking-wider"
+                    >
+                      Make Default
+                    </button>
+                  )}
+                  <button 
+                    data-id={wh.id}
+                    data-name={wh.name}
+                    data-code={wh.code}
+                    data-address={wh.address || ''}
+                    class="edit-wh-btn text-2xs font-extrabold text-slate-600 hover:text-slate-900 px-2 py-1 rounded hover:bg-slate-50 uppercase tracking-wider"
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    data-id={wh.id}
+                    class="archive-wh-btn text-2xs font-extrabold text-amber-600 hover:text-amber-700 px-2 py-1 rounded hover:bg-amber-50 uppercase tracking-wider"
+                  >
+                    Archive
+                  </button>
+                  <button 
+                    data-id={wh.id}
+                    class="trash-wh-btn text-2xs font-extrabold text-rose-600 hover:text-rose-700 px-2 py-1 rounded hover:bg-rose-50 uppercase tracking-wider"
+                  >
+                    Trash
+                  </button>
+                </>
+              )}
+
+              {wh.status === 'archived' && (
+                <>
+                  <button 
+                    data-id={wh.id}
+                    class="restore-wh-btn text-2xs font-extrabold text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50 uppercase tracking-wider"
+                  >
+                    Restore
+                  </button>
+                  <button 
+                    data-id={wh.id}
+                    class="trash-wh-btn text-2xs font-extrabold text-rose-600 hover:text-rose-700 px-2 py-1 rounded hover:bg-rose-50 uppercase tracking-wider"
+                  >
+                    Trash
+                  </button>
+                </>
+              )}
+
+              {wh.status === 'deleted' && (
+                <>
+                  <button 
+                    data-id={wh.id}
+                    class="restore-wh-btn text-2xs font-extrabold text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50 uppercase tracking-wider"
+                  >
+                    Restore
+                  </button>
+                  <button 
+                    data-id={wh.id}
+                    data-name={wh.name}
+                    class="delete-wh-btn text-2xs font-extrabold text-rose-700 hover:text-rose-800 px-2 py-1 rounded hover:bg-rose-50 uppercase tracking-wider"
+                  >
+                    Delete Permanently
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <!-- Empty state -->
+    <div id="no-warehouses-state" class="hidden py-16 text-center border border-dashed border-slate-300 rounded-2xl bg-white max-w-md mx-auto">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-slate-350 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+      <h4 class="text-sm font-bold text-slate-800">No storehouses in this tab</h4>
+      <p class="text-xs text-slate-500 mt-1">There are no warehouses matching this status currently.</p>
+    </div>
+
+    <!-- Add/Edit Warehouse Modal -->
+    <div id="warehouse-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all">
+        <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <h3 id="modal-title" class="text-sm font-black text-slate-900 uppercase tracking-wider">Add Storehouse</h3>
+          <button id="close-modal-btn" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        
+        <form id="warehouse-form" class="p-6 space-y-4">
+          <input type="hidden" id="warehouse-id" name="id" />
+          
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Storehouse Name <span class="text-rose-500">*</span></label>
+            <input 
+              type="text" 
+              id="wh-name" 
+              name="name" 
+              required 
+              placeholder="e.g. Dubai Logistics Center" 
+              class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-bold text-slate-700" 
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Facility Code <span class="text-rose-500">*</span></label>
+            <input 
+              type="text" 
+              id="wh-code" 
+              name="code" 
+              required 
+              placeholder="e.g. WH-DXB" 
+              class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-bold text-slate-700 uppercase" 
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Physical Address</label>
+            <textarea 
+              id="wh-address" 
+              name="address" 
+              rows="2"
+              placeholder="e.g. Plot 12, Al Quoz Industrial 3, Dubai" 
+              class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700"
+            ></textarea>
+          </div>
+
+          <div id="modal-msg" class="hidden p-3.5 rounded-xl text-xs font-bold"></div>
+
+          <div class="pt-4 flex gap-3 border-t border-slate-100">
+            <button 
+              type="button" 
+              id="cancel-modal-btn" 
+              class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-lg text-xs font-bold transition-colors uppercase tracking-wider"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              id="submit-modal-btn" 
+              class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-lg text-xs font-bold transition-colors shadow-sm uppercase tracking-wider"
+            >
+              Save Storehouse
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>
+
+<script>
+  const setupWarehouseCRUD = () => {
+    const modal = document.getElementById('warehouse-modal');
+    const form = document.getElementById('warehouse-form') as HTMLFormElement;
+    const closeBtn = document.getElementById('close-modal-btn');
+    const cancelBtn = document.getElementById('cancel-modal-btn');
+    
+    const idInput = document.getElementById('warehouse-id') as HTMLInputElement;
+    const nameInput = document.getElementById('wh-name') as HTMLInputElement;
+    const codeInput = document.getElementById('wh-code') as HTMLInputElement;
+    const addressInput = document.getElementById('wh-address') as HTMLTextAreaElement;
+    const modalTitle = document.getElementById('modal-title');
+    const msg = document.getElementById('modal-msg');
+
+    let activeTab = 'active';
+
+    if (!modal || !form) return;
+
+    const openModal = (isEdit = false) => {
+      msg?.classList.add('hidden');
+      if (modalTitle) modalTitle.textContent = isEdit ? 'Edit Storehouse' : 'Add Storehouse';
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      form.reset();
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+
+    // Add Warehouse trigger
+    document.getElementById('add-warehouse-btn')?.addEventListener('click', () => {
+      idInput.value = '';
+      openModal(false);
+    });
+
+    // Edit Warehouse trigger
+    document.querySelectorAll('.edit-wh-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        idInput.value = target.getAttribute('data-id') || '';
+        nameInput.value = target.getAttribute('data-name') || '';
+        codeInput.value = target.getAttribute('data-code') || '';
+        addressInput.value = target.getAttribute('data-address') || '';
+        openModal(true);
+      });
+    });
+
+    // Set Default Warehouse trigger
+    document.querySelectorAll('.set-default-wh-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        try {
+          const res = await fetch(`/api/warehouses/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_default: true })
+          });
+          if (res.ok) window.location.reload();
+          else alert('Failed to set warehouse as default');
+        } catch (err) {
+          alert('Error setting warehouse as default');
+        }
+      });
+    });
+
+    // Archive Warehouse trigger
+    document.querySelectorAll('.archive-wh-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        try {
+          const res = await fetch(`/api/warehouses/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'archived' })
+          });
+          if (res.ok) window.location.reload();
+          else alert('Failed to archive warehouse');
+        } catch (err) {
+          alert('Error archiving warehouse');
+        }
+      });
+    });
+
+    // Trash Warehouse trigger
+    document.querySelectorAll('.trash-wh-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        try {
+          const res = await fetch(`/api/warehouses/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'deleted' })
+          });
+          if (res.ok) window.location.reload();
+          else alert('Failed to move warehouse to trash');
+        } catch (err) {
+          alert('Error moving warehouse to trash');
+        }
+      });
+    });
+
+    // Restore Warehouse trigger
+    document.querySelectorAll('.restore-wh-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+        try {
+          const res = await fetch(`/api/warehouses/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'active' })
+          });
+          if (res.ok) window.location.reload();
+          else alert('Failed to restore warehouse');
+        } catch (err) {
+          alert('Error restoring warehouse');
+        }
+      });
+    });
+
+    // Delete Warehouse trigger (Permanent)
+    document.querySelectorAll('.delete-wh-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const id = target.getAttribute('data-id');
+        const name = target.getAttribute('data-name');
+        
+        if (confirm(`Are you sure you want to PERMANENTLY delete ${name}? This action cannot be undone.`)) {
+          try {
+            const res = await fetch(`/api/warehouses/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+              window.location.reload();
+            } else {
+              const data = await res.json();
+              alert(data.error || 'Failed to delete warehouse');
+            }
+          } catch (err) {
+            alert('Error deleting warehouse');
+          }
+        }
+      });
+    });
+
+    // Submit handler
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = idInput.value;
+      const url = id ? `/api/warehouses/${id}` : '/api/warehouses';
+      const method = id ? 'PUT' : 'POST';
+
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          if (msg) {
+            msg.className = 'p-3.5 rounded-xl text-xs font-bold bg-green-50 text-green-700 border border-green-200 block';
+            msg.textContent = `Warehouse saved successfully!`;
+          }
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          throw new Error(result.error || 'Operation failed');
+        }
+      } catch (err: any) {
+        if (msg) {
+          msg.className = 'p-3.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 block';
+          msg.textContent = err.message || 'Error processing request';
+        }
+      }
+    });
+
+    // Tab Switching Logic
+    const tabActive = document.getElementById('tab-active');
+    const tabArchived = document.getElementById('tab-archived');
+    const tabDeleted = document.getElementById('tab-deleted');
+    const cards = Array.from(document.querySelectorAll('.warehouse-card'));
+
+    const renderTabs = () => {
+      // Clear highlight on all tabs
+      [tabActive, tabArchived, tabDeleted].forEach(tab => {
+        tab?.classList.remove('border-cyan-600', 'text-cyan-600', 'font-black');
+        tab?.classList.add('border-transparent', 'text-slate-500', 'font-bold');
+      });
+
+      // Highlight active tab
+      const currentTabEl = activeTab === 'active' ? tabActive : activeTab === 'archived' ? tabArchived : tabDeleted;
+      currentTabEl?.classList.remove('border-transparent', 'text-slate-500', 'font-bold');
+      currentTabEl?.classList.add('border-cyan-600', 'text-cyan-600', 'font-black');
+
+      // Hide / show cards
+      let visibleCount = 0;
+      cards.forEach(card => {
+        const c = card as HTMLElement;
+        const status = c.getAttribute('data-status') || 'active';
+        if (status === activeTab) {
+          c.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          c.classList.add('hidden');
+        }
+      });
+
+      const emptyState = document.getElementById('no-warehouses-state');
+      if (visibleCount === 0) emptyState?.classList.remove('hidden');
+      else emptyState?.classList.add('hidden');
+    };
+
+    tabActive?.addEventListener('click', () => { activeTab = 'active'; renderTabs(); });
+    tabArchived?.addEventListener('click', () => { activeTab = 'archived'; renderTabs(); });
+    tabDeleted?.addEventListener('click', () => { activeTab = 'deleted'; renderTabs(); });
+
+    // Initial render
+    renderTabs();
+  };
+
+  setupWarehouseCRUD();
+  document.addEventListener('astro:page-load', setupWarehouseCRUD);
+</script>

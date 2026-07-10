@@ -298,9 +298,9 @@ async function main() {
       // Seed Inventory
       const stock = p.divSlug === 'delighttechnicallighting' ? 45 : 120;
       await client.query(
-        `INSERT INTO inventory (product_id, stock_level, warehouse_location, low_stock_threshold)
-         VALUES ($1, $2, 'Dubai Depot South', 15)
-         ON CONFLICT (product_id) DO NOTHING`,
+        `INSERT INTO inventory (product_id, stock_level, warehouse_id, low_stock_threshold)
+         VALUES ($1, $2, (SELECT id FROM warehouses ORDER BY name ASC LIMIT 1), 15)
+         ON CONFLICT (product_id, warehouse_id) DO NOTHING`,
         [productId, stock]
       );
     }

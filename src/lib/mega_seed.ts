@@ -439,10 +439,10 @@ async function main() {
 
         // Seed Inventory
         await client.query(
-          `INSERT INTO inventory (product_id, stock_level, warehouse_location, low_stock_threshold)
-           VALUES ($1, $2, $3, 10)
-           ON CONFLICT (product_id) 
-           DO UPDATE SET stock_level = EXCLUDED.stock_level, warehouse_location = EXCLUDED.warehouse_location`,
+          `INSERT INTO inventory (product_id, stock_level, warehouse_id, low_stock_threshold)
+           VALUES ($1, $2, COALESCE((SELECT id FROM warehouses WHERE name = $3), (SELECT id FROM warehouses ORDER BY name ASC LIMIT 1)), 10)
+           ON CONFLICT (product_id, warehouse_id) 
+           DO UPDATE SET stock_level = EXCLUDED.stock_level`,
           [productId, v.stock, v.warehouse]
         );
       }

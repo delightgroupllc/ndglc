@@ -77,7 +77,7 @@ export const GET: APIRoute = async ({ url }) => {
   }
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const data = await request.json();
 
@@ -143,6 +143,13 @@ export const POST: APIRoute = async ({ request }) => {
             ]
           );
         }
+
+        await client.query(
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+           VALUES ($1, $2, $3, $4, $5)`,
+          ['INVOICE_DUPLICATE', 'invoices', newInv.id, `Duplicated order from reference document ${sourceInv.invoice_number} (New Document: ${newInv.invoice_number})`, locals.user?.id || null]
+        );
+
         return newInv;
       });
 
@@ -322,8 +329,8 @@ export const POST: APIRoute = async ({ request }) => {
 
             // Initialize inventory row
             await client.query(
-              `INSERT INTO inventory (product_id, stock_level, warehouse_location, low_stock_threshold)
-               VALUES ($1, 0, 'Warehouse A', 10)`,
+              `INSERT INTO inventory (product_id, stock_level, warehouse_id, low_stock_threshold)
+               VALUES ($1, 0, (SELECT id FROM warehouses ORDER BY name ASC LIMIT 1), 10)`,
               [productId]
             );
 
@@ -401,6 +408,12 @@ export const POST: APIRoute = async ({ request }) => {
         await client.query('UPDATE invoices SET inventory_deducted = true WHERE id = $1', [inv.id]);
         inv.inventory_deducted = true;
       }
+
+      await client.query(
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        ['CREATE', 'invoices', inv.id, `Created document ${inv.invoice_number} for customer ${inv.customer_name} (Order Type: ${inv.order_type}, Total: ${inv.total_amount})`, locals.user?.id || null]
+      );
 
       return inv;
     });

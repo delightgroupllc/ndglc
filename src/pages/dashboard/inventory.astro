@@ -5,21 +5,27 @@ import { query } from '../../lib/db';
 import { FileClock, Settings, Save, AlertTriangle, TrendingUp, HelpCircle } from '@lucide/astro';
 
 let inventoryItems: any[] = [];
+let warehousesList: any[] = [];
 let inventoryLogs: any[] = [];
 let dbConnected = true;
 
 try {
   // Load stock levels
   const invRes = await query(
-    `SELECT i.*, p.name as product_name, p.sku, p.slug
+    `SELECT i.*, p.name as product_name, p.sku, p.slug, w.name as warehouse_name, w.code as warehouse_code
      FROM inventory i
      JOIN products p ON p.id = i.product_id
+     JOIN warehouses w ON w.id = i.warehouse_id
      ORDER BY p.name ASC`
   );
   inventoryItems = invRes.rows.map((item: any) => ({
     ...item,
     isLow: item.stock_level <= item.low_stock_threshold
   }));
+
+  // Load all warehouses
+  const whRes = await query(`SELECT * FROM warehouses ORDER BY name ASC`);
+  warehousesList = whRes.rows;
 
   // Load logs
   const logsRes = await query(
@@ -33,205 +39,630 @@ try {
   );
   inventoryLogs = logsRes.rows;
 } catch (err: any) {
-  console.warn('Database offline, running mock inventory and log telemetry:', err.message);
+  console.warn('Database offline, running mock inventory telemetry:', err.message);
   dbConnected = false;
 
+  warehousesList = [
+    { id: 'wh-1', name: 'Warehouse Alpha', code: 'WH-A', address: 'Al Quoz Logistics Hub' },
+    { id: 'wh-2', name: 'Warehouse Beta', code: 'WH-B', address: 'Jebel Ali Depot B' },
+    { id: 'wh-3', name: 'Warehouse Delta', code: 'WH-D', address: 'Sharjah Industrial Zone' }
+  ];
+
   inventoryItems = [
-    { id: 'inv-1', product_name: 'HP-100 High-Pressure Stainless Ball Valve', sku: 'SKU-DTL-VALVE-001', stock_level: 45, warehouse_location: 'Warehouse Alpha', low_stock_threshold: 15 },
-    { id: 'inv-2', product_name: 'CPX-500 Heavy-Duty Centrifugal Pump', sku: 'SKU-DTL-PUMP-002', stock_level: 12, warehouse_location: 'Warehouse Beta', low_stock_threshold: 15 },
-    { id: 'inv-3', product_name: 'Vortex Cloud-Native Backup Storage Suite', sku: 'SKU-DGS-CLOUD-001', stock_level: 120, warehouse_location: 'Cloud Region East-1', low_stock_threshold: 20 },
-    { id: 'inv-4', product_name: 'IronWall Industrial Firewall Appliance v4', sku: 'SKU-DGS-SEC-002', stock_level: 28, warehouse_location: 'Warehouse Delta', low_stock_threshold: 10 }
+    { id: 'inv-1', product_id: 'p-1', product_name: 'HP-100 High-Pressure Stainless Ball Valve', sku: 'SKU-DTL-VALVE-001', stock_level: 45, warehouse_id: 'wh-1', warehouse_name: 'Warehouse Alpha', warehouse_code: 'WH-A', low_stock_threshold: 15 },
+    { id: 'inv-2', product_id: 'p-2', product_name: 'CPX-500 Heavy-Duty Centrifugal Pump', sku: 'SKU-DTL-PUMP-002', stock_level: 12, warehouse_id: 'wh-2', warehouse_name: 'Warehouse Beta', warehouse_code: 'WH-B', low_stock_threshold: 15 },
+    { id: 'inv-3', product_id: 'p-3', product_name: 'Vortex Cloud-Native Backup Storage Suite', sku: 'SKU-DGS-CLOUD-001', stock_level: 120, warehouse_id: 'wh-1', warehouse_name: 'Warehouse Alpha', warehouse_code: 'WH-A', low_stock_threshold: 20 },
+    { id: 'inv-4', product_id: 'p-4', product_name: 'IronWall Industrial Firewall Appliance v4', sku: 'SKU-DGS-SEC-002', stock_level: 28, warehouse_id: 'wh-3', warehouse_name: 'Warehouse Delta', warehouse_code: 'WH-D', low_stock_threshold: 10 }
   ].map((item: any) => ({
     ...item,
     isLow: item.stock_level <= item.low_stock_threshold
   }));
 
   inventoryLogs = [
-    { id: 'log-1', product_name: 'HP-100 High-Pressure Stainless Ball Valve', sku: 'SKU-DTL-VALVE-001', change_amount: 15, previous_stock: 30, new_stock: 45, reason: 'purchase', user_name: 'Alexander Vance', timestamp: new Date().toISOString() },
-    { id: 'log-2', product_name: 'CPX-500 Heavy-Duty Centrifugal Pump', sku: 'SKU-DTL-PUMP-002', change_amount: -3, previous_stock: 15, new_stock: 12, reason: 'sales', user_name: 'Automated Checkout', timestamp: new Date(Date.now() - 3600000).toISOString() }
+    { id: 'log-1', product_name: 'HP-100 High-Pressure Stainless Ball Valve', sku: 'SKU-DTL-VALVE-001', change_amount: 15, previous_stock: 30, new_stock: 45, reason: 'purchase', user_name: 'Alexander Vance', timestamp: new Date().toISOString() }
   ];
 }
+
+const totalUniqueItems = new Set(inventoryItems.map(i => i.product_id)).size;
+const totalStockUnits = inventoryItems.reduce((acc, item) => acc + item.stock_level, 0);
+const lowStockCount = inventoryItems.filter(item => item.isLow).length;
 ---
 
 <DashboardLayout title="Logistics & Inventory" activeItem="inventory">
+  <InventoryForm warehouses={warehousesList} />
 
-  <InventoryForm />
-
-  <!-- Offline Database Warning -->
-  {!dbConnected && (
-    <div class="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-600 font-medium">
-      <AlertTriangle class="h-4.5 w-4.5 shrink-0" />
-      <div>
-        <span class="font-bold">PostgreSQL Connection Offline</span>: System running in mock telemetry mode.
+  <!-- Stock Transfer Modal -->
+  <div id="transfer-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+      <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+        <div>
+          <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">Transfer Stock</h3>
+          <p id="transfer-product-name" class="text-xs text-slate-500 font-semibold mt-1 truncate max-w-[300px]"></p>
+        </div>
+        <button id="close-transfer-modal" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
       </div>
-    </div>
-  )}
 
-  <div class="space-y-6 mb-8">
-    <h3 class="text-sm font-bold font-display text-slate-900">Warehouse Stock Levels</h3>
-    
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {inventoryItems.map(item => {
-        const isLow = item.isLow;
-        
-        return (
-          <div class={`inventory-card rounded-xl border p-5 flex flex-col justify-between min-h-[180px] transition-all shadow-sm ${
-            isLow 
-              ? 'border-rose-400/30 bg-white hover:border-rose-400/50' 
-              : 'border-slate-200 bg-white hover:border-slate-300'
-          }`}>
-            <div>
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-2xs font-semibold text-slate-500 uppercase tracking-widest">{item.sku}</span>
-                {isLow && (
-                  <span class="rounded bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-2xs font-bold text-rose-600 uppercase tracking-wider animate-pulse">
-                    Low Stock Warning
-                  </span>
-                )}
-              </div>
-              
-              <h4 class="text-sm font-bold text-slate-900 mt-2 line-clamp-1">{item.product_name}</h4>
-              
-              <div class="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <p class="text-3xs text-slate-500 uppercase tracking-wider">Current Stock</p>
-                  <p class={`text-xl font-bold font-display mt-0.5 ${isLow ? 'text-rose-500' : 'text-cyan-500'}`}>
-                    {item.stock_level} units
-                  </p>
-                </div>
-                <div>
-                  <p class="text-3xs text-slate-500 uppercase tracking-wider">Warehouse location</p>
-                  <p class="text-xs font-semibold text-slate-700 mt-1 truncate">{item.warehouse_location}</p>
-                </div>
-              </div>
-            </div>
+      <form id="transfer-form" class="p-6 space-y-4">
+        <input type="hidden" id="transfer-product-id" name="product_id" />
+        <input type="hidden" id="transfer-from-wh-id" name="from_warehouse_id" />
 
-            <!-- Action toggle button trigger -->
-            <div class="pt-4 border-t border-slate-200 mt-4 flex items-center justify-between">
-              <span class="text-3xs text-slate-500">Min. Alert: {item.low_stock_threshold}</span>
-              <button 
-                data-inventory-id={item.id}
-                class="open-modal-btn text-2xs font-bold text-cyan-600 hover:text-cyan-500 focus:outline-none"
-              >
-                Adjust Quantities &rarr;
-              </button>
-            </div>
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2 text-xs font-bold text-slate-700">
+          <div class="flex justify-between">
+            <span>From Warehouse:</span>
+            <span id="transfer-from-wh-name" class="text-slate-900"></span>
           </div>
-        );
-      })}
-    </div>
+          <div class="flex justify-between">
+            <span>Available Stock:</span>
+            <span><span id="transfer-max-qty" class="text-cyan-600 font-black">0</span> units</span>
+          </div>
+        </div>
 
-    <!-- Pagination Controls -->
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm mt-6">
-      <div class="flex items-center gap-2 text-xs text-slate-500 font-bold">
-        <span>Show</span>
-        <select id="pagination-limit" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none">
-          <option value="10" selected>10 items</option>
-          <option value="25">25 items</option>
-        </select>
-        <span>per page</span>
-      </div>
-      <div class="text-xs text-slate-500 font-semibold">
-        Showing <span id="pagination-start" class="text-slate-900 font-bold">1</span> to <span id="pagination-end" class="text-slate-900 font-bold">10</span> of <span id="pagination-total" class="text-slate-900 font-bold">0</span> items
-      </div>
-      <div class="flex items-center gap-1.5" id="pagination-buttons">
-        <!-- Buttons will be dynamically inserted here -->
-      </div>
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Destination Warehouse <span class="text-rose-500">*</span></label>
+          <select id="transfer-to-wh-id" name="to_warehouse_id" required class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-bold text-slate-700">
+            <option value="">-- Select Destination --</option>
+            {warehousesList.map(w => (
+              <option value={w.id} class="dest-wh-option">{w.name} ({w.code})</option>
+            ))}
+          </select>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Transfer Quantity <span class="text-rose-500">*</span></label>
+          <input 
+            type="number" 
+            id="transfer-qty" 
+            name="quantity" 
+            min="1" 
+            required 
+            placeholder="e.g. 5" 
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-bold text-slate-750 font-mono" 
+          />
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Transfer Reason <span class="text-rose-500">*</span></label>
+          <input 
+            type="text" 
+            name="reason" 
+            required 
+            placeholder="e.g. Relocating safety stock to Jebel Ali" 
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700" 
+          />
+        </div>
+
+        <div id="transfer-msg" class="hidden p-3.5 rounded-xl text-xs font-bold mt-4"></div>
+
+        <div class="pt-4 flex gap-3 border-t border-slate-100">
+          <button 
+            type="button" 
+            id="cancel-transfer-btn" 
+            class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-lg text-xs font-bold transition-colors uppercase tracking-wider"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            id="submit-transfer-btn" 
+            class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-lg text-xs font-bold transition-colors shadow-sm uppercase tracking-wider"
+          >
+            Execute Transfer
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <!-- Ledger logs below -->
-  <div class="space-y-4">
-    <h3 class="text-sm font-bold font-display text-slate-900 flex items-center gap-2">
-      <FileClock class="h-5 w-5 text-cyan-500" />
-      Inventory Transaction Ledger (Audit Logs)
-    </h3>
+  <div class="space-y-8 p-6 lg:p-8 w-full">
     
-    <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
-              <th class="px-6 py-4 font-semibold">Logged System</th>
-              <th class="px-6 py-4 font-semibold">Ledger Reason</th>
-              <th class="px-6 py-4 font-semibold text-center">Change</th>
-              <th class="px-6 py-4 font-semibold text-center">Previous Stock</th>
-              <th class="px-6 py-4 font-semibold text-center">New Stock</th>
-              <th class="px-6 py-4 font-semibold">Authorized By</th>
-              <th class="px-6 py-4 font-semibold text-right">Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {inventoryLogs.map(log => (
-              <tr class="border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors">
-                <td class="px-6 py-4">
-                  <div class="font-bold text-slate-900">{log.product_name}</div>
-                  <div class="text-2xs text-slate-500 mt-0.5">{log.sku}</div>
-                </td>
-                <td class="px-6 py-4">
-                  <span class={`rounded px-1.5 py-0.5 text-2xs font-semibold uppercase ${
-                    log.reason === 'purchase' 
-                      ? 'bg-emerald-500/10 text-emerald-600' 
-                      : log.reason === 'sales' ? 'bg-amber-500/10 text-amber-600' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {log.reason}
-                  </span>
-                </td>
-                <td class={`px-6 py-4 text-center font-bold ${log.change_amount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {log.change_amount > 0 ? `+${log.change_amount}` : log.change_amount}
-                </td>
-                <td class="px-6 py-4 text-center text-slate-500">{log.previous_stock}</td>
-                <td class="px-6 py-4 text-center text-slate-900 font-bold">{log.new_stock}</td>
-                <td class="px-6 py-4 text-slate-600">{log.user_name || 'System Auto'}</td>
-                <td class="px-6 py-4 text-right text-slate-500">{new Date(log.timestamp).toLocaleString()}</td>
-              </tr>
+    <!-- Header Section -->
+    <div class="flex items-center justify-between border-b border-slate-200 pb-5 mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          Logistics & Warehouse Inventory
+        </h1>
+        <p class="text-slate-500 text-sm mt-1">Check physical storehouse locations, update safety stock thresholds, and execute warehouse stock transfers.</p>
+      </div>
+      <a 
+        href="/dashboard/warehouses"
+        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 uppercase tracking-wider"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+        Manage Storehouses
+      </a>
+    </div>
+
+    <!-- Offline Database Warning -->
+    {!dbConnected && (
+      <div class="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-700 font-semibold shadow-sm">
+        <AlertTriangle class="h-5 w-5 text-amber-600 shrink-0" />
+        <div>
+          <span class="font-extrabold uppercase tracking-wider block">PostgreSQL Connection Offline</span>
+          Running in mock database mode. Changes will not persist to the central store.
+        </div>
+      </div>
+    )}
+
+    <!-- Analytics Dashboard widgets -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- Card 1: Unique SKU Count -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
+        <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unique Products</p>
+          <h3 class="text-2xl font-black text-slate-900 mt-1 font-mono">{totalUniqueItems}</h3>
+          <p class="text-3xs text-slate-500 font-semibold mt-0.5">Catalog products tracked</p>
+        </div>
+      </div>
+
+      <!-- Card 2: Cumulative Stock -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
+        <div class="p-3 bg-cyan-50 text-cyan-600 rounded-xl">
+          <TrendingUp class="w-6 h-6" />
+        </div>
+        <div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Stock units</p>
+          <h3 class="text-2xl font-black text-slate-900 mt-1 font-mono">{totalStockUnits}</h3>
+          <p class="text-3xs text-slate-500 font-semibold mt-0.5">Available physical stock</p>
+        </div>
+      </div>
+
+      <!-- Card 3: Alert Levels -->
+      <div class={`rounded-2xl border p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 ${
+        lowStockCount > 0 ? 'bg-rose-500/5 border-rose-200 text-rose-900' : 'bg-white border-slate-200'
+      }`}>
+        <div class={`p-3 rounded-xl ${lowStockCount > 0 ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Low Stock Alerts</p>
+          <h3 class="text-2xl font-black mt-1 font-mono text-slate-900">{lowStockCount}</h3>
+          <p class="text-3xs text-slate-500 font-semibold mt-0.5">Items requiring restock</p>
+        </div>
+      </div>
+
+      <!-- Card 4: Warehouse Locations -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4">
+        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <div>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Warehouses</p>
+          <h3 class="text-2xl font-black text-slate-900 mt-1 font-mono">{warehousesList.length}</h3>
+          <p class="text-3xs text-slate-500 font-semibold mt-0.5">Configured branches</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Filters & Controls -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <!-- Search bar -->
+        <div class="relative flex-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3.5 top-3 w-4 h-4 text-slate-450" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input 
+            type="text" 
+            id="search-input"
+            placeholder="Search by product name, SKU..." 
+            class="pl-10 pr-4 py-2 w-full text-xs font-semibold rounded-xl border border-slate-305 bg-slate-50 hover:bg-slate-100 focus:bg-white focus:outline-none focus:border-cyan-500 transition-all text-slate-800"
+          />
+        </div>
+
+        <!-- Warehouse Location selector -->
+        <div>
+          <select id="warehouse-filter" class="w-full py-2 px-3 text-xs font-bold rounded-xl border border-slate-305 bg-slate-50 text-slate-700 focus:outline-none focus:border-cyan-500 cursor-pointer">
+            <option value="">All Warehouses</option>
+            {warehousesList.map(w => (
+              <option value={w.id}>{w.name} ({w.code})</option>
             ))}
-          </tbody>
-        </table>
+          </select>
+        </div>
+
+        <!-- Stock Status selector -->
+        <div>
+          <select id="status-filter" class="w-full py-2 px-3 text-xs font-bold rounded-xl border border-slate-305 bg-slate-50 text-slate-700 focus:outline-none focus:border-cyan-500 cursor-pointer">
+            <option value="">All Stock Statuses</option>
+            <option value="low">Low Stock Warnings</option>
+            <option value="healthy">Healthy Stock levels</option>
+            <option value="empty">Out of Stock</option>
+          </select>
+        </div>
+
+        <!-- Limit selector -->
+        <div class="flex items-center justify-end gap-2 text-2xs text-slate-500 font-bold pr-2">
+          <span>Displaying</span>
+          <select id="pagination-limit" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-2xs font-black text-slate-700 focus:outline-none cursor-pointer">
+            <option value="12" selected>12 items</option>
+            <option value="24">24 items</option>
+            <option value="48">48 items</option>
+          </select>
+          <span>per page</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stock Cards Grid Section -->
+    <div class="space-y-6">
+      <!-- Grid -->
+      <div id="stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {inventoryItems.map(item => {
+          return (
+            <div 
+              class={`inventory-card rounded-2xl border p-5 flex flex-col justify-between min-h-[240px] transition-all bg-white hover:-translate-y-0.5 hover:shadow-md cursor-default ${
+                item.stock_level === 0
+                  ? 'border-red-400 bg-red-500/[0.01]'
+                  : item.isLow 
+                    ? 'border-amber-400 bg-amber-500/[0.01]' 
+                    : 'border-slate-200'
+              }`}
+              data-product-id={item.product_id}
+              data-product-name={item.product_name}
+              data-sku={item.sku}
+              data-warehouse-id={item.warehouse_id}
+              data-warehouse-name={item.warehouse_name}
+              data-is-low={item.isLow ? "true" : "false"}
+              data-stock-level={item.stock_level}
+            >
+              <div>
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex flex-col gap-1">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">{item.sku}</span>
+                    <span class="text-[9px] font-bold text-slate-500 bg-slate-150 rounded px-1.5 py-0.5 w-max font-mono">{item.warehouse_code}</span>
+                  </div>
+                  {item.stock_level === 0 ? (
+                    <span class="rounded bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-[9px] font-black text-rose-600 uppercase tracking-wider">
+                      Out of Stock
+                    </span>
+                  ) : item.isLow ? (
+                    <span class="rounded bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 text-[9px] font-black text-amber-700 uppercase tracking-wider animate-pulse">
+                      Low Stock
+                    </span>
+                  ) : (
+                    <span class="rounded bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[9px] font-black text-emerald-600 uppercase tracking-wider">
+                      Healthy
+                    </span>
+                  )}
+                </div>
+                
+                <h4 class="text-sm font-black text-slate-800 mt-3.5 line-clamp-2 min-h-[40px] leading-tight" title={item.product_name}>{item.product_name}</h4>
+                
+                <div class="grid grid-cols-2 gap-4 mt-5 pt-3 border-t border-slate-100">
+                  <div>
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Current Stock</p>
+                    <p class={`text-lg font-black mt-0.5 font-mono ${
+                      item.stock_level === 0 ? 'text-rose-600' : item.isLow ? 'text-amber-600' : 'text-cyan-600'
+                    }`}>
+                      {item.stock_level} <span class="text-2xs font-semibold text-slate-500">units</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Facility Location</p>
+                    <p class="text-xs font-bold text-slate-700 mt-1 truncate" title={item.warehouse_name}>
+                      {item.warehouse_name}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action trigger -->
+              <div class="pt-4 mt-4 flex items-center justify-between border-t border-slate-100">
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Min. alert: <span class="font-mono font-bold text-slate-650">{item.low_stock_threshold}</span></span>
+                <div class="flex gap-2">
+                  <button 
+                    data-product-id={item.product_id}
+                    data-product-name={item.product_name}
+                    data-from-wh-id={item.warehouse_id}
+                    data-from-wh-name={item.warehouse_name}
+                    data-stock-level={item.stock_level}
+                    class="transfer-btn px-2.5 py-1.5 rounded-lg text-[9px] font-extrabold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors uppercase tracking-wider"
+                  >
+                    Transfer
+                  </button>
+                  <button 
+                    data-inventory-id={item.id}
+                    data-product-name={item.product_name}
+                    data-stock-level={item.stock_level}
+                    data-location={item.warehouse_name}
+                    data-threshold={item.low_stock_threshold}
+                    class="open-modal-btn px-2.5 py-1.5 rounded-lg text-[9px] font-extrabold text-cyan-650 hover:text-cyan-705 hover:bg-cyan-50/50 transition-colors uppercase tracking-wider"
+                  >
+                    Configure
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <!-- No items helper state -->
+      <div id="no-results-state" class="hidden py-16 text-center border border-dashed border-slate-300 rounded-2xl bg-white max-w-md mx-auto">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-slate-350 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+        <h4 class="text-sm font-bold text-slate-800">No matching stock items found</h4>
+        <p class="text-xs text-slate-500 mt-1">Try refining your search queries or clearing active status filters.</p>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mt-6">
+        <div class="text-xs text-slate-500 font-semibold">
+          Showing <span id="pagination-start" class="text-slate-900 font-bold">0</span> to <span id="pagination-end" class="text-slate-900 font-bold">0</span> of <span id="pagination-total" class="text-slate-900 font-bold">0</span> items
+        </div>
+        <div class="flex items-center gap-1.5" id="pagination-buttons">
+          <!-- Dynamically generated buttons -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Transaction Ledger Audit Logs -->
+    <div class="space-y-4 pt-4">
+      <h3 class="text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wider">
+        <FileClock class="h-5 w-5 text-cyan-600" />
+        Inventory Transaction Ledger (Audit Logs)
+      </h3>
+      
+      <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-[9px] font-black tracking-widest">
+                <th class="px-6 py-4">Logged Stock Item</th>
+                <th class="px-6 py-4">Transaction Reason</th>
+                <th class="px-6 py-4 text-center">Quantity Delta</th>
+                <th class="px-6 py-4 text-center">Previous Stock</th>
+                <th class="px-6 py-4 text-center">New Stock</th>
+                <th class="px-6 py-4">Authorized By</th>
+                <th class="px-6 py-4 text-right">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inventoryLogs.length === 0 ? (
+                <tr>
+                  <td colspan="7" class="px-6 py-12 text-center text-xs text-slate-400 font-bold">
+                    No logged inventory transactions found in system audit history.
+                  </td>
+                </tr>
+              ) : (
+                inventoryLogs.map(log => (
+                  <tr class="border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors">
+                    <td class="px-6 py-4">
+                      <div class="font-bold text-slate-800 max-w-[280px] truncate">{log.product_name}</div>
+                      <div class="text-[9px] font-bold text-slate-400 mt-0.5 font-mono">{log.sku}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                      <span class={`rounded px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider border ${
+                        log.reason === 'purchase' 
+                          ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' 
+                          : log.reason === 'sales' 
+                            ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' 
+                            : log.reason === 'audit'
+                              ? 'bg-purple-500/10 text-purple-600 border-purple-500/20'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                      }`}>
+                        {log.reason}
+                      </span>
+                    </td>
+                    <td class={`px-6 py-4 text-center font-bold font-mono ${log.change_amount > 0 ? 'text-emerald-600' : log.change_amount < 0 ? 'text-rose-600' : 'text-slate-500'}`}>
+                      {log.change_amount > 0 ? `+${log.change_amount}` : log.change_amount}
+                    </td>
+                    <td class="px-6 py-4 text-center font-mono text-slate-500">{log.previous_stock}</td>
+                    <td class="px-6 py-4 text-center font-mono text-slate-900 font-bold">{log.new_stock}</td>
+                    <td class="px-6 py-4 text-slate-600 font-bold">{log.user_name || 'System / Auto'}</td>
+                    <td class="px-6 py-4 text-right text-slate-500 font-semibold">{new Date(log.timestamp).toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    // Bind modal triggers
-    document.querySelectorAll('.open-modal-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const invId = (e.currentTarget as HTMLElement).getAttribute('data-inventory-id');
-        document.dispatchEvent(new CustomEvent('open-inventory-modal', { detail: { inventoryId: invId } }));
-      });
-    });
+    // Bind modal triggers with dynamic prefilled details
+    const bindTriggers = () => {
+      document.querySelectorAll('.open-modal-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const target = e.currentTarget as HTMLElement;
+          const inventoryId = target.getAttribute('data-inventory-id');
+          const productName = target.getAttribute('data-product-name');
+          const stockLevel = parseInt(target.getAttribute('data-stock-level') || '0');
+          const warehouseId = target.getAttribute('data-warehouse-id');
+          const threshold = parseInt(target.getAttribute('data-threshold') || '10');
 
-    // Pagination Logic for Stock Cards
+          document.dispatchEvent(new CustomEvent('open-inventory-modal', { 
+            detail: { inventoryId, productName, stockLevel, warehouseId, threshold } 
+          }));
+        });
+      });
+    };
+
+    // Bind Stock Transfer Modal triggers
+    const setupStockTransfer = () => {
+      const transferModal = document.getElementById('transfer-modal');
+      const closeBtn = document.getElementById('close-transfer-modal');
+      const cancelBtn = document.getElementById('cancel-transfer-btn');
+      const form = document.getElementById('transfer-form') as HTMLFormElement | null;
+      const msg = document.getElementById('transfer-msg');
+
+      if (!transferModal || !form) return;
+
+      const closeModal = () => {
+        transferModal.classList.add('hidden');
+        transferModal.classList.remove('flex');
+        form.reset();
+        msg?.classList.add('hidden');
+      };
+
+      closeBtn?.addEventListener('click', closeModal);
+      cancelBtn?.addEventListener('click', closeModal);
+
+      document.querySelectorAll('.transfer-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const target = e.currentTarget as HTMLElement;
+          const productId = target.getAttribute('data-product-id') || '';
+          const productName = target.getAttribute('data-product-name') || '';
+          const fromWhId = target.getAttribute('data-from-wh-id') || '';
+          const fromWhName = target.getAttribute('data-from-wh-name') || '';
+          const stockLevel = target.getAttribute('data-stock-level') || '0';
+
+          (document.getElementById('transfer-product-id') as HTMLInputElement).value = productId;
+          (document.getElementById('transfer-from-wh-id') as HTMLInputElement).value = fromWhId;
+          
+          const pNameEl = document.getElementById('transfer-product-name');
+          if (pNameEl) pNameEl.textContent = productName;
+
+          const fWhEl = document.getElementById('transfer-from-wh-name');
+          if (fWhEl) fWhEl.textContent = fromWhName;
+
+          const maxQtyEl = document.getElementById('transfer-max-qty');
+          if (maxQtyEl) maxQtyEl.textContent = stockLevel;
+
+          const qtyInput = document.getElementById('transfer-qty') as HTMLInputElement;
+          if (qtyInput) {
+            qtyInput.max = stockLevel;
+            qtyInput.value = '';
+          }
+
+          // Disable source warehouse in destination dropdown option
+          document.querySelectorAll('.dest-wh-option').forEach(opt => {
+            const o = opt as HTMLOptionElement;
+            if (o.value === fromWhId) {
+              o.disabled = true;
+              o.classList.add('hidden');
+            } else {
+              o.disabled = false;
+              o.classList.remove('hidden');
+            }
+          });
+
+          transferModal.classList.remove('hidden');
+          transferModal.classList.add('flex');
+        });
+      });
+
+      // Submit transfer
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('submit-transfer-btn');
+        if (!submitBtn || !msg) return;
+
+        submitBtn.setAttribute('disabled', 'true');
+        const origText = submitBtn.textContent;
+        submitBtn.textContent = 'Transferring...';
+
+        const formData = new FormData(form);
+        const payload = Object.fromEntries(formData.entries());
+
+        try {
+          const res = await fetch('/api/inventory/transfer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const result = await res.json();
+          if (res.ok) {
+            msg.className = 'p-3.5 rounded-xl text-xs font-bold bg-green-50 text-green-700 border border-green-200 block';
+            msg.textContent = 'Stock transferred successfully!';
+            setTimeout(() => window.location.reload(), 805);
+          } else {
+            throw new Error(result.error || 'Transfer failed');
+          }
+        } catch (err: any) {
+          msg.className = 'p-3.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 block';
+          msg.textContent = err.message || 'Error executing stock transfer';
+          submitBtn.removeAttribute('disabled');
+          submitBtn.textContent = origText;
+        }
+      });
+    };
+
+    // Pagination, Filter & Live Search Logic
     const cards = Array.from(document.querySelectorAll('.inventory-card'));
+    const searchInput = document.getElementById('search-input') as HTMLInputElement | null;
+    const warehouseFilter = document.getElementById('warehouse-filter') as HTMLSelectElement | null;
+    const statusFilter = document.getElementById('status-filter') as HTMLSelectElement | null;
     const limitSelect = document.getElementById('pagination-limit') as HTMLSelectElement | null;
 
     let currentPage = 1;
-    let itemsPerPage = 10;
+    let itemsPerPage = 12;
 
-    if (limitSelect) {
-      limitSelect.addEventListener('change', () => {
-        itemsPerPage = parseInt(limitSelect.value) || 10;
-        currentPage = 1;
-        paginateStockCards();
+    const getFilteredCards = () => {
+      const query = (searchInput?.value || '').toLowerCase().trim();
+      const warehouseId = warehouseFilter?.value || '';
+      const status = statusFilter?.value || '';
+
+      return cards.filter(card => {
+        const itemCard = card as HTMLElement;
+        const name = (itemCard.getAttribute('data-product-name') || '').toLowerCase();
+        const sku = (itemCard.getAttribute('data-sku') || '').toLowerCase();
+        const cardWhId = itemCard.getAttribute('data-warehouse-id') || '';
+        const isLow = itemCard.getAttribute('data-is-low') === 'true';
+        const stockLevel = parseInt(itemCard.getAttribute('data-stock-level') || '0');
+
+        // Search match
+        const matchesSearch = name.includes(query) || sku.includes(query);
+        // Warehouse match
+        const matchesWarehouse = !warehouseId || cardWhId === warehouseId;
+        // Status match
+        let matchesStatus = true;
+        if (status === 'low') {
+          matchesStatus = isLow && stockLevel > 0;
+        } else if (status === 'healthy') {
+          matchesStatus = !isLow && stockLevel > 0;
+        } else if (status === 'empty') {
+          matchesStatus = stockLevel === 0;
+        }
+
+        return matchesSearch && matchesWarehouse && matchesStatus;
       });
-    }
+    };
 
-    function paginateStockCards() {
+    const updateUI = () => {
+      const filtered = getFilteredCards();
+      const totalItems = filtered.length;
+      const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+      // Reset to page 1 if current page exceeds total pages
+      if (currentPage > totalPages) {
+        currentPage = totalPages;
+      }
+
       // Hide all first
       cards.forEach(c => (c as HTMLElement).classList.add('hidden'));
 
-      const totalItems = cards.length;
-      const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-
-      if (currentPage > totalPages) {
-        currentPage = totalPages;
+      // Show results state or no-results helper
+      const noResultsState = document.getElementById('no-results-state');
+      if (totalItems === 0) {
+        noResultsState?.classList.remove('hidden');
+      } else {
+        noResultsState?.classList.add('hidden');
       }
 
       const startIndex = (currentPage - 1) * itemsPerPage;
       const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
 
-      // Show cards in target page slice
-      cards.slice(startIndex, endIndex).forEach(card => {
+      // Show paginated slice
+      filtered.slice(startIndex, endIndex).forEach(card => {
         (card as HTMLElement).classList.remove('hidden');
       });
 
@@ -252,12 +683,12 @@ try {
         const prevBtn = document.createElement('button');
         prevBtn.type = 'button';
         prevBtn.disabled = currentPage === 1;
-        prevBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold ${currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
+        prevBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-[10px] font-extrabold uppercase tracking-wider ${currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
         prevBtn.innerHTML = '&larr; Prev';
         prevBtn.addEventListener('click', () => {
           if (currentPage > 1) {
             currentPage--;
-            paginateStockCards();
+            updateUI();
           }
         });
         buttonsContainer.appendChild(prevBtn);
@@ -274,11 +705,11 @@ try {
         for (let i = startPage; i <= endPage; i++) {
           const pageBtn = document.createElement('button');
           pageBtn.type = 'button';
-          pageBtn.className = `px-3 py-1.5 rounded-lg border text-xs font-semibold ${currentPage === i ? 'bg-cyan-600 border-cyan-600 text-white font-bold' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors'}`;
+          pageBtn.className = `px-3 py-1.5 rounded-lg border text-[10px] font-extrabold ${currentPage === i ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors'}`;
           pageBtn.textContent = String(i);
           pageBtn.addEventListener('click', () => {
             currentPage = i;
-            paginateStockCards();
+            updateUI();
           });
           buttonsContainer.appendChild(pageBtn);
         }
@@ -287,19 +718,49 @@ try {
         const nextBtn = document.createElement('button');
         nextBtn.type = 'button';
         nextBtn.disabled = currentPage === totalPages;
-        nextBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
+        nextBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-[10px] font-extrabold uppercase tracking-wider ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'}`;
         nextBtn.innerHTML = 'Next &rarr;';
         nextBtn.addEventListener('click', () => {
           if (currentPage < totalPages) {
             currentPage++;
-            paginateStockCards();
+            updateUI();
           }
         });
         buttonsContainer.appendChild(nextBtn);
       }
+    };
+
+    // Attach filter change and input handlers
+    searchInput?.addEventListener('input', () => {
+      currentPage = 1;
+      updateUI();
+    });
+    warehouseFilter?.addEventListener('change', () => {
+      currentPage = 1;
+      updateUI();
+    });
+    statusFilter?.addEventListener('change', () => {
+      currentPage = 1;
+      updateUI();
+    });
+    if (limitSelect) {
+      limitSelect.addEventListener('change', () => {
+        itemsPerPage = parseInt(limitSelect.value) || 12;
+        currentPage = 1;
+        updateUI();
+      });
     }
 
-    // Initial load pagination
-    paginateStockCards();
+    // Initialize triggers and pagination
+    bindTriggers();
+    setupStockTransfer();
+    updateUI();
+
+    // Re-bind triggers on astro page loads
+    document.addEventListener('astro:page-load', () => {
+      bindTriggers();
+      setupStockTransfer();
+      updateUI();
+    });
   </script>
 </DashboardLayout>

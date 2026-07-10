@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { query, withTransaction } from '../../../lib/db';
+import { pool, query, withTransaction } from '../../../lib/db';
 import { z } from 'zod';
 import { optimizeAndSaveImage } from '../../../lib/imageOptimizer';
 
@@ -8,18 +8,10 @@ const itemSchema = z.object({
   product_id: z.string().optional().nullable(),
   catalogue_ref: z.string().optional().nullable(),
   tech_spec: z.string().optional().nullable(),
-  quantity: z.number({ 
-    required_error: 'Quantity is required',
-    invalid_type_error: 'Quantity must be a valid number' 
-  }).int('Quantity must be an integer').min(1, 'Quantity must be at least 1'),
-  unit_price: z.number({ 
-    required_error: 'Unit price is required',
-    invalid_type_error: 'Unit price must be a valid number' 
-  }).min(0, 'Unit price cannot be negative'),
+  quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+  unit_price: z.number().min(0, 'Unit price cannot be negative'),
   tax_type: z.enum(['percentage', 'fixed']).default('percentage'),
-  tax_value: z.number({ 
-    invalid_type_error: 'Tax value must be a valid number' 
-  }).min(0, 'Tax value cannot be negative').default(5),
+  tax_value: z.number().min(0).default(5),
   image_base64: z.string().optional().nullable(),
 });
 
@@ -37,7 +29,7 @@ const invoiceSchema = z.object({
   issue_date: z.string().min(1, 'Issue date is required'),
   due_date: z.string().optional().nullable().or(z.literal('')),
   signatory_incharge: z.string().min(1, 'Signatory Incharge is required'),
-  payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']),
+  payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']).default('unpaid'),
   discount_type: z.enum(['percentage', 'fixed']).default('fixed'),
   discount_value: z.number().min(0).default(0),
   internal_notes: z.string().optional(),
@@ -51,12 +43,12 @@ export const GET: APIRoute = async ({ params }) => {
     const id = params.id;
     if (!id) return new Response(JSON.stringify({ error: 'ID required' }), { status: 400 });
 
-    const res = await query(
-      `SELECT i.*, 
+    const res = await query(`
+      SELECT i.*,
         (SELECT JSON_AGG(it ORDER BY it.id) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
-       FROM invoices i WHERE i.id = $1`,
-      [id]
-    );
+      FROM invoices i
+      WHERE i.id = $1
+    `, [id]);
 
     if (res.rows.length === 0) {
       return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
@@ -68,15 +60,14 @@ export const GET: APIRoute = async ({ params }) => {
   }
 };
 
-
 export const PUT: APIRoute = async ({ params, request, locals }) => {
   try {
     const id = params.id;
     if (!id) return new Response(JSON.stringify({ error: 'ID required' }), { status: 400 });
-
     const data = await request.json();
     const parsed = invoiceSchema.parse(data);
 
+    // Calculate totals
     let subtotal = 0;
     let totalTax = 0;
     for (const item of parsed.items) {
@@ -88,7 +79,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
         totalTax += item.tax_value;
       }
     }
-
+    
     let discount = 0;
     if (parsed.discount_type === 'percentage') {
       discount = subtotal * (parsed.discount_value / 100);
@@ -98,64 +89,98 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
     const total_amount = Math.max(0, subtotal + totalTax - discount);
 
     const updated = await withTransaction(async (client) => {
-      // Verify invoice exists before modifying and retrieve current invoice_number and order_type
-      const check = await client.query('SELECT order_type, invoice_number FROM invoices WHERE id = $1 FOR UPDATE', [id]);
-      if (check.rows.length === 0) throw new Error('Invoice not found');
-      
-      const current = check.rows[0];
-      let newInvoiceNumber = current.invoice_number;
+      const currentRes = await client.query('SELECT order_type, invoice_number, payment_status FROM invoices WHERE id = $1', [id]);
+      if (currentRes.rows.length === 0) {
+        throw new Error('Invoice not found');
+      }
+      const current = currentRes.rows[0];
 
+      let newInvoiceNumber = current.invoice_number;
       if (parsed.order_type !== current.order_type) {
-        if (parsed.order_type === 'quotation') {
-          newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'EST-');
-        } else if (parsed.order_type === 'lpo' || parsed.order_type === 'proforma') {
-          newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'PRO-');
-        } else if (parsed.order_type === 'delivery_note') {
-          newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'DLN-');
+        const rand = Math.floor(1000 + Math.random() * 9000);
+        let prefix = 'INV';
+        if (parsed.order_type === 'quotation') prefix = 'EST';
+        else if (parsed.order_type === 'lpo' || parsed.order_type === 'proforma') prefix = 'PRO';
+        else if (parsed.order_type === 'delivery_note') prefix = 'DLN';
+        newInvoiceNumber = `${prefix}-${new Date().getFullYear()}-${rand}`;
+      }
+
+      // Upsert company
+      let companyId = null;
+      if (parsed.company_name) {
+        const checkComp = await client.query('SELECT id FROM companies WHERE name = $1', [parsed.company_name]);
+        if (checkComp.rowCount > 0) {
+          companyId = checkComp.rows[0].id;
+          await client.query(
+            `UPDATE companies SET
+               vat_number = COALESCE($1, vat_number),
+               billing_address = COALESCE($2, billing_address),
+               shipping_address = COALESCE($3, shipping_address)
+             WHERE id = $4`,
+            [parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null, companyId]
+          );
         } else {
-          newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'INV-');
+          let compCode = null;
+          const codesRes = await client.query("SELECT code FROM companies WHERE code LIKE 'COM-%'");
+          let max = 1000;
+          codesRes.rows.forEach(r => {
+            const num = parseInt(r.code.replace('COM-', ''), 10);
+            if (!isNaN(num) && num > max) max = num;
+          });
+          compCode = `COM-${max + 1}`;
+          const compRes = await client.query(
+            `INSERT INTO companies (name, vat_number, billing_address, shipping_address, code)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id`,
+            [parsed.company_name, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null, compCode]
+          );
+          companyId = compRes.rows[0].id;
         }
       }
 
       // Upsert customer
       await client.query(
-        `INSERT INTO customers (name, email, phone, company_name, billing_address, shipping_address)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO customers (name, email, phone, company_name, company_id, company_vat, billing_address, shipping_address)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (name) DO UPDATE SET
-           email = COALESCE(EXCLUDED.email, customers.email),
-           phone = COALESCE(EXCLUDED.phone, customers.phone),
-           company_name = COALESCE(EXCLUDED.company_name, customers.company_name),
-           billing_address = COALESCE(EXCLUDED.billing_address, customers.billing_address)`,
-        [parsed.customer_name, parsed.customer_email || null, parsed.customer_phone || null,
-        parsed.company_name || null, parsed.billing_address || null, parsed.shipping_address || null]
+            email = COALESCE(EXCLUDED.email, customers.email),
+            phone = COALESCE(EXCLUDED.phone, customers.phone),
+            company_name = COALESCE(EXCLUDED.company_name, customers.company_name),
+            company_id = COALESCE(EXCLUDED.company_id, customers.company_id),
+            company_vat = COALESCE(EXCLUDED.company_vat, customers.company_vat),
+            billing_address = COALESCE(EXCLUDED.billing_address, customers.billing_address),
+            shipping_address = COALESCE(EXCLUDED.shipping_address, customers.shipping_address)`,
+        [parsed.customer_name, parsed.customer_email || null, parsed.customer_phone || null, parsed.company_name || null, companyId, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null]
       );
 
       const res = await client.query(
         `UPDATE invoices SET
-          customer_name=$1, customer_email=$2, customer_phone=$3, company_name=$4, company_vat=$5,
-          billing_address=$6, shipping_address=$7, order_type=$8, source_division=$9,
-          issue_date=$10, due_date=$11, subtotal=$12, gst_amount=$13,
-          discount_type=$14, discount_value=$15, discount_amount=$16, total_amount=$17, payment_status=$18,
-          internal_notes=$19, show_images=$20, lpo_number=$21, payment_terms=$22, signatory_incharge=$23, 
-          invoice_number=$24, updated_at=NOW()
-         WHERE id=$25 RETURNING *`,
-        [parsed.customer_name, parsed.customer_email || null, parsed.customer_phone || null,
-        parsed.company_name || null, parsed.company_vat || null, parsed.billing_address || null, parsed.shipping_address || null,
-        parsed.order_type, parsed.source_division || null, parsed.issue_date, parsed.due_date || parsed.issue_date,
-        subtotal, totalTax, parsed.discount_type, parsed.discount_value, discount, total_amount, parsed.payment_status,
-        parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null, parsed.signatory_incharge, 
-        newInvoiceNumber, id]
+          invoice_number = $1, customer_name = $2, customer_email = $3, customer_phone = $4,
+          company_name = $5, company_vat = $6, billing_address = $7, shipping_address = $8,
+          order_type = $9, source_division = $10, issue_date = $11, due_date = $12,
+          subtotal = $13, gst_amount = $14, discount_type = $15, discount_value = $16,
+          discount_amount = $17, total_amount = $18, payment_status = $19, internal_notes = $20,
+          show_images = $21, lpo_number = $22, payment_terms = $23, signatory_incharge = $24,
+          updated_at = NOW()
+        WHERE id = $25 RETURNING *`,
+        [newInvoiceNumber, parsed.customer_name, parsed.customer_email || null,
+         parsed.customer_phone || null, parsed.company_name || null, parsed.company_vat || null,
+         parsed.billing_address || null, parsed.shipping_address || null,
+         parsed.order_type, parsed.source_division || null,
+         parsed.issue_date, parsed.due_date || parsed.issue_date,
+         subtotal, totalTax, parsed.discount_type, parsed.discount_value, discount, total_amount, parsed.payment_status,
+         parsed.internal_notes || null, parsed.show_images, parsed.lpo_number || null, parsed.payment_terms || null,
+         parsed.signatory_incharge, id]
       );
 
-      // Wipe and re-insert items (simpler + ACID-safe)
+      // Recreate invoice items
       await client.query('DELETE FROM invoice_items WHERE invoice_id = $1', [id]);
 
-      // Duplicate line item check
       const seen = new Set<string>();
       for (const item of parsed.items) {
         const key = `${item.description.toLowerCase().trim()}|${item.catalogue_ref || ''}`;
         if (seen.has(key)) {
-          throw new Error(`Duplicate line item: "${item.description}". Consolidate quantities.`);
+          throw new Error(`Duplicate line item detected: "${item.description}". Please consolidate quantities.`);
         }
         seen.add(key);
 
@@ -167,12 +192,10 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
           lineTax = item.tax_value;
         }
 
-        // Dynamically resolve product
         let productId = item.product_id;
         let resolvedImage = null;
 
         if (!productId) {
-          // Check if SKU or Name already exists
           let matchedProd = null;
           if (item.catalogue_ref) {
             const pSku = await client.query('SELECT id FROM products WHERE LOWER(sku) = LOWER($1) LIMIT 1', [item.catalogue_ref]);
@@ -186,7 +209,6 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
           if (matchedProd) {
             productId = matchedProd.id;
           } else {
-            // Auto-create product
             const divRes = await client.query("SELECT id FROM divisions ORDER BY name ASC LIMIT 1");
             const catRes = await client.query("SELECT id FROM categories ORDER BY name ASC LIMIT 1");
             const divisionId = divRes.rows[0]?.id || null;
@@ -202,33 +224,25 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
             );
             productId = insProdRes.rows[0].id;
 
-            // Initialize inventory row
             await client.query(
-              `INSERT INTO inventory (product_id, stock_level, warehouse_location, low_stock_threshold)
-               VALUES ($1, 0, 'Warehouse A', 10)`,
+              `INSERT INTO inventory (product_id, stock_level, warehouse_id, low_stock_threshold)
+               VALUES ($1, 0, (SELECT id FROM warehouses ORDER BY name ASC LIMIT 1), 10)`,
               [productId]
             );
-
           }
+        }
 
-        } // Close if (!productId)
-
-        // Handle image upload if exists (optimized with sharp) - works for existing products too!
         if (item.image_base64 && productId) {
           try {
             resolvedImage = await optimizeAndSaveImage(item.image_base64, productId);
-
-            // Clean up old primary images for this product
             await client.query(
               `UPDATE product_images SET is_primary = false WHERE product_id = $1`,
               [productId]
             );
-
             await client.query(
               `INSERT INTO product_images (product_id, url, is_primary) VALUES ($1, $2, true)`,
               [productId, resolvedImage]
             );
-            
             await client.query(
               `UPDATE products SET image_url = $1 WHERE id = $2`,
               [resolvedImage, productId]
@@ -289,14 +303,14 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
       }
 
       // Add audit log record for this edit
-      let detailsMsg = 'Order details updated';
+      let detailsMsg = `Updated details of document ${current.invoice_number}`;
       let actionType = 'INVOICE_UPDATE';
 
       if (parsed.order_type !== current.order_type) {
         detailsMsg = `Converted document ${current.invoice_number} from ${current.order_type} to ${parsed.order_type} (New Document No: ${newInvoiceNumber})`;
         actionType = 'INVOICE_CONVERT';
       } else if (parsed.payment_status !== current.payment_status) {
-        detailsMsg = `Status set to ${parsed.payment_status}`;
+        detailsMsg = `Status of document ${current.invoice_number} set to ${parsed.payment_status}`;
         actionType = 'STATUS_CHANGE';
       }
 
@@ -323,6 +337,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
     const id = params.id;
     if (!id) return new Response(JSON.stringify({ error: 'ID required' }), { status: 400 });
     const data = await request.json();
+    
     if (data.payment_status) {
       const validStatuses = ['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft'];
       if (!validStatuses.includes(data.payment_status)) {
@@ -330,11 +345,14 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
       }
 
       await withTransaction(async (client) => {
+        const currentRes = await client.query('SELECT payment_status, invoice_number, inventory_deducted FROM invoices WHERE id = $1', [id]);
+        if (currentRes.rows.length === 0) throw new Error('Invoice not found');
+        const current = currentRes.rows[0];
+
         await client.query('UPDATE invoices SET payment_status = $1, updated_at = NOW() WHERE id = $2', [data.payment_status, id]);
         
         if (data.payment_status === 'cancelled') {
-          const invCheck = await client.query('SELECT inventory_deducted FROM invoices WHERE id = $1', [id]);
-          if (invCheck.rows[0]?.inventory_deducted) {
+          if (current.inventory_deducted) {
             const itemsRes = await client.query('SELECT product_id, quantity FROM invoice_items WHERE invoice_id = $1 AND product_id IS NOT NULL', [id]);
             for (const item of itemsRes.rows) {
               const stockRes = await client.query('SELECT id, stock_level FROM inventory WHERE product_id = $1 FOR UPDATE', [item.product_id]);
@@ -351,9 +369,17 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
             await client.query('UPDATE invoices SET inventory_deducted = false WHERE id = $1', [id]);
           }
         }
+
+        const detailsMsg = `Status of document ${current.invoice_number} set to ${data.payment_status}`;
+        await client.query(
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+           VALUES ('STATUS_CHANGE', 'invoices', $1, $2, $3)`,
+          [id, detailsMsg, locals.user?.id || null]
+        );
       });
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
+    
     if (data.order_type) {
       const currentRes = await query('SELECT order_type, invoice_number FROM invoices WHERE id = $1', [id]);
       if (currentRes.rows.length === 0) {
@@ -389,17 +415,37 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
 
       return new Response(JSON.stringify({ success: true, invoice_number: newInvoiceNumber }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
+
     if (data.is_archived !== undefined) {
+      const currentRes = await query('SELECT is_archived, invoice_number FROM invoices WHERE id = $1', [id]);
+      if (currentRes.rows.length === 0) {
+        return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
+      }
+      const current = currentRes.rows[0];
+
       await query('UPDATE invoices SET is_archived = $1, updated_at = NOW() WHERE id = $2', [data.is_archived, id]);
+
+      const actionText = data.is_archived ? 'Archived' : 'Restored from archive';
+      const detailsMsg = `${actionText} document ${current.invoice_number}`;
+      await query(
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+         VALUES ($1, 'invoices', $2, $3, $4)`,
+        [data.is_archived ? 'INVOICE_ARCHIVE' : 'INVOICE_RESTORE', id, detailsMsg, locals.user?.id || null]
+      );
+
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
+
     if (data.is_deleted !== undefined) {
       await withTransaction(async (client) => {
+        const currentRes = await client.query('SELECT is_deleted, invoice_number, inventory_deducted FROM invoices WHERE id = $1', [id]);
+        if (currentRes.rows.length === 0) throw new Error('Invoice not found');
+        const current = currentRes.rows[0];
+
         await client.query('UPDATE invoices SET is_deleted = $1, updated_at = NOW() WHERE id = $2', [data.is_deleted, id]);
         
         if (data.is_deleted === true) {
-          const invCheck = await client.query('SELECT inventory_deducted FROM invoices WHERE id = $1', [id]);
-          if (invCheck.rows[0]?.inventory_deducted) {
+          if (current.inventory_deducted) {
             const itemsRes = await client.query('SELECT product_id, quantity FROM invoice_items WHERE invoice_id = $1 AND product_id IS NOT NULL', [id]);
             for (const item of itemsRes.rows) {
               const stockRes = await client.query('SELECT id, stock_level FROM inventory WHERE product_id = $1 FOR UPDATE', [item.product_id]);
@@ -416,22 +462,53 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
             await client.query('UPDATE invoices SET inventory_deducted = false WHERE id = $1', [id]);
           }
         }
+
+        const actionText = data.is_deleted ? 'Moved to Trash' : 'Restored from Trash';
+        const detailsMsg = `${actionText} document ${current.invoice_number}`;
+        await client.query(
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+           VALUES ($1, 'invoices', $2, $3, $4)`,
+          [data.is_deleted ? 'INVOICE_TRASH' : 'INVOICE_RESTORE', id, detailsMsg, locals.user?.id || null]
+        );
       });
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
+
     return new Response(JSON.stringify({ error: 'Field not provided' }), { status: 400 });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { status: 500 });
   }
 };
 
-export const DELETE: APIRoute = async ({ params }) => {
+export const DELETE: APIRoute = async ({ params, locals }) => {
   try {
     const id = params.id;
     if (!id) return new Response(JSON.stringify({ error: 'ID required' }), { status: 400 });
-    const res = await query('DELETE FROM invoices WHERE id = $1 RETURNING id', [id]);
-    if (res.rows.length === 0) return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const res = await client.query('DELETE FROM invoices WHERE id = $1 RETURNING invoice_number', [id]);
+      if (res.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
+      }
+      const deleted = res.rows[0];
+
+      await client.query(
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+         VALUES ('INVOICE_DELETE', 'invoices', $1, $2, $3)`,
+        [id, `Permanently deleted document ${deleted.invoice_number}`, locals.user?.id || null]
+      );
+
+      await client.query('COMMIT');
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } catch (e: any) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   } catch (error: any) {
     return new Response(JSON.stringify({ error: 'Internal Server Error' }), { status: 500 });
   }

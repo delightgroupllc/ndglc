@@ -100,8 +100,8 @@ export const POST: APIRoute = async ({ request }) => {
 
       // Initialize inventory row
       await client.query(
-        `INSERT INTO inventory (product_id, stock_level, warehouse_location, low_stock_threshold)
-         VALUES ($1, 0, 'Warehouse A', 10)`,
+        `INSERT INTO inventory (product_id, stock_level, warehouse_id, low_stock_threshold)
+         VALUES ($1, 0, (SELECT id FROM warehouses ORDER BY name ASC LIMIT 1), 10)`,
         [product.id]
       );
 
