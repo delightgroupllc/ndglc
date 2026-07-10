@@ -7,7 +7,7 @@ import {
   Menu, X, ChevronLeft, LogOut, ExternalLink, Activity, Handshake, Image, Settings2
 } from '@lucide/astro';
 import ResourcePicker from '../components/ui/ResourcePicker.astro';
-
+import ThemeSelector from '../components/ui/ThemeSelector.astro';
 
 interface Props {
   title: string;
@@ -172,14 +172,23 @@ const navItems = navGroups.flatMap(g => g.items);
       #sidebar.collapsed .grid-cols-2 {
         grid-template-columns: repeat(1, minmax(0, 1fr));
       }
-      #sidebar.collapsed #sidebar-signout-btn span {
-        display: none;
+      #sidebar.collapsed .sidebar-footer-item span.collapsed-hide {
+        display: none !important;
       }
-      #sidebar.collapsed #sidebar-signout-btn {
-        width: auto;
-        padding: 0.5rem;
+      #sidebar.collapsed .sidebar-footer-item {
+        width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        justify-content: center !important;
       }
     </style>
+    <script is:inline>
+      // Prevent FOUC
+      const theme = localStorage.getItem('app-theme') || 'theme-default';
+      if (theme !== 'theme-default') {
+        document.documentElement.classList.add(theme);
+      }
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-800 min-h-screen flex antialiased selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden transition-colors duration-250">
     
@@ -303,20 +312,25 @@ const navItems = navGroups.flatMap(g => g.items);
         <!-- Sign Out -->
         <button
           id="sidebar-signout-btn"
-          class="w-full flex items-center justify-center gap-2 px-2.5 py-1.5 rounded text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-100 bg-rose-50/30 transition-all group"
+          class="w-full mb-2 flex items-center justify-center gap-2 px-2.5 py-1.5 rounded text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-100 bg-rose-50/30 transition-all group"
         >
           <LogOut class="h-3.5 w-3.5 shrink-0 text-rose-400 group-hover:text-rose-600" />
           <span class="collapsed-hide">Sign Out</span>
         </button>
 
-        <!-- Minimize/Collapse Toggle button -->
-        <button
-          id="toggle-sidebar-collapse"
-          class="w-full mt-2 flex items-center justify-center gap-2 px-2.5 py-1.5 rounded text-2xs font-extrabold text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-all group"
-        >
-          <ChevronLeft id="collapse-icon" class="h-3 w-3 shrink-0 text-slate-400 group-hover:text-slate-600 transition-transform duration-300" />
-          <span id="collapse-text" class="collapsed-hide">Collapse Sidebar</span>
-        </button>
+        <!-- Bottom Controls Grid -->
+        <div class="grid grid-cols-2 gap-2">
+          <ThemeSelector />
+
+          <!-- Minimize/Collapse Toggle button -->
+          <button
+            id="toggle-sidebar-collapse"
+            class="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-all group"
+          >
+            <ChevronLeft id="collapse-icon" class="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-slate-600 transition-transform duration-300" />
+            <span id="collapse-text" class="collapsed-hide">Collapse</span>
+          </button>
+        </div>
       </div>
     </aside>
 

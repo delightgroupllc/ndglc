@@ -531,7 +531,7 @@ const companiesJson = JSON.stringify(companiesList);
           <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <!-- Category -->
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Category</label>
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Category</label>
               <select class="item-category-select w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 h-9">
                 <option value="">-- All Categories --</option>
                 ${categoryOptionsHtml}
@@ -539,7 +539,7 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
             <!-- Reference / Catalogue -->
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Reference / Catalogue</label>
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Reference / Catalogue</label>
               <input type="text" name="item_ref" list="products-ref-datalist-${rowId}"
                 value="${data.catalogue_ref || ''}"
                 placeholder="Cat. ref / SKU"
@@ -547,7 +547,7 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
             <!-- Item Name -->
             <div class="space-y-1.5 md:col-span-2">
-              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Item Name <span class="text-rose-500">*</span></label>
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Item Name <span class="text-rose-500">*</span></label>
               <input type="text" name="item_desc" required list="products-name-datalist-${rowId}"
                 value="${data.description || ''}"
                 placeholder="Item name *"
@@ -560,7 +560,7 @@ const companiesJson = JSON.stringify(companiesList);
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 items-end">
             <!-- Technical Spec -->
             <div class="space-y-1.5 md:col-span-2">
-              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Technical Spec</label>
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Technical Spec</label>
               <input type="text" name="item_tech_spec"
                 value="${data.tech_spec || ''}"
                 placeholder="e.g. DN50, PN16, ANSI…"
@@ -568,7 +568,7 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
             <!-- Quantity -->
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Qty <span class="text-rose-500">*</span></label>
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Qty <span class="text-rose-500">*</span></label>
               <input type="text" name="item_quantity" required
                 value="${data.quantity || ''}"
                 placeholder="Qty"
@@ -577,7 +577,7 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
             <!-- Unit Price -->
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Unit Price (AED) <span class="text-rose-500">*</span></label>
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Unit Price (AED) <span class="text-rose-500">*</span></label>
               <div class="relative">
                 <span class="absolute left-3 top-2.5 text-[10px] font-bold text-slate-400">AED</span>
                 <input type="text" name="item_price" required
@@ -589,7 +589,7 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
             <!-- Tax Type -->
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Tax / VAT Type</label>
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Tax / VAT Type</label>
               <select name="item_tax_type" class="item-tax-type-select w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 h-9">
                 <option value="percentage" ${(data.tax_type === 'percentage' || !data.tax_type) ? 'selected' : ''}>% Percentage</option>
                 <option value="fixed" ${data.tax_type === 'fixed' ? 'selected' : ''}>AED Fixed</option>
@@ -598,14 +598,14 @@ const companiesJson = JSON.stringify(companiesList);
             <!-- Tax Rate / Value & Subtotal / Remove -->
             <div class="flex items-end justify-between gap-3">
               <div class="space-y-1.5 flex-1">
-                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Tax Rate / Amount</label>
+                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Tax Rate / Amount</label>
                 <input type="text" name="item_tax_value"
                   value="${data.tax_value !== undefined ? data.tax_value : (data.tax_rate !== undefined ? data.tax_rate : 5)}"
                   class="item-tax-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
                 <p class="tax-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
               </div>
               <div class="space-y-1.5 flex-1">
-                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Subtotal</label>
+                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Subtotal</label>
                 <div class="h-9 flex items-center">
                   <span class="item-subtotal text-sm font-extrabold text-cyan-700 tabular-nums font-mono">AED 0.00</span>
                 </div>

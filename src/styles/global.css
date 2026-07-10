@@ -4,3 +4,46 @@
 :root {
   --radius: 8px;
 }
+
+/* Ergonomic Warm Light Theme Overrides using Tailwind v4 CSS Variables */
+html.theme-warm-light {
+  --color-slate-50: #f4f0e6;
+  --color-slate-100: #f4f0e6;
+  --color-white: #faf8f5;
+  --color-slate-200: #e6dfd3;
+  --color-slate-400: #79899e;
+}
+
+/* Ergonomic Warm Dark Theme Overrides using Tailwind v4 CSS Variables */
+html.theme-warm-dark {
+  /* Backgrounds */
+  --color-slate-50: #1f1d1b;
+  --color-slate-100: #1f1d1b;
+  --color-white: #292623;
+  
+  /* Borders */
+  --color-slate-200: #3f3a36;
+  
+  /* Text */
+  --color-slate-900: #f4f0e6;
+  --color-slate-800: #f4f0e6;
+  --color-slate-700: #e5e0d8;
+  --color-slate-600: #d6cfc4;
+  --color-slate-500: #a8a29e;
+  --color-slate-400: #a8a29e;
+  
+  /* Gradients & Accents (Fixing the Suggested Next Action box) */
+  --color-cyan-50: #15262c;
+  --color-blue-50: #142229;
+  --color-cyan-200: #264a57;
+  --color-cyan-800: #38bdf8;
+  --color-slate-750: #f4f0e6;
+}
+
+html.theme-warm-dark .shadow-sm,
+html.theme-warm-dark .shadow-md,
+html.theme-warm-dark .shadow-xl {
+  box-shadow: none !important;
+  border-width: 1px;
+  border-color: var(--color-slate-200) !important;
+}

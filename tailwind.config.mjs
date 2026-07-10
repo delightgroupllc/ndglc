@@ -5,6 +5,8 @@ export default {
   theme: {
     extend: {
       colors: {
+        'theme-warm-light': '#faf9f6',
+        'theme-warm-dark': '#242220',
         border: 'hsl(var(--border) / <alpha-value>)',
         input: 'hsl(var(--input) / <alpha-value>)',
         ring: 'hsl(var(--ring) / <alpha-value>)',
