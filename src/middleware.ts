@@ -280,7 +280,7 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
       if (
         (path.startsWith('/api/products') && !permissions.includes('products.create') && !isModerator) ||
         (path.startsWith('/api/categories') && !isModerator) ||
-        (path.startsWith('/api/inventory') && !permissions.includes('inventory.manage') && !isModerator) ||
+        ((path.startsWith('/api/inventory') || path.startsWith('/api/warehouses')) && !permissions.includes('inventory.manage') && !isModerator) ||
         (path.startsWith('/api/companies') && !permissions.includes('companies.manage') && !isModerator)
       ) {
          return new Response(JSON.stringify({ error: 'Forbidden: Insufficient privileges' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
@@ -314,7 +314,7 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
       if (
         (path.startsWith('/dashboard/products') && !permissions.includes('products.create') && !isModerator) ||
         (path.startsWith('/dashboard/categories') && !isModerator) ||
-        (path.startsWith('/dashboard/inventory') && !permissions.includes('inventory.manage') && !isModerator)
+        ((path.startsWith('/dashboard/inventory') || path.startsWith('/dashboard/warehouses')) && !permissions.includes('inventory.manage') && !isModerator)
       ) {
         return new Response('Access Denied: You do not have permissions to perform management actions on this module.', { status: 403 });
       }

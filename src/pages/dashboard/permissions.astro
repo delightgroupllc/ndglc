@@ -1,7 +1,6 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
-import { Shield, Check, X, ShieldAlert, Award, AlertTriangle } from '@lucide/astro';
 
 let permissions: any[] = [];
 let rolePermissions: any[] = [];
@@ -47,11 +46,8 @@ try {
     { id: 'p9', name: 'logs.view', description: 'View system audit logs' }
   ];
 
-  // Mock mapped role permissions
   rolePermissions = [
-    // Admin gets everything
     ...permissions.map(p => ({ role_name: 'admin', permission_name: p.name })),
-    // Moderator
     { role_name: 'moderator', permission_name: 'products.create' },
     { role_name: 'moderator', permission_name: 'products.update' },
     { role_name: 'moderator', permission_name: 'inventory.manage' },
@@ -59,136 +55,432 @@ try {
     { role_name: 'moderator', permission_name: 'contacts.manage' }
   ];
 
-  // Mock overrides
   userOverrides = [
-    { user_name: 'Standard Portal Guest', user_email: 'client@company.com', permission_name: 'downloads.manage', type: 'allow' }
+    { user_id: 'u1', permission_id: 'p7', user_name: 'Standard Portal Guest', user_email: 'client@company.com', permission_name: 'downloads.manage', type: 'allow' }
   ];
 }
 
-// Check matrix map helper
 const hasMapping = (roleName: string, permName: string) => {
   return rolePermissions.some(rp => rp.role_name === roleName && rp.permission_name === permName);
 };
 ---
 
-<DashboardLayout title="Permissions Matrix" activeItem="permissions">
-
-  <!-- Offline Database Warning -->
-  {!dbConnected && (
-    <div class="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-600 font-medium">
-      <AlertTriangle class="h-4.5 w-4.5 shrink-0" />
-      <div>
-        <span class="font-bold">PostgreSQL is Offline</span>: Telemetry displays simulated security matrices.
-      </div>
-    </div>
-  )}
-
-  <div class="space-y-8">
+<DashboardLayout title="Access Matrix" activeItem="permissions">
+  <div class="space-y-8 p-6 lg:p-8 w-full max-w-7xl mx-auto">
     
-    <!-- Matrix Grid -->
-    <div class="space-y-4">
-      <h3 class="text-sm font-bold font-display text-slate-900 flex items-center gap-2">
-        <Shield class="h-5 w-5 text-cyan-500" />
-        Corporate Role Capability Matrix
-      </h3>
-      <p class="text-xs text-slate-500 leading-relaxed">Displays capabilities mapped to standard operational roles.</p>
-      
-      <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
-              <th class="px-6 py-4 font-semibold">Capability Namespace</th>
-              <th class="px-6 py-4 font-semibold text-center w-32">Admin</th>
-              <th class="px-6 py-4 font-semibold text-center w-32">Moderator</th>
-              <th class="px-6 py-4 font-semibold text-center w-32">User</th>
-            </tr>
-          </thead>
-          <tbody>
-            {permissions.map(p => (
-              <tr class="border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors">
-                <td class="px-6 py-4">
-                  <div class="font-bold text-slate-900">{p.name}</div>
-                  <div class="text-2xs text-slate-500 mt-0.5">{p.description}</div>
-                </td>
-                
-                <!-- Admin -->
-                <td class="px-6 py-4 text-center">
-                  {hasMapping('admin', p.name) ? (
-                    <Check class="h-5 w-5 text-emerald-500 mx-auto" />
-                  ) : (
-                    <X class="h-5 w-5 text-rose-300 mx-auto" />
-                  )}
-                </td>
-
-                <!-- Moderator -->
-                <td class="px-6 py-4 text-center">
-                  {hasMapping('moderator', p.name) ? (
-                    <Check class="h-5 w-5 text-emerald-500 mx-auto" />
-                  ) : (
-                    <X class="h-5 w-5 text-rose-300 mx-auto" />
-                  )}
-                </td>
-
-                <!-- User -->
-                <td class="px-6 py-4 text-center">
-                  {hasMapping('user', p.name) ? (
-                    <Check class="h-5 w-5 text-emerald-500 mx-auto" />
-                  ) : (
-                    <X class="h-5 w-5 text-rose-300 mx-auto" />
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-cyan-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          Permissions & Capability Matrix
+        </h1>
+        <p class="text-slate-500 text-sm mt-2">Manage standard role definitions, toggle user capacities, and audit access credentials dynamically.</p>
       </div>
+
+      <button 
+        id="add-override-btn"
+        class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 uppercase tracking-wider self-start sm:self-center"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        New User Override
+      </button>
     </div>
 
-    <!-- Overrides checklist -->
-    <div class="space-y-4 pt-6 border-t border-slate-200">
-      <h3 class="text-sm font-bold font-display text-slate-900 flex items-center gap-2">
-        <ShieldAlert class="h-5 w-5 text-rose-500" />
-        Individual User Permission Overrides
-      </h3>
-      <p class="text-xs text-slate-500 leading-relaxed">Direct checklist override parameters that bypass standard role capabilities.</p>
+    <!-- Offline DB Warning -->
+    {!dbConnected && (
+      <div class="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-700 font-semibold shadow-sm">
+        <span class="font-extrabold uppercase block">PostgreSQL Connection Offline</span>
+        Running in mock security matrix mode. Toggles and overrides will not persist.
+      </div>
+    )}
 
-      <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-        {userOverrides.length === 0 ? (
-          <p class="text-xs text-slate-500 p-6 text-center">No individual overrides are registered in standard registry.</p>
-        ) : (
+    <!-- Dynamic Alert Banner for feedback -->
+    <div id="matrix-feedback" class="hidden p-4 rounded-2xl text-xs font-bold transition-all border"></div>
+
+    <!-- View Tabs (Role Matrix, User Overrides) -->
+    <div class="flex border-b border-slate-200">
+      <button 
+        id="tab-role-matrix" 
+        class="tab-btn border-b-2 border-cyan-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-cyan-600 transition-all focus:outline-none"
+      >
+        Standard Role Mapping
+      </button>
+      <button 
+        id="tab-user-overrides" 
+        class="tab-btn border-b-2 border-transparent px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition-all focus:outline-none"
+      >
+        User Overrides ({userOverrides.length})
+      </button>
+    </div>
+
+    <!-- VIEW 1: Role Mapping Matrix -->
+    <div id="role-matrix-section" class="space-y-4">
+      <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
-                <th class="px-6 py-4 font-semibold">User Operator</th>
-                <th class="px-6 py-4 font-semibold">Overridden Capability</th>
-                <th class="px-6 py-4 font-semibold text-center">Override Behavior</th>
+                <th class="px-6 py-4.5 font-semibold">Capability / Namespace</th>
+                <th class="px-6 py-4.5 font-semibold text-center w-36">Admin</th>
+                <th class="px-6 py-4.5 font-semibold text-center w-36">Moderator</th>
+                <th class="px-6 py-4.5 font-semibold text-center w-36">User</th>
               </tr>
             </thead>
             <tbody>
-              {userOverrides.map(up => (
-                <tr class="border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors">
+              {permissions.map(p => (
+                <tr class="border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors">
                   <td class="px-6 py-4">
-                    <div class="font-bold text-slate-900">{up.user_name}</div>
-                    <div class="text-2xs text-slate-500 mt-0.5">{up.user_email}</div>
+                    <div class="font-bold text-slate-900 font-mono text-[11px]">{p.name}</div>
+                    <div class="text-2xs text-slate-500 mt-1 font-semibold">{p.description}</div>
                   </td>
-                  <td class="px-6 py-4 text-slate-600 font-mono font-semibold">{up.permission_name}</td>
+                  
+                  <!-- Admin (Locked / Read Only for security safeguards) -->
                   <td class="px-6 py-4 text-center">
-                    <span class={`rounded px-1.5 py-0.5 text-2xs font-semibold uppercase ${
-                      up.type === 'allow' 
-                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' 
-                        : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
-                    }`}>
-                      {up.type} override
-                    </span>
+                    <div class="flex items-center justify-center">
+                      <span 
+                        class="rounded-full bg-emerald-500/10 text-emerald-600 p-1 border border-emerald-500/20"
+                        title="Admin role possesses immutable superuser capabilities"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M2.166 4.9L10 1.154l7.834 3.746A1 1 0 0118.5 5.79v4.962a11.956 11.956 0 01-3.618 8.618L10 22.846l-4.882-3.476A11.956 11.956 0 011.5 10.752V5.79a1 1 0 01.666-.89zM10 3.155L3.5 6.262v4.49c0 4.12 2.65 7.6 6.5 8.784 3.85-1.184 6.5-4.664 6.5-8.784v-4.49L10 3.155z" clip-rule="evenodd"/>
+                        </svg>
+                      </span>
+                    </div>
+                  </td>
+
+                  <!-- Moderator -->
+                  <td class="px-6 py-4 text-center">
+                    <div class="flex items-center justify-center">
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          class="sr-only peer perm-toggle-input" 
+                          data-role="moderator" 
+                          data-permission={p.name}
+                          checked={hasMapping('moderator', p.name)}
+                        />
+                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                      </label>
+                    </div>
+                  </td>
+
+                  <!-- User -->
+                  <td class="px-6 py-4 text-center">
+                    <div class="flex items-center justify-center">
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          class="sr-only peer perm-toggle-input" 
+                          data-role="user" 
+                          data-permission={p.name}
+                          checked={hasMapping('user', p.name)}
+                        />
+                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                      </label>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: User Capability Overrides -->
+    <div id="user-overrides-section" class="hidden space-y-4">
+      <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        {userOverrides.length === 0 ? (
+          <div class="py-16 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">No Overrides Programmed</h4>
+            <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">All customers and system operators inherit access rules strictly from standard role memberships.</p>
+          </div>
+        ) : (
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
+                  <th class="px-6 py-4.5 font-semibold">User Operator</th>
+                  <th class="px-6 py-4.5 font-semibold">Capability ID</th>
+                  <th class="px-6 py-4.5 font-semibold text-center w-36">Behavior</th>
+                  <th class="px-6 py-4.5 font-semibold text-center w-36">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {userOverrides.map(up => (
+                  <tr class="border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors">
+                    <td class="px-6 py-4">
+                      <div class="font-bold text-slate-900 leading-tight">{up.user_name}</div>
+                      <div class="text-2xs text-slate-500 mt-0.5 font-mono">{up.user_email}</div>
+                    </td>
+                    <td class="px-6 py-4 text-slate-700 font-mono font-semibold text-2xs">{up.permission_name}</td>
+                    <td class="px-6 py-4 text-center">
+                      <span class={`rounded-lg px-2 py-1 text-2xs font-extrabold uppercase border ${
+                        up.type === 'allow' 
+                          ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' 
+                          : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
+                      }`}>
+                        {up.type} override
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                      <button 
+                        data-user-id={up.user_id}
+                        data-perm-id={up.permission_id}
+                        data-user-name={up.user_name}
+                        data-perm-name={up.permission_name}
+                        class="revoke-override-btn px-2.5 py-1.5 rounded-lg text-2xs font-black text-rose-650 hover:text-rose-750 hover:bg-rose-50/80 transition-colors uppercase tracking-wider"
+                      >
+                        Revoke
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
 
-  </div>
+    <!-- Create User Override Modal -->
+    <div id="override-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+        <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <div>
+            <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">New Permission Override</h3>
+            <p class="text-xs text-slate-500 font-semibold mt-1">Set explicit allow/deny parameters for a specific operator email.</p>
+          </div>
+          <button id="close-modal-btn" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        
+        <form id="override-form" class="p-6 space-y-4">
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Operator Email <span class="text-rose-500">*</span></label>
+            <input 
+              type="email" 
+              name="user_email" 
+              required 
+              placeholder="e.g. client@company.com" 
+              class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-bold text-slate-700" 
+            />
+          </div>
 
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Capability Token <span class="text-rose-500">*</span></label>
+            <select name="permission_name" required class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-bold text-slate-700 font-mono text-xs">
+              {permissions.map(p => (
+                <option value={p.name}>{p.name} ({p.description})</option>
+              ))}
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Override Behavior <span class="text-rose-500">*</span></label>
+            <select name="type" required class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-bold text-slate-700">
+              <option value="allow">Allow (Grant Access)</option>
+              <option value="deny">Deny (Explicit Block)</option>
+            </select>
+          </div>
+
+          <div id="modal-feedback" class="hidden p-3 rounded-lg text-xs font-bold"></div>
+
+          <div class="pt-4 flex gap-3 border-t border-slate-100">
+            <button 
+              type="button" 
+              id="cancel-modal-btn" 
+              class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-lg text-xs font-bold transition-colors uppercase tracking-wider"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              id="submit-modal-btn" 
+              class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-lg text-xs font-bold transition-colors shadow-sm uppercase tracking-wider"
+            >
+              Apply Override
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </DashboardLayout>
+
+<script>
+  const setupPermissionsDashboard = () => {
+    // Tab switching elements
+    const tabRoleMatrix = document.getElementById('tab-role-matrix');
+    const tabUserOverrides = document.getElementById('tab-user-overrides');
+    const roleSection = document.getElementById('role-matrix-section');
+    const overridesSection = document.getElementById('user-overrides-section');
+
+    const feedbackBar = document.getElementById('matrix-feedback');
+
+    const showFeedback = (text: string, isError = false) => {
+      if (!feedbackBar) return;
+      feedbackBar.className = isError 
+        ? 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-700 border-rose-200 mb-6'
+        : 'p-4 rounded-2xl text-xs font-bold bg-green-50 text-green-700 border-green-200 mb-6';
+      feedbackBar.textContent = text;
+      feedbackBar.classList.remove('hidden');
+      setTimeout(() => feedbackBar.classList.add('hidden'), 3500);
+    };
+
+    // Toggle tabs
+    tabRoleMatrix?.addEventListener('click', () => {
+      tabRoleMatrix.className = 'tab-btn border-b-2 border-cyan-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-cyan-600 transition-all focus:outline-none';
+      tabUserOverrides!.className = 'tab-btn border-b-2 border-transparent px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-850 transition-all focus:outline-none';
+      roleSection?.classList.remove('hidden');
+      overridesSection?.classList.add('hidden');
+    });
+
+    tabUserOverrides?.addEventListener('click', () => {
+      tabUserOverrides.className = 'tab-btn border-b-2 border-cyan-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-cyan-600 transition-all focus:outline-none';
+      tabRoleMatrix!.className = 'tab-btn border-b-2 border-transparent px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-850 transition-all focus:outline-none';
+      overridesSection?.classList.remove('hidden');
+      roleSection?.classList.add('hidden');
+    });
+
+    // Handle interactive role mapping checkbox toggles
+    document.querySelectorAll('.perm-toggle-input').forEach(checkbox => {
+      checkbox.addEventListener('change', async (e) => {
+        const input = e.target as HTMLInputElement;
+        const role = input.getAttribute('data-role') || '';
+        const permission = input.getAttribute('data-permission') || '';
+        const enable = input.checked;
+
+        input.disabled = true;
+
+        try {
+          const res = await fetch('/api/permissions/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role_name: role, permission_name: permission, enable })
+          });
+
+          if (res.ok) {
+            showFeedback(`Successfully updated permissions for role '${role}'!`);
+          } else {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to update mapping');
+          }
+        } catch (err: any) {
+          input.checked = !enable; // revert UI
+          showFeedback(err.message || 'Error updating role mapping', true);
+        } finally {
+          input.disabled = false;
+        }
+      });
+    });
+
+    // Handle User Override Revocations
+    document.querySelectorAll('.revoke-override-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const userId = target.getAttribute('data-user-id') || '';
+        const permId = target.getAttribute('data-perm-id') || '';
+        const userName = target.getAttribute('data-user-name') || '';
+        const permName = target.getAttribute('data-perm-name') || '';
+
+        if (confirm(`Are you sure you want to revoke override '${permName}' for user '${userName}'?`)) {
+          target.setAttribute('disabled', 'true');
+          const originalText = target.textContent;
+          target.textContent = 'Revoking...';
+
+          try {
+            const res = await fetch('/api/permissions/override', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: userId, permission_id: permId })
+            });
+
+            if (res.ok) {
+              window.location.reload();
+            } else {
+              const data = await res.json();
+              throw new Error(data.error || 'Failed to revoke override');
+            }
+          } catch (err: any) {
+            alert(err.message || 'Error revoking override');
+            target.removeAttribute('disabled');
+            target.textContent = originalText;
+          }
+        }
+      });
+    });
+
+    // Override Modal Setup
+    const modal = document.getElementById('override-modal');
+    const form = document.getElementById('override-form') as HTMLFormElement | null;
+    const openBtn = document.getElementById('add-override-btn');
+    const closeBtn = document.getElementById('close-modal-btn');
+    const cancelBtn = document.getElementById('cancel-modal-btn');
+    const modalFeedback = document.getElementById('modal-feedback');
+
+    if (!modal || !form) return;
+
+    const openModal = () => {
+      modalFeedback?.classList.add('hidden');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      form.reset();
+    };
+
+    openBtn?.addEventListener('click', openModal);
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('submit-modal-btn');
+      if (!submitBtn || !modalFeedback) return;
+
+      submitBtn.setAttribute('disabled', 'true');
+      submitBtn.textContent = 'Applying...';
+
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+
+      try {
+        const res = await fetch('/api/permissions/override', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          modalFeedback.className = 'p-3 rounded-lg text-xs font-bold bg-green-50 text-green-700 border border-green-200 block';
+          modalFeedback.textContent = 'Override created successfully!';
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          throw new Error(data.error || 'Failed to create override');
+        }
+      } catch (err: any) {
+        modalFeedback.className = 'p-3 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 block';
+        modalFeedback.textContent = err.message || 'Error processing request';
+        submitBtn.removeAttribute('disabled');
+        submitBtn.textContent = 'Apply Override';
+      }
+    });
+  };
+
+  setupPermissionsDashboard();
+  document.addEventListener('astro:page-load', setupPermissionsDashboard);
+</script>
