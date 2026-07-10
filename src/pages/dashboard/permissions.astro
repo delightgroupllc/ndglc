@@ -2,12 +2,23 @@
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
 
+let users: any[] = [];
 let permissions: any[] = [];
 let rolePermissions: any[] = [];
 let userOverrides: any[] = [];
 let dbConnected = true;
 
 try {
+  // Load users directory
+  const usersRes = await query(
+    `SELECT u.*, 
+       (SELECT ARRAY_TO_STRING(ARRAY_AGG(r.name), ', ') FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = u.id) as roles_list,
+       (SELECT ARRAY_TO_STRING(ARRAY_AGG(t.name), ', ') FROM tags t JOIN user_tags ut ON ut.tag_id = t.id WHERE ut.user_id = u.id) as tags_list
+     FROM users u
+     ORDER BY u.created_at DESC`
+  );
+  users = usersRes.rows;
+
   // Load permissions
   const permRes = await query('SELECT * FROM permissions ORDER BY name ASC');
   permissions = permRes.rows;
@@ -33,6 +44,12 @@ try {
 } catch (err: any) {
   console.warn('Database offline, running mock permissions matrix:', err.message);
   dbConnected = false;
+
+  users = [
+    { id: 'user_1', name: 'Alexander Vance', email: 'alex.vance@steelgroup.com', is_suspended: false, roles_list: 'admin', tags_list: 'VIP', created_at: new Date().toISOString() },
+    { id: 'user_2', name: 'Jane Stark', email: 'finance@starkcorp.com', is_suspended: false, roles_list: 'moderator', tags_list: 'partner', created_at: new Date().toISOString() },
+    { id: 'user_3', name: 'Standard Portal Guest', email: 'client@company.com', is_suspended: true, roles_list: 'user', tags_list: '', created_at: new Date().toISOString() }
+  ];
 
   permissions = [
     { id: 'p1', name: 'products.create', description: 'Create new catalog products' },
@@ -65,7 +82,7 @@ const hasMapping = (roleName: string, permName: string) => {
 };
 ---
 
-<DashboardLayout title="Access Matrix" activeItem="permissions">
+<DashboardLayout title="User Access Management" activeItem="permissions">
   <div class="space-y-8 p-6 lg:p-8 w-full max-w-7xl mx-auto">
     
     <!-- Page Header -->
@@ -75,20 +92,22 @@ const hasMapping = (roleName: string, permName: string) => {
           <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-cyan-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
-          Permissions & Capability Matrix
+          User Access Management
         </h1>
         <p class="text-slate-500 text-sm mt-2">Manage standard role definitions, toggle user capacities, and audit access credentials dynamically.</p>
       </div>
 
-      <button 
-        id="add-override-btn"
-        class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 uppercase tracking-wider self-start sm:self-center"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        New User Override
-      </button>
+      <div class="flex items-center gap-3">
+        <button 
+          id="add-override-btn"
+          class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 uppercase tracking-wider"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          New User Override
+        </button>
+      </div>
     </div>
 
     <!-- Offline DB Warning -->
@@ -102,11 +121,17 @@ const hasMapping = (roleName: string, permName: string) => {
     <!-- Dynamic Alert Banner for feedback -->
     <div id="matrix-feedback" class="hidden p-4 rounded-2xl text-xs font-bold transition-all border"></div>
 
-    <!-- View Tabs (Role Matrix, User Overrides) -->
+    <!-- View Tabs (Users Directory, Role Matrix, User Overrides) -->
     <div class="flex border-b border-slate-200">
       <button 
-        id="tab-role-matrix" 
+        id="tab-users-list" 
         class="tab-btn border-b-2 border-cyan-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-cyan-600 transition-all focus:outline-none"
+      >
+        Users Directory ({users.length})
+      </button>
+      <button 
+        id="tab-role-matrix" 
+        class="tab-btn border-b-2 border-transparent px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition-all focus:outline-none"
       >
         Standard Role Mapping
       </button>
@@ -118,8 +143,83 @@ const hasMapping = (roleName: string, permName: string) => {
       </button>
     </div>
 
-    <!-- VIEW 1: Role Mapping Matrix -->
-    <div id="role-matrix-section" class="space-y-4">
+    <!-- VIEW 1: Users Directory -->
+    <div id="users-list-section" class="space-y-4">
+      <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
+                <th class="px-6 py-4.5 font-semibold">Profile Name</th>
+                <th class="px-6 py-4.5 font-semibold">Roles</th>
+                <th class="px-6 py-4.5 font-semibold">Active Tags</th>
+                <th class="px-6 py-4.5 font-semibold text-center w-32">Status</th>
+                <th class="px-6 py-4.5 font-semibold text-right w-64">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(u => (
+                <tr class="admin-user-row border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors">
+                  <td class="px-6 py-4">
+                    <div class="font-bold text-slate-900 leading-tight">{u.name}</div>
+                    <div class="text-2xs text-slate-500 mt-0.5 font-mono">{u.email}</div>
+                  </td>
+                  <td class="px-6 py-4">
+                    <span class="rounded bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-2xs font-semibold text-cyan-600 uppercase font-mono">
+                      {u.roles_list || 'user'}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    {u.tags_list ? (
+                      <div class="flex flex-wrap gap-1">
+                        {u.tags_list.split(', ').map((tag: string) => (
+                          <span class="rounded bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 text-2xs font-semibold text-rose-600 uppercase">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span class="text-2xs text-slate-400 italic">None</span>
+                    )}
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <span id={`status-${u.id}`} class={`rounded px-2 py-0.5 text-2xs font-semibold uppercase ${
+                      u.is_suspended 
+                        ? 'bg-rose-500/10 text-rose-600' 
+                        : 'bg-emerald-500/10 text-emerald-600'
+                    }`}>
+                      {u.is_suspended ? 'suspended' : 'active'}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-right flex items-center justify-end gap-3.5">
+                    <button 
+                      type="button" 
+                      data-user-id={u.id}
+                      data-user-name={u.name}
+                      data-current-roles={u.roles_list || ''}
+                      class="manage-roles-btn inline-flex items-center gap-1 text-2xs font-black uppercase tracking-wider focus:outline-none transition-colors text-cyan-600 hover:text-cyan-705"
+                    >
+                      Manage Roles
+                    </button>
+                    <button 
+                      type="button" 
+                      data-user-id={u.id}
+                      data-suspended={u.is_suspended ? 'true' : 'false'}
+                      class="toggle-suspend-btn inline-flex items-center gap-1 text-2xs font-black uppercase tracking-wider focus:outline-none transition-colors text-slate-500 hover:text-slate-900"
+                    >
+                      <span class="btn-text">{u.is_suspended ? 'Unsuspend' : 'Suspend'}</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: Role Mapping Matrix -->
+    <div id="role-matrix-section" class="hidden space-y-4">
       <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
@@ -139,7 +239,7 @@ const hasMapping = (roleName: string, permName: string) => {
                     <div class="text-2xs text-slate-500 mt-1 font-semibold">{p.description}</div>
                   </td>
                   
-                  <!-- Admin (Locked / Read Only for security safeguards) -->
+                  <!-- Admin (Locked / Read Only) -->
                   <td class="px-6 py-4 text-center">
                     <div class="flex items-center justify-center">
                       <span 
@@ -164,7 +264,7 @@ const hasMapping = (roleName: string, permName: string) => {
                           data-permission={p.name}
                           checked={hasMapping('moderator', p.name)}
                         />
-                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600 font-bold"></div>
                       </label>
                     </div>
                   </td>
@@ -175,12 +275,12 @@ const hasMapping = (roleName: string, permName: string) => {
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input 
                           type="checkbox" 
-                          class="sr-only peer perm-toggle-input" 
+                          class="sr-only peer peer-user perm-toggle-input" 
                           data-role="user" 
                           data-permission={p.name}
                           checked={hasMapping('user', p.name)}
                         />
-                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600 font-bold font-sans"></div>
                       </label>
                     </div>
                   </td>
@@ -192,7 +292,7 @@ const hasMapping = (roleName: string, permName: string) => {
       </div>
     </div>
 
-    <!-- VIEW 2: User Capability Overrides -->
+    <!-- VIEW 3: User Capability Overrides -->
     <div id="user-overrides-section" class="hidden space-y-4">
       <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         {userOverrides.length === 0 ? (
@@ -251,6 +351,74 @@ const hasMapping = (roleName: string, permName: string) => {
       </div>
     </div>
 
+    <!-- USER ROLES MANAGEMENT MODAL -->
+    <div id="roles-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden items-center justify-center p-4 animate-fade-in">
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm overflow-hidden flex flex-col transform transition-all">
+        <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <div>
+            <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">Manage User Roles</h3>
+            <p id="roles-modal-user-name" class="text-xs text-slate-500 font-semibold mt-1 truncate max-w-[280px]"></p>
+          </div>
+          <button id="close-roles-modal-btn" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        
+        <form id="roles-form" class="p-6 space-y-4">
+          <input type="hidden" id="roles-modal-user-id" name="user_id" />
+          
+          <div class="space-y-3">
+            <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Assigned Roles</label>
+            
+            <div class="space-y-2">
+              <label class="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100/55 transition-colors">
+                <input type="checkbox" name="roles" value="admin" class="role-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                <div>
+                  <span class="text-xs font-bold text-slate-900 block">Administrator</span>
+                  <span class="text-[10px] text-slate-500 font-semibold block mt-0.5">Full access to telemetry, logs, and billing.</span>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100/55 transition-colors">
+                <input type="checkbox" name="roles" value="moderator" class="role-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                <div>
+                  <span class="text-xs font-bold text-slate-900 block">Moderator</span>
+                  <span class="text-[10px] text-slate-500 font-semibold block mt-0.5">Manage products catalog, stocks, and CRM.</span>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100/55 transition-colors">
+                <input type="checkbox" name="roles" value="user" class="role-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                <div>
+                  <span class="text-xs font-bold text-slate-900 block">Standard User</span>
+                  <span class="text-[10px] text-slate-500 font-semibold block mt-0.5">Standard client portal access.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div id="roles-modal-msg" class="hidden p-3.5 rounded-xl text-xs font-bold mt-4"></div>
+
+          <div class="pt-4 flex gap-3 border-t border-slate-100">
+            <button 
+              type="button" 
+              id="cancel-roles-btn" 
+              class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-lg text-xs font-bold transition-colors uppercase tracking-wider"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              id="submit-roles-btn" 
+              class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-lg text-xs font-bold transition-colors shadow-sm uppercase tracking-wider"
+            >
+              Save Roles
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Create User Override Modal -->
     <div id="override-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
       <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
@@ -260,7 +428,7 @@ const hasMapping = (roleName: string, permName: string) => {
             <p class="text-xs text-slate-500 font-semibold mt-1">Set explicit allow/deny parameters for a specific operator email.</p>
           </div>
           <button id="close-modal-btn" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
         
@@ -320,8 +488,11 @@ const hasMapping = (roleName: string, permName: string) => {
 <script>
   const setupPermissionsDashboard = () => {
     // Tab switching elements
+    const tabUsersList = document.getElementById('tab-users-list');
     const tabRoleMatrix = document.getElementById('tab-role-matrix');
     const tabUserOverrides = document.getElementById('tab-user-overrides');
+    
+    const usersSection = document.getElementById('users-list-section');
     const roleSection = document.getElementById('role-matrix-section');
     const overridesSection = document.getElementById('user-overrides-section');
 
@@ -337,19 +508,82 @@ const hasMapping = (roleName: string, permName: string) => {
       setTimeout(() => feedbackBar.classList.add('hidden'), 3500);
     };
 
-    // Toggle tabs
+    const deactivateAllTabs = () => {
+      [tabUsersList, tabRoleMatrix, tabUserOverrides].forEach(tab => {
+        tab?.classList.remove('border-cyan-600', 'text-cyan-600', 'font-black');
+        tab?.classList.add('border-transparent', 'text-slate-500', 'font-bold');
+      });
+      [usersSection, roleSection, overridesSection].forEach(sec => sec?.classList.add('hidden'));
+    };
+
+    tabUsersList?.addEventListener('click', () => {
+      deactivateAllTabs();
+      tabUsersList.classList.remove('border-transparent', 'text-slate-500', 'font-bold');
+      tabUsersList.classList.add('border-cyan-600', 'text-cyan-600', 'font-black');
+      usersSection?.classList.remove('hidden');
+    });
+
     tabRoleMatrix?.addEventListener('click', () => {
-      tabRoleMatrix.className = 'tab-btn border-b-2 border-cyan-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-cyan-600 transition-all focus:outline-none';
-      tabUserOverrides!.className = 'tab-btn border-b-2 border-transparent px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-850 transition-all focus:outline-none';
+      deactivateAllTabs();
+      tabRoleMatrix.classList.remove('border-transparent', 'text-slate-500', 'font-bold');
+      tabRoleMatrix.classList.add('border-cyan-600', 'text-cyan-600', 'font-black');
       roleSection?.classList.remove('hidden');
-      overridesSection?.classList.add('hidden');
     });
 
     tabUserOverrides?.addEventListener('click', () => {
-      tabUserOverrides.className = 'tab-btn border-b-2 border-cyan-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-cyan-600 transition-all focus:outline-none';
-      tabRoleMatrix!.className = 'tab-btn border-b-2 border-transparent px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-850 transition-all focus:outline-none';
+      deactivateAllTabs();
+      tabUserOverrides.classList.remove('border-transparent', 'text-slate-500', 'font-bold');
+      tabUserOverrides.classList.add('border-cyan-600', 'text-cyan-600', 'font-black');
       overridesSection?.classList.remove('hidden');
-      roleSection?.classList.add('hidden');
+    });
+
+    // Suspend Toggle button listeners
+    document.querySelectorAll('.toggle-suspend-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const userId = target.getAttribute('data-user-id') || '';
+        const textSpan = target.querySelector('.btn-text');
+        if (!userId || !textSpan) return;
+
+        target.disabled = true;
+        const originalText = textSpan.textContent;
+        textSpan.textContent = '...';
+
+        try {
+          const res = await fetch('/api/users/' + userId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'suspend' })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const isSuspended = data.is_suspended;
+            
+            target.setAttribute('data-suspended', isSuspended.toString());
+            textSpan.textContent = isSuspended ? 'Unsuspend' : 'Suspend';
+
+            const statusBadge = document.getElementById('status-' + userId);
+            if (statusBadge) {
+              statusBadge.textContent = isSuspended ? 'suspended' : 'active';
+              if (isSuspended) {
+                statusBadge.className = 'rounded px-2 py-0.5 text-2xs font-semibold uppercase bg-rose-500/10 text-rose-600';
+              } else {
+                statusBadge.className = 'rounded px-2 py-0.5 text-2xs font-semibold uppercase bg-emerald-500/10 text-emerald-600';
+              }
+            }
+            showFeedback(`Suspended state updated successfully!`);
+          } else {
+            alert('Failed to update user status.');
+            textSpan.textContent = originalText;
+          }
+        } catch (err) {
+          alert('Network error while updating user status.');
+          textSpan.textContent = originalText;
+        } finally {
+          target.disabled = false;
+        }
+      });
     });
 
     // Handle interactive role mapping checkbox toggles
@@ -420,65 +654,144 @@ const hasMapping = (roleName: string, permName: string) => {
       });
     });
 
-    // Override Modal Setup
-    const modal = document.getElementById('override-modal');
-    const form = document.getElementById('override-form') as HTMLFormElement | null;
-    const openBtn = document.getElementById('add-override-btn');
-    const closeBtn = document.getElementById('close-modal-btn');
-    const cancelBtn = document.getElementById('cancel-modal-btn');
-    const modalFeedback = document.getElementById('modal-feedback');
+    // Manage Roles Modal Logic
+    const rolesModal = document.getElementById('roles-modal-backdrop');
+    const rolesForm = document.getElementById('roles-form') as HTMLFormElement | null;
+    const closeRolesBtn = document.getElementById('close-roles-modal-btn');
+    const cancelRolesBtn = document.getElementById('cancel-roles-btn');
+    const rolesMsg = document.getElementById('roles-modal-msg');
+    const submitRolesBtn = document.getElementById('submit-roles-btn');
 
-    if (!modal || !form) return;
+    if (rolesModal && rolesForm) {
+      const closeRolesModal = () => {
+        rolesModal.classList.add('hidden');
+        rolesModal.classList.remove('flex');
+        rolesForm.reset();
+        rolesMsg?.classList.add('hidden');
+      };
 
-    const openModal = () => {
-      modalFeedback?.classList.add('hidden');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    };
+      closeRolesBtn?.addEventListener('click', closeRolesModal);
+      cancelRolesBtn?.addEventListener('click', closeRolesModal);
 
-    const closeModal = () => {
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      form.reset();
-    };
+      document.querySelectorAll('.manage-roles-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const target = e.currentTarget as HTMLElement;
+          const userId = target.getAttribute('data-user-id') || '';
+          const userName = target.getAttribute('data-user-name') || '';
+          const currentRoles = (target.getAttribute('data-current-roles') || '').split(', ');
 
-    openBtn?.addEventListener('click', openModal);
-    closeBtn?.addEventListener('click', closeModal);
-    cancelBtn?.addEventListener('click', closeModal);
+          (document.getElementById('roles-modal-user-id') as HTMLInputElement).value = userId;
+          (document.getElementById('roles-modal-user-name') as HTMLElement).textContent = userName;
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const submitBtn = document.getElementById('submit-modal-btn');
-      if (!submitBtn || !modalFeedback) return;
+          rolesForm.querySelectorAll('.role-checkbox').forEach(cb => {
+            const val = (cb as HTMLInputElement).value;
+            (cb as HTMLInputElement).checked = currentRoles.includes(val);
+          });
 
-      submitBtn.setAttribute('disabled', 'true');
-      submitBtn.textContent = 'Applying...';
+          rolesMsg?.classList.add('hidden');
+          rolesModal.classList.remove('hidden');
+          rolesModal.classList.add('flex');
+        });
+      });
 
-      const formData = new FormData(form);
-      const payload = Object.fromEntries(formData.entries());
+      rolesForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!submitRolesBtn || !rolesMsg) return;
 
-      try {
-        const res = await fetch('/api/permissions/override', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+        submitRolesBtn.setAttribute('disabled', 'true');
+        submitRolesBtn.textContent = 'Saving...';
+
+        const userId = (document.getElementById('roles-modal-user-id') as HTMLInputElement).value;
+        const checkedRoles: string[] = [];
+        rolesForm.querySelectorAll('.role-checkbox').forEach(cb => {
+          if ((cb as HTMLInputElement).checked) {
+            checkedRoles.push((cb as HTMLInputElement).value);
+          }
         });
 
-        const data = await res.json();
-        if (res.ok) {
-          modalFeedback.className = 'p-3 rounded-lg text-xs font-bold bg-green-50 text-green-700 border border-green-200 block';
-          modalFeedback.textContent = 'Override created successfully!';
-          setTimeout(() => window.location.reload(), 800);
-        } else {
-          throw new Error(data.error || 'Failed to create override');
+        try {
+          const res = await fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'roles', roles: checkedRoles })
+          });
+
+          const result = await res.json();
+          if (res.ok) {
+            rolesMsg.className = 'p-3 rounded-lg text-xs font-bold bg-green-50 text-green-700 border border-green-200 block mt-4';
+            rolesMsg.textContent = 'Roles updated successfully!';
+            setTimeout(() => window.location.reload(), 800);
+          } else {
+            throw new Error(result.error || 'Failed to update roles');
+          }
+        } catch (err: any) {
+          rolesMsg.className = 'p-3 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 block mt-4';
+          rolesMsg.textContent = err.message || 'Error updating roles';
+          submitRolesBtn.removeAttribute('disabled');
+          submitRolesBtn.textContent = 'Save Roles';
         }
-      } catch (err: any) {
-        modalFeedback.className = 'p-3 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 block';
-        modalFeedback.textContent = err.message || 'Error processing request';
-        submitBtn.removeAttribute('disabled');
-        submitBtn.textContent = 'Apply Override';
-      }
-    });
+      });
+    }
+
+    // Override Modal Setup
+    const overrideModal = document.getElementById('override-modal');
+    const overrideForm = document.getElementById('override-form') as HTMLFormElement | null;
+    const openOverrideBtn = document.getElementById('add-override-btn');
+    const closeOverrideBtn = document.getElementById('close-modal-btn');
+    const cancelOverrideBtn = document.getElementById('cancel-modal-btn');
+    const overrideMsg = document.getElementById('modal-feedback');
+
+    if (overrideModal && overrideForm) {
+      const openModal = () => {
+        overrideMsg?.classList.add('hidden');
+        overrideModal.classList.remove('hidden');
+        overrideModal.classList.add('flex');
+      };
+
+      const closeModal = () => {
+        overrideModal.classList.add('hidden');
+        overrideModal.classList.remove('flex');
+        overrideForm.reset();
+      };
+
+      openOverrideBtn?.addEventListener('click', openModal);
+      closeOverrideBtn?.addEventListener('click', closeModal);
+      cancelOverrideBtn?.addEventListener('click', closeModal);
+
+      overrideForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('submit-modal-btn');
+        if (!submitBtn || !overrideMsg) return;
+
+        submitBtn.setAttribute('disabled', 'true');
+        submitBtn.textContent = 'Applying...';
+
+        const formData = new FormData(overrideForm);
+        const payload = Object.fromEntries(formData.entries());
+
+        try {
+          const res = await fetch('/api/permissions/override', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            overrideMsg.className = 'p-3 rounded-lg text-xs font-bold bg-green-50 text-green-700 border border-green-200 block';
+            overrideMsg.textContent = 'Override created successfully!';
+            setTimeout(() => window.location.reload(), 800);
+          } else {
+            throw new Error(data.error || 'Failed to create override');
+          }
+        } catch (err: any) {
+          overrideMsg.className = 'p-3 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 block';
+          overrideMsg.textContent = err.message || 'Error processing request';
+          submitBtn.removeAttribute('disabled');
+          submitBtn.textContent = 'Apply Override';
+        }
+      });
+    }
   };
 
   setupPermissionsDashboard();
