@@ -171,7 +171,7 @@ if (isPaid) {
 }
 
 const isDraftOrUnconfirmed = stage <= 3 || (stage === 4 && !isConfirmed);
-const showDeleteAction = isDraftOrUnconfirmed;
+const showDeleteAction = true;
 const showArchiveAction = !isDraftOrUnconfirmed;
 ---
 

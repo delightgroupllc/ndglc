@@ -323,71 +323,69 @@ const isTermActive = (identifier: string): boolean => {
   })}
 
   <!-- TERMS OF SALE PAGE (PAGE Y OF Y) -->
-  {inv.order_type !== 'delivery_note' && (
-    <div class="print-page bg-white shadow-xl border border-slate-250 p-12 relative print:p-0 print:border-none print:shadow-none mb-8 print-page-2-container">
-      <div class="std-watermark print-watermark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 380px; height: 380px; opacity: 1; pointer-events: none; z-index: 0;">
-        <img src="/dgllclogolarge.png" id="watermark-img-std-p2" style="width: 100%; height: auto; object-fit: contain; opacity: 0.06;" />
+  <div class="print-page bg-white shadow-xl border border-slate-250 p-12 relative print:p-0 print:border-none print:shadow-none mb-8 print-page-2-container">
+    <div class="std-watermark print-watermark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 380px; height: 380px; opacity: 1; pointer-events: none; z-index: 0;">
+      <img src="/dgllclogolarge.png" id="watermark-img-std-p2" style="width: 100%; height: auto; object-fit: contain; opacity: 0.06;" />
+    </div>
+
+    <!-- Centered Logo on Terms Page -->
+    <div class="print-logo-container-p2 text-center" style="margin-bottom: 8px; text-align: center;">
+      <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-24 w-auto object-contain mx-auto" id="print-company-logo-std-p2" style="margin: 0 auto; display: block;" />
+    </div>
+
+    <div class="terms-page">
+      <h2 class="terms-title">Terms of Sale</h2>
+      <div class="terms-columns">
+        {selectedClauses
+          .map((clause: any) => {
+            const sanitizedIdent = clause.identifier.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+            return (
+              <div class={`terms-section terms-sec-${sanitizedIdent} ${isTermActive(clause.identifier) ? '' : 'hidden'}`}>
+                <h3 class="terms-section-title">{clause.title}:</h3>
+                <div set:html={clause.content}></div>
+              </div>
+            );
+          })
+        }
       </div>
 
-      <!-- Centered Logo on Terms Page -->
-      <div class="print-logo-container-p2 text-center" style="margin-bottom: 8px; text-align: center;">
-        <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-24 w-auto object-contain mx-auto" id="print-company-logo-std-p2" style="margin: 0 auto; display: block;" />
-      </div>
-
-      <div class="terms-page">
-        <h2 class="terms-title">Terms of Sale</h2>
-        <div class="terms-columns">
-          {selectedClauses
-            .map((clause: any) => {
-              const sanitizedIdent = clause.identifier.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-              return (
-                <div class={`terms-section terms-sec-${sanitizedIdent} ${isTermActive(clause.identifier) ? '' : 'hidden'}`}>
-                  <h3 class="terms-section-title">{clause.title}:</h3>
-                  <div set:html={clause.content}></div>
-                </div>
-              );
-            })
-          }
+      <!-- Uniform Bottom Row for Bank details and Company Stamp Card -->
+      <div class="flex gap-4 mt-4 w-full justify-between items-stretch" style="page-break-inside: avoid; break-inside: avoid;">
+        <!-- Bank Details Card -->
+        <div class="terms-section print-bank-block-p2 flex-1" style="border: 1px solid #cbd5e1; border-radius: 2px; padding: 6px; background: #f8fafc; font-size: 5.8pt; box-sizing: border-box;">
+          <h3 class="terms-section-title" style="margin-bottom: 2px; font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">Delight Bank Details:</h3>
+          <p style="font-weight: 700; color: #000000; line-height: 1.35; margin: 0;">
+            <span class="dynamic-company-name-en">{companyNameEN}</span><br>
+            Bank Name: <span id="print-bank-name-std-p2">{settings.bank_name || 'N/A'}</span><br>
+            A/C Name: <span id="print-bank-acc-name-std-p2" class={!settings.account_name ? "dynamic-company-name-en" : ""}>{settings.account_name || companyNameEN}</span><br>
+            A/C No: <span id="print-bank-acc-std-p2">{settings.account_number || 'N/A'}</span><br>
+            Bank Swift Code: <span id="print-bank-swift-std-p2">{settings.swift_code || 'N/A'}</span><br>
+            IBAN: <span id="print-bank-iban-std-p2">{settings.iban_number || 'N/A'}</span>
+          </p>
         </div>
 
-        <!-- Uniform Bottom Row for Bank details and Company Stamp Card -->
-        <div class="flex gap-4 mt-4 w-full justify-between items-stretch" style="page-break-inside: avoid; break-inside: avoid;">
-          <!-- Bank Details Card -->
-          <div class="terms-section print-bank-block-p2 flex-1" style="border: 1px solid #cbd5e1; border-radius: 2px; padding: 6px; background: #f8fafc; font-size: 5.8pt; box-sizing: border-box;">
-            <h3 class="terms-section-title" style="margin-bottom: 2px; font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">Delight Bank Details:</h3>
-            <p style="font-weight: 700; color: #000000; line-height: 1.35; margin: 0;">
-              <span class="dynamic-company-name-en">{companyNameEN}</span><br>
-              Bank Name: <span id="print-bank-name-std-p2">{settings.bank_name || 'N/A'}</span><br>
-              A/C Name: <span id="print-bank-acc-name-std-p2" class={!settings.account_name ? "dynamic-company-name-en" : ""}>{settings.account_name || companyNameEN}</span><br>
-              A/C No: <span id="print-bank-acc-std-p2">{settings.account_number || 'N/A'}</span><br>
-              Bank Swift Code: <span id="print-bank-swift-std-p2">{settings.swift_code || 'N/A'}</span><br>
-              IBAN: <span id="print-bank-iban-std-p2">{settings.iban_number || 'N/A'}</span>
-            </p>
-          </div>
-
-          <!-- Company Stamp/Details Card -->
-          <div class="company-card-tos-wrapper flex-1" style="box-sizing: border-box;">
-            <div class="company-card-tos" style="border: 1px solid #cbd5e1; border-radius: 2px; padding: 6px; background: #f8fafc; display: flex; align-items: center; justify-content: space-between; height: 100%; box-sizing: border-box;">
-              <div style="display: flex; align-items: center; gap: 8px; text-align: left;">
-                <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="company-card-tos-logo" style="height: 28px; width: auto; object-fit: contain;" />
-                <div>
-                  <div style="font-weight: bold; font-size: 7.5pt; color: #0f172a;">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
-                  <div style="font-size: 5.8pt; color: #475569; line-height: 1.3; margin-top: 1px; max-width: 200px;">
-                    <span id="print-company-address-std-p2">{settings.business_address || settings.company_address || 'Dubai, United Arab Emirates'}</span><br>
-                    TRN: <span class="font-mono font-bold" style="color:#0f172a;" id="print-company-trn-std-p2">{settings.trn_number || '100380541100003'}</span>
-                    <span id="print-company-reg-std-p2-wrapper" class={settings.business_registration ? "" : "hidden"}> | Reg: <span id="print-company-reg-std-p2">{settings.business_registration || ''}</span></span>
-                    <span id="print-company-permits-std-p2-wrapper" class={settings.permits_info ? "block" : "hidden"} style="font-size: 5pt; margin-top: 1px;">Permits: <span id="print-company-permits-std-p2" class="italic">{settings.permits_info || ''}</span></span>
-                  </div>
+        <!-- Company Stamp/Details Card -->
+        <div class="company-card-tos-wrapper flex-1" style="box-sizing: border-box;">
+          <div class="company-card-tos" style="border: 1px solid #cbd5e1; border-radius: 2px; padding: 6px; background: #f8fafc; display: flex; align-items: center; justify-content: space-between; height: 100%; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; gap: 8px; text-align: left;">
+              <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="company-card-tos-logo" style="height: 28px; width: auto; object-fit: contain;" />
+              <div>
+                <div style="font-weight: bold; font-size: 7.5pt; color: #0f172a;">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
+                <div style="font-size: 5.8pt; color: #475569; line-height: 1.3; margin-top: 1px; max-width: 200px;">
+                  <span id="print-company-address-std-p2">{settings.business_address || settings.company_address || 'Dubai, United Arab Emirates'}</span><br>
+                  TRN: <span class="font-mono font-bold" style="color:#0f172a;" id="print-company-trn-std-p2">{settings.trn_number || '100380541100003'}</span>
+                  <span id="print-company-reg-std-p2-wrapper" class={settings.business_registration ? "" : "hidden"}> | Reg: <span id="print-company-reg-std-p2">{settings.business_registration || ''}</span></span>
+                  <span id="print-company-permits-std-p2-wrapper" class={settings.permits_info ? "block" : "hidden"} style="font-size: 5pt; margin-top: 1px;">Permits: <span id="print-company-permits-std-p2" class="italic">{settings.permits_info || ''}</span></span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="text-center text-muted print-page-footer-num" style="position: absolute; bottom: 30px; left: 0; right: 0; font-size: 8pt; font-weight: 500;">
-        Page <span class="dynamic-total-pages">{totalPages}</span> of <span class="dynamic-total-pages">{totalPages}</span>
-      </div>
     </div>
-  )}
+
+    <div class="text-center text-muted print-page-footer-num" style="position: absolute; bottom: 30px; left: 0; right: 0; font-size: 8pt; font-weight: 500;">
+      Page <span class="dynamic-total-pages">{totalPages}</span> of <span class="dynamic-total-pages">{totalPages}</span>
+    </div>
+  </div>
 </div>

@@ -118,7 +118,7 @@ invoices = invoices.map(inv => {
     deleteLabel = 'ARCHIVE';
     deleteBtnClass = "delete-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-bold text-slate-600 rounded transition-colors uppercase tracking-wider";
   }
-  const showDeleteAction = isDraftOrUnconfirmed;
+  const showDeleteAction = true;
   const showArchiveAction = !isDraftOrUnconfirmed;
 
   return {
