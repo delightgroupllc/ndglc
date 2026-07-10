@@ -24,41 +24,8 @@ if (Astro.request.method === 'POST') {
       formMessage = 'CRM Dispatch marked as resolved successfully.';
     }
   } catch (err: any) {
-    console.error('CRM resolve error:', err);
-    formSuccess = true;
-    formMessage = 'Offline Fallback: Enquiry resolve state updated in cache.';
-  }
-}
-
-try {
-  const res = await query('SELECT * FROM contacts ORDER BY created_at DESC');
-  contacts = res.rows;
-} catch (err: any) {
-  console.warn('Database offline, running CRM contacts inbox fallback:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-
-  contacts = [
-    {
-      id: 'contact-mock-1',
-      name: 'Alexander Vance',
-      email: 'alex.vance@steelgroup.com',
-      phone: '+1 (555) 0189',
-      message: 'Looking for a B2B quote on 15 custom HP-100 high-pressure duplex valves. Need step meshes.',
-      inquiry_type: 'sales',
-      is_resolved: false,
-      created_at: new Date(Date.now() - 3600000).toISOString()
-    },
-    {
-      id: 'contact-mock-2',
-      name: 'Dr. Jane Stark',
-      email: 'finance@starkcorp.com',
-      phone: null,
-      message: 'Need technical documentation on Vortex cloud gRPC sync APIs for regional databases.',
-      inquiry_type: 'support',
-      is_resolved: true,
-      created_at: new Date(Date.now() - 86400000).toISOString()
-    }
-  ];
 }
 ---
 

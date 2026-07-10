@@ -118,37 +118,8 @@ try {
   connectionStatuses.db.latency = `${Date.now() - start}ms`;
 
 } catch (err: any) {
-  console.warn('Database offline, running mock dashboard overview:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-  connectionStatuses.db.status = 'OFFLINE';
-
-  // Set mock dashboard statistics
-  metrics = {
-    totalValuation: 245900.00,
-    pendingSettlements: 17700.00,
-    totalRevenue: 12390.00,
-    projectCount: 4,
-    accountStanding: 'EXCELLENT',
-    activeInquiries: 2,
-    customerCount: 15,
-    companyCount: 8,
-    invoicesByStatus: {
-      paid: { count: 12, value: 12390.00 },
-      unpaid: { count: 4, value: 17700.00 },
-      overdue: { count: 1, value: 3200.00 },
-      cancelled: { count: 2, value: 4500.00 },
-      draft: { count: 3, value: 8900.00 }
-    },
-    productsByStatus: {
-      active: 42,
-      inactive: 5,
-      draft: 8
-    },
-    projectsByStatus: {
-      active: 6,
-      archived: 2
-    }
-  };
 }
 
 // 12. Load other API checks

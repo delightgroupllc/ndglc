@@ -47,73 +47,8 @@ try {
   );
   products = prodRes.rows;
 } catch (err: any) {
-  console.warn('Database connection failed, loading mock category and products:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-  
-  // Custom mock category details
-  const mockCategories: Record<string, any> = {
-    'valves-actuators': { name: 'Valves & Actuators', division_name: 'Division DTL', seo_title: 'Valves & Flow Controls' },
-    'pipes-fittings': { name: 'Pipes & Fittings', division_name: 'Division DTL', seo_title: 'Heavy Pipeline Fittings' },
-    'industrial-pumps': { name: 'Industrial Pumps', division_name: 'Division DTL', seo_title: 'Hydraulic Pumps' },
-    'cloud-infrastructure': { name: 'Cloud Infrastructure', division_name: 'Division DGS', seo_title: 'Enterprise Cloud Backup' },
-    'cyber-security': { name: 'Cyber Security', division_name: 'Division DGS', seo_title: 'Neural OT Firewalls' },
-    'data-analytics': { name: 'Data Analytics', division_name: 'Division DGS', seo_title: 'Big Data telemetry Analytics' },
-  };
-
-  categoryDetails = mockCategories[catSlug] || { name: 'Unknown Category', division_name: isDtl ? 'Division DTL' : 'Division DGS', seo_title: 'Category Portfolio' };
-
-  // Category specific fallback products
-  if (catSlug === 'valves-actuators') {
-    products = [
-      {
-        id: 'mock-p1',
-        name: 'HP-100 High-Pressure Stainless Ball Valve',
-        sku: 'SKU-DTL-VALVE-001',
-        slug: 'hp100-ball-valve',
-        description: 'Constructed from grade 316 stainless steel, engineered for environments up to 6,000 PSI.',
-        featured: true,
-        image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'
-      }
-    ];
-  } else if (catSlug === 'industrial-pumps') {
-    products = [
-      {
-        id: 'mock-p2',
-        name: 'CPX-500 Heavy-Duty Centrifugal Pump',
-        sku: 'SKU-DTL-PUMP-002',
-        slug: 'cpx500-centrifugal-pump',
-        description: 'High-volume impeller design optimized for oil, wastewater, and agricultural fluid transfer.',
-        featured: false,
-        image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'
-      }
-    ];
-  } else if (catSlug === 'cloud-infrastructure') {
-    products = [
-      {
-        id: 'mock-p3',
-        name: 'Vortex Cloud-Native Backup Storage Suite',
-        sku: 'SKU-DGS-CLOUD-001',
-        slug: 'vortex-cloud-backup',
-        description: 'Military-grade end-to-end encrypted storage replication system featuring incremental transaction logs.',
-        featured: true,
-        image_url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80'
-      }
-    ];
-  } else if (catSlug === 'cyber-security') {
-    products = [
-      {
-        id: 'mock-p4',
-        name: 'IronWall Industrial Firewall Appliance v4',
-        sku: 'SKU-DGS-SEC-002',
-        slug: 'ironwall-firewall-v4',
-        description: 'Hardware firewall with AI intrusion detection systems specifically engineered to protect OT networks.',
-        featured: true,
-        image_url: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=800&q=80'
-      }
-    ];
-  } else {
-    products = [];
-  }
 }
 ---
 

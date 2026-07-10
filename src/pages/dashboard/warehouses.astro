@@ -17,13 +17,8 @@ try {
   );
   warehouses = whRes.rows;
 } catch (err: any) {
-  console.warn('Database offline, running mock warehouses:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-  warehouses = [
-    { id: '1', name: 'Warehouse Alpha', code: 'WH-A', address: 'Al Quoz Logistics Hub', status: 'active', unique_products: 15, total_stock: 450 },
-    { id: '2', name: 'Warehouse Beta', code: 'WH-B', address: 'Jebel Ali Depot B', status: 'active', unique_products: 8, total_stock: 120 },
-    { id: '3', name: 'Warehouse Delta', code: 'WH-D', address: 'Sharjah Industrial Zone', status: 'archived', unique_products: 4, total_stock: 80 }
-  ];
 }
 ---
 

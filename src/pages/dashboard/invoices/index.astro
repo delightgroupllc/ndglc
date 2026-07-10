@@ -36,43 +36,8 @@ try {
   `);
   products = prodRes.rows;
 } catch (err: any) {
-  console.warn('Database offline, running mock invoices billing sheets:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-
-  invoices = [
-    {
-      id: 'inv-mock-1',
-      invoice_number: 'INV-2026-8094',
-      customer_name: 'Vance Metallurgy LLC',
-      customer_email: 'alex.vance@steelgroup.com',
-      customer_phone: '+1 (555) 0189',
-      issue_date: '2026-05-10',
-      due_date: '2026-06-10',
-      payment_status: 'paid',
-      subtotal: 10500,
-      gst_amount: 1890,
-      total_amount: 12390,
-      items_list: [
-        { description: 'HP-100 Stainless Ball Valve (Duplex option)', quantity: 2, unit_price: 5250, total_price: 10500 }
-      ]
-    },
-    {
-      id: 'inv-mock-2',
-      invoice_number: 'INV-2026-1102',
-      customer_name: 'Stark ot Software Corp',
-      customer_email: 'finance@starkcorp.com',
-      customer_phone: null,
-      issue_date: '2026-05-24',
-      due_date: '2026-06-24',
-      payment_status: 'unpaid',
-      subtotal: 15000,
-      gst_amount: 2700,
-      total_amount: 17700,
-      items_list: [
-        { description: 'Vortex Backup Cloud Telemetry Sync Broadsheet License', quantity: 1, unit_price: 15000, total_price: 15000 }
-      ]
-    }
-  ];
 }
 
 // Pre-calculate procurement stages and button matrix configs to avoid JSX compiler parser issues with "<"

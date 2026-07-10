@@ -13,71 +13,9 @@ let dbConnected = true;
 // Self-healing database migration for categories image_url column
 try {
   await query('ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_url TEXT');
-} catch (e: any) {
-  console.warn('Migration for categories.image_url failed or already exists:', e.message);
-}
-
-try {
-  const catRes = await query(
-    `SELECT c.*, d.name as division_name,
-       (SELECT COUNT(*) FROM products WHERE category_id = c.id) as product_count
-     FROM categories c
-     JOIN divisions d ON d.id = c.division_id
-     ORDER BY d.name ASC, c.display_order ASC`
-  );
-  categories = catRes.rows;
-
-  const divRes = await query('SELECT * FROM divisions ORDER BY name ASC');
-  divisions = divRes.rows;
-
-  // Load configurable rooms
-  try {
-    const sres = await query('SELECT value FROM settings WHERE key = $1', ['rooms']);
-    if (sres.rows.length > 0) {
-      try { rooms = JSON.parse(sres.rows[0].value); } catch { rooms = []; }
-    }
-  } catch (e) {
-    console.warn('Unable to load rooms setting:', e?.message || e);
-  }
-
-  // Load count of products per room
-  const roomCountRes = await query(
-    `SELECT ideal_room, COUNT(*) as count FROM products WHERE ideal_room IS NOT NULL AND ideal_room != '' GROUP BY ideal_room`
-  );
-  roomCounts = roomCountRes.rows.reduce((acc: any, row: any) => {
-    acc[row.ideal_room] = parseInt(row.count) || 0;
-    return acc;
-  }, {});
 } catch (err: any) {
-  console.warn('Database offline, loading mock categories list:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-
-  divisions = [
-    { id: 'div-1', name: 'Division DTL', slug: 'dtl' },
-    { id: 'div-2', name: 'Division DGS', slug: 'dgs' }
-  ];
-
-  categories = [
-    { id: 'cat-1', name: 'Valves & Actuators', slug: 'valves-actuators', division_id: 'div-1', division_name: 'Division DTL', display_order: 1, seo_title: 'Valves & Flow Controls', product_count: 5, image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?q=80&w=200' },
-    { id: 'cat-2', name: 'Industrial Pumps', slug: 'industrial-pumps', division_id: 'div-1', division_name: 'Division DTL', display_order: 2, seo_title: 'Hydraulic Pumps', product_count: 12, image_url: 'https://images.unsplash.com/photo-1597430138224-0096b3741870?q=80&w=200' },
-    { id: 'cat-3', name: 'Cloud Infrastructure', slug: 'cloud-infrastructure', division_id: 'div-2', division_name: 'Division DGS', display_order: 1, seo_title: 'Enterprise Cloud Backup', product_count: 2, image_url: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?q=80&w=200' },
-    { id: 'cat-4', name: 'Cyber Security', slug: 'cyber-security', division_id: 'div-2', division_name: 'Division DGS', display_order: 2, seo_title: 'Neural OT Firewalls', product_count: 0, image_url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=200' }
-  ];
-
-  rooms = [
-    { name: 'Outdoor', iconUrl: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?q=80&w=200' },
-    { name: 'Living room', iconUrl: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=200' },
-    { name: 'Dining room', iconUrl: 'https://images.unsplash.com/photo-1617806118233-18e1db207f62?q=80&w=200' },
-    { name: 'Kitchen', iconUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=200' },
-    { name: 'Bedroom', iconUrl: 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?q=80&w=200' },
-    { name: 'Bathroom', iconUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=200' }
-  ];
-
-  roomCounts = {
-    'Outdoor': 14,
-    'Living room': 9,
-    'Dining room': 4
-  };
 }
 
 // Map rooms safely if they are stored as strings or objects

@@ -15,15 +15,8 @@ try {
   `);
   allProjects = res.rows;
 } catch (err: any) {
-  console.warn('Database offline, running mock portfolio:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-  allProjects = [
-    { division: 'dtl', title: 'Grand Hotel Facade Lighting', client_name: 'Hilton Group', description: 'A complete architectural facade lighting overhaul featuring programmable dynamic LEDs synced to environmental triggers.', completion_date: '2025-11-20', featured_image: '' },
-    { division: 'dtl', title: 'Oasis Mall Interior Ambient', client_name: 'Oasis Group', description: 'Energy-efficient high-lumen ambient lighting across 5 floors, achieving a 40% reduction in power consumption.', completion_date: '2025-05-14', featured_image: '' },
-    { division: 'dgs', title: 'City Square Greenscapes', client_name: 'Dubai Municipality', description: 'Smart urban irrigation automation deploying IoT soil sensors across 40 acres of public parkland.', completion_date: '2026-02-15', featured_image: '' },
-    { division: 'dtl', title: 'Marina Promenade Walkway', client_name: 'Emaar Properties', description: 'Architectural landscape and low-voltage pathway fixtures highlighting the waterfront promenade.', completion_date: '2025-09-10', featured_image: '' },
-    { division: 'dgs', title: 'Luxury Villa Green Wall', client_name: 'Private Client', description: 'A 20-meter high dynamic living wall featuring integrated self-watering soil matrices and organic fertilizer injectors.', completion_date: '2026-01-08', featured_image: '' }
-  ];
 }
 
 // Server-side query parameter inspection to determine default selection

@@ -11,14 +11,8 @@ try {
   const res = await query('SELECT * FROM projects ORDER BY featured DESC, created_at DESC');
   projects = res.rows;
 } catch (err: any) {
-  console.warn('Database offline, running mock projects manager:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-
-  projects = [
-    { id: 'p1', title: 'Grand Hotel Facade Lighting', client_name: 'Hilton Group', description: 'Full exterior dynamic lighting setup.', completion_date: '2025-11-20', division: 'dtl', status: 'active', featured_image: '' },
-    { id: 'p2', title: 'City Square Greenscapes', client_name: 'Dubai Municipality', description: 'Urban irrigation and landscape automation.', completion_date: '2026-02-15', division: 'dgs', status: 'active', featured_image: '' },
-    { id: 'p3', title: 'Marina Promenade Automation', client_name: 'Emaar', description: 'Smart pathways and environmental control systems.', completion_date: '2024-09-10', division: 'dgs', status: 'archived', featured_image: '' }
-  ];
 }
 ---
 

@@ -12,6 +12,7 @@ try {
     aboutSetup = JSON.parse(setupRes.rows[0].value);
   }
 } catch (err: any) {
+  console.warn('Database offline:', err.message);
   dbConnected = false;
 }
 

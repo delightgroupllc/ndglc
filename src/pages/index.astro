@@ -28,6 +28,7 @@ try {
     homeSetup = JSON.parse(setupRes.rows[0].value);
   }
 } catch (err: any) {
+  console.warn('Database offline:', err.message);
   dbConnected = false;
 }
 
@@ -94,67 +95,13 @@ const defaultHomeSetup = {
 const setup = homeSetup || defaultHomeSetup;
 
 // Fallback high-fidelity UAE landmark projects mock
-if (latestProjects.length === 0) {
-  latestProjects = [
-    {
-      id: 'proj-1',
-      title: "Modern Desert Villa",
-      client_name: "Lootah Premium Developments",
-      description: "Integrated biodynamic facade lighting and custom specimen biophilic fitouts for a luxury private estate in Jumeirah.",
-      featured_image: "https://lh3.googleusercontent.com/aida/ADBb0ug_vCupwao6cvGT_3Lp5FWyAJp36SIFy_IwJEEnztO-t7GuOp9QmYdkZUvk5XAKgZZhaPjlbePklZlT4i6H12LAswxt8jHoF2Ldo2EldVy-zKS5tfblh0sKZbgJQGhdBena31UI4Ok3Yc3dGgjHBS_dGIUlLkAcl62ZnLI0eKO2IQIR_VPgK8pVHNDBE7YgKTqnAOlMOEcvePjpsARuHkeb73yZZR47CdyWDMThsTLFmdfYFkBlAeOT180",
-      division: "dtl"
-    },
-    {
-      id: 'proj-2',
-      title: "Luminous Office Plaza",
-      client_name: "Emaar Properties PJSC",
-      description: "Human-centric circadian track systems and automated clean-air plant partitions for DIFC corporate suites.",
-      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuD7nsYOrT4ZujveZ2gaCNLNjtjZaRD2VWcnHtn6VQ894_SPJNlzZJ-aKe7XH-aYOyiDqLxrDKMJtgYGFpo6UkPoP7QMNbZw5nyytRt_hdGf0xT1JGR5Q6e4FVRc8iBBgjniVAsKqtqS27UaZhtSX8myI-dEdebMrfksPbi1O-19l7iUNYWT0LpVG0CIFyfs5LH5F94dZp4uivWHCEapIc694gvs_EEzjq3DWOYIYPwpBF2pbMpT-djVVvdF0RtIibGr2WY0O2NzXvI",
-      division: "dtl"
-    },
-    {
-      id: 'proj-3',
-      title: "Sustainable Resort Garden",
-      client_name: "H.E. Al Maktoum Family Office",
-      description: "High-efficiency low-voltage accent lighting and xeriscape specimens designed for local climate resiliency in Abu Dhabi.",
-      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuD9rzXaLwkdm6_vzUsundUtnEWJa75zIeMYfwD487NnRtw9Y7vugJNH_uZxouwmGlPwpa5CdhdI61ReIyhgl0HJz38MKHMZRHNV72kS6wclydWPI4z6UhOFYq7lViqiNmNo2W9oJQUzHzHl5K5yvZdHkDhafV4kU7Xj4zfCeO_dalChIKT4Cwdx3zgWEiaux1Cz2XoclQvgHq4rR6MgqCo8fVrlYSVchdIP09aAiWip5zceFnu6i4XWzjKbakEiQSIoo5IxZNsrqoc",
-      division: "dgs"
-    },
-    {
-      id: 'proj-4',
-      title: "Urban Botanical Hub",
-      client_name: "Dubai Municipality",
-      description: "Atmospheric evening uplighting and specimen foliage installations for a premium wellness retreat in Sharjah.",
-      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCnR0aAcmNwGS0LlfoaZRwJP20UOuqZgl63bU6HKnQ_KJR9t6pLryqgemhzIC2cMMgfWrsUIhuK4_bfDxz0-89gSkh2LYvSH-G2V76w2RmvQbXp8Ziv3zSI2AXt7PDkzFTkwM-AB_CMW40UytVn03QvPbsU-6tXpXZFK4O3JQPFWbBeTbWpRiAigCd7XpByzZqTR8lbBvuJaogJcZ1jH-MO1tOetnhgJo02RnOX5Xig238w-Wo9q64dID3P5vd1NSP9nWIQCUK5WME",
-      division: "dgs"
-    }
-  ];
-}
+
 
 // Fallback mock articles
-if (articles.length === 0) {
-  articles = [
-    {
-      title: "The Psychology of Light: Circadian Harmony",
-      slug: "psychology-of-light",
-      summary: "How tuned-spectrum lighting influences mood, productivity, and the biological clock in modern residential architecture.",
-      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuA0XeE0sAka_CBFwwD40sz98D0o4Jdn8AQnkCYIw892qrBOzOmpqMyOWzvRA09E-yaDm1rVG-rDXm5nBLMkD2OStlrujTcTCKIId0K9PoXVt3aoSIFsm1Eikdl3AfKTRtPxayirQUeYWuDNEOGX6Or9TbjXzdHHuLXb5GtvRtqDrBNzQhnoGQUWbW9Y3sGzhbd-MnjnEH8Jufo3Ar95cqVYOQ5CznTSsskHmRfrMoKLxDGta6zUpY6faLj6xask2_DBXrt8N8BFAAY",
-      division: "dtl"
-    },
-    {
-      title: "Sustainable Biophilia: Living Skin Walls",
-      slug: "sustainable-biophilia",
-      summary: "The evolution of vertical gardens from aesthetic features to functional air-purification systems for luxury developments.",
-      featured_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBsA92pa18473lfcBjE7BoHkF_gf2wRUG8mqLy62apv9hEGoXv-XqrDJLz2PMyW9FphFEQzx6Rge5TAPP6v1986le2k9EnjCa0A_BmPZN9j2tQcaX0dj1WJB01l5R7Qrk3d-XnGjo6-cxHFfM2Cq8Ce12cKI6dwFed-6DxsFYpnDUZJSk0euYp3A8wbiI8ZGT8hO8rDCU415pfQWRzROWNHR03MEBfUd4t_KAh91VsGYW5gyWj04ycj9aT2gPGaEpnKuAe7fMxmrZw",
-      division: "dgs"
-    }
-  ];
-}
+
 
 // Brands list fallback if DB is empty or offline
-if (brands.length === 0) {
-  brands = ['Legrand', 'SYV', 'Lutron', 'Solux Lighting', 'ZCL', 'Thorn', 'Pelsan', 'HansGreen', 'Cortem Group'];
-}
+
 ---
 
 <Layout title="Premium Technical Lighting & Greenscapes UAE" description="Delight Group LLC supplies premium architectural lighting and curated landscape plants across Dubai, Abu Dhabi, and the UAE.">

@@ -40,24 +40,8 @@ try {
   `);
   companies = compRes.rows;
 } catch (err: any) {
-  console.warn('Database offline, running mock user directory ledger:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-
-  users = [
-    { id: 'user_1', name: 'Alexander Vance', email: 'alex.vance@steelgroup.com', is_suspended: false, roles_list: 'admin', tags_list: 'VIP', created_at: new Date().toISOString() },
-    { id: 'user_2', name: 'Jane Stark', email: 'finance@starkcorp.com', is_suspended: false, roles_list: 'moderator', tags_list: 'partner', created_at: new Date().toISOString() },
-    { id: 'user_3', name: 'Standard Portal Guest', email: 'client@company.com', is_suspended: true, roles_list: 'user', tags_list: '', created_at: new Date().toISOString() }
-  ];
-
-  customers = [
-    { id: 'c_1', name: 'Delight Customer A', email: 'cust.a@test.com', phone: '+971 50 111 2233', company_name: 'ACME Corp', company_vat: 'AE123456789', billing_address: 'Al Quoz, Dubai', shipping_address: 'Dubai Marine', created_at: new Date().toISOString() },
-    { id: 'c_2', name: 'Global Contracting LLC', email: 'contact@globalcontracting.com', phone: '+971 4 999 8888', company_name: 'Global Contracting LLC', company_vat: 'AE987654321', billing_address: 'Jebel Ali, Dubai', shipping_address: '', created_at: new Date().toISOString() }
-  ];
-
-  companies = [
-    { id: 'comp_1', name: 'ACME Corp', vat_number: 'AE123456789', billing_address: 'Al Quoz, Dubai', shipping_address: 'Dubai Marine', customer_count: 1, created_at: new Date().toISOString() },
-    { id: 'comp_2', name: 'Global Contracting LLC', vat_number: 'AE987654321', billing_address: 'Jebel Ali, Dubai', shipping_address: '', customer_count: 1, created_at: new Date().toISOString() }
-  ];
 }
 ---
 

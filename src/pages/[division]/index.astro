@@ -43,52 +43,8 @@ try {
   );
   partners = partnersRes.rows;
 } catch (err: any) {
-  console.warn('Unable to load trusted partners:', err.message);
-}
-
-// Fetch 3 most recent published articles (press releases, events) for the division
-try {
-  const articlesRes = await query(
-    `SELECT * FROM articles
-     WHERE status = 'published' AND (division = $1 OR division = 'both') AND (type = 'press_release' OR type = 'event')
-     ORDER BY published_at DESC LIMIT 3`,
-    [isDtl ? 'dtl' : 'dgs']
-  );
-  articles = articlesRes.rows;
-} catch (err: any) {
-  console.warn('Unable to load articles:', err.message);
-}
-
-// Fetch categories
-try {
-  const res = await query(
-    `SELECT c.*, COUNT(p.id) as product_count
-     FROM categories c
-     JOIN divisions d ON d.id = c.division_id
-     LEFT JOIN products p ON p.category_id = c.id
-     WHERE d.slug = $1
-     GROUP BY c.id
-     ORDER BY c.display_order ASC`,
-    [dbDivSlug]
-  );
-  categories = res.rows;
-} catch (err: any) {
-  console.warn(`Database offline for categories:`, err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-  
-  if (isDtl) {
-    categories = [
-      { id: 'c1', name: 'Indoor Technical Lighting', slug: 'indoor-lighting', seo_description: 'Spotlight tracks, magnetic spots, warm dimming downlights.', product_count: '12' },
-      { id: 'c2', name: 'Outdoor & Facade Lighting', slug: 'outdoor-lighting', seo_description: 'Pathway uplights, IP67 garden spikes, façade structures.', product_count: '8' },
-      { id: 'c3', name: 'Commercial Solutions', slug: 'commercial-lighting', seo_description: 'High-end commercial installations for retail & hospitality.', product_count: '15' }
-    ];
-  } else {
-    categories = [
-      { id: 'c3', name: 'Curated Indoor Plants', slug: 'indoor-plants', seo_description: 'Fiddle leaf figs, air-purifying monsteras, desktop office foliage.', product_count: '24' },
-      { id: 'c4', name: 'Architectural Planters & Pots', slug: 'planters-pots', seo_description: 'Fiberglass planters, designer ceramic pots, self-watering systems.', product_count: '18' },
-      { id: 'c5', name: 'Outdoor Landscaping', slug: 'outdoor-landscaping', seo_description: 'Garden trees, shrubs, maintenance services.', product_count: '30' }
-    ];
-  }
 }
 
 // Fetch featured products (for Trending section — products marked Featured in Products dashboard)
@@ -155,7 +111,7 @@ if (isDtl) {
   // ─── Fetch Homepage Projects (by IDs from DTL Setup picker) ───
   if (homepageProjectIds.length > 0) {
     try {
-      const placeholders = homepageProjectIds.map((_: any, i: number) => `$${i + 1}`).join(',');
+      const placeholders = homepageProjectIds.map((_: any, i: number) => `${i + 1}`).join(',');
       const projRes = await query(
         `SELECT id, title, description, featured_image, client_name FROM projects WHERE id IN (${placeholders})`,
         homepageProjectIds
@@ -180,11 +136,11 @@ if (isDtl) {
       `;
       const queryParams: any[] = [];
       if (excludeIds.length > 0) {
-        const placeholders = excludeIds.map((_, i) => `$${i + 1}`).join(',');
+        const placeholders = excludeIds.map((_, i) => `${i + 1}`).join(',');
         queryStr += ` AND id NOT IN (${placeholders})`;
         queryParams.push(...excludeIds);
       }
-      queryStr += ` ORDER BY created_at DESC LIMIT $${queryParams.length + 1}`;
+      queryStr += ` ORDER BY created_at DESC LIMIT ${queryParams.length + 1}`;
       queryParams.push(limit);
 
       const fallback = await query(queryStr, queryParams);
@@ -213,7 +169,7 @@ if (isDtl) {
   // Fetch DGS Homepage Projects
   if (homepageProjectIds.length > 0) {
     try {
-      const placeholders = homepageProjectIds.map((_: any, i: number) => `$${i + 1}`).join(',');
+      const placeholders = homepageProjectIds.map((_: any, i: number) => `${i + 1}`).join(',');
       const projRes = await query(
         `SELECT id, title, description, featured_image, client_name FROM projects WHERE id IN (${placeholders})`,
         homepageProjectIds
@@ -226,19 +182,7 @@ if (isDtl) {
   }
 
   // Fallback: if no projects selected, show 3 most recent active DGS projects
-  if (projects.length === 0) {
-    try {
-      const fallback = await query(
-        `SELECT id, title, description, featured_image, client_name
-         FROM projects WHERE division = 'dgs' AND status = 'active'
-         ORDER BY created_at DESC LIMIT 3`
-      );
-      projects = fallback.rows;
-    } catch (e: any) {
-      console.warn('Unable to load fallback DGS projects:', e?.message || e);
-    }
-  }
-}
+  
 
 // ─── Derive all layout values ────────────────────────────────────────────────
 const heroObj = isDtl

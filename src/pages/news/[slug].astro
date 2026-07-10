@@ -12,8 +12,8 @@ try {
   const res = await query("SELECT * FROM articles WHERE slug = $1 AND status = 'published'", [slug]);
   article = res.rows[0];
 } catch (err: any) {
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-  console.error("Database lookup failed for article slug:", slug, err?.message || err);
 }
 
 if (article && article.content) {

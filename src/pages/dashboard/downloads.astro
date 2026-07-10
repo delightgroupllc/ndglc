@@ -21,15 +21,8 @@ try {
     } catch {}
   }
 } catch (err: any) {
-  console.warn('Database offline, running mock downloads manager:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-
-  downloads = [
-    { id: 'd1', title: 'NDGLC Division DTL - Main Valve & Fittings Catalog 2026', url: '#', type: 'catalog', division: 'dtl', file_size: '19 MB', status: 'active' },
-    { id: 'd2', title: 'HP-100 High-Pressure Stainless Ball Valve Specification Sheet', url: '#', type: 'datasheet', division: 'dtl', file_size: '3 MB', status: 'active' },
-    { id: 'd3', title: 'Vortex Backup Cloud Telemetry Sync Broadsheet', url: '#', type: 'datasheet', division: 'dgs', file_size: '1.2 MB', status: 'hidden' },
-    { id: 'd4', title: 'NDGLC Group - B2B VIP Procurement & Pricing Guide', url: '#', type: 'pdf', division: 'dtl', file_size: '4.5 MB', status: 'archived' }
-  ];
 }
 ---
 

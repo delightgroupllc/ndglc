@@ -19,52 +19,8 @@ try {
     featured_image: d.featured_image || '/about-hero.png'
   }));
 } catch (err: any) {
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-  console.warn("Database offline, rendering high-fidelity mock newsroom articles:", err.message);
-  
-  // High-fidelity fallback articles matching editorial brand
-  articles = [
-    {
-      id: 1,
-      title: 'Delight Technical Lighting Secures Flagship Abu Dhabi Hotel Facade Project',
-      slug: 'abu-dhabi-hotel-facade',
-      summary: 'Delight Group has been selected as the prime luminaire reselling partner for an upscale facade lighting installation across Abu Dhabi, introducing next-generation warm-led fixtures.',
-      division: 'dtl',
-      type: 'announcement',
-      published_at: '2026-05-20',
-      featured_image: '/about-hero.png'
-    },
-    {
-      id: 2,
-      title: 'The Rise of Biophilic Architecture: Integrating Thriving Greenscapes into Office Spaces',
-      slug: 'biophilic-architecture-office-spaces',
-      summary: 'Explore how indoor green layouts improve air quality, increase workforce productivity, and align office interior workspaces with modern B2B sustainable designs.',
-      division: 'dgs',
-      type: 'article',
-      published_at: '2026-05-15',
-      featured_image: '/about-hero.png'
-    },
-    {
-      id: 3,
-      title: 'Sustainable LED Core Fixtures: Aligning Compliance with the New UAE Lighting Codes',
-      slug: 'sustainable-led-uae-lighting-codes',
-      summary: 'A deep dive guide into the newly updated energy guidelines across Dubai and Sharjah, showing fitout contractors how to select compliant decorative and downlight products.',
-      division: 'dtl',
-      type: 'guide',
-      published_at: '2026-05-08',
-      featured_image: '/about-hero.png'
-    },
-    {
-      id: 4,
-      title: 'Delight Group LLC Announces Central Logistics Expansion in Sharjah Shams',
-      slug: 'sharjah-shams-logistics-expansion',
-      summary: 'To streamline UAE-wide delivery commitments, we are scaling our storage capacity, ensuring stock availability of high-demand lighting models and pot plant collections.',
-      division: 'both',
-      type: 'announcement',
-      published_at: '2026-04-28',
-      featured_image: '/about-hero.png'
-    }
-  ];
 }
 
 // Format dates

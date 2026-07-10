@@ -47,47 +47,8 @@ try {
   );
   userOverrides = overridesRes.rows;
 } catch (err: any) {
-  console.warn('Database offline, running mock permissions matrix:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-
-  users = [
-    { id: 'user_1', name: 'Alexander Vance', email: 'alex.vance@steelgroup.com', is_suspended: false, roles_list: 'admin', tags_list: 'VIP', created_at: new Date().toISOString() },
-    { id: 'user_2', name: 'Jane Stark', email: 'finance@starkcorp.com', is_suspended: false, roles_list: 'moderator, finance', tags_list: 'partner', created_at: new Date().toISOString() },
-    { id: 'user_3', name: 'Standard Portal Guest', email: 'client@company.com', is_suspended: true, roles_list: 'user', tags_list: '', created_at: new Date().toISOString() }
-  ];
-
-  rolesList = [
-    { id: '1', name: 'admin', description: 'System Administrator with full corporate controls' },
-    { id: '2', name: 'moderator', description: 'Business Moderator with catalog and CRM manager permissions' },
-    { id: '3', name: 'finance', description: 'Corporate Finance officer with access to invoices, payments, and legal artifacts.' },
-    { id: '4', name: 'security', description: 'Security and Compliance Officer with access to security settings and audit trackers.' },
-    { id: '5', name: 'user', description: 'Standard Client/Partner customer portal access' }
-  ];
-
-  permissions = [
-    { id: 'p1', name: 'products.create', description: 'Create new catalog products' },
-    { id: 'p2', name: 'products.update', description: 'Update catalog products and specifications' },
-    { id: 'p3', name: 'products.delete', description: 'Remove catalog products' },
-    { id: 'p4', name: 'users.manage', description: 'Manage user roles, tags, and suspension states' },
-    { id: 'p5', name: 'inventory.manage', description: 'Manage stock levels, locations, and low thresholds' },
-    { id: 'p6', name: 'invoices.manage', description: 'Generate, edit, and pay corporate invoices' },
-    { id: 'p7', name: 'downloads.manage', description: 'Create and edit secure download attachments' },
-    { id: 'p8', name: 'contacts.manage', description: 'Manage CRM customer enquiries and resolve statuses' },
-    { id: 'p9', name: 'logs.view', description: 'View system audit logs' }
-  ];
-
-  rolePermissions = [
-    ...permissions.map(p => ({ role_name: 'admin', permission_name: p.name })),
-    { role_name: 'moderator', permission_name: 'products.create' },
-    { role_name: 'moderator', permission_name: 'products.update' },
-    { role_name: 'moderator', permission_name: 'inventory.manage' },
-    { role_name: 'moderator', permission_name: 'downloads.manage' },
-    { role_name: 'moderator', permission_name: 'contacts.manage' }
-  ];
-
-  userOverrides = [
-    { user_id: 'u1', permission_id: 'p7', user_name: 'Standard Portal Guest', user_email: 'client@company.com', permission_name: 'downloads.manage', type: 'allow' }
-  ];
 }
 
 const hasMapping = (roleName: string, permName: string) => {

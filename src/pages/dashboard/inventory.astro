@@ -39,28 +39,8 @@ try {
   );
   inventoryLogs = logsRes.rows;
 } catch (err: any) {
-  console.warn('Database offline, running mock inventory telemetry:', err.message);
+  console.warn('Database offline:', err.message);
   dbConnected = false;
-
-  warehousesList = [
-    { id: 'wh-1', name: 'Warehouse Alpha', code: 'WH-A', address: 'Al Quoz Logistics Hub' },
-    { id: 'wh-2', name: 'Warehouse Beta', code: 'WH-B', address: 'Jebel Ali Depot B' },
-    { id: 'wh-3', name: 'Warehouse Delta', code: 'WH-D', address: 'Sharjah Industrial Zone' }
-  ];
-
-  inventoryItems = [
-    { id: 'inv-1', product_id: 'p-1', product_name: 'HP-100 High-Pressure Stainless Ball Valve', sku: 'SKU-DTL-VALVE-001', stock_level: 45, warehouse_id: 'wh-1', warehouse_name: 'Warehouse Alpha', warehouse_code: 'WH-A', low_stock_threshold: 15 },
-    { id: 'inv-2', product_id: 'p-2', product_name: 'CPX-500 Heavy-Duty Centrifugal Pump', sku: 'SKU-DTL-PUMP-002', stock_level: 12, warehouse_id: 'wh-2', warehouse_name: 'Warehouse Beta', warehouse_code: 'WH-B', low_stock_threshold: 15 },
-    { id: 'inv-3', product_id: 'p-3', product_name: 'Vortex Cloud-Native Backup Storage Suite', sku: 'SKU-DGS-CLOUD-001', stock_level: 120, warehouse_id: 'wh-1', warehouse_name: 'Warehouse Alpha', warehouse_code: 'WH-A', low_stock_threshold: 20 },
-    { id: 'inv-4', product_id: 'p-4', product_name: 'IronWall Industrial Firewall Appliance v4', sku: 'SKU-DGS-SEC-002', stock_level: 28, warehouse_id: 'wh-3', warehouse_name: 'Warehouse Delta', warehouse_code: 'WH-D', low_stock_threshold: 10 }
-  ].map((item: any) => ({
-    ...item,
-    isLow: item.stock_level <= item.low_stock_threshold
-  }));
-
-  inventoryLogs = [
-    { id: 'log-1', product_name: 'HP-100 High-Pressure Stainless Ball Valve', sku: 'SKU-DTL-VALVE-001', change_amount: 15, previous_stock: 30, new_stock: 45, reason: 'purchase', user_name: 'Alexander Vance', timestamp: new Date().toISOString() }
-  ];
 }
 
 const totalUniqueItems = new Set(inventoryItems.map(i => i.product_id)).size;
