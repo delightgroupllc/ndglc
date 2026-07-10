@@ -6,6 +6,7 @@ let users: any[] = [];
 let permissions: any[] = [];
 let rolePermissions: any[] = [];
 let userOverrides: any[] = [];
+let rolesList: any[] = [];
 let dbConnected = true;
 
 try {
@@ -18,6 +19,10 @@ try {
      ORDER BY u.created_at DESC`
   );
   users = usersRes.rows;
+
+  // Load all roles dynamically
+  const rolesRes = await query('SELECT * FROM roles ORDER BY name ASC');
+  rolesList = rolesRes.rows;
 
   // Load permissions
   const permRes = await query('SELECT * FROM permissions ORDER BY name ASC');
@@ -47,8 +52,16 @@ try {
 
   users = [
     { id: 'user_1', name: 'Alexander Vance', email: 'alex.vance@steelgroup.com', is_suspended: false, roles_list: 'admin', tags_list: 'VIP', created_at: new Date().toISOString() },
-    { id: 'user_2', name: 'Jane Stark', email: 'finance@starkcorp.com', is_suspended: false, roles_list: 'moderator', tags_list: 'partner', created_at: new Date().toISOString() },
+    { id: 'user_2', name: 'Jane Stark', email: 'finance@starkcorp.com', is_suspended: false, roles_list: 'moderator, finance', tags_list: 'partner', created_at: new Date().toISOString() },
     { id: 'user_3', name: 'Standard Portal Guest', email: 'client@company.com', is_suspended: true, roles_list: 'user', tags_list: '', created_at: new Date().toISOString() }
+  ];
+
+  rolesList = [
+    { id: '1', name: 'admin', description: 'System Administrator with full corporate controls' },
+    { id: '2', name: 'moderator', description: 'Business Moderator with catalog and CRM manager permissions' },
+    { id: '3', name: 'finance', description: 'Corporate Finance officer with access to invoices, payments, and legal artifacts.' },
+    { id: '4', name: 'security', description: 'Security and Compliance Officer with access to security settings and audit trackers.' },
+    { id: '5', name: 'user', description: 'Standard Client/Partner customer portal access' }
   ];
 
   permissions = [
@@ -165,9 +178,13 @@ const hasMapping = (roleName: string, permName: string) => {
                     <div class="text-2xs text-slate-500 mt-0.5 font-mono">{u.email}</div>
                   </td>
                   <td class="px-6 py-4">
-                    <span class="rounded bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-2xs font-semibold text-cyan-600 uppercase font-mono">
-                      {u.roles_list || 'user'}
-                    </span>
+                    <div class="flex flex-wrap gap-1.5">
+                      {(u.roles_list || 'user').split(', ').map((role: string) => (
+                        <span class="rounded bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 text-3xs font-black text-cyan-600 uppercase font-mono tracking-wider">
+                          {role}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td class="px-6 py-4">
                     {u.tags_list ? (
@@ -226,9 +243,9 @@ const hasMapping = (roleName: string, permName: string) => {
             <thead>
               <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
                 <th class="px-6 py-4.5 font-semibold">Capability / Namespace</th>
-                <th class="px-6 py-4.5 font-semibold text-center w-36">Admin</th>
-                <th class="px-6 py-4.5 font-semibold text-center w-36">Moderator</th>
-                <th class="px-6 py-4.5 font-semibold text-center w-36">User</th>
+                {rolesList.map(r => (
+                  <th class="px-6 py-4.5 font-semibold text-center w-36 uppercase tracking-wider font-mono text-[10px]">{r.name}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -239,51 +256,41 @@ const hasMapping = (roleName: string, permName: string) => {
                     <div class="text-2xs text-slate-500 mt-1 font-semibold">{p.description}</div>
                   </td>
                   
-                  <!-- Admin (Locked / Read Only) -->
-                  <td class="px-6 py-4 text-center">
-                    <div class="flex items-center justify-center">
-                      <span 
-                        class="rounded-full bg-emerald-500/10 text-emerald-600 p-1 border border-emerald-500/20"
-                        title="Admin role possesses immutable superuser capabilities"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path fill-rule="evenodd" d="M2.166 4.9L10 1.154l7.834 3.746A1 1 0 0118.5 5.79v4.962a11.956 11.956 0 01-3.618 8.618L10 22.846l-4.882-3.476A11.956 11.956 0 011.5 10.752V5.79a1 1 0 01.666-.89zM10 3.155L3.5 6.262v4.49c0 4.12 2.65 7.6 6.5 8.784 3.85-1.184 6.5-4.664 6.5-8.784v-4.49L10 3.155z" clip-rule="evenodd"/>
-                        </svg>
-                      </span>
-                    </div>
-                  </td>
-
-                  <!-- Moderator -->
-                  <td class="px-6 py-4 text-center">
-                    <div class="flex items-center justify-center">
-                      <label class="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          class="sr-only peer perm-toggle-input" 
-                          data-role="moderator" 
-                          data-permission={p.name}
-                          checked={hasMapping('moderator', p.name)}
-                        />
-                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600 font-bold"></div>
-                      </label>
-                    </div>
-                  </td>
-
-                  <!-- User -->
-                  <td class="px-6 py-4 text-center">
-                    <div class="flex items-center justify-center">
-                      <label class="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          class="sr-only peer peer-user perm-toggle-input" 
-                          data-role="user" 
-                          data-permission={p.name}
-                          checked={hasMapping('user', p.name)}
-                        />
-                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600 font-bold font-sans"></div>
-                      </label>
-                    </div>
-                  </td>
+                  {rolesList.map(r => {
+                    const roleName = r.name;
+                    if (roleName === 'admin') {
+                      return (
+                        <td class="px-6 py-4 text-center">
+                          <div class="flex items-center justify-center">
+                            <span 
+                              class="rounded-full bg-emerald-500/10 text-emerald-600 p-1 border border-emerald-500/20"
+                              title="Admin role possesses immutable superuser capabilities"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M2.166 4.9L10 1.154l7.834 3.746A1 1 0 0118.5 5.79v4.962a11.956 11.956 0 01-3.618 8.618L10 22.846l-4.882-3.476A11.956 11.956 0 011.5 10.752V5.79a1 1 0 01.666-.89zM10 3.155L3.5 6.262v4.49c0 4.12 2.65 7.6 6.5 8.784 3.85-1.184 6.5-4.664 6.5-8.784v-4.49L10 3.155z" clip-rule="evenodd"/>
+                              </svg>
+                            </span>
+                          </div>
+                        </td>
+                      );
+                    }
+                    return (
+                      <td class="px-6 py-4 text-center">
+                        <div class="flex items-center justify-center">
+                          <label class="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              class="sr-only peer perm-toggle-input" 
+                              data-role={roleName} 
+                              data-permission={p.name}
+                              checked={hasMapping(roleName, p.name)}
+                            />
+                            <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600 font-bold font-sans"></div>
+                          </label>
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -360,7 +367,7 @@ const hasMapping = (roleName: string, permName: string) => {
             <p id="roles-modal-user-name" class="text-xs text-slate-500 font-semibold mt-1 truncate max-w-[280px]"></p>
           </div>
           <button id="close-roles-modal-btn" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
         
@@ -371,29 +378,15 @@ const hasMapping = (roleName: string, permName: string) => {
             <label class="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider block">Assigned Roles</label>
             
             <div class="space-y-2">
-              <label class="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100/55 transition-colors">
-                <input type="checkbox" name="roles" value="admin" class="role-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <div>
-                  <span class="text-xs font-bold text-slate-900 block">Administrator</span>
-                  <span class="text-[10px] text-slate-500 font-semibold block mt-0.5">Full access to telemetry, logs, and billing.</span>
-                </div>
-              </label>
-
-              <label class="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100/55 transition-colors">
-                <input type="checkbox" name="roles" value="moderator" class="role-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <div>
-                  <span class="text-xs font-bold text-slate-900 block">Moderator</span>
-                  <span class="text-[10px] text-slate-500 font-semibold block mt-0.5">Manage products catalog, stocks, and CRM.</span>
-                </div>
-              </label>
-
-              <label class="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100/55 transition-colors">
-                <input type="checkbox" name="roles" value="user" class="role-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <div>
-                  <span class="text-xs font-bold text-slate-900 block">Standard User</span>
-                  <span class="text-[10px] text-slate-500 font-semibold block mt-0.5">Standard client portal access.</span>
-                </div>
-              </label>
+              {rolesList.map(r => (
+                <label class="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100/55 transition-colors">
+                  <input type="checkbox" name="roles" value={r.name} class="role-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                  <div>
+                    <span class="text-xs font-bold text-slate-900 block capitalize">{r.name}</span>
+                    <span class="text-[10px] text-slate-550 font-semibold block mt-0.5">{r.description || `Configured system access role: ${r.name}`}</span>
+                  </div>
+                </label>
+              ))}
             </div>
           </div>
 
@@ -428,7 +421,7 @@ const hasMapping = (roleName: string, permName: string) => {
             <p class="text-xs text-slate-500 font-semibold mt-1">Set explicit allow/deny parameters for a specific operator email.</p>
           </div>
           <button id="close-modal-btn" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
         

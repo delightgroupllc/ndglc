@@ -23,9 +23,11 @@ const permissions = Astro.locals.permissions || [];
 
 const isAdmin = roles.includes('admin');
 const isModerator = roles.includes('moderator');
+const isFinance = roles.includes('finance');
+const isSecurity = roles.includes('security');
 
 // Build Sidebar Navigation items dynamically based on roles/permissions
-const hasDashboardAccess = roles.includes('admin') || roles.includes('moderator') || roles.includes('user');
+const hasDashboardAccess = roles.includes('admin') || roles.includes('moderator') || roles.includes('user') || roles.includes('finance') || roles.includes('security');
 
 const navGroups = [
   {
@@ -69,10 +71,10 @@ const navGroups = [
   {
     label: 'Administration',
     items: [
-      { id: 'finance-legal', name: 'Finance & Legal', href: '/dashboard/finance-legal', icon: FileSpreadsheet, show: isAdmin },
+      { id: 'finance-legal', name: 'Finance & Legal', href: '/dashboard/finance-legal', icon: FileSpreadsheet, show: isAdmin || isFinance },
       { id: 'identity', name: 'Customers & Companies', href: '/dashboard/users', icon: Users2, show: isAdmin },
-      { id: 'permissions', name: 'User Access Management', href: '/dashboard/permissions', icon: ShieldAlert, show: isAdmin },
-      { id: 'logs', name: 'Audit Logs', href: '/dashboard/logs', icon: ScrollText, show: isAdmin },
+      { id: 'permissions', name: 'User Access Management', href: '/dashboard/permissions', icon: ShieldAlert, show: isAdmin || isSecurity },
+      { id: 'logs', name: 'Audit Logs', href: '/dashboard/logs', icon: ScrollText, show: isAdmin || isSecurity },
     ]
   },
 ];

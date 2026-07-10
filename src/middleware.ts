@@ -263,6 +263,8 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
 
     const isAdmin = roles.includes('admin');
     const isModerator = roles.includes('moderator');
+    const isFinance = roles.includes('finance');
+    const isSecurity = roles.includes('security');
 
     if (!isAdmin) {
       // Admin only modules
@@ -270,7 +272,7 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
         path.startsWith('/api/users') ||
         path.startsWith('/api/permissions') ||
         path.startsWith('/api/merge') ||
-        path.startsWith('/api/legal') ||
+        (path.startsWith('/api/legal') && !isFinance) ||
         path.startsWith('/api/settings')
       ) {
          return new Response(JSON.stringify({ error: 'Forbidden: Administrator privileges required' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
@@ -300,12 +302,15 @@ export const onRequest = clerkMiddleware(async (auth, context, next) => {
 
     const isAdmin = roles.includes('admin');
     const isModerator = roles.includes('moderator');
+    const isFinance = roles.includes('finance');
+    const isSecurity = roles.includes('security');
 
     // Protect administrative modules
     if (!isAdmin) {
       if (
-        path.startsWith('/dashboard/logs') ||
-        path.startsWith('/dashboard/permissions') ||
+        (path.startsWith('/dashboard/logs') && !isSecurity) ||
+        (path.startsWith('/dashboard/permissions') && !isSecurity) ||
+        (path.startsWith('/dashboard/finance-legal') && !isFinance) ||
         path.startsWith('/dashboard/users')
       ) {
         return new Response('Access Denied: System Administrator privileges are required to access this portal section.', { status: 403 });

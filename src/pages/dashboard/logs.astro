@@ -1,18 +1,23 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
-import { ScrollText, Search, AlertTriangle, ShieldCheck } from '@lucide/astro';
+import { ScrollText, Search, AlertTriangle, ShieldCheck, Activity, Users, Eye, Sparkles, Filter, Calendar } from '@lucide/astro';
 
 let auditLogs: any[] = [];
 let dbConnected = true;
 
 try {
+  // Query logs and fetch roles list dynamically
   const res = await query(
-    `SELECT al.*, u.name as user_name, u.email as user_email
+    `SELECT al.*, u.name as user_name, u.email as user_email,
+       (SELECT ARRAY_TO_STRING(ARRAY_AGG(r.name), ', ') 
+        FROM roles r 
+        JOIN user_roles ur ON ur.role_id = r.id 
+        WHERE ur.user_id = al.user_id) as roles_list
      FROM audit_logs al
      LEFT JOIN users u ON u.id = al.user_id
      ORDER BY al.timestamp DESC
-     LIMIT 50`
+     LIMIT 500`
   );
   auditLogs = res.rows;
 } catch (err: any) {
@@ -20,66 +25,376 @@ try {
   dbConnected = false;
 
   auditLogs = [
-    { id: '1', action: 'ROLE_UPDATE', entity_type: 'users', details: 'Granted admin role to Alexander Vance', user_name: 'Alexander Vance', user_email: 'alex.vance@steelgroup.com', ip_address: '192.168.1.45', timestamp: new Date(Date.now() - 3600000).toISOString() },
-    { id: '2', action: 'INVENTORY_ADJUST', entity_type: 'inventory', details: 'Stock adjustment of +15 for HP-100 Stainless Ball Valve', user_name: 'Jane Stark', user_email: 'finance@starkcorp.com', ip_address: '192.168.1.112', timestamp: new Date(Date.now() - 7200000).toISOString() },
-    { id: '3', action: 'USER_SYNC', entity_type: 'users', details: 'Synchronized profile credentials for alex.vance@steelgroup.com', user_name: 'Clerk Auth Sync', user_email: 'sync@clerk.com', ip_address: '::1', timestamp: new Date(Date.now() - 14400000).toISOString() }
+    { id: '1', action: 'PERMISSION_TOGGLE', entity_type: 'permissions', details: 'Granted products.create to moderator role', user_name: 'Alexander Vance', user_email: 'alex.vance@steelgroup.com', roles_list: 'admin', ip_address: '192.168.1.45', timestamp: new Date(Date.now() - 600000).toISOString() },
+    { id: '2', action: 'INVOICE_CREATE', entity_type: 'invoices', details: 'Created delivery note DLN-2026-1025', user_name: 'Jane Stark', user_email: 'finance@starkcorp.com', roles_list: 'moderator, finance', ip_address: '192.168.1.112', timestamp: new Date(Date.now() - 1200000).toISOString() },
+    { id: '3', action: 'STATUS_CHANGE', entity_type: 'invoices', details: 'Failed unauthorized status transition of INV-2026-1620 to paid state', user_name: 'Standard Guest Client', user_email: 'client@company.com', roles_list: 'user', ip_address: '185.220.101.5', timestamp: new Date(Date.now() - 3600000).toISOString() },
+    { id: '4', action: 'INVENTORY_ADJUST', entity_type: 'inventory', details: 'Stock adjustment of +45 for Branch Alpha', user_name: 'Jane Stark', user_email: 'finance@starkcorp.com', roles_list: 'moderator', ip_address: '192.168.1.112', timestamp: new Date(Date.now() - 7200000).toISOString() },
+    { id: '5', action: 'USER_SUSPEND', entity_type: 'users', details: 'Suspended Standard Portal Guest', user_name: 'Alexander Vance', user_email: 'alex.vance@steelgroup.com', roles_list: 'admin', ip_address: '192.168.1.45', timestamp: new Date(Date.now() - 14400000).toISOString() },
+    { id: '6', action: 'PERMISSION_OVERRIDE_ADD', entity_type: 'permissions', details: 'Created allow override for downloads.manage on client@company.com', user_name: 'Standard Guest Client', user_email: 'client@company.com', roles_list: 'user', ip_address: '185.220.101.5', timestamp: new Date(Date.now() - 15000000).toISOString() },
+    { id: '7', action: 'WAREHOUSE_CREATE', entity_type: 'warehouses', details: 'Created new branch Warehouse West', user_name: 'Alexander Vance', user_email: 'alex.vance@steelgroup.com', roles_list: 'admin', ip_address: '192.168.1.45', timestamp: new Date(Date.now() - 86400000).toISOString() },
+    { id: '8', action: 'INVOICE_DELETE', entity_type: 'invoices', details: 'Permanently deleted invoice duplicate INV-2026-1011', user_name: 'Alexander Vance', user_email: 'alex.vance@steelgroup.com', roles_list: 'admin', ip_address: '192.168.1.45', timestamp: new Date(Date.now() - 90000000).toISOString() }
   ];
 }
+
+// Analytics calculations
+const totalLogs = auditLogs.length;
+
+// Operators count & activity distribution
+const operatorsMap = new Map<string, { name: string; email: string; count: number }>();
+auditLogs.forEach(l => {
+  const email = l.user_email || 'system@delightgroupllc.com';
+  const name = l.user_name || 'System Auto';
+  const current = operatorsMap.get(email) || { name, email, count: 0 };
+  current.count += 1;
+  operatorsMap.set(email, current);
+});
+const topOperators = Array.from(operatorsMap.values())
+  .sort((a, b) => b.count - a.count)
+  .slice(0, 5);
+
+// Module allocation distribution
+const modulesMap = new Map<string, number>();
+auditLogs.forEach(l => {
+  const mod = l.entity_type || 'other';
+  modulesMap.set(mod, (modulesMap.get(mod) || 0) + 1);
+});
+const moduleStats = Array.from(modulesMap.entries())
+  .sort((a, b) => b[1] - a[1]);
+
+// Anomalous Activity Alert Calculation
+const anomalousAlerts: any[] = [];
+const rapidAccessLogs: { [key: string]: number } = {};
+
+auditLogs.forEach((log, index) => {
+  const isSecurityToggle = ['PERMISSION_TOGGLE', 'PERMISSION_OVERRIDE_ADD', 'PERMISSION_OVERRIDE_DELETE'].includes(log.action);
+  const userRoles = (log.roles_list || '').split(', ').map((r: string) => r.trim());
+  const isNonAdminSecurityAction = isSecurityToggle && !userRoles.includes('admin');
+
+  const detailsLower = (log.details || '').toLowerCase();
+  const hasFailureKeywords = detailsLower.includes('failed') || detailsLower.includes('unauthorized') || detailsLower.includes('denied');
+
+  // Check rapid updates (less than 5s apart by same user)
+  const timeSec = new Date(log.timestamp).getTime();
+  const userKey = log.user_email || 'system';
+  const previousTime = rapidAccessLogs[userKey];
+  let isRapidAction = false;
+  if (previousTime && Math.abs(timeSec - previousTime) < 5000) {
+    isRapidAction = true;
+  }
+  rapidAccessLogs[userKey] = timeSec;
+
+  if (isNonAdminSecurityAction) {
+    anomalousAlerts.push({
+      type: 'critical',
+      title: 'Unauthorized Security Alteration',
+      desc: `${log.user_name || 'User'} (${log.user_email || 'unknown'}) attempted to toggle access rules without Admin status.`,
+      logId: log.id,
+      timestamp: log.timestamp
+    });
+  } else if (hasFailureKeywords) {
+    anomalousAlerts.push({
+      type: 'warning',
+      title: 'Action Access Failure Triggered',
+      desc: `Log details flagged authentication/access warnings: "${log.details}"`,
+      logId: log.id,
+      timestamp: log.timestamp
+    });
+  } else if (isRapidAction) {
+    anomalousAlerts.push({
+      type: 'info',
+      title: 'High-frequency Operator Activity',
+      desc: `Operator (${log.user_email}) executing multiple quick updates within 5 seconds.`,
+      logId: log.id,
+      timestamp: log.timestamp
+    });
+  }
+});
+
+const criticalAlertCount = anomalousAlerts.filter(a => a.type === 'critical').length;
+const warningAlertCount = anomalousAlerts.filter(a => a.type === 'warning').length;
+
+// Unique Actions & Target Modules for filter lists
+const uniqueActions = Array.from(new Set(auditLogs.map(l => l.action)));
+const uniqueModules = Array.from(new Set(auditLogs.map(l => l.entity_type)));
+const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.user_email || 'system@delightgroupllc.com')));
 ---
 
-<DashboardLayout title="Audit Tracker Logs" activeItem="logs">
-
-  <!-- Offline Database Warning -->
-  {!dbConnected && (
-    <div class="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-600 font-medium">
-      <AlertTriangle class="h-4.5 w-4.5 shrink-0" />
+<DashboardLayout title="Security Audit Analytics" activeItem="logs">
+  <div class="space-y-8 p-6 lg:p-8 w-full max-w-7xl mx-auto">
+    
+    <!-- Page Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
       <div>
-        <span class="font-bold">PostgreSQL is Offline</span>: Telemetry displays simulated change logs.
-      </div>
-    </div>
-  )}
-
-  <div class="space-y-6 p-6 lg:p-8">
-    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-      <div class="relative flex-grow max-w-md">
-        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <input 
-          type="text" 
-          id="admin-search-logs"
-          placeholder="Search global audit tracker logs..." 
-          class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
-        />
+        <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          Interactive Security & Audit Analytics
+        </h1>
+        <p class="text-slate-500 text-sm mt-2 font-medium">Verify system security parameters, query operator actions, and spot anomalous access attempts.</p>
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+    <!-- Offline DB Notification -->
+    {!dbConnected && (
+      <div class="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-700 font-semibold shadow-sm">
+        <span class="font-extrabold uppercase block">PostgreSQL Connection Offline</span>
+        Displaying simulated database transaction logs.
+      </div>
+    )}
+
+    <!-- STATS COUNTERS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      
+      <!-- Counter 1 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
+        <div class="p-3 bg-cyan-50 rounded-xl text-cyan-600">
+          <Activity class="h-6 w-6" />
+        </div>
+        <div>
+          <span class="text-2xs font-extrabold text-slate-450 uppercase tracking-wider block">Total Audits</span>
+          <span class="text-2xl font-black text-slate-900 mt-0.5 block">{totalLogs}</span>
+        </div>
+      </div>
+
+      <!-- Counter 2 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
+        <div class="p-3 bg-indigo-50 rounded-xl text-indigo-600">
+          <Users class="h-6 w-6" />
+        </div>
+        <div>
+          <span class="text-2xs font-extrabold text-slate-450 uppercase tracking-wider block">Unique Operators</span>
+          <span class="text-2xl font-black text-slate-900 mt-0.5 block">{operatorsMap.size}</span>
+        </div>
+      </div>
+
+      <!-- Counter 3 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
+        <div class="p-3 bg-rose-50 rounded-xl text-rose-600">
+          <AlertTriangle class="h-6 w-6" />
+        </div>
+        <div>
+          <span class="text-2xs font-extrabold text-slate-450 uppercase tracking-wider block">Anomalous Alerts</span>
+          <span class="text-2xl font-black text-rose-600 mt-0.5 block">{anomalousAlerts.length}</span>
+        </div>
+      </div>
+
+      <!-- Counter 4 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
+        <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+          <ShieldCheck class="h-6 w-6" />
+        </div>
+        <div>
+          <span class="text-2xs font-extrabold text-slate-450 uppercase tracking-wider block">Most Target Module</span>
+          <span class="text-lg font-black text-slate-900 mt-0.5 block truncate max-w-[140px] uppercase font-mono">{moduleStats[0]?.[0] || '—'}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS VISUALIZATION CHARTS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      
+      <!-- Chart 1: Operator Activity -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          <Sparkles class="h-4.5 w-4.5 text-cyan-600" />
+          Top Operators Activity Frequency
+        </h3>
+        
+        <div class="space-y-4 pt-2">
+          {topOperators.map(op => {
+            const percentage = totalLogs > 0 ? Math.round((op.count / totalLogs) * 100) : 0;
+            return (
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-2xs font-bold text-slate-700">
+                  <span class="truncate max-w-[200px]">{op.name} <span class="font-mono text-[10px] text-slate-450">({op.email})</span></span>
+                  <span>{op.count} actions ({percentage}%)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2">
+                  <div class="bg-cyan-650 h-2 rounded-full transition-all duration-500" style={`width: ${percentage}%`}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <!-- Chart 2: Target Modules Allocation -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          <Sparkles class="h-4.5 w-4.5 text-indigo-600" />
+          Target Namespace Action Allocation
+        </h3>
+        
+        <div class="space-y-4 pt-2">
+          {moduleStats.slice(0, 5).map(mod => {
+            const count = mod[1];
+            const percentage = totalLogs > 0 ? Math.round((count / totalLogs) * 100) : 0;
+            return (
+              <div class="space-y-1.5">
+                <div class="flex justify-between text-2xs font-bold text-slate-700">
+                  <span class="uppercase font-mono tracking-wider">{mod[0]}</span>
+                  <span>{count} actions ({percentage}%)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2">
+                  <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={`width: ${percentage}%`}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+
+    <!-- ANOMALOUS ALERTS WARNING PANEL -->
+    <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xs font-black uppercase tracking-wider text-rose-400 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Security Anomalous Activity Alert Center
+          </h3>
+          <p class="text-[11px] text-slate-400 font-semibold mt-1">Telemetry flags critical updates or unauthorized attempts instantly.</p>
+        </div>
+        <span class="rounded bg-rose-500/20 border border-rose-500/30 px-2.5 py-1 text-2xs font-black text-rose-300 uppercase font-mono">
+          {anomalousAlerts.length} Flagged
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        {anomalousAlerts.length === 0 ? (
+          <div class="md:col-span-2 py-6 text-center text-slate-500 text-xs font-semibold">
+            No anomalous access attempt flags detected in telemetry cache.
+          </div>
+        ) : (
+          anomalousAlerts.map(alert => (
+            <div class={`p-4 rounded-xl border flex gap-3 ${
+              alert.type === 'critical' 
+                ? 'bg-rose-950/20 border-rose-500/30 text-rose-250' 
+                : alert.type === 'warning'
+                ? 'bg-amber-950/20 border-amber-500/30 text-amber-250'
+                : 'bg-slate-800/40 border-slate-700 text-slate-200'
+            }`}>
+              <AlertTriangle class="h-5 w-5 shrink-0" />
+              <div>
+                <span class="text-xs font-extrabold block">{alert.title}</span>
+                <span class="text-[10px] text-slate-400 font-semibold block mt-1 leading-relaxed">{alert.desc}</span>
+                <span class="text-[9px] text-slate-500 font-mono block mt-2">{new Date(alert.timestamp).toLocaleString()}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+
+    <!-- FILTER TOOLBAR -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <Filter class="h-4.5 w-4.5 text-slate-500" />
+        <h3 class="text-xs font-black text-slate-850 uppercase tracking-wider">Dynamic Audits Filters</h3>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Filter 1: Action -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Action Type</label>
+          <select id="filter-action" class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700 font-mono">
+            <option value="">All Actions</option>
+            {uniqueActions.map(act => (
+              <option value={act.toLowerCase()}>{act}</option>
+            ))}
+          </select>
+        </div>
+
+        <!-- Filter 2: Module -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Target Module</label>
+          <select id="filter-module" class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700 font-mono">
+            <option value="">All Modules</option>
+            {uniqueModules.map(mod => (
+              <option value={mod.toLowerCase()}>{mod}</option>
+            ))}
+          </select>
+        </div>
+
+        <!-- Filter 3: User -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Operator</label>
+          <select id="filter-user" class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700">
+            <option value="">All Operators</option>
+            {uniqueUsers.map(usr => (
+              <option value={usr.toLowerCase()}>{usr}</option>
+            ))}
+          </select>
+        </div>
+
+        <!-- Search input -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Keyword Search</label>
+          <div class="relative">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input 
+              type="text" 
+              id="admin-search-logs"
+              placeholder="Search details..." 
+              class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-8.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGS DATA TABLE -->
+    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
-              <th class="px-6 py-4 font-semibold">Action Type</th>
-              <th class="px-6 py-4 font-semibold">Details / Entity</th>
-              <th class="px-6 py-4 font-semibold">Triggered By</th>
-              <th class="px-6 py-4 font-semibold">IP Address</th>
-              <th class="px-6 py-4 font-semibold text-right">Timestamp</th>
+              <th class="px-6 py-4.5 font-semibold">Action Token</th>
+              <th class="px-6 py-4.5 font-semibold">Details & Target Entity</th>
+              <th class="px-6 py-4.5 font-semibold">Operator Session</th>
+              <th class="px-6 py-4.5 font-semibold">Roles</th>
+              <th class="px-6 py-4.5 font-semibold">IP Address</th>
+              <th class="px-6 py-4.5 font-semibold text-right">Timestamp</th>
             </tr>
           </thead>
           <tbody id="admin-logs-table">
             {auditLogs.map(log => (
-              <tr class="admin-log-row border-b border-slate-100 hover:bg-slate-50 text-xs transition-colors" data-action={log.action.toLowerCase()} data-details={log.details.toLowerCase()} data-user={log.user_name?.toLowerCase() || ''}>
+              <tr 
+                class="admin-log-row border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors" 
+                data-action={log.action.toLowerCase()} 
+                data-details={(log.details || '').toLowerCase()} 
+                data-user={(log.user_email || 'system@delightgroupllc.com').toLowerCase()}
+                data-module={(log.entity_type || 'other').toLowerCase()}
+              >
                 <td class="px-6 py-4">
                   <span class="rounded bg-slate-100 border border-slate-200 px-2 py-0.5 text-2xs font-mono font-bold text-cyan-600 uppercase">
                     {log.action}
                   </span>
                 </td>
                 <td class="px-6 py-4">
-                  <div class="font-semibold text-slate-900 max-w-[280px] truncate" title={log.details}>{log.details}</div>
-                  <div class="text-3xs text-slate-500 mt-0.5 uppercase tracking-wide">Target: {log.entity_type} {log.entity_id ? `(${log.entity_id})` : ''}</div>
+                  <div class="font-bold text-slate-900 max-w-sm truncate" title={log.details}>{log.details}</div>
+                  <div class="text-3xs text-slate-500 mt-1 uppercase font-mono tracking-wider">Target: {log.entity_type} {log.entity_id ? `(${log.entity_id})` : ''}</div>
                 </td>
                 <td class="px-6 py-4">
-                  <div class="font-semibold text-slate-700">{log.user_name || 'System Auto'}</div>
-                  <div class="text-3xs text-slate-500 mt-0.5">{log.user_email || ''}</div>
+                  <div class="font-bold text-slate-800 leading-tight">{log.user_name || 'System Auto'}</div>
+                  <div class="text-3xs text-slate-500 mt-0.5 font-mono">{log.user_email || ''}</div>
+                </td>
+                <td class="px-6 py-4">
+                  {log.roles_list ? (
+                    <div class="flex flex-wrap gap-1">
+                      {log.roles_list.split(', ').map((role: string) => (
+                        <span class="rounded bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 text-3xs font-extrabold text-cyan-600 uppercase font-mono">
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span class="text-3xs text-slate-400 italic">None</span>
+                  )}
                 </td>
                 <td class="px-6 py-4 text-slate-500 font-mono text-2xs">{log.ip_address || '::1'}</td>
                 <td class="px-6 py-4 text-right text-slate-500 font-mono text-2xs">{new Date(log.timestamp).toLocaleString()}</td>
@@ -92,22 +407,45 @@ try {
   </div>
 
   <script>
-    const searchInput = document.getElementById('admin-search-logs') as HTMLInputElement | null;
-    const rows = document.querySelectorAll('.admin-log-row');
+    const setupLogsDashboard = () => {
+      const searchInput = document.getElementById('admin-search-logs') as HTMLInputElement | null;
+      const filterAction = document.getElementById('filter-action') as HTMLSelectElement | null;
+      const filterModule = document.getElementById('filter-module') as HTMLSelectElement | null;
+      const filterUser = document.getElementById('filter-user') as HTMLSelectElement | null;
+      const rows = document.querySelectorAll('.admin-log-row');
 
-    searchInput?.addEventListener('input', (e) => {
-      const query = (e.target as HTMLInputElement).value.toLowerCase();
-      rows.forEach(row => {
-        const action = row.getAttribute('data-action') || '';
-        const details = row.getAttribute('data-details') || '';
-        const user = row.getAttribute('data-user') || '';
-        
-        if (action.includes(query) || details.includes(query) || user.includes(query)) {
-          (row as HTMLElement).classList.remove('hidden');
-        } else {
-          (row as HTMLElement).classList.add('hidden');
-        }
-      });
-    });
+      const applyFilters = () => {
+        const queryVal = searchInput?.value.toLowerCase() || '';
+        const actionVal = filterAction?.value || '';
+        const moduleVal = filterModule?.value || '';
+        const userVal = filterUser?.value || '';
+
+        rows.forEach(row => {
+          const rowAction = row.getAttribute('data-action') || '';
+          const rowDetails = row.getAttribute('data-details') || '';
+          const rowUser = row.getAttribute('data-user') || '';
+          const rowModule = row.getAttribute('data-module') || '';
+
+          const matchesSearch = rowAction.includes(queryVal) || rowDetails.includes(queryVal) || rowUser.includes(queryVal);
+          const matchesAction = !actionVal || rowAction === actionVal;
+          const matchesModule = !moduleVal || rowModule === moduleVal;
+          const matchesUser = !userVal || rowUser === userVal;
+
+          if (matchesSearch && matchesAction && matchesModule && matchesUser) {
+            (row as HTMLElement).classList.remove('hidden');
+          } else {
+            (row as HTMLElement).classList.add('hidden');
+          }
+        });
+      };
+
+      searchInput?.addEventListener('input', applyFilters);
+      filterAction?.addEventListener('change', applyFilters);
+      filterModule?.addEventListener('change', applyFilters);
+      filterUser?.addEventListener('change', applyFilters);
+    };
+
+    setupLogsDashboard();
+    document.addEventListener('astro:page-load', setupLogsDashboard);
   </script>
 </DashboardLayout>
