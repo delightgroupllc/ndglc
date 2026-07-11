@@ -10,7 +10,7 @@ const productSchema = z.object({
   category_id: z.string().uuid('Invalid category ID'),
   description: z.string().optional(),
   ideal_room: z.string().optional().nullable(),
-  image_url: z.string().url('Invalid image URL').optional().nullable().or(z.literal('')),
+  image_url: z.string().optional().nullable().or(z.literal('')),
   specifications: z.array(z.object({
     key: z.string().min(1),
     value: z.string(),
@@ -18,7 +18,7 @@ const productSchema = z.object({
   featured: z.union([z.boolean(), z.string().transform(v => v === 'true')]),
   status: z.enum(['active', 'inactive', 'draft', 'deleted']),
   images: z.array(z.object({
-    url: z.string().url(),
+    url: z.string(),
     is_primary: z.boolean()
   })).optional().default([])
 });

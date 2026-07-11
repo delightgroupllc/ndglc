@@ -27,6 +27,7 @@
     "@xenova/transformers": "^2.0.1",
     "astro": "^6.4.8",
     "clsx": "^2.1.1",
+    "dirham": "^1.5.3",
     "dotenv": "^17.4.2",
     "nprogress": "^0.2.0",
     "pg": "^8.21.0",

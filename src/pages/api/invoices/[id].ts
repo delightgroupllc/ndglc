@@ -195,13 +195,25 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
         let productId = item.product_id;
         let resolvedImage = null;
 
+        if (productId) {
+          const verifyRes = await client.query('SELECT sku FROM products WHERE id = $1', [productId]);
+          if (verifyRes.rows.length > 0) {
+            const dbSku = verifyRes.rows[0].sku || '';
+            const itemSku = (item.catalogue_ref || '').trim();
+            if (itemSku && dbSku.toLowerCase() !== itemSku.toLowerCase()) {
+              productId = null;
+            }
+          } else {
+            productId = null;
+          }
+        }
+
         if (!productId) {
           let matchedProd = null;
           if (item.catalogue_ref) {
             const pSku = await client.query('SELECT id FROM products WHERE LOWER(sku) = LOWER($1) LIMIT 1', [item.catalogue_ref]);
             if (pSku.rows.length > 0) matchedProd = pSku.rows[0];
-          }
-          if (!matchedProd) {
+          } else {
             const pName = await client.query('SELECT id FROM products WHERE LOWER(name) = LOWER($1) LIMIT 1', [item.description]);
             if (pName.rows.length > 0) matchedProd = pName.rows[0];
           }
@@ -215,7 +227,13 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
             const categoryId = catRes.rows[0]?.id || null;
 
             const sku = item.catalogue_ref || `PROD-${Math.floor(100000 + Math.random() * 900000)}`;
-            const slug = item.description.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `prod-${Math.floor(100000 + Math.random() * 900000)}`;
+            let slug = item.description.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `prod-${Math.floor(100000 + Math.random() * 900000)}`;
+            if (item.catalogue_ref) {
+              const cleanSku = item.catalogue_ref.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+              slug = `${slug}-${cleanSku}`;
+            } else {
+              slug = `${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
+            }
 
             const insProdRes = await client.query(
               `INSERT INTO products (category_id, division_id, name, sku, slug, description, specifications, featured, status)
@@ -229,6 +247,27 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
                VALUES ($1, 0, (SELECT id FROM warehouses ORDER BY name ASC LIMIT 1), 10)`,
               [productId]
             );
+          }
+        }
+
+        if (productId) {
+          const checkImgRes = await client.query('SELECT image_url FROM products WHERE id = $1', [productId]);
+          if (checkImgRes.rows.length > 0 && !checkImgRes.rows[0].image_url) {
+            const itemImg = item.item_image || item.image; // check both properties just in case
+            if (itemImg && itemImg.startsWith('data:image/')) {
+              try {
+                await client.query(
+                  `INSERT INTO product_images (product_id, url, is_primary) VALUES ($1, $2, true)`,
+                  [productId, itemImg]
+                );
+                await client.query(
+                  `UPDATE products SET image_url = $1 WHERE id = $2`,
+                  [itemImg, productId]
+                );
+              } catch (imgErr) {
+                console.error('Error copying existing image to product:', imgErr);
+              }
+            }
           }
         }
 

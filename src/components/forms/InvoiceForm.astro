@@ -1,5 +1,6 @@
 ---
 import { query } from '../../lib/db';
+import DirhamIcon from '../ui/DirhamIcon.astro';
 interface Props {
   invoice?: any;
 }
@@ -409,7 +410,7 @@ const companiesJson = JSON.stringify(companiesList);
               <div class="flex items-center gap-1.5">
                 <span class="font-medium">Discount</span>
                 <select id="inv-discount-type" name="discount_type" class="rounded border border-slate-300 bg-slate-50 px-1 py-0.5 text-xs font-semibold focus:outline-none text-slate-700">
-                  <option value="fixed">AED</option>
+                  <option value="fixed">Dirhams</option>
                   <option value="percentage">%</option>
                 </select>
               </div>
@@ -418,7 +419,7 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
             <div class="border-t border-slate-200 pt-3 flex justify-between items-center">
               <span class="font-bold text-slate-900">Grand Total</span>
-              <span class="text-lg font-extrabold text-cyan-700">AED <span id="summary-total">0.00</span></span>
+              <span class="text-lg font-extrabold text-cyan-700 flex items-center gap-1.5"><DirhamIcon class="w-5 h-5" /> <span id="summary-total">0.00</span></span>
             </div>
           </div>
         </div>
@@ -556,8 +557,8 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
           </div>
 
-          <!-- Row 2: Specs & Pricing & Taxation -->
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 items-end">
+          <!-- Row 2: Specs & Pricing -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
             <!-- Technical Spec -->
             <div class="space-y-1.5 md:col-span-2">
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Technical Spec</label>
@@ -577,9 +578,9 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
             <!-- Unit Price -->
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Unit Price (AED) <span class="text-rose-500">*</span></label>
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap flex items-center gap-1">Unit Price (<span class="dirham-symbol inline-block text-[1em]"></span>) <span class="text-rose-500">*</span></label>
               <div class="relative">
-                <span class="absolute left-3 top-2.5 text-[10px] font-bold text-slate-400">AED</span>
+                <span class="absolute left-2.5 top-2.5 text-slate-400 flex items-center justify-center"><span class="dirham-symbol text-xs inline-block"></span></span>
                 <input type="text" name="item_price" required
                   value="${data.unit_price || ''}"
                   placeholder="0.00"
@@ -587,31 +588,38 @@ const companiesJson = JSON.stringify(companiesList);
               </div>
               <p class="price-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
             </div>
+          </div>
+
+          <!-- Row 3: Taxation & Actions -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-end pt-2 border-t border-slate-100/60">
             <!-- Tax Type -->
             <div class="space-y-1.5">
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Tax / VAT Type</label>
               <select name="item_tax_type" class="item-tax-type-select w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 h-9">
                 <option value="percentage" ${(data.tax_type === 'percentage' || !data.tax_type) ? 'selected' : ''}>% Percentage</option>
-                <option value="fixed" ${data.tax_type === 'fixed' ? 'selected' : ''}>AED Fixed</option>
+                <option value="fixed" ${data.tax_type === 'fixed' ? 'selected' : ''}>Dirhams Fixed</option>
               </select>
             </div>
-            <!-- Tax Rate / Value & Subtotal / Remove -->
-            <div class="flex items-end justify-between gap-3">
-              <div class="space-y-1.5 flex-1">
-                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Tax Rate / Amount</label>
-                <input type="text" name="item_tax_value"
-                  value="${data.tax_value !== undefined ? data.tax_value : (data.tax_rate !== undefined ? data.tax_rate : 5)}"
-                  class="item-tax-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
-                <p class="tax-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
+            <!-- Tax Rate / Amount -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Tax Rate / Amount</label>
+              <input type="text" name="item_tax_value"
+                value="${data.tax_value !== undefined ? data.tax_value : (data.tax_rate !== undefined ? data.tax_rate : 5)}"
+                class="item-tax-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
+              <p class="tax-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
+            </div>
+            <!-- Subtotal -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Subtotal</label>
+              <div class="h-9 flex items-center">
+                <span class="item-subtotal text-sm font-extrabold text-cyan-700 tabular-nums font-mono flex items-center gap-1"><span class="dirham-symbol inline-block text-[1em]"></span> 0.00</span>
               </div>
-              <div class="space-y-1.5 flex-1">
-                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Subtotal</label>
-                <div class="h-9 flex items-center">
-                  <span class="item-subtotal text-sm font-extrabold text-cyan-700 tabular-nums font-mono">AED 0.00</span>
-                </div>
-              </div>
-              <button type="button" class="remove-item-btn text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg p-2 transition-colors border border-transparent hover:border-rose-100 self-end h-9 flex items-center justify-center shrink-0" title="Remove row">
+            </div>
+            <!-- Remove Row -->
+            <div class="flex justify-end h-9 items-center">
+              <button type="button" class="remove-item-btn text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg p-2 transition-colors border border-transparent hover:border-rose-100 flex items-center justify-center gap-1.5 text-xs font-bold w-full md:w-auto" title="Remove row">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                <span class="md:hidden">Remove</span>
               </button>
             </div>
           </div>
@@ -700,7 +708,7 @@ const companiesJson = JSON.stringify(companiesList);
       const price = parseFloat((div.querySelector('.item-price-input') as HTMLInputElement)?.value) || 0;
       const lineTotal = qty * price;
       const subtotalEl = div.querySelector('.item-subtotal');
-      if (subtotalEl) subtotalEl.textContent = `AED ${lineTotal.toFixed(2)}`;
+      if (subtotalEl) subtotalEl.innerHTML = `<span class="dirham-symbol inline-block text-[1em] mr-1"></span> ${lineTotal.toFixed(2)}`;
       recalcSummary();
     };
 
@@ -744,7 +752,14 @@ const companiesJson = JSON.stringify(companiesList);
       const val = (e.target as HTMLInputElement).value.trim().toLowerCase();
       if (!val) return;
       
-      const match = allProducts.find(p => p.name && p.name.trim().toLowerCase() === val);
+      const currentSku = refInput.value.trim().toLowerCase();
+      let match = null;
+      if (currentSku) {
+        match = allProducts.find(p => p.name && p.name.trim().toLowerCase() === val && p.sku && p.sku.trim().toLowerCase() === currentSku);
+      }
+      if (!match) {
+        match = allProducts.find(p => p.name && p.name.trim().toLowerCase() === val);
+      }
       if (match) {
         refInput.value = match.sku || '';
         prodIdInput.value = match.id || '';
@@ -791,8 +806,15 @@ const companiesJson = JSON.stringify(companiesList);
 
         const reader = new FileReader();
         reader.onload = (event) => {
-          div.setAttribute('data-image-base64', event.target?.result as string);
-          if (uploadLabel) uploadLabel.innerHTML = 'Upload Image (1:1 max 1000px) <span class="text-emerald-500 font-bold ml-1">✓ Ready</span>';
+          const base64 = event.target?.result as string;
+          div.setAttribute('data-image-base64', base64);
+          
+          // Update preview image
+          const previewDiv = div.querySelector('.existing-image-preview');
+          const previewImg = previewDiv?.querySelector('img');
+          if (previewImg) previewImg.src = base64;
+          
+          if (uploadLabel) uploadLabel.innerHTML = 'Product Image <span class="text-emerald-500 font-bold ml-1">✓ Ready for Save</span>';
           if (submitBtn) submitBtn.disabled = false;
           if (draftBtn) draftBtn.disabled = false;
         };
@@ -804,7 +826,7 @@ const companiesJson = JSON.stringify(companiesList);
         reader.readAsDataURL(file);
       } else {
         div.removeAttribute('data-image-base64');
-        if (uploadLabel) uploadLabel.innerHTML = 'Upload Image (1:1 max 1000px)';
+        if (uploadLabel) uploadLabel.innerHTML = 'Product Image';
       }
     });
 

@@ -201,7 +201,7 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
               <th style="width: 10%; text-align: center;" class="print-item-cat-ref"><span class="inv-only-layout-inline">SKU</span><span class="dn-only-layout-inline">SKU No</span></th>
               <th style="width: 37%; text-align: left;" class="print-col-desc">Product Description</th>
               <th style="width: 6%; text-align: center;" class="print-col-units">Units</th>
-              <th style="width: 6%; text-align: center;"><span class="inv-only-layout-inline">Qty</span><span class="dn-only-layout-inline">Quantity</span></th>
+              <th style="width: 6%; text-align: center;" class="print-col-qty"><span class="inv-only-layout-inline">Qty</span><span class="dn-only-layout-inline">Quantity</span></th>
               <th style="width: 8%; text-align: right;" class="print-col-price">Unit Price</th>
               <th style="width: 5%; text-align: center;" class="print-col-vat">Vat %</th>
               <th style="width: 8%; text-align: right;" class="print-col-vat">Vat Amount</th>
@@ -225,7 +225,7 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
                     {item.tech_spec && <span class="print-item-tech-spec block text-slate-500 font-normal mt-0.5" style="font-size: 7.5pt; text-transform: none;">Specs: {item.tech_spec}</span>}
                   </td>
                   <td class="text-center print-col-units">{item.unit || 'PCS'}</td>
-                  <td class="text-center font-bold">{item.quantity}</td>
+                  <td class="text-center font-bold print-col-qty">{item.quantity}</td>
                   <td class="text-right font-mono print-col-price">{Number(item.unit_price).toFixed(2)}</td>
                   <td class="text-center font-mono print-col-vat">{item.tax_type === 'percentage' ? `${item.tax_value}` : '5'}</td>
                   <td class="text-right font-mono print-col-vat">{Number(taxAmt).toFixed(2)}</td>
@@ -317,7 +317,7 @@ const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-i
                       <div style="text-align: right;">For <span class="dynamic-sig-company-name-en">{companyNameEN}</span></div>
                       <!-- Dynamic Stamp Space -->
                       <div class="print-stamp-box hidden" style="height: 60px;"></div>
-                      <div class="signature-image-container relative flex justify-end items-end h-12 -mb-3 z-10 w-full" style="padding-right: 15%;">
+                      <div class="signature-image-container relative flex justify-center items-end h-12 -mb-3 z-10" style="width: 70%; margin-left: auto;">
                         <img class={"signature-image-render h-12 w-auto object-contain " + (signatureImage ? "" : "hidden")} src={signatureImage || ""} />
                       </div>
                       <div class="delightgroupllc-dn-sign-line" style="width: 70%; text-align: center; margin-top: 0px; margin-left: auto;">Authorized Signatory<span class="print-sig-paren-arr"> (</span><span id="print-sig-name-arr">{settings.signatory_name || 'Management'}</span><span class="print-sig-paren-arr">)</span></div>

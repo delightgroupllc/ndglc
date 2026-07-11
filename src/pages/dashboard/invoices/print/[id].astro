@@ -221,6 +221,7 @@ const isTermChecked = (identifier: string): boolean => {
       position: relative;
       box-sizing: border-box;
       padding: 12mm 12mm 12mm 12mm;
+      overflow: hidden;
     }
 
     .font-mono { font-family: 'JetBrains Mono', monospace; }
@@ -990,11 +991,111 @@ const isTermChecked = (identifier: string): boolean => {
     .hidden {
       display: none !important;
     }
+
+    /* AED fallback mode — overrides dirham font symbol with plain text */
+    body.aed-mode .dirham-symbol {
+      font-family: inherit !important;
+      font-size: inherit !important;
+      display: inline !important;
+      width: auto !important;
+      height: auto !important;
+    }
+    body.aed-mode .dirham-symbol::before {
+      content: "AED ";
+      font-family: inherit;
+      font-size: inherit;
+      font-weight: inherit;
+      letter-spacing: 0;
+    }
+
+    /* Company Stamp styles */
+    .placed-company-stamp {
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      pointer-events: auto;
+      cursor: grab;
+      user-select: none;
+      z-index: 10;
+      mix-blend-mode: multiply;
+      transition: border 0.15s ease, background-color 0.15s ease;
+      border: 1px dashed transparent;
+      border-radius: 9999px;
+    }
+    .placed-company-stamp:hover {
+      border-color: #ef4444;
+      background-color: rgba(239, 68, 68, 0.08);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.05);
+    }
+    .placed-company-stamp img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .placed-company-stamp .stamp-delete-btn {
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      width: 28px !important;
+      height: 28px !important;
+      background-color: rgba(239, 68, 68, 0.9) !important; /* Semi-transparent red */
+      color: #ffffff !important; /* White X icon */
+      border: 1.5px solid #ffffff !important;
+      border-radius: 9999px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      z-index: 30 !important;
+      cursor: pointer !important;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    .placed-company-stamp .stamp-delete-btn:hover {
+      background-color: #ef4444 !important; /* solid red on hover */
+      transform: translate(-50%, -50%) scale(1.1) !important;
+    }
+    .placed-company-stamp:hover .stamp-delete-btn {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #stamp-floating-preview {
+      position: fixed;
+      width: 130px;
+      height: 130px;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.65;
+      mix-blend-mode: multiply;
+      border: 2px dashed #0891b2;
+      background-color: rgba(8, 145, 178, 0.1);
+      border-radius: 9999px;
+      transform: translate(-50%, -50%);
+    }
+    .stamp-cursor-active .print-page {
+      cursor: none !important;
+    }
+    .stamp-cursor-active .print-page * {
+      cursor: none !important;
+    }
+    
+    @media print {
+      .placed-company-stamp {
+        border: none !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+      }
+    }
   </style>
 </head>
 <body>
   
   <div id="print-root-container" data-grand-total={inv.total_amount} data-division={inv.source_division || 'DTL'} data-order-type={inv.order_type} data-id={inv.id} data-invoice-number={inv.invoice_number} class="flex h-screen overflow-hidden print:h-auto print:overflow-visible print:block">
+    <input type="hidden" id="company-stamp-data" value={settings.company_stamp || ''} />
     
     <!-- LEFT: Document Canvas (Simulated A4 Pages) -->
     <div class="flex-1 overflow-y-auto bg-slate-200/50 p-8 flex flex-col items-center gap-8 custom-scrollbar print:p-0 print:bg-white print:block">
@@ -1037,6 +1138,7 @@ const isTermChecked = (identifier: string): boolean => {
           isCustomerDeleted={inv.is_customer_deleted}
           dnNote={dnNote}
           totalQtyInWords={totalQtyInWords}
+          amountInWords={amountInWords}
         />
       </div>
 
@@ -1221,6 +1323,16 @@ const isTermChecked = (identifier: string): boolean => {
                 <input type="range" id="config-watermark-size" min="200" max="600" step="20" value="380" class="w-full h-1 bg-slate-700 rounded-lg appearance-none accent-cyan-500" />
               </div>
             </div>
+
+            <!-- Currency Symbol Mode Toggle -->
+            <div class="space-y-1 pt-2 border-t border-slate-800/60">
+              <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Currency Display</label>
+              <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" id="config-use-aed-fallback" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Use "AED" instead of د.إ symbol</span>
+              </label>
+              <p class="text-[9px] text-slate-500 pl-5 leading-relaxed">Recommended for PDF export &amp; printing to avoid font rendering issues.</p>
+            </div>
           </div>
         </details>
 
@@ -1309,7 +1421,7 @@ const isTermChecked = (identifier: string): boolean => {
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="config-show-col-units" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                <span>Show Units Column</span>
+                <span>Show Units / Qty Columns</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="config-show-col-vat" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
@@ -1520,6 +1632,32 @@ const isTermChecked = (identifier: string): boolean => {
                 <span>Electronic / No Signature Needed</span>
               </label>
             </div>
+
+            {settings.company_stamp ? (
+              <div class="pt-3 border-t border-slate-200 space-y-2 mt-3">
+                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Company Stamp Tools</div>
+                <!-- Stamp size picker -->
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Size:</span>
+                  <div class="flex gap-1 flex-1">
+                    <button type="button" data-stamp-size="S" class="stamp-size-btn flex-1 text-center bg-slate-100 hover:bg-cyan-100 border border-slate-300 text-slate-700 text-[10px] font-bold py-1 px-2 rounded transition-colors">S</button>
+                    <button type="button" data-stamp-size="M" class="stamp-size-btn flex-1 text-center bg-cyan-700 hover:bg-cyan-800 border border-cyan-700 text-white text-[10px] font-bold py-1 px-2 rounded transition-colors">M</button>
+                    <button type="button" data-stamp-size="L" class="stamp-size-btn flex-1 text-center bg-slate-100 hover:bg-cyan-100 border border-slate-300 text-slate-700 text-[10px] font-bold py-1 px-2 rounded transition-colors">L</button>
+                  </div>
+                </div>
+                <button type="button" id="toggle-stamp-mode-btn" class="w-full text-center bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m0 11v3m8-7h-3M6 12H3m12-5.5L12 9M9 6.5L12 9" /></svg>
+                  <span>Insert Stamp</span>
+                </button>
+                <div id="stamp-mode-active-indicator" class="hidden text-[10px] text-cyan-700 font-bold bg-cyan-50 border border-cyan-200/50 p-2 rounded-lg text-center animate-pulse">
+                  Click on document canvas to place stamp. Right-click on a stamp to remove.
+                </div>
+              </div>
+            ) : (
+              <div class="pt-3 border-t border-slate-200 space-y-2 mt-3 text-slate-400 text-[10px] italic">
+                No company stamp configured. You can upload one in <a href="/dashboard/finance-legal" class="text-cyan-600 hover:underline">Finance & Legal settings</a>.
+              </div>
+            )}
           </div>
         </details>
 
@@ -1634,7 +1772,7 @@ const isTermChecked = (identifier: string): boolean => {
     </div>
   </div>
 
-  <script define:vars={{ banksList, signaturesList, addressesList, activeTerms }}>
+  <script define:vars={{ banksList, signaturesList, addressesList, activeTerms, dbPrintConfig: inv.print_layout_config }}>
     // Only show selected Terms of Sale filter
     const onlySelectedTOSCheckbox = document.getElementById('config-only-selected-tos');
     const listContainer = document.getElementById('tos-sections-checkboxes-list');
@@ -1969,6 +2107,15 @@ const isTermChecked = (identifier: string): boolean => {
     setupToggle('config-show-logo-p2', 'print-logo-container-p2');
     setupToggle('config-show-watermark', 'print-watermark');
     setupToggle('config-show-dn-notice', 'print-dn-material-condition-disclaimer');
+
+    // AED fallback toggle — switches between د.إ glyph and plain "AED" text
+    document.getElementById('config-use-aed-fallback')?.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        document.body.classList.add('aed-mode');
+      } else {
+        document.body.classList.remove('aed-mode');
+      }
+    });
     setupToggle('config-show-duplicate-tag', 'print-info-duplicate');
     setupToggle('config-show-cust-id', 'print-cust-id');
     setupToggle('config-show-comp-id', 'print-comp-id');
@@ -1987,8 +2134,16 @@ const isTermChecked = (identifier: string): boolean => {
     document.getElementById('config-show-col-price')?.addEventListener('change', () => {
       repaginate();
     });
-    setupToggle('config-show-col-units', 'print-col-units');
-    document.getElementById('config-show-col-units')?.addEventListener('change', () => {
+    // "Show Units Column" toggles both the Units column (print-col-units) AND the Qty column (print-col-qty)
+    document.getElementById('config-show-col-units')?.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      document.querySelectorAll('.print-col-units, .print-col-qty').forEach(el => {
+        if (checked) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
       repaginate();
     });
     setupToggle('config-show-col-vat', 'print-col-vat');
@@ -2092,8 +2247,8 @@ const isTermChecked = (identifier: string): boolean => {
 
       // Footer reserve as a fraction of page height — this is SCALE-INDEPENDENT.
       const PAGE_HEIGHT_PX = 1123; // 297mm at 96dpi
-      const FOOTER_RESERVE_FRACTION = 75 / PAGE_HEIGHT_PX; // ~6.6%
-      const TOTALS_RESERVE_FRACTION = 40 / PAGE_HEIGHT_PX; // ~3.5%
+      const FOOTER_RESERVE_FRACTION = 100 / PAGE_HEIGHT_PX;  // ~8.9% — reserve for page footer bar
+      const TOTALS_RESERVE_FRACTION = 220 / PAGE_HEIGHT_PX;  // ~19.6% — reserve for bank+sigs+disclaimer block
 
       const getItemsTbody = (page) => {
         return page.querySelector('.std-items-table tbody') ||
@@ -2195,11 +2350,25 @@ const isTermChecked = (identifier: string): boolean => {
         }
       }
 
-      // Place signatures block
+      // Place signatures block — measure its natural height first
       if (sigsBlock) {
         let lastPage = pages[currentPageIndex];
+        const pageRect = lastPage.getBoundingClientRect();
+        const pageH = pageRect.height || PAGE_HEIGHT_PX;
+
+        // Temporarily append off-screen to measure height
+        sigsBlock.style.visibility = 'hidden';
         lastPage.appendChild(sigsBlock);
-        if (blockOverflows(lastPage, sigsBlock)) {
+        const sigsH = sigsBlock.getBoundingClientRect().height;
+        const mathH = mathBlock ? mathBlock.getBoundingClientRect().height : 0;
+        sigsBlock.style.visibility = '';
+
+        // Calculate remaining vertical space after math block
+        const usedBottom = mathBlock ? mathBlock.getBoundingClientRect().bottom : pageRect.top;
+        const remainingSpace = pageRect.bottom - usedBottom;
+        const sigsNeedsNewPage = sigsH > (remainingSpace - (FOOTER_RESERVE_FRACTION * pageH));
+
+        if (sigsNeedsNewPage) {
           sigsBlock.remove();
           if (currentPageIndex >= pages.length - 1) createOverflowPage();
           currentPageIndex++;
@@ -2768,8 +2937,11 @@ const isTermChecked = (identifier: string): boolean => {
       });
     });
 
-    // Save configuration to localStorage
+    // Save configuration to database and localStorage
     document.getElementById('config-save-btn')?.addEventListener('click', () => {
+      const invoiceId = document.getElementById('print-root-container')?.getAttribute('data-id') || '';
+      if (!invoiceId) return;
+
       const config = {};
       const inputs = [
         'layoutSelector', 'config-doc-type', 'config-branding-logo', 'config-branding-name', 'config-total-show-mode', 'config-show-logo',
@@ -2777,7 +2949,7 @@ const isTermChecked = (identifier: string): boolean => {
         'config-show-watermark', 'config-watermark-source', 'config-watermark-opacity', 'config-watermark-size',
         'config-show-cust-company', 'config-show-cust-address', 'config-show-cust-contact', 'config-show-cust-trn',
         'config-show-info-status', 'config-show-info-date', 'config-show-info-due',
-        'config-show-col-ref', 'config-show-col-spec', 'config-show-col-price',
+        'config-show-col-ref', 'config-show-col-spec', 'config-show-col-price', 'config-use-aed-fallback',
         'config-show-subtotal', 'config-show-vat', 'config-show-discount', 'config-show-total', 'config-show-total-qty', 'config-show-qty-words', 'config-show-dn-condition-note', 'config-show-page-2',
         'config-show-company-card-tos', 'config-sig-placement', 'sig-client', 'sig-receiver', 'sig-company', 
         'config-show-sig-image', 'config-show-stamp-box', 'config-show-disclaimer', 'config-show-dn-note', 'config-electronic-sig',
@@ -2793,32 +2965,106 @@ const isTermChecked = (identifier: string): boolean => {
           config[id] = el.value;
         }
       });
-      localStorage.setItem('print_config_invoices', JSON.stringify(config));
-      
-      // Visual feedback on save button
+
+      // Save stamp placements inside this configuration as well
+      config.placedStamps = placedStampsList;
+
+      // Save to localStorage (per-invoice key)
+      localStorage.setItem(`print_config_${invoiceId}`, JSON.stringify(config));
+
+      // Visual feedback on save button (saving state)
       const saveBtn = document.getElementById('config-save-btn');
+      let originalHtml = '';
       if (saveBtn) {
-        const originalHtml = saveBtn.innerHTML;
+        originalHtml = saveBtn.innerHTML;
+        saveBtn.disabled = true;
         saveBtn.innerHTML = `
-          <svg class="h-3.5 w-3.5 text-emerald-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          <svg class="animate-spin h-3.5 w-3.5 text-slate-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          Saved!
+          Saving...
         `;
-        setTimeout(() => {
-          saveBtn.innerHTML = originalHtml;
-        }, 1500);
       }
+
+      // Save to database
+      fetch(`/api/invoices/${invoiceId}/print-settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ print_layout_config: config })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to save to database');
+        return res.json();
+      })
+      .then(data => {
+        if (saveBtn) {
+          saveBtn.innerHTML = `
+            <svg class="h-3.5 w-3.5 text-emerald-500 animate-bounce mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Saved!
+          `;
+          setTimeout(() => {
+            saveBtn.innerHTML = originalHtml;
+            saveBtn.disabled = false;
+          }, 1500);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        if (saveBtn) {
+          saveBtn.innerHTML = `
+            <svg class="h-3.5 w-3.5 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Error Saving
+          `;
+          setTimeout(() => {
+            saveBtn.innerHTML = originalHtml;
+            saveBtn.disabled = false;
+          }, 1500);
+        }
+      });
     });
 
-    // Load configuration from localStorage
+    // Load configuration from database or localStorage fallback
     const loadSavedConfig = () => {
       try {
-        const saved = localStorage.getItem('print_config_invoices');
-        if (!saved) return;
-        const config = JSON.parse(saved);
+        const invoiceId = document.getElementById('print-root-container')?.getAttribute('data-id') || '';
+        let config = null;
+
+        // Try reading from database (passed via define:vars)
+        if (typeof dbPrintConfig === 'object' && dbPrintConfig !== null) {
+          config = dbPrintConfig;
+          console.log('Loaded print layout config from database.');
+        }
+
+        // Fallback to per-invoice localStorage or legacy global localStorage
+        if (!config && invoiceId) {
+          const savedInvoice = localStorage.getItem(`print_config_${invoiceId}`);
+          if (savedInvoice) {
+            try {
+              config = JSON.parse(savedInvoice);
+            } catch (e) {}
+          }
+        }
+        if (!config) {
+          const savedLegacy = localStorage.getItem('print_config_invoices');
+          if (savedLegacy) {
+            try {
+              config = JSON.parse(savedLegacy);
+            } catch (e) {}
+          }
+        }
+
+        if (!config) return;
+
+        // Apply config options
         Object.keys(config).forEach(id => {
-          if (id === 'config-doc-type') return; // Skip title override to let database order_type define it!
+          if (id === 'placedStamps') return; // Handled separately
           const el = document.getElementById(id);
           if (!el) return;
           if (el.tagName === 'INPUT' && el.type === 'checkbox') {
@@ -2826,18 +3072,328 @@ const isTermChecked = (identifier: string): boolean => {
           } else {
             el.value = config[id];
           }
-          // Trigger events to update the layout rendering
           el.dispatchEvent(new Event('change'));
           el.dispatchEvent(new Event('input'));
         });
+
+        // Set stamp placements in localStorage so loadPlacedStamps() can load/render them
+        if (config.placedStamps) {
+          placedStampsList = config.placedStamps;
+          const key = getStampsStorageKey();
+          localStorage.setItem(key, JSON.stringify(placedStampsList));
+        }
+
         setTimeout(repaginate, 50);
       } catch (err) {
         console.error('Error loading print config:', err);
       }
     };
+
     
+    // ==========================================
+    // INTERACTIVE COMPANY STAMP PLACEMENT
+    // ==========================================
+    const invoiceId = document.getElementById('print-root-container')?.getAttribute('data-id') || '';
+    const stampData = document.getElementById('company-stamp-data')?.value || '';
+
+    // Stamp sizes in px
+    const STAMP_SIZES = { S: 100, M: 130, L: 160 };
+    let activeStampSize = 'M'; // default
+
+    // Size picker buttons
+    document.querySelectorAll('.stamp-size-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeStampSize = btn.getAttribute('data-stamp-size');
+        // Update button styles
+        document.querySelectorAll('.stamp-size-btn').forEach(b => {
+          const isActive = b.getAttribute('data-stamp-size') === activeStampSize;
+          b.className = b.className
+            .replace(/bg-cyan-700|bg-slate-100|border-cyan-700|border-slate-300|text-white|text-slate-700/g, '')
+            .trim();
+          if (isActive) {
+            b.classList.add('bg-cyan-700', 'border-cyan-700', 'text-white');
+            b.classList.remove('bg-slate-100', 'border-slate-300', 'text-slate-700');
+          } else {
+            b.classList.add('bg-slate-100', 'border-slate-300', 'text-slate-700');
+            b.classList.remove('bg-cyan-700', 'border-cyan-700', 'text-white');
+          }
+        });
+        // Update floating preview size if active
+        if (stampFloatingPreview) {
+          const px = STAMP_SIZES[activeStampSize] + 'px';
+          stampFloatingPreview.style.width = px;
+          stampFloatingPreview.style.height = px;
+        }
+      });
+    });
+
+    let isStampModeActive = false;
+    let stampFloatingPreview = null;
+    let placedStampsList = [];
+
+    // Helper to get active layout ID
+    const getActiveLayout = () => {
+      const layoutSelector = document.getElementById('layoutSelector');
+      return layoutSelector?.value || 'standard';
+    };
+
+    // Helper to get localStorage key
+    const getStampsStorageKey = () => `placed_stamps_${invoiceId}_${getActiveLayout()}`;
+
+    // Function to load stamps from localStorage
+    const loadPlacedStamps = () => {
+      // Clear any currently rendered placed stamps from DOM
+      document.querySelectorAll('.placed-company-stamp').forEach(el => el.remove());
+
+      const key = getStampsStorageKey();
+      const stored = localStorage.getItem(key);
+      if (!stored) {
+        placedStampsList = [];
+        return;
+      }
+      try {
+        placedStampsList = JSON.parse(stored);
+        renderAllStamps();
+      } catch (e) {
+        placedStampsList = [];
+      }
+    };
+
+    // Function to save stamps to localStorage
+    const savePlacedStamps = () => {
+      const key = getStampsStorageKey();
+      localStorage.setItem(key, JSON.stringify(placedStampsList));
+    };
+
+    // Render a single stamp element into the DOM
+    const renderStampElement = (stampDataUrl, stampObj, idx) => {
+      const wrapperId = getActiveLayout() === 'standard' ? 'layout-standard-wrapper' : 'layout-delightgroupllc-wrapper';
+      const wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+
+      const pages = wrapper.querySelectorAll('.print-page');
+      const targetPage = pages[stampObj.pageIndex];
+      if (!targetPage) return;
+
+      // Resolve stamp pixel size from size key or direct px value
+      const sizePx = STAMP_SIZES[stampObj.size] || stampObj.size || STAMP_SIZES['M'];
+
+      const stampDiv = document.createElement('div');
+      stampDiv.className = 'placed-company-stamp border border-dashed border-transparent hover:border-red-400';
+      stampDiv.style.left = stampObj.left + '%';
+      stampDiv.style.top = stampObj.top + '%';
+      stampDiv.style.width = sizePx + 'px';
+      stampDiv.style.height = sizePx + 'px';
+      stampDiv.style.transform = 'translate(-50%, -50%)';
+      stampDiv.setAttribute('data-stamp-index', String(idx));
+
+      const img = document.createElement('img');
+      img.src = stampDataUrl;
+      img.alt = 'Company Stamp';
+      stampDiv.appendChild(img);
+
+      // Add a hover delete button for easier visual removal
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'stamp-delete-btn no-print';
+      deleteBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      `;
+
+      const removeHandler = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        placedStampsList.splice(idx, 1);
+        savePlacedStamps();
+        renderAllStamps();
+      };
+
+      deleteBtn.addEventListener('mousedown', removeHandler);
+      stampDiv.appendChild(deleteBtn);
+
+      // Handle right-click removal as well
+      stampDiv.addEventListener('contextmenu', removeHandler);
+
+      // Draggable / Movable stamp placement logic
+      stampDiv.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.stamp-delete-btn')) return;
+
+        let startX = e.clientX;
+        let startY = e.clientY;
+        let startLeft = stampObj.left;
+        let startTop = stampObj.top;
+
+        stampDiv.style.cursor = 'grabbing';
+        e.preventDefault();
+
+        const onMouseMove = (moveEvent) => {
+          const deltaX = moveEvent.clientX - startX;
+          const deltaY = moveEvent.clientY - startY;
+
+          const rect = targetPage.getBoundingClientRect();
+          const deltaLeftPct = (deltaX / rect.width) * 100;
+          const deltaTopPct = (deltaY / rect.height) * 100;
+
+          let newLeft = startLeft + deltaLeftPct;
+          let newTop = startTop + deltaTopPct;
+
+          // Limit within bounds
+          newLeft = Math.max(0, Math.min(100, newLeft));
+          newTop = Math.max(0, Math.min(100, newTop));
+
+          stampDiv.style.left = newLeft + '%';
+          stampDiv.style.top = newTop + '%';
+
+          stampObj.left = newLeft;
+          stampObj.top = newTop;
+        };
+
+        const onMouseUp = () => {
+          stampDiv.style.cursor = 'grab';
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+
+          // Update position in the list and save to localStorage (preserve size)
+          placedStampsList[idx] = {
+            pageIndex: stampObj.pageIndex,
+            left: stampObj.left,
+            top: stampObj.top,
+            size: stampObj.size || 'M'
+          };
+          savePlacedStamps();
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      targetPage.appendChild(stampDiv);
+    };
+
+    // Render all stamps in list
+    const renderAllStamps = () => {
+      document.querySelectorAll('.placed-company-stamp').forEach(el => el.remove());
+      if (!stampData) return;
+
+      placedStampsList.forEach((stampObj, idx) => {
+        renderStampElement(stampData, stampObj, idx);
+      });
+    };
+
+    // Initialize stamp cursor preview element
+    const createStampCursorPreview = () => {
+      if (stampFloatingPreview) return;
+      stampFloatingPreview = document.createElement('div');
+      stampFloatingPreview.id = 'stamp-floating-preview';
+      const px = STAMP_SIZES[activeStampSize] + 'px';
+      stampFloatingPreview.style.width = px;
+      stampFloatingPreview.style.height = px;
+      
+      const img = document.createElement('img');
+      img.src = stampData;
+      img.className = 'w-full h-full object-contain';
+      stampFloatingPreview.appendChild(img);
+      document.body.appendChild(stampFloatingPreview);
+    };
+
+    const removeStampCursorPreview = () => {
+      if (stampFloatingPreview) {
+        stampFloatingPreview.remove();
+        stampFloatingPreview = null;
+      }
+    };
+
+    // Toggle Button Event Listener
+    const toggleStampBtn = document.getElementById('toggle-stamp-mode-btn');
+    const stampIndicator = document.getElementById('stamp-mode-active-indicator');
+
+    const setStampMode = (active) => {
+      isStampModeActive = active;
+      if (active) {
+        createStampCursorPreview();
+        toggleStampBtn?.classList.add('bg-cyan-800', 'ring-2', 'ring-cyan-500');
+        toggleStampBtn?.classList.remove('bg-cyan-700');
+        const span = toggleStampBtn?.querySelector('span');
+        if (span) span.textContent = 'Cancel Stamping';
+        stampIndicator?.classList.remove('hidden');
+        document.body.classList.add('stamp-cursor-active');
+      } else {
+        removeStampCursorPreview();
+        toggleStampBtn?.classList.remove('bg-cyan-800', 'ring-2', 'ring-cyan-500');
+        toggleStampBtn?.classList.add('bg-cyan-700');
+        const span = toggleStampBtn?.querySelector('span');
+        if (span) span.textContent = 'Insert Stamp';
+        stampIndicator?.classList.add('hidden');
+        document.body.classList.remove('stamp-cursor-active');
+      }
+    };
+
+    toggleStampBtn?.addEventListener('click', () => {
+      if (!stampData) {
+        alert("Please configure a company stamp in Settings first.");
+        return;
+      }
+      setStampMode(!isStampModeActive);
+    });
+
+    // Track mouse movement to position the floating stamp cursor
+    document.addEventListener('mousemove', (e) => {
+      if (!isStampModeActive || !stampFloatingPreview) return;
+      stampFloatingPreview.style.left = e.clientX + 'px';
+      stampFloatingPreview.style.top = e.clientY + 'px';
+    });
+
+    // Handle clicking on page to place stamp
+    const handleDocumentClick = (e) => {
+      if (!isStampModeActive || !stampData) return;
+
+      const target = e.target;
+      const pageEl = target.closest('.print-page');
+      if (!pageEl) return;
+
+      // Check if user clicked on an existing stamp to prevent placing double stamp
+      if (target.closest('.placed-company-stamp')) return;
+
+      const rect = pageEl.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Calculate coordinates in percentages
+      const leftPct = (clickX / rect.width) * 100;
+      const topPct = (clickY / rect.height) * 100;
+
+      // Determine page index
+      const wrapperId = getActiveLayout() === 'standard' ? 'layout-standard-wrapper' : 'layout-delightgroupllc-wrapper';
+      const wrapper = document.getElementById(wrapperId);
+      if (!wrapper) return;
+      const pages = Array.from(wrapper.querySelectorAll('.print-page'));
+      const pageIndex = pages.indexOf(pageEl);
+
+      if (pageIndex === -1) return;
+
+      // Add to list and save
+      placedStampsList.push({
+        pageIndex,
+        left: leftPct,
+        top: topPct,
+        size: activeStampSize  // store S/M/L
+      });
+
+      savePlacedStamps();
+      renderAllStamps();
+      setStampMode(false); // Turn off placement mode after one stamp
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+
+    // Reload stamps when template layout selector changes
+    document.getElementById('layoutSelector')?.addEventListener('change', () => {
+      setTimeout(loadPlacedStamps, 60);
+    });
+
     // Call loadSavedConfig on startup
     loadSavedConfig();
+    loadPlacedStamps();
     // Run filter
     applySelectedTOSFilter();
 

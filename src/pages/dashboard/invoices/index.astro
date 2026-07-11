@@ -3,6 +3,7 @@ import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 import { query } from '../../../lib/db';
 import { FileSpreadsheet, PlusCircle, Search, Save, AlertTriangle, Printer, CheckCircle, Clock } from '@lucide/astro';
 import DateRangePicker from '../../../components/ui/DateRangePicker.astro';
+import DirhamIcon from '../../../components/ui/DirhamIcon.astro';
 
 const user = Astro.locals.user;
 const roles = Astro.locals.roles || [];
@@ -266,7 +267,10 @@ invoices = invoices.map(inv => {
                     </div>
                   </td>
                   <td class="px-6 py-5 text-center">
-                    <div class="font-black text-slate-800 text-[13px] tracking-tight">AED {Number(inv.total_amount).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div class="font-black text-slate-800 text-[13px] tracking-tight flex items-center justify-center gap-1">
+                      <DirhamIcon class="w-[1em] h-[1em]" /> 
+                      {Number(inv.total_amount).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
                     <div class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Total Valuation</div>
                   </td>
                   <td class="px-6 py-5 text-center">
@@ -1220,8 +1224,8 @@ invoices = invoices.map(inv => {
             </div>
           </td>
           <td class="py-3 text-center font-bold text-slate-700 align-top">${item.quantity}</td>
-          <td class="py-3 text-right font-semibold text-slate-550 align-top pr-2">AED ${Number(item.unit_price).toFixed(2)}</td>
-          <td class="py-3 text-right font-black text-slate-900 align-top">AED ${(item.quantity * item.unit_price).toFixed(2)}</td>
+          <td class="py-3 text-right font-semibold text-slate-550 align-top pr-2"><span class="dirham-symbol inline-block text-[1em]"></span> ${Number(item.unit_price).toFixed(2)}</td>
+          <td class="py-3 text-right font-black text-slate-900 align-top"><span class="dirham-symbol inline-block text-[1em]"></span> ${(item.quantity * item.unit_price).toFixed(2)}</td>
         `;
         printTbody.appendChild(tr);
       });
@@ -1402,18 +1406,18 @@ invoices = invoices.map(inv => {
       const disc = Number(inv.discount_amount) || 0;
       const grand = Number(inv.total_amount) || 0;
 
-      document.getElementById('print-subtotal')!.textContent = `AED ${sub.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      document.getElementById('print-gst')!.textContent = `AED ${gst.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('print-subtotal')!.innerHTML = `<span class="dirham-symbol inline-block text-[1em] mr-1"></span>${sub.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('print-gst')!.innerHTML = `<span class="dirham-symbol inline-block text-[1em] mr-1"></span>${gst.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       
       const discountRow = document.getElementById('print-discount-row')!;
       if (disc > 0) {
         discountRow.classList.remove('hidden');
-        document.getElementById('print-discount')!.textContent = `- AED ${disc.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.getElementById('print-discount')!.innerHTML = `- <span class="dirham-symbol inline-block text-[1em] mr-1"></span>${disc.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       } else {
         discountRow.classList.add('hidden');
       }
 
-      document.getElementById('print-total')!.textContent = `AED ${grand.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('print-total')!.innerHTML = `<span class="dirham-symbol inline-block text-[1em] mr-1"></span>${grand.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
       // Smart accounting calculations matching screenshot
       let offerPd = 0;
@@ -1423,8 +1427,8 @@ invoices = invoices.map(inv => {
         offerPd = grand * 0.5; // 50% advance payment
       }
       
-      document.getElementById('print-offer-pd')!.textContent = `AED ${offerPd.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      document.getElementById('print-balance-due')!.textContent = `AED ${(grand - offerPd).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('print-offer-pd')!.innerHTML = `<span class="dirham-symbol inline-block text-[1em] mr-1"></span>${offerPd.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('print-balance-due')!.innerHTML = `<span class="dirham-symbol inline-block text-[1em] mr-1"></span>${(grand - offerPd).toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
       const balanceDueEl = document.getElementById('print-balance-due')!;
       if (grand - offerPd > 0) {

@@ -18,7 +18,7 @@ const productSchema = z.object({
   featured: z.string().transform((v) => v === 'true').or(z.boolean()),
   status: z.enum(['active', 'inactive', 'draft', 'deleted']),
   images: z.array(z.object({
-    url: z.string().url(),
+    url: z.string(),
     is_primary: z.boolean()
   })).optional().default([])
 });

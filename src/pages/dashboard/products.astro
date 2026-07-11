@@ -41,7 +41,10 @@ try {
         rooms = [];
       }
     }
-  } catch (err: any) {
+  } catch (errInner: any) {
+    console.warn('Failed to load rooms:', errInner.message);
+  }
+} catch (err: any) {
   console.warn('Database offline:', err.message);
   dbConnected = false;
 }
@@ -153,10 +156,11 @@ try {
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
-              <th class="px-4 py-4 font-semibold w-8">
-                <input type="checkbox" id="select-all-products" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" title="Select all" />
-              </th>
-              <th class="px-4 py-4 font-semibold">SKU / Product</th>
+               <th class="px-4 py-4 font-semibold w-8">
+                 <input type="checkbox" id="select-all-products" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" title="Select all" />
+               </th>
+               <th class="px-4 py-4 font-semibold w-12 text-center">Image</th>
+               <th class="px-4 py-4 font-semibold">SKU / Product</th>
               <th class="px-4 py-4 font-semibold">Division</th>
               <th class="px-4 py-4 font-semibold">Category</th>
               <th class="px-4 py-4 font-semibold text-center">Stock</th>
@@ -181,9 +185,15 @@ try {
                 data-specs={typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || [])}
                 data-image={p.image_url || ''}
                 data-images={p.images_json || '[]'}
+                data-created={p.created_at ? new Date(p.created_at).getTime() : 0}
               >
                 <td class="px-4 py-3">
                   <input type="checkbox" class="product-row-check rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" data-id={p.id} data-name={p.name} />
+                </td>
+                <td class="px-4 py-3">
+                  <div class="w-10 h-10 rounded border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center shrink-0 shadow-3xs mx-auto">
+                    <img src={p.image_url || '/noimage.jpg'} class="w-full h-full object-cover" alt={p.name} />
+                  </div>
                 </td>
                 <td class="px-4 py-3">
                   <div class="font-bold text-slate-900 truncate max-w-[220px]" title={p.name}>{p.name}</div>
@@ -248,6 +258,7 @@ try {
           data-specs={typeof p.specifications === 'string' ? p.specifications : JSON.stringify(p.specifications || [])}
           data-image={p.image_url || ''}
           data-images={p.images_json || '[]'}
+          data-created={p.created_at ? new Date(p.created_at).getTime() : 0}
         >
           <!-- Card Checkbox -->
           <div class="absolute top-3 left-3 z-10 bg-white/90 border border-slate-200 rounded p-1 shadow-sm opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -620,14 +631,14 @@ try {
         const nameB = b.getAttribute('data-name')?.toLowerCase() || '';
         const skuA = a.getAttribute('data-sku')?.toLowerCase() || '';
         const skuB = b.getAttribute('data-sku')?.toLowerCase() || '';
-        const idA = a.getAttribute('data-id') || '';
-        const idB = b.getAttribute('data-id') || '';
+        const dateA = parseInt(a.getAttribute('data-created') || '0', 10);
+        const dateB = parseInt(b.getAttribute('data-created') || '0', 10);
 
         if (sortVal === 'name-asc') return nameA.localeCompare(nameB);
         if (sortVal === 'name-desc') return nameB.localeCompare(nameA);
         if (sortVal === 'sku-asc') return skuA.localeCompare(skuB);
-        if (sortVal === 'newest') return idB.localeCompare(idA);
-        if (sortVal === 'oldest') return idA.localeCompare(idB);
+        if (sortVal === 'newest') return dateB - dateA;
+        if (sortVal === 'oldest') return dateA - dateB;
         return 0;
       };
       

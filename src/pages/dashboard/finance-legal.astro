@@ -124,6 +124,41 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
         </div>
       </div>
 
+      <!-- COMPANY STAMP -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div class="flex items-center gap-3">
+            <div class="w-1.5 h-6 bg-teal-650 bg-teal-600 rounded-full"></div>
+            <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <Settings class="w-4 h-4 text-slate-400" />
+              Company Stamp (Official Corporate Stamp)
+            </h2>
+          </div>
+        </div>
+        <div class="p-6">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Stamp Image (PNG format, &lt; 500kb, transparent background recommended)</label>
+            <div class="flex items-center gap-4 mt-2 flex-wrap">
+              <input type="file" id="stamp-file-input" accept="image/png" class="hidden" />
+              <button type="button" id="stamp-upload-btn" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                Upload Stamp PNG
+              </button>
+              <input type="hidden" id="company-stamp-value" value={settings.company_stamp || ''} />
+              
+              <div id="stamp-preview-wrapper" class={`preview-img-wrapper relative border border-slate-200 rounded-lg p-2 bg-white ${settings.company_stamp ? '' : 'hidden'}`}>
+                <img id="stamp-preview-img" class="h-16 w-16 object-contain" src={settings.company_stamp || ''} />
+                <button type="button" id="stamp-remove-img-btn" class="absolute -top-1.5 -right-1.5 bg-red-100 hover:bg-red-200 text-red-700 p-0.5 rounded-full border border-red-200 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <span id="stamp-status-text" class="text-[10px] text-slate-450 font-medium italic">{settings.company_stamp ? 'Stamp uploaded successfully' : 'No corporate stamp uploaded'}</span>
+              <button type="button" id="save-stamp-btn" class="hidden ml-auto bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Save Stamp</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- LEGAL & REGULATORY (ADDRESSES) -->
       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -227,6 +262,7 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
             </button>
           </div>
           <span class="upload-status-text text-[10px] text-slate-400 font-medium italic">No file uploaded</span>
+          <button type="button" class="save-sig-card-btn hidden ml-auto bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Save Signature</button>
         </div>
       </div>
     </div>
@@ -346,6 +382,7 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
     const previewImg = card.querySelector('.signature-preview');
     const removeImgBtn = card.querySelector('.remove-img-btn');
     const statusText = card.querySelector('.upload-status-text');
+    const saveSigBtn = card.querySelector('.save-sig-card-btn');
     const radio = card.querySelector('input[type="radio"]');
 
     const updatePreview = (base64) => {
@@ -354,27 +391,47 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
         previewImg.src = base64;
         previewWrapper.classList.remove('hidden');
         statusText.textContent = 'PNG uploaded';
+        saveSigBtn.classList.remove('hidden');
       } else {
         imageInput.value = '';
         previewImg.src = '';
         previewWrapper.classList.add('hidden');
         statusText.textContent = 'No file uploaded';
+        saveSigBtn.classList.add('hidden');
       }
     };
 
     if (data) {
       nameInput.value = data.signatory_name || '';
       titleInput.value = data.signatory_title || '';
-      if (data.signature_image) {
+      if (data.signature_image && data.signature_image.trim() !== '') {
         updatePreview(data.signature_image);
       }
     }
 
     uploadBtn.addEventListener('click', () => fileInput.click());
+    
+    saveSigBtn.addEventListener('click', () => {
+      const originalText = saveSigBtn.innerHTML;
+      saveSigBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving...';
+      saveSigBtn.disabled = true;
+      document.getElementById('save-settings-btn').click();
+      
+      const resetBtn = () => {
+        saveSigBtn.innerHTML = originalText;
+        saveSigBtn.disabled = false;
+        window.removeEventListener('settings-saved', resetBtn);
+        window.removeEventListener('settings-save-error', resetBtn);
+      };
+      window.addEventListener('settings-saved', resetBtn);
+      window.addEventListener('settings-save-error', resetBtn);
+    });
 
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
+
+      statusText.textContent = 'Processing image...';
 
       // 1. Enforce only PNG format
       if (file.type !== 'image/png') {
@@ -412,8 +469,10 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
     });
 
     removeImgBtn.addEventListener('click', () => {
-      fileInput.value = '';
+      try { fileInput.value = ''; } catch(e) {}
       updatePreview(null);
+      // Automatically save to persist the deletion
+      document.getElementById('save-settings-btn').click();
     });
 
     radio.value = id;
@@ -423,6 +482,8 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
 
     card.querySelector('.remove-btn').addEventListener('click', () => {
       card.remove();
+      // Automatically save to persist the deletion
+      document.getElementById('save-settings-btn').click();
     });
 
     signatureContainer.appendChild(clone);
@@ -473,6 +534,90 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
   document.getElementById('add-bank-btn').addEventListener('click', () => addBankCard());
   document.getElementById('add-sig-btn').addEventListener('click', () => addSignatureCard());
   document.getElementById('add-addr-btn').addEventListener('click', () => addAddressCard());
+
+  // Bind Company Stamp Event Listeners
+  const stampUploadBtn = document.getElementById('stamp-upload-btn');
+  const stampFileInput = document.getElementById('stamp-file-input');
+  const stampHiddenInput = document.getElementById('company-stamp-value');
+  const stampPreviewWrapper = document.getElementById('stamp-preview-wrapper');
+  const stampPreviewImg = document.getElementById('stamp-preview-img');
+  const stampRemoveBtn = document.getElementById('stamp-remove-img-btn');
+  const stampStatusText = document.getElementById('stamp-status-text');
+
+  stampUploadBtn?.addEventListener('click', () => stampFileInput?.click());
+
+  const saveStampBtn = document.getElementById('save-stamp-btn');
+
+  const updateStampPreview = (base64) => {
+    if (base64) {
+      if (stampHiddenInput) stampHiddenInput.value = base64;
+      if (stampPreviewImg) stampPreviewImg.src = base64;
+      stampPreviewWrapper?.classList.remove('hidden');
+      if (stampStatusText) stampStatusText.textContent = 'Stamp uploaded successfully';
+    } else {
+      if (stampHiddenInput) stampHiddenInput.value = '';
+      if (stampPreviewImg) stampPreviewImg.src = '';
+      stampPreviewWrapper?.classList.add('hidden');
+      if (stampStatusText) stampStatusText.textContent = 'No corporate stamp uploaded';
+    }
+    
+    // Toggle Save Button Visibility
+    if (saveStampBtn) {
+      saveStampBtn.classList.remove('hidden');
+    }
+  };
+
+  saveStampBtn?.addEventListener('click', () => {
+    const originalText = saveStampBtn.innerHTML;
+    saveStampBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving...';
+    saveStampBtn.disabled = true;
+    document.getElementById('save-settings-btn')?.click();
+    
+    const resetBtn = () => {
+      saveStampBtn.innerHTML = originalText;
+      saveStampBtn.disabled = false;
+      saveStampBtn.classList.add('hidden');
+      window.removeEventListener('settings-saved', resetBtn);
+      window.removeEventListener('settings-save-error', resetBtn);
+    };
+    window.addEventListener('settings-saved', resetBtn);
+    window.addEventListener('settings-save-error', resetBtn);
+  });
+
+  stampFileInput?.addEventListener('change', () => {
+    const file = stampFileInput.files?.[0];
+    if (!file) return;
+
+    if (stampStatusText) stampStatusText.textContent = 'Processing stamp image...';
+
+    // 1. Enforce only PNG format
+    if (file.type !== 'image/png') {
+      alert('Error: Stamp must be a PNG image.');
+      stampFileInput.value = '';
+      if (stampStatusText) stampStatusText.textContent = 'Error: Invalid file type';
+      return;
+    }
+
+    // 2. Enforce file size limit of 500KB
+    if (file.size > 500 * 1024) {
+      alert('Error: Stamp file size must be under 500KB.');
+      stampFileInput.value = '';
+      if (stampStatusText) stampStatusText.textContent = 'Error: File too large';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result;
+      updateStampPreview(base64);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  stampRemoveBtn?.addEventListener('click', () => {
+    if (stampFileInput) stampFileInput.value = '';
+    updateStampPreview(null);
+  });
 
   // Save Event Listener
   const saveBtn = document.getElementById('save-settings-btn');
@@ -538,11 +683,14 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
     const defSig = signatures.find(s => s.id === default_signature_id) || signatures[0];
     const defAddr = addresses.find(a => a.id === default_address_id) || addresses[0];
 
+    const company_stamp = document.getElementById('company-stamp-value')?.value || '';
+
     const payload = {
       banks: JSON.stringify(banks),
       signatures: JSON.stringify(signatures),
       addresses: JSON.stringify(addresses),
       default_bank_id,
+      company_stamp,
       default_signature_id,
       default_address_id,
       // Legacy compatibility scalars
@@ -570,8 +718,10 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
       });
       if (!res.ok) throw new Error('Failed to save settings');
       showToast('Settings saved successfully');
+      window.dispatchEvent(new Event('settings-saved'));
     } catch (err) {
       showToast(err.message || 'Error saving settings', true);
+      window.dispatchEvent(new Event('settings-save-error'));
     } finally {
       saveBtn.removeAttribute('disabled');
       saveBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg> Save Configuration';

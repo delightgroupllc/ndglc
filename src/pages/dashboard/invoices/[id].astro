@@ -1,5 +1,6 @@
 ---
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import DirhamIcon from '../../../components/ui/DirhamIcon.astro';
 import { query } from '../../../lib/db';
 import { 
   ArrowLeft, Printer, FileDown, Plus, CreditCard, Banknote, Calendar, Tag, CheckCircle2, AlertCircle, Copy, Archive, RefreshCw, Trash2
@@ -13,6 +14,7 @@ let logs: any[] = [];
 let transactions: any[] = [];
 let settings: Record<string, string> = {};
 let selectedClauses: any[] = [];
+let printConfig: any = null;
 
 try {
   const invRes = await query(`
@@ -27,6 +29,11 @@ try {
 
   if (inv) {
     items = typeof inv.items_list === 'string' ? JSON.parse(inv.items_list) : (inv.items_list || []);
+    try {
+      printConfig = typeof inv.print_layout_config === 'string' 
+        ? JSON.parse(inv.print_layout_config) 
+        : inv.print_layout_config;
+    } catch (e) {}
   }
 
   // Fetch transactions (payment history)
@@ -79,7 +86,7 @@ try {
     logs = [
       { action: 'Invoice Generated', date: inv?.created_at || inv?.issue_date, user: 'System' },
       ...transactions.map(t => ({
-        action: `Payment of AED ${Number(t.amount).toLocaleString()} (${t.payment_method.replace('_', ' ')}) recorded`,
+        action: `Payment of DH ${Number(t.amount).toLocaleString()} (${t.payment_method.replace('_', ' ')}) recorded`,
         date: t.transaction_date,
         user: 'System'
       })),
@@ -126,7 +133,7 @@ if (inv.payment_status === 'draft') {
 } else if (inv.payment_status === 'partially_paid') {
   nextStep = {
     title: 'Record Remaining Balance',
-    description: `A partial payment has been made. There is still a balance of AED ${balanceDue.toLocaleString()} due.`,
+    description: `A partial payment has been made. There is still a balance of DH ${balanceDue.toLocaleString()} due.`,
     actionText: 'Record Payment',
     actionId: 'suggested-payment-btn',
     actionColor: 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-amber-100'
@@ -356,8 +363,8 @@ const showArchiveAction = !isDraftOrUnconfirmed;
                     </div>
                   </td>
                   <td class="py-3 text-center">{item.quantity}</td>
-                  <td class="py-3 text-right font-mono">AED {Number(item.unit_price).toLocaleString()}</td>
-                  <td class="py-3 text-right font-mono font-bold text-slate-900">AED {(item.quantity * item.unit_price).toLocaleString()}</td>
+                  <td class="py-3 text-right font-mono"><DirhamIcon class="w-[1em] h-[1em] mr-1" />{Number(item.unit_price).toLocaleString()}</td>
+                  <td class="py-3 text-right font-mono font-bold text-slate-900"><DirhamIcon class="w-[1em] h-[1em] mr-1" />{(item.quantity * item.unit_price).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -365,10 +372,10 @@ const showArchiveAction = !isDraftOrUnconfirmed;
 
           <div class="flex justify-end pt-4 border-t border-slate-100">
             <div class="w-64 space-y-2 text-sm">
-              <div class="flex justify-between text-slate-500"><span>Subtotal</span><span class="font-mono">AED {Number(inv.subtotal).toLocaleString()}</span></div>
-              <div class="flex justify-between text-slate-500"><span>Tax (5%)</span><span class="font-mono">AED {Number(inv.gst_amount).toLocaleString()}</span></div>
+              <div class="flex justify-between text-slate-500"><span>Subtotal</span><span class="font-mono flex items-center gap-1"><DirhamIcon class="w-[1em] h-[1em]" /> {Number(inv.subtotal).toLocaleString()}</span></div>
+              <div class="flex justify-between text-slate-500"><span>Tax (5%)</span><span class="font-mono flex items-center gap-1"><DirhamIcon class="w-[1em] h-[1em]" /> {Number(inv.gst_amount).toLocaleString()}</span></div>
               <div class="flex justify-between font-black text-slate-900 text-base pt-2 border-t border-slate-200">
-                <span>Grand Total</span><span class="font-mono text-cyan-700">AED {Number(inv.total_amount).toLocaleString()}</span>
+                <span>Grand Total</span><span class="font-mono text-cyan-700 flex items-center gap-1"><DirhamIcon class="w-[1em] h-[1em]" /> {Number(inv.total_amount).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -393,15 +400,15 @@ const showArchiveAction = !isDraftOrUnconfirmed;
           <div class="grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl text-center">
             <div>
               <span class="block text-[10px] uppercase font-bold text-slate-400">Total Charged</span>
-              <span class="text-base font-extrabold text-slate-900 font-mono">AED {Number(inv.total_amount).toLocaleString()}</span>
+              <span class="text-base font-extrabold text-slate-900 font-mono flex items-center justify-center gap-1"><DirhamIcon class="w-[1em] h-[1em]" /> {Number(inv.total_amount).toLocaleString()}</span>
             </div>
             <div>
               <span class="block text-[10px] uppercase font-bold text-slate-400">Total Paid</span>
-              <span class="text-base font-extrabold text-green-600 font-mono">AED {totalPaid.toLocaleString()}</span>
+              <span class="text-base font-extrabold text-green-600 font-mono flex items-center justify-center gap-1"><DirhamIcon class="w-[1em] h-[1em]" /> {totalPaid.toLocaleString()}</span>
             </div>
             <div>
               <span class="block text-[10px] uppercase font-bold text-slate-400">Balance Due</span>
-              <span class="text-base font-extrabold text-rose-600 font-mono">AED {balanceDue.toLocaleString()}</span>
+              <span class="text-base font-extrabold text-rose-600 font-mono flex items-center justify-center gap-1"><DirhamIcon class="w-[1em] h-[1em]" /> {balanceDue.toLocaleString()}</span>
             </div>
           </div>
 
@@ -428,7 +435,7 @@ const showArchiveAction = !isDraftOrUnconfirmed;
                     <td class="py-2.5 uppercase text-[10px] font-bold text-slate-500">{t.payment_method.replace('_', ' ')}</td>
                     <td class="py-2.5 font-mono text-slate-500">{t.transaction_ref || '—'}</td>
                     <td class="py-2.5 italic text-slate-400 max-w-xs truncate">{t.notes || '—'}</td>
-                    <td class="py-2.5 text-right font-mono font-bold text-slate-900">AED {Number(t.amount).toLocaleString()}</td>
+                    <td class="py-2.5 text-right font-mono font-bold text-slate-900"><DirhamIcon class="w-[1em] h-[1em] mr-1" />{Number(t.amount).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -465,6 +472,47 @@ const showArchiveAction = !isDraftOrUnconfirmed;
                 {nextStep.actionText}
               </button>
             )}
+          </div>
+        )}
+
+        <!-- Saved Print Configuration Summary -->
+        {printConfig && (
+          <div class="bg-gradient-to-br from-cyan-50 to-emerald-50 p-6 rounded-2xl shadow-sm border border-cyan-100 space-y-4">
+            <div class="flex items-center gap-2 border-b border-cyan-200/50 pb-3">
+              <Printer class="w-4 h-4 text-cyan-600 shrink-0" />
+              <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Saved Print Layout</h2>
+            </div>
+            <div class="space-y-3 text-xs text-slate-600">
+              <div>
+                <span class="block text-[10px] uppercase font-bold text-slate-400">Layout Template</span>
+                <span class="font-bold text-slate-900">
+                  {printConfig.layoutSelector === 'delightgroupllc' 
+                    ? 'Modern Grid Layout' 
+                    : 'Standard Template'}
+                </span>
+              </div>
+              <div>
+                <span class="block text-[10px] uppercase font-bold text-slate-400">Document Type</span>
+                <span class="font-bold text-slate-900 uppercase">
+                  {printConfig['config-doc-type'] || inv.order_type.replace('_', ' ')}
+                </span>
+              </div>
+              {printConfig.placedStamps && printConfig.placedStamps.length > 0 && (
+                <div>
+                  <span class="block text-[10px] uppercase font-bold text-slate-400">Corporate Stamps</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-cyan-700 bg-cyan-100/60 px-2 py-0.5 rounded-full border border-cyan-200 mt-1">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    {printConfig.placedStamps.length} placed stamp{printConfig.placedStamps.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+              <div class="pt-2.5 border-t border-cyan-200/50 flex items-center justify-between">
+                <span class="text-[9px] font-medium text-slate-500 uppercase tracking-wider">Configuration Active</span>
+                <a href={`/dashboard/invoices/print/${inv.id}`} target="_blank" class="text-cyan-700 hover:text-cyan-800 hover:underline font-bold flex items-center gap-0.5">
+                  Open Layout →
+                </a>
+              </div>
+            </div>
           </div>
         )}
 
@@ -561,7 +609,7 @@ const showArchiveAction = !isDraftOrUnconfirmed;
     </div>
     <form id="record-payment-form" class="p-6 space-y-4">
       <div class="space-y-1.5">
-        <label class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Payment Amount (AED) *</label>
+        <label class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Payment Amount (Dirhams) *</label>
         <input 
           type="number" 
           name="amount" 
