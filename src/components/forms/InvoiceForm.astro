@@ -615,8 +615,12 @@ const companiesJson = JSON.stringify(companiesList);
                 <span class="item-subtotal text-sm font-extrabold text-cyan-700 tabular-nums font-mono flex items-center gap-1"><span class="dirham-symbol inline-block text-[1em]"></span> 0.00</span>
               </div>
             </div>
-            <!-- Remove Row -->
-            <div class="flex justify-end h-9 items-center">
+            <!-- Actions -->
+            <div class="flex justify-end h-9 items-center gap-1.5">
+              <button type="button" class="insert-item-below-btn text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg p-2 transition-colors border border-transparent hover:border-cyan-100 flex items-center justify-center gap-1.5 text-xs font-bold w-full md:w-auto" title="Insert row below">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                <span class="md:hidden">Insert Below</span>
+              </button>
               <button type="button" class="remove-item-btn text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg p-2 transition-colors border border-transparent hover:border-rose-100 flex items-center justify-center gap-1.5 text-xs font-bold w-full md:w-auto" title="Remove row">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 <span class="md:hidden">Remove</span>
@@ -784,6 +788,11 @@ const companiesJson = JSON.stringify(companiesList);
     descInput.addEventListener('input', handleNameChange);
     descInput.addEventListener('change', handleNameChange);
 
+    // Insert row below handler
+    div.querySelector('.insert-item-below-btn')?.addEventListener('click', () => {
+      addRow({}, div);
+    });
+
     // Remove row handler
     div.querySelector('.remove-item-btn')?.addEventListener('click', () => {
       div.remove();
@@ -878,10 +887,17 @@ const companiesJson = JSON.stringify(companiesList);
     }
   }
 
-  function addRow(data: any = {}) {
+  function addRow(data: any = {}, afterNode?: HTMLElement) {
     const container = document.getElementById('invoice-items-container');
     if (container) {
-      container.appendChild(buildItemRow(data));
+      const newRow = buildItemRow(data);
+      if (afterNode && afterNode.nextSibling) {
+        container.insertBefore(newRow, afterNode.nextSibling);
+      } else if (afterNode) {
+        container.appendChild(newRow);
+      } else {
+        container.appendChild(newRow);
+      }
       recalcSummary();
       updateGlobalSourceDivision();
     }
