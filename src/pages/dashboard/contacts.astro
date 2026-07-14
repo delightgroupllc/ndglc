@@ -24,8 +24,9 @@ if (Astro.request.method === 'POST') {
       formMessage = 'CRM Dispatch marked as resolved successfully.';
     }
   } catch (err: any) {
-  console.warn('Database offline:', err.message);
-  dbConnected = false;
+    console.warn('Database offline:', err.message);
+    dbConnected = false;
+  }
 }
 ---
 
@@ -74,20 +75,12 @@ if (Astro.request.method === 'POST') {
     ) : (
       <div class="grid grid-cols-1 gap-6" id="contacts-grid">
         {contacts.map(c => (
-          <div class={`rounded-xl border p-5 md:p-6 shadow-sm backdrop-blur-md transition-all duration-200 contact-card ${
-            c.is_resolved 
-              ? 'border-slate-100 bg-slate-50/50 opacity-60' 
-              : 'border-slate-200 bg-white hover:border-slate-300'
-          }`} data-name={c.name.toLowerCase()} data-msg={c.message.toLowerCase()} data-email={c.email.toLowerCase()}>
+          <div class={`rounded-xl border p-5 md:p-6 shadow-sm backdrop-blur-md transition-all duration-200 contact-card ${c.is_resolved ? 'border-slate-100 bg-slate-50/50 opacity-60' : 'border-slate-200 bg-white hover:border-slate-300'}`} data-name={c.name.toLowerCase()} data-msg={c.message.toLowerCase()} data-email={c.email.toLowerCase()}>
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
               <div class="space-y-1">
                 <div class="flex flex-wrap items-center gap-2">
                   <h4 class="text-sm font-bold text-slate-900">{c.name}</h4>
-                  <span class={`rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider ${
-                    c.inquiry_type === 'sales' 
-                      ? 'bg-emerald-500/10 text-emerald-600' 
-                      : c.inquiry_type === 'support' ? 'bg-cyan-500/10 text-cyan-600' : 'bg-slate-100 text-slate-600'
-                  }`}>
+                  <span class={`rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider ${c.inquiry_type === 'sales' ? 'bg-emerald-500/10 text-emerald-600' : c.inquiry_type === 'support' ? 'bg-cyan-500/10 text-cyan-600' : 'bg-slate-100 text-slate-600'}`}>
                     {c.inquiry_type}
                   </span>
                 </div>
