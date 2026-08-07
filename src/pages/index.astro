@@ -32,6 +32,16 @@ try {
   dbConnected = false;
 }
 
+let enableDtl = true;
+let enableDgs = true;
+try {
+  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs')");
+  visRes.rows.forEach((r: any) => {
+    if (r.key === 'enable_dtl') enableDtl = r.value === 'true' || r.value === '1';
+    if (r.key === 'enable_dgs') enableDgs = r.value === 'true' || r.value === '1';
+  });
+} catch (e) {}
+
 const defaultHomeSetup = {
   hero: {
     title: "Luminous Nature: Harmonizing Light & Life.",
@@ -94,7 +104,47 @@ const defaultHomeSetup = {
 
 const setup = homeSetup || defaultHomeSetup;
 
-// Fallback high-fidelity UAE landmark projects mock
+// Determine Hero Content based on active division toggles
+let activeHero: any = {};
+
+if (enableDtl && !enableDgs) {
+  // Single Division Mode: DTL Only
+  activeHero = {
+    title: setup.hero_dtl?.title || "Architectural Precision: Engineered Illumination.",
+    subtitle: setup.hero_dtl?.subtitle || "Precision-engineered technical lighting systems for museum-grade displays, circadian alignment, and luxury commercial developments.",
+    imageUrl: setup.hero_dtl?.imageUrl || "/3screen.png",
+    ctaText: setup.hero_dtl?.ctaText || "Explore DTL Division",
+    ctaUrl: setup.hero_dtl?.ctaUrl || "/delighttechnicallighting"
+  };
+} else if (!enableDtl && enableDgs) {
+  // Single Division Mode: DGS Only
+  activeHero = {
+    title: setup.hero_dgs?.title || "Biophilic Serenity: Living Landscapes & Flora.",
+    subtitle: setup.hero_dgs?.subtitle || "Curated biophilic experiences, vertical garden architecture, and exotic plants designed to breathe life into luxury spaces across the UAE.",
+    imageUrl: setup.hero_dgs?.imageUrl || "/1screen.png",
+    ctaText: setup.hero_dgs?.ctaText || "Explore Greenscapes",
+    ctaUrl: setup.hero_dgs?.ctaUrl || "/delightgreenscapes"
+  };
+} else {
+  // Both Divisions Active Mode: Combined Default Hero
+  activeHero = {
+    title: setup.hero?.title || defaultHomeSetup.hero.title,
+    subtitle: setup.hero?.subtitle || defaultHomeSetup.hero.subtitle,
+    imageUrl: setup.hero?.imageUrl || defaultHomeSetup.hero.imageUrl,
+    ctaText: setup.hero?.ctaText || defaultHomeSetup.hero.ctaText,
+    ctaUrl: setup.hero?.ctaUrl || defaultHomeSetup.hero.ctaUrl
+  };
+}
+
+// Format Pexels and relative URLs helper
+const formatImgUrl = (url: string) => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('/photos/')) return `https://images.pexels.com${trimmed}`;
+  return trimmed;
+};
+
+activeHero.imageUrl = formatImgUrl(activeHero.imageUrl);
 
 
 // Fallback mock articles
@@ -110,25 +160,25 @@ const setup = homeSetup || defaultHomeSetup;
   <section class="relative min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)] flex items-center overflow-hidden bg-[#fcf9f8]">
     <div class="absolute inset-0 z-0">
       <img 
-        alt="Modern villa at dusk with warm exterior lighting and lush landscaping" 
+        alt="Hero background banner" 
         class="w-full h-full object-cover" 
-        src={setup.hero.imageUrl}
+        src={activeHero.imageUrl}
         data-preview-src="hero.imageUrl"
       />
       <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
     </div>
     <div class="relative z-10 px-6 sm:px-16 max-w-[1280px] mx-auto w-full">
       <div class="max-w-3xl text-left animate-on-scroll">
-        <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl text-white mb-8 leading-[1.1] tracking-tight drop-shadow-lg" data-preview-text="hero.title">{setup.hero.title}</h1>
+        <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl text-white mb-8 leading-[1.1] tracking-tight drop-shadow-lg" data-preview-text="hero.title">{activeHero.title}</h1>
         <p class="font-sans text-lg text-white/95 mb-10 max-w-xl leading-relaxed drop-shadow-md" data-preview-text="hero.subtitle">
-          {setup.hero.subtitle}
+          {activeHero.subtitle}
         </p>
         <div class="flex items-center space-x-6">
           <a 
-            href={setup.hero.ctaUrl} 
+            href={activeHero.ctaUrl} 
             class="bg-[#805612] text-white px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#ffddb4] hover:text-[#291800] transition-all duration-300"
           >
-            {setup.hero.ctaText}
+            {activeHero.ctaText}
           </a>
           <a 
             href="/about" 
@@ -141,72 +191,77 @@ const setup = homeSetup || defaultHomeSetup;
       </div>
     </div>
     
-    <div class="absolute bottom-12 left-6 sm:left-16 flex items-center space-x-12 text-white/80">
-      <div class="flex flex-col text-left">
-        <span class="font-serif text-2xl text-[#ffddb4] font-semibold">DTL</span>
-        <span class="text-[10px] font-black uppercase tracking-widest">Lighting Division</span>
-      </div>
-      <div class="flex flex-col text-left">
-        <span class="font-serif text-2xl text-[#ffddb4] font-semibold">DGS</span>
-        <span class="text-[10px] font-black uppercase tracking-widest">Greenscapes Division</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- Division Feature Rows -->
-  <section id="divisions" class="w-full">
-    <!-- DTL Division Row (Text Left / Image Right) -->
-    <div class="flex flex-col lg:flex-row min-h-[600px] bg-[#1a3c34]">
-      <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#83a69c] text-left animate-on-scroll">
-        <div class="max-w-xl mx-auto lg:ml-auto lg:mr-12">
-          <span class="text-xs font-black text-[#aacec3] uppercase tracking-[0.3em] mb-4 block">{setup.dtl_banner.subtitle}</span>
-          <h2 class="font-serif text-4xl sm:text-5xl text-white mb-6 leading-tight tracking-tight">{setup.dtl_banner.title}</h2>
-          <p class="font-sans text-md sm:text-lg mb-10 text-white/90 leading-relaxed">
-            {setup.dtl_banner.description}
-          </p>
-          <a 
-            href={setup.dtl_banner.ctaUrl} 
-            class="inline-block bg-white text-[#01261f] px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#c5eadf] transition-all duration-300"
-          >
-            {setup.dtl_banner.ctaText}
-          </a>
+    <!-- Show division indicator pills only when BOTH divisions are active -->
+    {enableDtl && enableDgs && (
+      <div class="absolute bottom-12 left-6 sm:left-16 flex items-center space-x-12 text-white/80">
+        <div class="flex flex-col text-left">
+          <span class="font-serif text-2xl text-[#ffddb4] font-semibold">DTL</span>
+          <span class="text-[10px] font-black uppercase tracking-widest">Lighting Division</span>
+        </div>
+        <div class="flex flex-col text-left">
+          <span class="font-serif text-2xl text-[#ffddb4] font-semibold">DGS</span>
+          <span class="text-[10px] font-black uppercase tracking-widest">Greenscapes Division</span>
         </div>
       </div>
-      <div class="flex-1 min-h-[400px] lg:min-h-0">
-        <img 
-          alt="High-end architectural lighting showroom" 
-          class="w-full h-full object-cover" 
-          src={setup.dtl_banner.imageUrl}
-        />
-      </div>
-    </div>
+    )}
+  </section>
 
-    <!-- DGS Division Row (Image Left / Text Right) -->
-    <div class="flex flex-col lg:flex-row-reverse min-h-[600px] bg-[#fcf9f8]">
-      <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#1c1b1b] text-left animate-on-scroll">
-        <div class="max-w-xl mx-auto lg:mr-auto lg:ml-12">
-          <span class="text-xs font-black text-[#805612] uppercase tracking-[0.3em] mb-4 block">{setup.dgs_banner.subtitle}</span>
-          <h2 class="font-serif text-4xl sm:text-5xl text-[#01261f] mb-6 leading-tight tracking-tight">{setup.dgs_banner.title}</h2>
-          <p class="font-sans text-md sm:text-lg mb-10 text-[#414846] leading-relaxed">
-            {setup.dgs_banner.description}
-          </p>
-          <a 
-            href={setup.dgs_banner.ctaUrl} 
-            class="inline-block bg-[#01261f] text-white px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#1a3c34] transition-all duration-300"
-          >
-            {setup.dgs_banner.ctaText}
-          </a>
+  <!-- Division Feature Rows (Displayed when BOTH divisions are active) -->
+  {enableDtl && enableDgs && (
+    <section id="divisions" class="w-full">
+      <!-- DTL Division Row (Text Left / Image Right) -->
+      <div class="flex flex-col lg:flex-row min-h-[600px] bg-[#1a3c34]">
+        <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#83a69c] text-left animate-on-scroll">
+          <div class="max-w-xl mx-auto lg:ml-auto lg:mr-12">
+            <span class="text-xs font-black text-[#aacec3] uppercase tracking-[0.3em] mb-4 block">{setup.dtl_banner.subtitle}</span>
+            <h2 class="font-serif text-4xl sm:text-5xl text-white mb-6 leading-tight tracking-tight">{setup.dtl_banner.title}</h2>
+            <p class="font-sans text-md sm:text-lg mb-10 text-white/90 leading-relaxed">
+              {setup.dtl_banner.description}
+            </p>
+            <a 
+              href={setup.dtl_banner.ctaUrl} 
+              class="inline-block bg-white text-[#01261f] px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#c5eadf] transition-all duration-300"
+            >
+              {setup.dtl_banner.ctaText}
+            </a>
+          </div>
+        </div>
+        <div class="flex-1 min-h-[400px] lg:min-h-0">
+          <img 
+            alt="High-end architectural lighting showroom" 
+            class="w-full h-full object-cover" 
+            src={formatImgUrl(setup.dtl_banner.imageUrl)}
+          />
         </div>
       </div>
-      <div class="flex-1 min-h-[400px] lg:min-h-0">
-        <img 
-          alt="Lush indoor biophilic garden" 
-          class="w-full h-full object-cover" 
-          src={setup.dgs_banner.imageUrl}
-        />
+
+      <!-- DGS Division Row (Image Left / Text Right) -->
+      <div class="flex flex-col lg:flex-row-reverse min-h-[600px] bg-[#fcf9f8]">
+        <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-[#1c1b1b] text-left animate-on-scroll">
+          <div class="max-w-xl mx-auto lg:mr-auto lg:ml-12">
+            <span class="text-xs font-black text-[#805612] uppercase tracking-[0.3em] mb-4 block">{setup.dgs_banner.subtitle}</span>
+            <h2 class="font-serif text-4xl sm:text-5xl text-[#01261f] mb-6 leading-tight tracking-tight">{setup.dgs_banner.title}</h2>
+            <p class="font-sans text-md sm:text-lg mb-10 text-[#414846] leading-relaxed">
+              {setup.dgs_banner.description}
+            </p>
+            <a 
+              href={setup.dgs_banner.ctaUrl} 
+              class="inline-block bg-[#01261f] text-white px-10 py-4 text-xs font-black uppercase tracking-widest hover:bg-[#1a3c34] transition-all duration-300"
+            >
+              {setup.dgs_banner.ctaText}
+            </a>
+          </div>
+        </div>
+        <div class="flex-1 min-h-[400px] lg:min-h-0">
+          <img 
+            alt="Lush indoor biophilic garden" 
+            class="w-full h-full object-cover" 
+            src={formatImgUrl(setup.dgs_banner.imageUrl)}
+          />
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  )}
 
   <!-- Sectors We Serve Section -->
   <section class="py-24 bg-[#f6f3f2] border-y border-slate-200/40">

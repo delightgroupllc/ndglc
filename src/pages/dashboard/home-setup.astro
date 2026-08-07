@@ -2,10 +2,13 @@
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import PreviewPanel from '../../components/ui/PreviewPanel.astro';
 import PageHeroForm from '../../components/forms/PageHeroForm.astro';
+import ImageResourceModal from '../../components/ui/ImageResourceModal.astro';
 import { query } from '../../lib/db';
 
 let homeSetup: any = {
   hero: { title: '', subtitle: '', imageUrl: '', ctaText: '', ctaUrl: '', images: [], imageEffect: 'fade', imageFilter: 'none', imageInterval: 5000 },
+  hero_dtl: { title: '', subtitle: '', imageUrl: '', ctaText: '', ctaUrl: '' },
+  hero_dgs: { title: '', subtitle: '', imageUrl: '', ctaText: '', ctaUrl: '' },
   dtl_banner: { title: '', subtitle: '', description: '', imageUrl: '', ctaText: '', ctaUrl: '' },
   dgs_banner: { title: '', subtitle: '', description: '', imageUrl: '', ctaText: '', ctaUrl: '' },
   sectors: {
@@ -52,10 +55,86 @@ try {
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
           <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
             <div class="w-1.5 h-5 bg-indigo-600 rounded-full"></div>
-            <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Hero Section</h2>
+            <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Default Hero (Both Active)</h2>
           </div>
           <div class="p-4">
             <PageHeroForm hero={homeSetup.hero} ringColorClass="focus:ring-indigo-400" />
+          </div>
+        </div>
+
+        <!-- DTL ONLY HERO OVERRIDE -->
+        <div class="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-amber-100 bg-amber-50/50 flex items-center gap-3">
+            <div class="w-1.5 h-5 bg-amber-600 rounded-full"></div>
+            <h2 class="text-xs font-bold text-amber-950 uppercase tracking-wider">DTL-Only Hero (When DGS is OFF)</h2>
+          </div>
+          <div class="p-4 space-y-3">
+            <p class="text-[11px] text-slate-500">Custom Hero shown when only Delight Technical Lighting is enabled.</p>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Title</label>
+              <input type="text" name="hero_dtl_title" value={homeSetup.hero_dtl?.title || ''} placeholder="Architectural Precision: Engineered Illumination." class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Subtitle</label>
+              <textarea name="hero_dtl_subtitle" rows="2" placeholder="Precision lighting for commercial hubs, luxury villas..." class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400">{homeSetup.hero_dtl?.subtitle || ''}</textarea>
+            </div>
+            <div>
+              <div class="flex items-center justify-between">
+                <label class="text-[10px] font-semibold text-slate-500">Hero Image URL</label>
+                <button type="button" onclick="window.openImageResourcePicker('hero_dtl_imageUrl_input')" class="text-[9px] font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded transition cursor-pointer flex items-center gap-1">
+                  <span>📁 Browse Resource Gallery</span>
+                </button>
+              </div>
+              <input type="text" id="hero_dtl_imageUrl_input" name="hero_dtl_imageUrl" value={homeSetup.hero_dtl?.imageUrl || ''} placeholder="/3screen.png" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Button Text</label>
+                <input type="text" name="hero_dtl_ctaText" value={homeSetup.hero_dtl?.ctaText || ''} placeholder="Explore DTL Division" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Button Link</label>
+                <input type="text" name="hero_dtl_ctaUrl" value={homeSetup.hero_dtl?.ctaUrl || ''} placeholder="/delighttechnicallighting" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DGS ONLY HERO OVERRIDE -->
+        <div class="bg-white rounded-xl border border-emerald-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-emerald-100 bg-emerald-50/50 flex items-center gap-3">
+            <div class="w-1.5 h-5 bg-emerald-600 rounded-full"></div>
+            <h2 class="text-xs font-bold text-emerald-950 uppercase tracking-wider">DGS-Only Hero (When DTL is OFF)</h2>
+          </div>
+          <div class="p-4 space-y-3">
+            <p class="text-[11px] text-slate-500">Custom Hero shown when only Delight Greenscapes is enabled.</p>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Title</label>
+              <input type="text" name="hero_dgs_title" value={homeSetup.hero_dgs?.title || ''} placeholder="Biophilic Serenity: Living Landscapes & Flora." class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500">Subtitle</label>
+              <textarea name="hero_dgs_subtitle" rows="2" placeholder="Curated biophilic experiences, vertical gardens..." class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400">{homeSetup.hero_dgs?.subtitle || ''}</textarea>
+            </div>
+            <div>
+              <div class="flex items-center justify-between">
+                <label class="text-[10px] font-semibold text-slate-500">Hero Image URL</label>
+                <button type="button" onclick="window.openImageResourcePicker('hero_dgs_imageUrl_input')" class="text-[9px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded transition cursor-pointer flex items-center gap-1">
+                  <span>📁 Browse Resource Gallery</span>
+                </button>
+              </div>
+              <input type="text" id="hero_dgs_imageUrl_input" name="hero_dgs_imageUrl" value={homeSetup.hero_dgs?.imageUrl || ''} placeholder="/1screen.png" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Button Text</label>
+                <input type="text" name="hero_dgs_ctaText" value={homeSetup.hero_dgs?.ctaText || ''} placeholder="Explore Greenscapes" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+              </div>
+              <div>
+                <label class="text-[10px] font-semibold text-slate-500">Button Link</label>
+                <input type="text" name="hero_dgs_ctaUrl" value={homeSetup.hero_dgs?.ctaUrl || ''} placeholder="/delightgreenscapes" class="w-full mt-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -240,6 +319,20 @@ try {
           imageFilter: data.get('hero_imageFilter') || 'none',
           imageInterval: Math.round(parseFloat(data.get('hero_imageInterval') as string || '5') * 1000)
         },
+        hero_dtl: {
+          title: data.get('hero_dtl_title') || '',
+          subtitle: data.get('hero_dtl_subtitle') || '',
+          imageUrl: data.get('hero_dtl_imageUrl') || '',
+          ctaText: data.get('hero_dtl_ctaText') || '',
+          ctaUrl: data.get('hero_dtl_ctaUrl') || ''
+        },
+        hero_dgs: {
+          title: data.get('hero_dgs_title') || '',
+          subtitle: data.get('hero_dgs_subtitle') || '',
+          imageUrl: data.get('hero_dgs_imageUrl') || '',
+          ctaText: data.get('hero_dgs_ctaText') || '',
+          ctaUrl: data.get('hero_dgs_ctaUrl') || ''
+        },
         dtl_banner: {
           title: data.get('dtl_title') || '', subtitle: data.get('dtl_subtitle') || '',
           description: data.get('dtl_description') || '', imageUrl: data.get('dtl_imageUrl') || '',
@@ -280,4 +373,5 @@ try {
       finally { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
     });
   </script>
+  <ImageResourceModal />
 </DashboardLayout>

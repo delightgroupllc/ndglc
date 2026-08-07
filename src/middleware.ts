@@ -21,34 +21,37 @@ if (typeof setInterval !== 'undefined') {
 }
 
 export const onRequest = clerkMiddleware(async (auth, context, next) => {
-  // IP-based Rate Limiter Check
-  const ip = context.clientAddress || '127.0.0.1';
-  const isApi = context.url.pathname.startsWith('/api/');
-  const limit = isApi ? 60 : 120;
-  const now = Date.now();
+  // IP-based Rate Limiter Check (Excluding static resource APIs)
+  const isResourceApi = context.url.pathname.startsWith('/api/resources/');
+  if (!isResourceApi) {
+    const ip = context.clientAddress || '127.0.0.1';
+    const isApi = context.url.pathname.startsWith('/api/');
+    const limit = isApi ? 300 : 600;
+    const now = Date.now();
 
-  if (!rateLimitMap.has(ip)) {
-    rateLimitMap.set(ip, { timestamps: [] });
-  }
-  const log = rateLimitMap.get(ip)!;
-  log.timestamps = log.timestamps.filter(t => now - t < 60000);
+    if (!rateLimitMap.has(ip)) {
+      rateLimitMap.set(ip, { timestamps: [] });
+    }
+    const log = rateLimitMap.get(ip)!;
+    log.timestamps = log.timestamps.filter(t => now - t < 60000);
 
-  if (log.timestamps.length >= limit) {
-    return new Response(
-      JSON.stringify({
-        error: 'Too Many Requests',
-        message: `API / Page request threshold exceeded (${limit} req/min). Please try again later.`
-      }),
-      {
-        status: 429,
-        headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': '60'
+    if (log.timestamps.length >= limit) {
+      return new Response(
+        JSON.stringify({
+          error: 'Too Many Requests',
+          message: `API / Page request threshold exceeded (${limit} req/min). Please try again later.`
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '60'
+          }
         }
-      }
-    );
+      );
+    }
+    log.timestamps.push(now);
   }
-  log.timestamps.push(now);
 
   const { userId, sessionClaims } = auth();
 

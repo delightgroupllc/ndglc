@@ -35,6 +35,27 @@ if (isDTL) {
   logoAlt = 'DGS Logo';
 }
 
+// Fetch global page & division visibility settings
+let pageVisibility = {
+  enable_dtl: true,
+  enable_dgs: true,
+  enable_downloads: true,
+  enable_about: true,
+  enable_contact: true,
+  enable_portfolio: true,
+  enable_articles: true
+};
+
+try {
+  const visKeys = Object.keys(pageVisibility);
+  const visRes = await query('SELECT key, value FROM settings WHERE key = ANY($1)', [visKeys]);
+  visRes.rows.forEach((r: any) => {
+    (pageVisibility as any)[r.key] = r.value === 'true' || r.value === '1';
+  });
+} catch (e) {
+  // default to true if database unavailable
+}
+
 // Fetch divisions and categories for secondary nav when on DTL/DGS
 let secondaryNavCategories: any[] = [];
 try {
@@ -201,13 +222,21 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
             {!isHome && (
               <a href="/" class="text-sm font-bold font-display tracking-tight text-slate-650 hover:text-slate-950 transition-colors duration-200">Home</a>
             )}
-            <a href="/about" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">About</a>
-            <a href="/delighttechnicallighting" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Delight Technical Lighting</a>
-            <a href="/delightgreenscapes" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Delight Greenscapes</a>
-            {(!isDTL && !isDGS) && (
+            {pageVisibility.enable_about && (
+              <a href="/about" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">About</a>
+            )}
+            {pageVisibility.enable_dtl && (
+              <a href="/delighttechnicallighting" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Delight Technical Lighting</a>
+            )}
+            {pageVisibility.enable_dgs && (
+              <a href="/delightgreenscapes" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Delight Greenscapes</a>
+            )}
+            {pageVisibility.enable_downloads && (!isDTL && !isDGS) && (
               <a href="/downloads" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Downloads</a>
             )}
-            <a href="/contact" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Contact</a>
+            {pageVisibility.enable_contact && (
+              <a href="/contact" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Contact</a>
+            )}
           </nav>
 
           <!-- Action Buttons / Auth (Right-aligned) -->
@@ -262,43 +291,53 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
         <nav class="flex flex-col gap-1.5 text-left">
           <!-- Drawer Links with Icons -->
           <div class="space-y-0.5">
-            <a href="/about" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
-              <span class="flex items-center gap-3">
-                <User class="h-4.5 w-4.5 text-slate-400" />
-                <span>About Us</span>
-              </span>
-              <ChevronDown class="h-4 w-4 text-slate-450" />
-            </a>
+            {pageVisibility.enable_about && (
+              <a href="/about" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+                <span class="flex items-center gap-3">
+                  <User class="h-4.5 w-4.5 text-slate-400" />
+                  <span>About Us</span>
+                </span>
+                <ChevronDown class="h-4 w-4 text-slate-450" />
+              </a>
+            )}
 
-            <a href="/delighttechnicallighting" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
-              <span class="flex items-center gap-3">
-                <Cpu class="h-4.5 w-4.5 text-slate-400" />
-                <span>Technical Lighting</span>
-              </span>
-              <ChevronDown class="h-4 w-4 text-slate-450" />
-            </a>
+            {pageVisibility.enable_dtl && (
+              <a href="/delighttechnicallighting" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+                <span class="flex items-center gap-3">
+                  <Cpu class="h-4.5 w-4.5 text-slate-400" />
+                  <span>Technical Lighting</span>
+                </span>
+                <ChevronDown class="h-4 w-4 text-slate-450" />
+              </a>
+            )}
 
-            <a href="/delightgreenscapes" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
-              <span class="flex items-center gap-3">
-                <Activity class="h-4.5 w-4.5 text-slate-400" />
-                <span>Delight Greenscapes</span>
-              </span>
-              <ChevronDown class="h-4 w-4 text-slate-450" />
-            </a>
+            {pageVisibility.enable_dgs && (
+              <a href="/delightgreenscapes" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+                <span class="flex items-center gap-3">
+                  <Activity class="h-4.5 w-4.5 text-slate-400" />
+                  <span>Delight Greenscapes</span>
+                </span>
+                <ChevronDown class="h-4 w-4 text-slate-450" />
+              </a>
+            )}
 
-            <a href="/downloads" class="flex items-center p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
-              <span class="flex items-center gap-3">
-                <DownloadCloud class="h-4.5 w-4.5 text-slate-400" />
-                <span>Downloads / Resources</span>
-              </span>
-            </a>
+            {pageVisibility.enable_downloads && (
+              <a href="/downloads" class="flex items-center p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+                <span class="flex items-center gap-3">
+                  <DownloadCloud class="h-4.5 w-4.5 text-slate-400" />
+                  <span>Downloads / Resources</span>
+                </span>
+              </a>
+            )}
 
-            <a href="/contact" class="flex items-center p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
-              <span class="flex items-center gap-3">
-                <PhoneCall class="h-4.5 w-4.5 text-slate-400" />
-                <span>Contact</span>
-              </span>
-            </a>
+            {pageVisibility.enable_contact && (
+              <a href="/contact" class="flex items-center p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+                <span class="flex items-center gap-3">
+                  <PhoneCall class="h-4.5 w-4.5 text-slate-400" />
+                  <span>Contact</span>
+                </span>
+              </a>
+            )}
           </div>
 
           <div class="border-t border-slate-100 my-3"></div>
@@ -614,24 +653,30 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
           <div>
             <h4 class="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Divisions</h4>
             <ul class="space-y-3">
-              <li>
-                <a href="/delighttechnicallighting" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
-                  <span class="w-1 h-1 rounded-full bg-amber-400 group-hover:w-2 transition-all"></span>
-                  Delight Technical Lighting
-                </a>
-              </li>
-              <li>
-                <a href="/delightgreenscapes" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
-                  <span class="w-1 h-1 rounded-full bg-emerald-400 group-hover:w-2 transition-all"></span>
-                  Delight Greenscapes
-                </a>
-              </li>
-              <li>
-                <a href="/portfolio" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
-                  <span class="w-1 h-1 rounded-full bg-blue-400 group-hover:w-2 transition-all"></span>
-                  Project Portfolio
-                </a>
-              </li>
+              {pageVisibility.enable_dtl && (
+                <li>
+                  <a href="/delighttechnicallighting" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
+                    <span class="w-1 h-1 rounded-full bg-amber-400 group-hover:w-2 transition-all"></span>
+                    Delight Technical Lighting
+                  </a>
+                </li>
+              )}
+              {pageVisibility.enable_dgs && (
+                <li>
+                  <a href="/delightgreenscapes" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
+                    <span class="w-1 h-1 rounded-full bg-emerald-400 group-hover:w-2 transition-all"></span>
+                    Delight Greenscapes
+                  </a>
+                </li>
+              )}
+              {pageVisibility.enable_portfolio && (
+                <li>
+                  <a href="/portfolio" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
+                    <span class="w-1 h-1 rounded-full bg-blue-400 group-hover:w-2 transition-all"></span>
+                    Project Portfolio
+                  </a>
+                </li>
+              )}
               <li>
                 <a href="/dashboard" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
                   <span class="w-1 h-1 rounded-full bg-slate-400 group-hover:w-2 transition-all"></span>
@@ -645,10 +690,10 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
           <div>
             <h4 class="text-xs font-bold uppercase tracking-widest text-amber-600 mb-5">Company</h4>
             <ul class="space-y-3">
-              <li><a href="/about" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Our Story</a></li>
-              <li><a href="/downloads" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Downloads</a></li>
-              <li><a href="/news" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Newsroom</a></li>
-              <li><a href="/contact" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Contact Support</a></li>
+              {pageVisibility.enable_about && <li><a href="/about" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Our Story</a></li>}
+              {pageVisibility.enable_downloads && <li><a href="/downloads" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Downloads</a></li>}
+              {pageVisibility.enable_articles && <li><a href="/news" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Newsroom</a></li>}
+              {pageVisibility.enable_contact && <li><a href="/contact" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all">Contact Support</a></li>}
             </ul>
           </div>
 

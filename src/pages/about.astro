@@ -16,6 +16,16 @@ try {
   dbConnected = false;
 }
 
+let enableDtl = true;
+let enableDgs = true;
+try {
+  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs')");
+  visRes.rows.forEach((r: any) => {
+    if (r.key === 'enable_dtl') enableDtl = r.value === 'true' || r.value === '1';
+    if (r.key === 'enable_dgs') enableDgs = r.value === 'true' || r.value === '1';
+  });
+} catch (e) {}
+
 const defaultAboutSetup = {
   header: {
     title: "Our Story",
@@ -165,131 +175,137 @@ const setup = aboutSetup || defaultAboutSetup;
       </section>
 
       <!-- Section 3: Our Specialist Divisions - Rich Warm Linen Background -->
-      <section class="bg-[#f5f3eb] border-b border-slate-200/50 py-20 sm:py-24 animate-on-scroll">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-          <!-- Main header -->
-          <div class="text-center space-y-2 max-w-2xl mx-auto">
-            <span class="text-[9px] font-black uppercase tracking-[0.2em] text-[#a34e36] block">
-              Our Specialist Divisions
-            </span>
-            <h2 class="text-3xl sm:text-4xl font-serif text-[#0f2d1d] font-semibold tracking-tight">
-              Curated supply for every space.
-            </h2>
-          </div>
-
-          <div class="space-y-12">
-            
-            <!-- Division Row 1: Delight Technical Lighting -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-6 border-b border-slate-200/40 pb-12">
-              <!-- Left: Logo showing standardized white box styling -->
-              <div class="lg:col-span-4 flex justify-start lg:justify-center">
-                <div class="w-full max-w-[240px] aspect-square rounded-2xl bg-white border border-slate-200/60 shadow-sm flex items-center justify-center p-6 transition-transform duration-500 hover:scale-105">
-                  <img 
-                    src="/dtllogo.jpg" 
-                    alt="Delight Technical Lighting Division Logo" 
-                    class="w-full h-auto max-h-[80%] object-contain"
-                  />
-                </div>
-              </div>
-              <!-- Right: details -->
-              <div class="lg:col-span-8 text-left space-y-6">
-                <div class="flex items-start gap-4">
-                  <span class="text-4xl font-serif text-slate-300 font-extrabold leading-none">01</span>
-                  <div>
-                    <h3 class="text-2xl font-serif text-[#7f2d1b] font-medium leading-none">{setup.division_dtl.title}</h3>
-                  </div>
-                </div>
-                <p class="text-slate-555 font-semibold text-xs sm:text-sm leading-relaxed">
-                  {setup.division_dtl.desc}
-                </p>
-                <!-- Bullets grid -->
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-wider text-slate-800">
-                  <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#7f2d1b]"></span>
-                    <span>Indoor Lighting Fixtures</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#7f2d1b]"></span>
-                    <span>Outdoor & Facade Lighting</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#7f2d1b]"></span>
-                    <span>Decorative & Statement</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#7f2d1b]"></span>
-                    <span>Bulk B2B Trade Supply</span>
-                  </div>
-                </div>
-                <div class="pt-2">
-                  <a 
-                    href="/delighttechnicallighting" 
-                    class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#7f2d1b] hover:text-amber-800 transition-colors border-b border-[#7f2d1b]/20 hover:border-[#7f2d1b]/85 pb-0.5"
-                  >
-                    <span>Explore DTL</span>
-                    <ArrowRight class="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </div>
+      {(enableDtl || enableDgs) && (
+        <section class="bg-[#f5f3eb] border-b border-slate-200/50 py-20 sm:py-24 animate-on-scroll">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+            <!-- Main header -->
+            <div class="text-center space-y-2 max-w-2xl mx-auto">
+              <span class="text-[9px] font-black uppercase tracking-[0.2em] text-[#a34e36] block">
+                Our Specialist Divisions
+              </span>
+              <h2 class="text-3xl sm:text-4xl font-serif text-[#0f2d1d] font-semibold tracking-tight">
+                Curated supply for every space.
+              </h2>
             </div>
 
-            <!-- Division Row 2: Delight Greenscapes -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-6">
-              <!-- Left: Logo showing standardized white box styling -->
-              <div class="lg:col-span-4 flex justify-start lg:justify-center">
-                <div class="w-full max-w-[240px] aspect-square rounded-2xl bg-white border border-slate-200/60 shadow-sm flex items-center justify-center p-6 transition-transform duration-500 hover:scale-105">
-                  <img 
-                    src="/dgslogo.jpg" 
-                    alt="Delight Greenscapes Division Logo" 
-                    class="w-full h-auto max-h-[80%] object-contain"
-                  />
-                </div>
-              </div>
-              <!-- Right details -->
-              <div class="lg:col-span-8 text-left space-y-6">
-                <div class="flex items-start gap-4">
-                  <span class="text-4xl font-serif text-slate-300 font-extrabold leading-none">02</span>
-                  <div>
-                    <h3 class="text-2xl font-serif text-[#0f2d1d] font-medium leading-none">{setup.division_dgs.title}</h3>
+            <div class="space-y-12">
+              
+              <!-- Division Row 1: Delight Technical Lighting -->
+              {enableDtl && (
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-6 border-b border-slate-200/40 pb-12">
+                  <!-- Left: Logo showing standardized white box styling -->
+                  <div class="lg:col-span-4 flex justify-start lg:justify-center">
+                    <div class="w-full max-w-[240px] aspect-square rounded-2xl bg-white border border-slate-200/60 shadow-sm flex items-center justify-center p-6 transition-transform duration-500 hover:scale-105">
+                      <img 
+                        src="/dtllogo.jpg" 
+                        alt="Delight Technical Lighting Division Logo" 
+                        class="w-full h-auto max-h-[80%] object-contain"
+                      />
+                    </div>
+                  </div>
+                  <!-- Right: details -->
+                  <div class="lg:col-span-8 text-left space-y-6">
+                    <div class="flex items-start gap-4">
+                      <span class="text-4xl font-serif text-slate-300 font-extrabold leading-none">01</span>
+                      <div>
+                        <h3 class="text-2xl font-serif text-[#7f2d1b] font-medium leading-none">{setup.division_dtl.title}</h3>
+                      </div>
+                    </div>
+                    <p class="text-slate-555 font-semibold text-xs sm:text-sm leading-relaxed">
+                      {setup.division_dtl.desc}
+                    </p>
+                    <!-- Bullets grid -->
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-wider text-slate-800">
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#7f2d1b]"></span>
+                        <span>Indoor Lighting Fixtures</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#7f2d1b]"></span>
+                        <span>Outdoor & Facade Lighting</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#7f2d1b]"></span>
+                        <span>Decorative & Statement</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#7f2d1b]"></span>
+                        <span>Bulk B2B Trade Supply</span>
+                      </div>
+                    </div>
+                    <div class="pt-2">
+                      <a 
+                        href="/delighttechnicallighting" 
+                        class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#7f2d1b] hover:text-amber-800 transition-colors border-b border-[#7f2d1b]/20 hover:border-[#7f2d1b]/85 pb-0.5"
+                      >
+                        <span>Explore DTL</span>
+                        <ArrowRight class="w-3.5 h-3.5" />
+                      </a>
+                    </div>
                   </div>
                 </div>
-                <p class="text-slate-555 font-semibold text-xs sm:text-sm leading-relaxed">
-                  {setup.division_dgs.desc}
-                </p>
-                <!-- Bullets grid -->
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-wider text-slate-800">
-                  <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#0f2d1d]"></span>
-                    <span>Indoor Collections</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#0f2d1d]"></span>
-                    <span>Outdoor & Garden</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#0f2d1d]"></span>
-                    <span>Biophilic Supply</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[#0f2d1d]"></span>
-                    <span>Decorative Planters</span>
-                  </div>
-                </div>
-                <div class="pt-2">
-                  <a 
-                    href="/delightgreenscapes" 
-                    class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#0f2d1d] hover:text-emerald-800 transition-colors border-b border-[#0f2d1d]/20 hover:border-[#0f2d1d]/85 pb-0.5"
-                  >
-                    <span>Explore Greenscapes</span>
-                    <ArrowRight class="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </div>
-            </div>
+              )}
 
+              <!-- Division Row 2: Delight Greenscapes -->
+              {enableDgs && (
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-6">
+                  <!-- Left: Logo showing standardized white box styling -->
+                  <div class="lg:col-span-4 flex justify-start lg:justify-center">
+                    <div class="w-full max-w-[240px] aspect-square rounded-2xl bg-white border border-slate-200/60 shadow-sm flex items-center justify-center p-6 transition-transform duration-500 hover:scale-105">
+                      <img 
+                        src="/dgslogo.jpg" 
+                        alt="Delight Greenscapes Division Logo" 
+                        class="w-full h-auto max-h-[80%] object-contain"
+                      />
+                    </div>
+                  </div>
+                  <!-- Right details -->
+                  <div class="lg:col-span-8 text-left space-y-6">
+                    <div class="flex items-start gap-4">
+                      <span class="text-4xl font-serif text-slate-300 font-extrabold leading-none">{enableDtl ? '02' : '01'}</span>
+                      <div>
+                        <h3 class="text-2xl font-serif text-[#0f2d1d] font-medium leading-none">{setup.division_dgs.title}</h3>
+                      </div>
+                    </div>
+                    <p class="text-slate-555 font-semibold text-xs sm:text-sm leading-relaxed">
+                      {setup.division_dgs.desc}
+                    </p>
+                    <!-- Bullets grid -->
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-wider text-slate-800">
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#0f2d1d]"></span>
+                        <span>Indoor Collections</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#0f2d1d]"></span>
+                        <span>Outdoor & Garden</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#0f2d1d]"></span>
+                        <span>Biophilic Supply</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#0f2d1d]"></span>
+                        <span>Decorative Planters</span>
+                      </div>
+                    </div>
+                    <div class="pt-2">
+                      <a 
+                        href="/delightgreenscapes" 
+                        class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#0f2d1d] hover:text-emerald-800 transition-colors border-b border-[#0f2d1d]/20 hover:border-[#0f2d1d]/85 pb-0.5"
+                      >
+                        <span>Explore Greenscapes</span>
+                        <ArrowRight class="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <!-- Section 4: Vision, Mission & Values - Base Canvas -->
       <section class="py-20 sm:py-24 animate-on-scroll">

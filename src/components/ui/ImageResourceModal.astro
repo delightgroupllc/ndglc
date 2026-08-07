@@ -1,0 +1,261 @@
+---
+// Ultra-Premium Image Resource Explorer Modal with Pagination & Fixed Cards
+---
+
+<div id="image-resource-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-fadeIn">
+  <div class="bg-white rounded-3xl border border-slate-200/80 shadow-2xl w-full max-w-5xl h-[85vh] max-h-[750px] flex flex-col overflow-hidden">
+    
+    <!-- Modal Header -->
+    <div class="px-6 py-4 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-3.5">
+        <div class="h-10 w-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        </div>
+        <div>
+          <h3 class="text-base font-black text-slate-900 font-display tracking-tight">Resource Image Explorer</h3>
+          <p class="text-xs text-slate-500 font-medium">Browse verified image assets and insert relative URLs directly into your layout.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <a 
+          href="/dashboard/resources" 
+          target="_blank" 
+          class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
+        >
+          <span>Go to Resources</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        </a>
+        <button id="close-image-modal-btn" type="button" class="h-9 w-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xl font-bold transition cursor-pointer">
+          &times;
+        </button>
+      </div>
+    </div>
+
+    <!-- Search & Filters Bar -->
+    <div class="px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+      <div class="relative w-full sm:w-80">
+        <input id="image-modal-search" type="text" placeholder="Search filename or path..." class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs transition" />
+        <svg class="w-4 h-4 absolute left-3 top-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div id="image-modal-filters" class="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+        <button type="button" data-filter="all" class="filter-pill text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-xs cursor-pointer transition">All Resources</button>
+        <button type="button" data-filter="Greenscapes" class="filter-pill text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer transition">DGS Plants</button>
+        <button type="button" data-filter="Technical" class="filter-pill text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer transition">DTL Lighting</button>
+        <button type="button" data-filter="Hero" class="filter-pill text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer transition">Hero Banners</button>
+      </div>
+    </div>
+
+    <!-- Image Grid Content Area -->
+    <div class="p-6 overflow-y-auto flex-1 bg-white">
+      <div id="image-modal-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="col-span-full py-16 text-center text-slate-400 text-sm font-medium">
+          Loading resource gallery...
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer with Pagination Controls -->
+    <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shrink-0">
+      <span id="image-modal-count" class="font-semibold text-slate-600">0 image resources</span>
+      
+      <!-- Pagination Controls -->
+      <div id="image-modal-pagination" class="flex items-center gap-2">
+        <button id="prev-page-btn" type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1">
+          <span>&larr; Prev</span>
+        </button>
+        <span id="page-num-display" class="font-bold text-slate-700 px-2">Page 1 of 1</span>
+        <button id="next-page-btn" type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1">
+          <span>Next &rarr;</span>
+        </button>
+      </div>
+
+      <button id="cancel-image-modal-btn" type="button" class="px-4 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold transition shadow-xs cursor-pointer">
+        Close
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let targetInput: HTMLInputElement | null = null;
+  let allImages: Array<{ url: string; name: string; category: string; isLocal: boolean }> = [];
+  let currentFilter = 'all';
+  let currentPage = 1;
+  const pageSize = 6; // 6 cards per page (3x2 grid)
+
+  const modal = document.getElementById('image-resource-modal');
+  const grid = document.getElementById('image-modal-grid');
+  const searchInput = document.getElementById('image-modal-search') as HTMLInputElement;
+  const countEl = document.getElementById('image-modal-count');
+  const prevBtn = document.getElementById('prev-page-btn') as HTMLButtonElement;
+  const nextBtn = document.getElementById('next-page-btn') as HTMLButtonElement;
+  const pageDisplay = document.getElementById('page-num-display');
+
+  const fetchImages = async () => {
+    try {
+      const res = await fetch('/api/resources/images');
+      if (res.ok) {
+        const data = await res.json();
+        allImages = data.images || [];
+        currentPage = 1;
+        renderGrid();
+      }
+    } catch (err) {
+      if (grid) grid.innerHTML = `<div class="col-span-full py-16 text-center text-red-500 text-sm font-semibold">Failed to load resource gallery.</div>`;
+    }
+  };
+
+  const renderGrid = () => {
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const query = searchInput?.value.toLowerCase().trim() || '';
+    const filtered = allImages.filter((img) => {
+      const matchesSearch = img.name.toLowerCase().includes(query) || img.url.toLowerCase().includes(query);
+      const matchesFilter = currentFilter === 'all' || img.category.toLowerCase().includes(currentFilter.toLowerCase());
+      return matchesSearch && matchesFilter;
+    });
+
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIdx = (currentPage - 1) * pageSize;
+    const pageItems = filtered.slice(startIdx, startIdx + pageSize);
+
+    if (countEl) {
+      if (totalItems === 0) countEl.textContent = '0 images found';
+      else countEl.textContent = `Showing ${startIdx + 1}–${Math.min(startIdx + pageSize, totalItems)} of ${totalItems} images`;
+    }
+
+    if (pageDisplay) pageDisplay.textContent = `Page ${currentPage} of ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+
+    if (pageItems.length === 0) {
+      grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 text-sm font-medium">No matching image resources found. Try a different search filter.</div>`;
+      return;
+    }
+
+    pageItems.forEach((img) => {
+      const card = document.createElement('div');
+      card.className = 'group bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-2xl hover:border-indigo-500 hover:-translate-y-1 transition-all duration-300 flex flex-col shrink-0 cursor-pointer';
+      
+      card.innerHTML = `
+        <div class="relative w-full h-40 bg-slate-900 overflow-hidden flex items-center justify-center shrink-0">
+          <img 
+            src="${img.url}" 
+            alt="${img.name}" 
+            loading="lazy"
+            onerror="this.onerror=null; this.src='/noimage.jpg'; this.classList.add('opacity-40');"
+            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+          />
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
+          
+          <!-- Category Badge -->
+          <div class="absolute top-3 left-3 z-10 flex items-center gap-1.5">
+            <span class="px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-black/70 backdrop-blur-md text-white border border-white/20 shadow-sm">
+              ${img.category}
+            </span>
+          </div>
+
+          <!-- Hover Action Overlay -->
+          <div class="absolute inset-0 bg-indigo-950/40 backdrop-blur-2xs opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center z-10">
+            <span class="px-4 py-2 bg-white text-indigo-950 text-xs font-black rounded-xl shadow-xl transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+              <span>Use This Image</span>
+            </span>
+          </div>
+        </div>
+        
+        <div class="p-4 bg-white border-t border-slate-100 flex flex-col justify-between space-y-3 flex-1">
+          <div>
+            <h4 class="text-xs font-bold text-slate-900 truncate" title="${img.name}">${img.name}</h4>
+            <p class="text-[11px] font-mono text-slate-400 truncate mt-0.5" title="${img.url}">${img.url}</p>
+          </div>
+          <button type="button" class="w-full py-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 group-hover:bg-indigo-600 group-hover:text-white">
+            <span>Select Image</span>
+          </button>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        if (targetInput) {
+          let cleanUrl = img.url;
+          if (cleanUrl.startsWith('/photos/')) {
+            cleanUrl = `https://images.pexels.com${cleanUrl}`;
+          } else if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+            try {
+              const parsed = new URL(cleanUrl);
+              if (parsed.hostname.includes('pexels.com') && parsed.pathname.startsWith('/photos/')) {
+                cleanUrl = `https://images.pexels.com${parsed.pathname}${parsed.search}`;
+              } else if (parsed.pathname && (parsed.pathname.startsWith('/uploads/') || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(parsed.pathname))) {
+                cleanUrl = parsed.pathname;
+              }
+            } catch (e) {}
+          }
+          targetInput.value = cleanUrl;
+          targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+          targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        closeModal();
+      });
+
+      grid.appendChild(card);
+    });
+  };
+
+  const closeModal = () => {
+    modal?.classList.add('hidden');
+  };
+
+  (window as any).openImageResourcePicker = (inputElementOrId: HTMLInputElement | string) => {
+    if (typeof inputElementOrId === 'string') {
+      targetInput = document.getElementById(inputElementOrId) as HTMLInputElement;
+    } else {
+      targetInput = inputElementOrId;
+    }
+    modal?.classList.remove('hidden');
+    if (allImages.length === 0) fetchImages();
+    else renderGrid();
+  };
+
+  document.getElementById('close-image-modal-btn')?.addEventListener('click', closeModal);
+  document.getElementById('cancel-image-modal-btn')?.addEventListener('click', closeModal);
+
+  prevBtn?.addEventListener('click', () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderGrid();
+    }
+  });
+
+  nextBtn?.addEventListener('click', () => {
+    currentPage++;
+    renderGrid();
+  });
+
+  searchInput?.addEventListener('input', () => {
+    currentPage = 1;
+    renderGrid();
+  });
+
+  document.querySelectorAll('#image-modal-filters .filter-pill').forEach((pill) => {
+    pill.addEventListener('click', (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      currentFilter = btn.getAttribute('data-filter') || 'all';
+      currentPage = 1;
+
+      document.querySelectorAll('#image-modal-filters .filter-pill').forEach((p) => {
+        p.className = 'filter-pill text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer transition';
+      });
+      btn.className = 'filter-pill text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-xs cursor-pointer transition';
+
+      renderGrid();
+    });
+  });
+</script>

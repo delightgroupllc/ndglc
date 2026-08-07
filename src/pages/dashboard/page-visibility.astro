@@ -1,0 +1,357 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { Eye, EyeOff, ShieldAlert, Sparkles, CheckCircle2, Sliders, Globe, Layers, AlertTriangle } from '@lucide/astro';
+
+// Fetch current site visibility settings
+let settingsMap: Record<string, string> = {
+  enable_dtl: 'true',
+  enable_dgs: 'true',
+  enable_downloads: 'true',
+  enable_about: 'true',
+  enable_contact: 'true',
+  enable_portfolio: 'true',
+  enable_articles: 'true'
+};
+
+try {
+  const keys = Object.keys(settingsMap);
+  const res = await query('SELECT key, value FROM settings WHERE key = ANY($1)', [keys]);
+  res.rows.forEach((row: any) => {
+    settingsMap[row.key] = row.value;
+  });
+} catch (err: any) {
+  console.warn('Could not fetch settings for page-visibility:', err?.message || err);
+}
+
+const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[key] === '1';
+---
+
+<DashboardLayout title="Visibility Configurator" activeItem="page-visibility">
+  <div class="p-6 max-w-6xl mx-auto space-y-6">
+
+    <!-- Header & Action Bar -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="h-12 w-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+          <Eye class="h-6 w-6" />
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-black text-slate-900 tracking-tight font-display">Global Visibility Configurator</h1>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-wider">Live Toggle</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1 max-w-xl">
+            Control the visibility of main business divisions and public pages. Toggling a division off will instantly hide its navigation links, catalogs, footer entries, and division banners across the public site.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 w-full md:w-auto justify-end border-t md:border-t-0 pt-4 md:pt-0 border-slate-100">
+        <div id="save-toast" class="hidden text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-1.5 animate-fadeIn">
+          <CheckCircle2 class="h-4 w-4 text-emerald-600" />
+          <span>Visibility settings saved!</span>
+        </div>
+        <button
+          id="save-visibility-btn"
+          class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <Sliders class="h-4 w-4" />
+          <span>Save Changes</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Alert / Notice Box -->
+    <div class="bg-amber-50/70 border border-amber-200/80 rounded-xl p-4 flex items-start gap-3 text-amber-800 text-xs">
+      <AlertTriangle class="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+      <div class="leading-relaxed">
+        <strong class="font-bold">Public Experience Note:</strong> Turning off a division (like DTL or DGS) removes all public entry points (Navigation, Footer, Catalogs) and displays a graceful "Unavailable" notice if accessed directly via URL. Internal dashboard setup options remain accessible to administrators.
+      </div>
+    </div>
+
+    <form id="visibility-form" class="space-y-6">
+      
+      <!-- Section 1: Business Divisions -->
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-2 h-6 bg-indigo-600 rounded-full"></div>
+            <div>
+              <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider font-display">Business Divisions Toggle</h2>
+              <p class="text-[11px] text-slate-500">Global enable/disable switches for primary divisions (DTL & DGS)</p>
+            </div>
+          </div>
+          <span class="text-[11px] font-semibold text-slate-400">2 Divisions</span>
+        </div>
+
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- DTL Toggle Card -->
+          <div id="card-dtl" class={`p-5 rounded-xl border transition-all ${isEnabled('enable_dtl') ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div class="h-10 w-10 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 font-black text-sm shrink-0">
+                  DTL
+                </div>
+                <div>
+                  <h3 class="font-bold text-slate-900 text-sm">Delight Technical Lighting</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Indoor, outdoor & commercial lighting products and catalogs.</p>
+                </div>
+              </div>
+              
+              <!-- Toggle Switch -->
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input 
+                  type="checkbox" 
+                  name="enable_dtl" 
+                  id="input-enable_dtl"
+                  class="sr-only peer" 
+                  checked={isEnabled('enable_dtl')} 
+                />
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+              </label>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500 font-medium">Status in Navigation & Footer</span>
+              <span id="badge-enable_dtl" class={`font-bold px-2 py-0.5 rounded-md ${isEnabled('enable_dtl') ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'}`}>
+                {isEnabled('enable_dtl') ? 'Active (Public)' : 'Disabled'}
+              </span>
+            </div>
+          </div>
+
+          <!-- DGS Toggle Card -->
+          <div id="card-dgs" class={`p-5 rounded-xl border transition-all ${isEnabled('enable_dgs') ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div class="h-10 w-10 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-black text-sm shrink-0">
+                  DGS
+                </div>
+                <div>
+                  <h3 class="font-bold text-slate-900 text-sm">Delight Greenscapes</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Landscape, biophilic plants, pots, planters & green solutions.</p>
+                </div>
+              </div>
+              
+              <!-- Toggle Switch -->
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input 
+                  type="checkbox" 
+                  name="enable_dgs" 
+                  id="input-enable_dgs"
+                  class="sr-only peer" 
+                  checked={isEnabled('enable_dgs')} 
+                />
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500 font-medium">Status in Navigation & Footer</span>
+              <span id="badge-enable_dgs" class={`font-bold px-2 py-0.5 rounded-md ${isEnabled('enable_dgs') ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+                {isEnabled('enable_dgs') ? 'Active (Public)' : 'Disabled'}
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Section 2: Public Navigation & Pages -->
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-2 h-6 bg-blue-600 rounded-full"></div>
+            <div>
+              <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider font-display">Modular Public Pages</h2>
+              <p class="text-[11px] text-slate-500">Toggle public site section links in Header & Footer</p>
+            </div>
+          </div>
+          <span class="text-[11px] font-semibold text-slate-400">5 Pages</span>
+        </div>
+
+        <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+          
+          <!-- Downloads Page -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/30 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-slate-900 text-xs">Downloads & Resources</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">/downloads</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="enable_downloads" class="sr-only peer" checked={isEnabled('enable_downloads')} />
+              <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <!-- About Us Page -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/30 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-slate-900 text-xs">About Us</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">/about</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="enable_about" class="sr-only peer" checked={isEnabled('enable_about')} />
+              <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <!-- Contact Page -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/30 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-slate-900 text-xs">Contact Us</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">/contact</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="enable_contact" class="sr-only peer" checked={isEnabled('enable_contact')} />
+              <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <!-- Portfolio Page -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/30 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-slate-900 text-xs">Project Portfolio</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">/portfolio</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="enable_portfolio" class="sr-only peer" checked={isEnabled('enable_portfolio')} />
+              <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <!-- Newsroom / Articles -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/30 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-slate-900 text-xs">Newsroom & Articles</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">/news</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="enable_articles" class="sr-only peer" checked={isEnabled('enable_articles')} />
+              <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <script>
+    const saveBtn = document.getElementById('save-visibility-btn');
+    const form = document.getElementById('visibility-form') as HTMLFormElement;
+    const saveToast = document.getElementById('save-toast');
+
+    const dtlInput = document.querySelector('input[name="enable_dtl"]') as HTMLInputElement;
+    const dgsInput = document.querySelector('input[name="enable_dgs"]') as HTMLInputElement;
+    const cardDtl = document.getElementById('card-dtl');
+    const badgeDtl = document.getElementById('badge-enable_dtl');
+    const cardDgs = document.getElementById('card-dgs');
+    const badgeDgs = document.getElementById('badge-enable_dgs');
+
+    const updateCardUI = () => {
+      if (dtlInput && cardDtl && badgeDtl) {
+        if (dtlInput.checked) {
+          cardDtl.className = 'p-5 rounded-xl border transition-all border-amber-200 bg-amber-50/30';
+          badgeDtl.className = 'font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800';
+          badgeDtl.textContent = 'Active (Public)';
+        } else {
+          cardDtl.className = 'p-5 rounded-xl border transition-all border-slate-200 bg-slate-50/50';
+          badgeDtl.className = 'font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600';
+          badgeDtl.textContent = 'Disabled';
+        }
+      }
+
+      if (dgsInput && cardDgs && badgeDgs) {
+        if (dgsInput.checked) {
+          cardDgs.className = 'p-5 rounded-xl border transition-all border-emerald-200 bg-emerald-50/30';
+          badgeDgs.className = 'font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800';
+          badgeDgs.textContent = 'Active (Public)';
+        } else {
+          cardDgs.className = 'p-5 rounded-xl border transition-all border-slate-200 bg-slate-50/50';
+          badgeDgs.className = 'font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600';
+          badgeDgs.textContent = 'Disabled';
+        }
+      }
+    };
+
+    // Enforce at least one division active rule and update UI
+    dtlInput?.addEventListener('change', () => {
+      if (!dtlInput.checked && dgsInput && !dgsInput.checked) {
+        alert('At least one division (DTL or DGS) must remain enabled for the public website.');
+        dgsInput.checked = true;
+      }
+      updateCardUI();
+    });
+
+    dgsInput?.addEventListener('change', () => {
+      if (!dgsInput.checked && dtlInput && !dtlInput.checked) {
+        alert('At least one division (DTL or DGS) must remain enabled for the public website.');
+        dtlInput.checked = true;
+      }
+      updateCardUI();
+    });
+
+    // Run initial sync on page load
+    updateCardUI();
+
+    saveBtn?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (!form) return;
+
+      const formData = new FormData(form);
+      const keys = ['enable_dtl', 'enable_dgs', 'enable_downloads', 'enable_about', 'enable_contact', 'enable_portfolio', 'enable_articles'];
+      
+      const payload: Record<string, string> = {};
+      keys.forEach(k => {
+        payload[k] = formData.has(k) ? 'true' : 'false';
+      });
+
+      if (payload['enable_dtl'] === 'false' && payload['enable_dgs'] === 'false') {
+        alert('Cannot disable both DTL and DGS. At least one division must remain active.');
+        if (dtlInput) dtlInput.checked = true;
+        payload['enable_dtl'] = 'true';
+      }
+
+      saveBtn.setAttribute('disabled', 'true');
+      saveBtn.classList.add('opacity-75', 'cursor-wait');
+      saveBtn.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-1 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Saving...</span>
+      `;
+
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to save settings');
+        }
+
+        saveToast?.classList.remove('hidden');
+        saveToast?.classList.add('flex');
+        setTimeout(() => {
+          saveToast?.classList.add('hidden');
+          saveToast?.classList.remove('flex');
+        }, 4500);
+      } catch (err: any) {
+        alert('Error saving visibility settings: ' + err.message);
+      } finally {
+        saveBtn.removeAttribute('disabled');
+        saveBtn.classList.remove('opacity-75', 'cursor-wait');
+        saveBtn.innerHTML = `
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+          <span>Save Changes</span>
+        `;
+      }
+    });
+  </script>
+</DashboardLayout>

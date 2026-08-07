@@ -23,8 +23,13 @@ const { hero = {}, ringColorClass = "focus:ring-indigo-400" } = Astro.props;
     <input name="hero_subtitle" value={hero.subtitle || ''} class={`w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 ${ringColorClass}`} />
   </div>
   <div class="md:col-span-2">
-    <label class="text-xs font-medium text-slate-600">Hero Image URL</label>
-    <input name="hero_imageUrl" value={hero.imageUrl || ''} class={`w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 ${ringColorClass}`} placeholder="https://..." />
+    <div class="flex items-center justify-between">
+      <label class="text-xs font-medium text-slate-600">Hero Image URL</label>
+      <button type="button" onclick="window.openImageResourcePicker('default_hero_imageUrl_input')" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded transition cursor-pointer flex items-center gap-1">
+        <span>📁 Browse Resource Gallery</span>
+      </button>
+    </div>
+    <input id="default_hero_imageUrl_input" name="hero_imageUrl" value={hero.imageUrl || ''} class={`w-full mt-1 rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 ${ringColorClass}`} placeholder="/2screen.png" />
   </div>
   <div>
     <label class="text-xs font-medium text-slate-600">CTA Button Text</label>
