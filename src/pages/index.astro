@@ -34,11 +34,15 @@ try {
 
 let enableDtl = true;
 let enableDgs = true;
+let enablePortfolio = true;
+let enableArticles = true;
 try {
-  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs')");
+  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs', 'enable_portfolio', 'enable_articles')");
   visRes.rows.forEach((r: any) => {
     if (r.key === 'enable_dtl') enableDtl = r.value === 'true' || r.value === '1';
     if (r.key === 'enable_dgs') enableDgs = r.value === 'true' || r.value === '1';
+    if (r.key === 'enable_portfolio') enablePortfolio = r.value === 'true' || r.value === '1';
+    if (r.key === 'enable_articles') enableArticles = r.value === 'true' || r.value === '1';
   });
 } catch (e) {}
 
@@ -357,71 +361,75 @@ activeHero.imageUrl = formatImgUrl(activeHero.imageUrl);
   </section>
 
   <!-- Featured Projects Section -->
-  <section class="py-24 bg-[#fcf9f8]">
-    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto animate-on-scroll">
-      <div class="flex flex-col items-center text-center mb-16">
-        <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-2">Showcase</span>
-        <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight">Featured Projects</h2>
-        <p class="text-[#414846] max-w-2xl mx-auto mt-4 text-xs font-semibold leading-relaxed">A curated collection of our most impactful architectural lighting and landscaping collaborations.</p>
-        <div class="w-20 h-1 bg-[#fec577] mt-6"></div>
-      </div>
-      
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-        {latestProjects.map((proj, idx) => (
-          <div class="group cursor-pointer text-left">
-            <div class="aspect-square overflow-hidden mb-6 rounded-lg">
-              <img 
-                alt={proj.title} 
-                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                src={proj.featured_image || "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80"}
-              />
+  {enablePortfolio && (
+    <section class="py-24 bg-[#fcf9f8]">
+      <div class="px-6 sm:px-16 max-w-[1280px] mx-auto animate-on-scroll">
+        <div class="flex flex-col items-center text-center mb-16">
+          <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-2">Showcase</span>
+          <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight">Featured Projects</h2>
+          <p class="text-[#414846] max-w-2xl mx-auto mt-4 text-xs font-semibold leading-relaxed">A curated collection of our most impactful architectural lighting and landscaping collaborations.</p>
+          <div class="w-20 h-1 bg-[#fec577] mt-6"></div>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          {latestProjects.map((proj, idx) => (
+            <div class="group cursor-pointer text-left">
+              <div class="aspect-square overflow-hidden mb-6 rounded-lg">
+                <img 
+                  alt={proj.title} 
+                  class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                  src={proj.featured_image || "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80"}
+                />
+              </div>
+              <h4 class="font-serif text-md font-semibold text-[#01261f] mb-2 group-hover:text-[#805612] transition-colors line-clamp-2">{proj.title}</h4>
+              <a class="inline-flex items-center space-x-2 text-[#805612] text-[10px] font-black uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href={`/portfolio?division=${proj.division || 'dtl'}`}>
+                <span>View Project</span>
+                <ArrowRight class="w-3.5 h-3.5" />
+              </a>
             </div>
-            <h4 class="font-serif text-md font-semibold text-[#01261f] mb-2 group-hover:text-[#805612] transition-colors line-clamp-2">{proj.title}</h4>
-            <a class="inline-flex items-center space-x-2 text-[#805612] text-[10px] font-black uppercase tracking-widest border-b border-transparent hover:border-[#805612] transition-all" href={`/portfolio?division=${proj.division || 'dtl'}`}>
-              <span>View Project</span>
-              <ArrowRight class="w-3.5 h-3.5" />
-            </a>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  )}
 
   <!-- News & Articles Section -->
-  <section class="py-24 bg-[#f6f3f2] border-t border-slate-200/40">
-    <div class="px-6 sm:px-16 max-w-[1280px] mx-auto animate-on-scroll">
-      <div class="text-center mb-16">
-        <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-4 block">Insights</span>
-        <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight mb-4">News & Articles</h2>
-        <p class="text-[#414846] max-w-xl mx-auto text-xs font-semibold leading-relaxed">Bridging the gap between technological innovation and ecological stewardship.</p>
+  {enableArticles && (
+    <section class="py-24 bg-[#f6f3f2] border-t border-slate-200/40">
+      <div class="px-6 sm:px-16 max-w-[1280px] mx-auto animate-on-scroll">
+        <div class="text-center mb-16">
+          <span class="text-xs font-black text-[#805612] uppercase tracking-[0.2em] mb-4 block">Insights</span>
+          <h2 class="font-serif text-3xl sm:text-4xl text-[#01261f] font-semibold tracking-tight mb-4">News & Articles</h2>
+          <p class="text-[#414846] max-w-xl mx-auto text-xs font-semibold leading-relaxed">Bridging the gap between technological innovation and ecological stewardship.</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          {articles.map((article) => (
+            <a href={`/news/${article.slug}`} class="group cursor-pointer text-left">
+              <div class="aspect-[16/9] overflow-hidden mb-6 border border-[#01261f]/10 rounded-lg bg-white">
+                {article.featured_image ? (
+                  <img 
+                    alt={article.title} 
+                    class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
+                    src={article.featured_image}
+                  />
+                ) : (
+                  <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">News</div>
+                )}
+              </div>
+              <span class="text-[10px] font-black text-[#805612] uppercase tracking-[0.2em] block mb-3">{article.division === 'dgs' ? 'DGS Insight' : 'DTL Insight'}</span>
+              <h4 class="font-serif text-lg font-semibold text-[#01261f] mb-4 group-hover:text-[#805612] transition-colors">{article.title}</h4>
+              <p class="text-[#414846] mb-6 text-xs font-semibold leading-relaxed line-clamp-2">{article.summary}</p>
+              <div class="inline-flex items-center space-x-2 text-[#01261f] text-[10px] font-black uppercase tracking-widest border-b border-[#01261f]/20 pb-1 group-hover:border-[#805612] transition-all">
+                <span>Read More</span>
+                <ArrowRight class="w-3.5 h-3.5" />
+              </div>
+            </a>
+          ))}
+        </div>
       </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-        {articles.map((article) => (
-          <a href={`/news/${article.slug}`} class="group cursor-pointer text-left">
-            <div class="aspect-[16/9] overflow-hidden mb-6 border border-[#01261f]/10 rounded-lg bg-white">
-              {article.featured_image ? (
-                <img 
-                  alt={article.title} 
-                  class="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
-                  src={article.featured_image}
-                />
-              ) : (
-                <div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">News</div>
-              )}
-            </div>
-            <span class="text-[10px] font-black text-[#805612] uppercase tracking-[0.2em] block mb-3">{article.division === 'dgs' ? 'DGS Insight' : 'DTL Insight'}</span>
-            <h4 class="font-serif text-lg font-semibold text-[#01261f] mb-4 group-hover:text-[#805612] transition-colors">{article.title}</h4>
-            <p class="text-[#414846] mb-6 text-xs font-semibold leading-relaxed line-clamp-2">{article.summary}</p>
-            <div class="inline-flex items-center space-x-2 text-[#01261f] text-[10px] font-black uppercase tracking-widest border-b border-[#01261f]/20 pb-1 group-hover:border-[#805612] transition-all">
-              <span>Read More</span>
-              <ArrowRight class="w-3.5 h-3.5" />
-            </div>
-          </a>
-        ))}
-      </div>
-    </div>
-  </section>
+    </section>
+  )}
 
   <!-- Partners Section -->
   <section class="py-16 bg-[#ffffff] border-t border-slate-200/40 overflow-hidden">
