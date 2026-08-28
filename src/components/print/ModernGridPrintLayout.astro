@@ -57,12 +57,13 @@ const isTermActive = (identifier: string): boolean => {
   return activeTerms.includes(identifier);
 };
 
-const docNumberLabel = inv.order_type === 'delivery_note' ? 'Delivery Note Number:' : 'Invoice Number:';
-const docDateLabel = inv.order_type === 'delivery_note' ? 'Delivery Date:' : 'Invoice Date:';
-const docSalesPersonContactClass = inv.order_type === 'delivery_note' ? 'print-info-due' : 'print-info-status';
+const isDeliveryOrSample = inv.order_type === 'delivery_note' || inv.order_type === 'sample_order';
+const docNumberLabel = inv.order_type === 'sample_order' ? 'Sample Order Number:' : (inv.order_type === 'delivery_note' ? 'Delivery Note Number:' : 'Invoice Number:');
+const docDateLabel = inv.order_type === 'sample_order' ? 'Sample Date:' : (inv.order_type === 'delivery_note' ? 'Delivery Date:' : 'Invoice Date:');
+const docSalesPersonContactClass = isDeliveryOrSample ? 'print-info-due' : 'print-info-status';
 ---
 
-<div id="layout-delightgroupllc" class={`delightgroupllc-container w-full flex flex-col items-center gap-8 mode-${inv.order_type === 'delivery_note' ? 'delivery-note' : 'invoice'}`}>
+<div id="layout-delightgroupllc" class={`delightgroupllc-container w-full flex flex-col items-center gap-8 mode-${isDeliveryOrSample ? 'delivery-note' : 'invoice'}`}>
   {pagesOfItems.map((pageItems, pageIdx) => {
     const isFirstPage = pageIdx === 0;
     const isLastPage = pageIdx === pagesOfItems.length - 1;

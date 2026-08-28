@@ -58,7 +58,7 @@ invoices = invoices.map(inv => {
     stage = 3;
   } else if (type === 'lpo') {
     stage = 4;
-  } else if (type === 'delivery_note') {
+  } else if (type === 'delivery_note' || type === 'sample_order') {
     stage = 5;
   } else if (type === 'tax_invoice') {
     stage = 6;
@@ -225,7 +225,8 @@ invoices = invoices.map(inv => {
                     <div class="font-extrabold text-slate-900 text-sm tracking-tight">{inv.invoice_number}</div>
                     <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
                       <span class="inline-block px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-500 text-[9px] font-black uppercase tracking-wider">
-                        {inv.order_type === 'proforma' ? 'Pro Forma' : 
+                        {inv.order_type === 'sample_order' ? 'Sample Order' :
+                         inv.order_type === 'proforma' ? 'Pro Forma' : 
                          inv.order_type === 'lpo' ? 'LPO' : 
                          inv.order_type === 'delivery_note' ? 'Delivery Note' : 
                          inv.order_type === 'tax_invoice' ? 'Commercial Bill' :
@@ -237,6 +238,11 @@ invoices = invoices.map(inv => {
                       {inv.invoice_number && inv.invoice_number.toUpperCase().includes('DUP') && (
                         <span class="inline-block px-1.5 py-0.5 rounded border border-rose-500 bg-rose-50 text-rose-500 text-[9px] font-black uppercase tracking-wider shadow-3xs">
                           DUPLICATE
+                        </span>
+                      )}
+                      {Boolean(inv.invoice_number?.toUpperCase().includes('REC') || inv.internal_notes?.includes('[AUDIT RECOVERY]')) && (
+                        <span class="inline-block px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800 text-[9px] font-black uppercase tracking-wider shadow-3xs">
+                          RESTORED FROM AUDIT
                         </span>
                       )}
                     </div>
@@ -406,6 +412,65 @@ invoices = invoices.map(inv => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <!-- No matching invoices / empty state -->
+        <div id="no-invoices-state" class="hidden py-12 text-center border-t border-slate-100 bg-slate-50/50">
+          <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 text-slate-400 mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h4 class="text-sm font-bold text-slate-800">No orders found for the selected criteria</h4>
+          <p class="text-xs text-slate-500 mt-1" id="no-invoices-hint">Try adjusting your date range or clearing search criteria.</p>
+          <button type="button" id="btn-empty-show-all" class="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold transition-colors shadow-3xs">
+            View All Time Orders
+          </button>
+        </div>
+      </div>
+
+      <!-- Contextual "Show More Orders" / Adjacent Timeframe Bar -->
+      <div id="orders-timeframe-bar" class="hidden flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-slate-50 via-cyan-50/25 to-slate-50 border border-slate-200 rounded-xl p-3.5 shadow-3xs">
+        <div class="flex items-center gap-2.5 text-xs text-slate-600">
+          <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-cyan-100 text-cyan-700 shrink-0 shadow-3xs">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+          </span>
+          <div>
+            <span class="font-black text-slate-800 tracking-tight" id="timeframe-info-label">Active Timeframe</span>
+            <span class="text-slate-300 mx-1.5">•</span>
+            <span class="text-slate-500 font-bold" id="timeframe-info-count">0 orders in this range</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2" id="timeframe-actions">
+          <!-- Dynamic Previous/Next & Show More buttons injected here -->
+        </div>
+      </div>
+
+      <!-- Pagination Controls Footer -->
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <!-- Items per page selector (10, 25, 50, 100) -->
+        <div class="flex items-center gap-2 text-xs text-slate-500 font-bold">
+          <span>Show</span>
+          <div class="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-3xs" id="orders-pagination-limit-btns">
+            <button type="button" class="orders-limit-btn px-2.5 py-1 text-xs font-black transition-colors bg-cyan-50 border-r border-slate-200 text-cyan-700" data-limit="10">10</button>
+            <button type="button" class="orders-limit-btn px-2.5 py-1 text-xs font-semibold transition-colors bg-white text-slate-600 hover:bg-slate-50 border-r border-slate-200" data-limit="25">25</button>
+            <button type="button" class="orders-limit-btn px-2.5 py-1 text-xs font-semibold transition-colors bg-white text-slate-600 hover:bg-slate-50 border-r border-slate-200" data-limit="50">50</button>
+            <button type="button" class="orders-limit-btn px-2.5 py-1 text-xs font-semibold transition-colors bg-white text-slate-600 hover:bg-slate-50" data-limit="100">100</button>
+          </div>
+          <span>per page</span>
+        </div>
+
+        <!-- Showing X to Y of Z orders -->
+        <div class="text-xs text-slate-500 font-medium">
+          Showing <span id="orders-pagination-start" class="text-slate-900 font-black">0</span> to <span id="orders-pagination-end" class="text-slate-900 font-black">0</span> of <span id="orders-pagination-total" class="text-slate-900 font-black">0</span> orders
+        </div>
+
+        <!-- Pagination page navigation buttons -->
+        <div class="flex items-center gap-1.5" id="orders-pagination-buttons">
+          <!-- Buttons injected dynamically -->
         </div>
       </div>
     </div>
@@ -708,10 +773,72 @@ invoices = invoices.map(inv => {
     const divisionFilter = document.getElementById('filter-invoice-division') as HTMLSelectElement | null;
     const sortSelect = document.getElementById('sort-invoices') as HTMLSelectElement | null;
     const tbody = document.getElementById('admin-invoices-table');
+    const pickerEl = document.getElementById('invoices-date-picker');
 
-    function filterAndSortInvoices() {
+    // Timeframe bar elements
+    const timeframeBar = document.getElementById('orders-timeframe-bar');
+    const tfLabel = document.getElementById('timeframe-info-label');
+    const tfCount = document.getElementById('timeframe-info-count');
+    const tfActions = document.getElementById('timeframe-actions');
+    const noInvoicesState = document.getElementById('no-invoices-state');
+
+    // Pagination elements
+    const startEl = document.getElementById('orders-pagination-start');
+    const endEl = document.getElementById('orders-pagination-end');
+    const totalEl = document.getElementById('orders-pagination-total');
+    const paginationButtons = document.getElementById('orders-pagination-buttons');
+    const limitBtns = document.querySelectorAll<HTMLButtonElement>('.orders-limit-btn');
+
+    // State
+    let currentPage = 1;
+    let itemsPerPage = 10;
+    let activePreset = 'all';
+    let activeLabel = 'All Time';
+
+    // Helper date functions
+    function pad(n: number) { return String(n).padStart(2, '0'); }
+    function toISODate(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+    function fmtMonthName(d: Date) { return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }); }
+    function fmtFullDay(d: Date) { return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+    function fmtDatePretty(dStr: string) {
+      if (!dStr) return '';
+      const [y, m, d] = dStr.split('-').map(Number);
+      if (!y || !m || !d) return dStr;
+      const dt = new Date(y, m - 1, d);
+      return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    function fmtWeekRange(s: Date, e: Date) {
+      return `${s.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${e.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    }
+
+    // Limit button click handlers (10, 25, 50, 100)
+    limitBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.getAttribute('data-limit') || '10');
+        if (val === itemsPerPage) return;
+        itemsPerPage = val;
+        currentPage = 1;
+
+        limitBtns.forEach(b => {
+          const isActive = parseInt(b.getAttribute('data-limit') || '10') === itemsPerPage;
+          b.className = `orders-limit-btn px-2.5 py-1 text-xs transition-colors border-r last:border-r-0 border-slate-200 ${
+            isActive ? 'bg-cyan-50 text-cyan-700 font-black' : 'bg-white text-slate-600 hover:bg-slate-50 font-semibold'
+          }`;
+        });
+
+        filterAndSortInvoices(false);
+      });
+    });
+
+    document.getElementById('btn-empty-show-all')?.addEventListener('click', () => {
+      pickerEl?.dispatchEvent(new CustomEvent('daterange-set', { detail: { preset: 'all' } }));
+    });
+
+    function filterAndSortInvoices(resetPage = true) {
       if (!tbody) return;
-      const rows = Array.from(tbody.querySelectorAll('.admin-invoice-row'));
+      if (resetPage) currentPage = 1;
+
+      const rows = Array.from(tbody.querySelectorAll<HTMLElement>('.admin-invoice-row'));
       const query = searchInput?.value.toLowerCase().trim() || '';
       const status = statusFilter?.value || '';
       const division = divisionFilter?.value || '';
@@ -719,17 +846,18 @@ invoices = invoices.map(inv => {
       const drpStart = (window as any)._drpInvoiceStart || null;
       const drpEnd = (window as any)._drpInvoiceEnd || null;
 
-      rows.forEach(row => {
+      // 1. Non-date filter check to gather dataset bounds
+      const matchingBaseRows = rows.filter(row => {
         const name = row.getAttribute('data-name')?.toLowerCase() || '';
         const num = row.getAttribute('data-num')?.toLowerCase() || '';
         const rowStatus = row.getAttribute('data-status') || '';
-        const rowDiv = row.getAttribute('data-div') || '';
+        const rowDiv = (row.getAttribute('data-div') || '').toUpperCase();
+        const targetDiv = division.toUpperCase();
         const isArchived = row.getAttribute('data-archived') === 'true';
         const isDeleted = row.getAttribute('data-deleted') === 'true';
-        const rowDate = row.getAttribute('data-date') || '';
 
         const matchesSearch = !query || name.includes(query) || num.includes(query);
-        const matchesDiv = !division || rowDiv === division || (rowDiv === 'both');
+        const matchesDiv = !division || rowDiv === targetDiv || (rowDiv === 'BOTH');
 
         let matchesStatus = false;
         if (status === 'archived') {
@@ -740,23 +868,31 @@ invoices = invoices.map(inv => {
           matchesStatus = !isArchived && !isDeleted && (!status || rowStatus === status);
         }
 
-        let matchesDate = true;
-        if (drpStart && drpEnd && rowDate) {
-          const d = rowDate.split('T')[0];
-          matchesDate = d >= drpStart && d <= drpEnd;
-        } else if (drpStart && rowDate) {
-          matchesDate = rowDate.split('T')[0] >= drpStart;
-        }
-
-        if (matchesSearch && matchesStatus && matchesDiv && matchesDate) {
-          (row as HTMLElement).classList.remove('hidden');
-        } else {
-          (row as HTMLElement).classList.add('hidden');
-        }
+        return matchesSearch && matchesStatus && matchesDiv;
       });
 
-      // Sort
-      const sortedRows = rows.filter(r => !r.classList.contains('hidden')).sort((a, b) => {
+      // Collect all available dates from matchingBaseRows
+      const allDates = matchingBaseRows
+        .map(r => (r.getAttribute('data-date') || '').split('T')[0])
+        .filter(Boolean)
+        .sort();
+
+      // 2. Filter matchingBaseRows by active date range
+      const matchingRows = matchingBaseRows.filter(row => {
+        const rowDate = row.getAttribute('data-date') || '';
+        if (!rowDate) return true;
+        const d = rowDate.split('T')[0];
+
+        if (drpStart && drpEnd) {
+          return d >= drpStart && d <= drpEnd;
+        } else if (drpStart) {
+          return d >= drpStart;
+        }
+        return true;
+      });
+
+      // 3. Sort matching rows
+      matchingRows.sort((a, b) => {
         if (sort === 'newest') {
           return new Date(b.getAttribute('data-date') || '').getTime() - new Date(a.getAttribute('data-date') || '').getTime();
         } else if (sort === 'oldest') {
@@ -769,14 +905,372 @@ invoices = invoices.map(inv => {
         return 0;
       });
 
-      // Append in sorted order
-      sortedRows.forEach(r => tbody.appendChild(r));
+      // 4. Update Contextual Timeframe Bar ("Show More Orders" / Adjacent Nav)
+      renderTimeframeBar(matchingRows, drpStart, drpEnd, allDates);
+
+      // 5. Paginate and Render Table Rows
+      const totalItems = matchingRows.length;
+      const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
+      // Hide all rows first
+      rows.forEach(r => r.classList.add('hidden'));
+
+      // Show sliced rows for current page and re-append in sorted order
+      matchingRows.forEach((r, idx) => {
+        if (idx >= startIndex && idx < endIndex) {
+          r.classList.remove('hidden');
+        }
+        tbody.appendChild(r);
+      });
+
+      // Update Empty State
+      if (totalItems === 0) {
+        noInvoicesState?.classList.remove('hidden');
+      } else {
+        noInvoicesState?.classList.add('hidden');
+      }
+
+      // Update Pagination Stats UI
+      if (startEl) startEl.textContent = String(totalItems === 0 ? 0 : startIndex + 1);
+      if (endEl) endEl.textContent = String(endIndex);
+      if (totalEl) totalEl.textContent = String(totalItems);
+
+      // Render Pagination Buttons
+      renderPaginationButtons(totalPages);
     }
 
-    searchInput?.addEventListener('input', filterAndSortInvoices);
-    statusFilter?.addEventListener('change', filterAndSortInvoices);
-    divisionFilter?.addEventListener('change', filterAndSortInvoices);
-    sortSelect?.addEventListener('change', filterAndSortInvoices);
+    // Contextual Timeframe Navigator Builder
+    function renderTimeframeBar(matchingRows: HTMLElement[], start: string | null, end: string | null, allDates: string[]) {
+      if (!timeframeBar || !tfLabel || !tfCount || !tfActions) return;
+
+      timeframeBar.classList.remove('hidden');
+      timeframeBar.classList.add('flex');
+
+      const matchCount = matchingRows.length;
+
+      // Division breakdown
+      let dgsCount = 0;
+      let dtlCount = 0;
+      let bothCount = 0;
+      matchingRows.forEach(r => {
+        const div = (r.getAttribute('data-div') || '').toUpperCase();
+        if (div === 'DGS') dgsCount++;
+        else if (div === 'DTL') dtlCount++;
+        else if (div === 'BOTH') bothCount++;
+      });
+
+      const selectedDiv = (divisionFilter?.value || '').toUpperCase();
+      let divSummary = '';
+      if (selectedDiv === 'DGS') {
+        divSummary = 'in DGS';
+      } else if (selectedDiv === 'DTL') {
+        divSummary = 'in DTL';
+      } else {
+        const parts: string[] = [];
+        if (dgsCount > 0) parts.push(`${dgsCount} in DGS`);
+        if (dtlCount > 0) parts.push(`${dtlCount} in DTL`);
+        if (bothCount > 0) parts.push(`${bothCount} in Both`);
+        if (parts.length > 0) {
+          divSummary = `(${parts.join(', ')})`;
+        }
+      }
+
+      // Date span from matching rows
+      const visibleDates = matchingRows
+        .map(r => (r.getAttribute('data-date') || '').split('T')[0])
+        .filter(Boolean)
+        .sort();
+
+      let dateSpan = '';
+      if (visibleDates.length > 0) {
+        const firstD = fmtDatePretty(visibleDates[0]);
+        const lastD = fmtDatePretty(visibleDates[visibleDates.length - 1]);
+        if (firstD === lastD) {
+          dateSpan = `on ${firstD}`;
+        } else {
+          dateSpan = `from ${firstD} to ${lastD}`;
+        }
+      }
+
+      const curStatus = statusFilter?.value || '';
+      let statusText = '';
+      if (curStatus === 'deleted') statusText = 'in Bin (Trash)';
+      else if (curStatus === 'archived') statusText = 'Archived';
+      else if (curStatus) statusText = `[${curStatus.toUpperCase()}]`;
+
+      // Build readable descriptive text
+      if (matchCount === 0) {
+        tfCount.textContent = '0 orders found for this selection';
+      } else {
+        const countStr = `${matchCount} order${matchCount === 1 ? '' : 's'}`;
+        const parts = [countStr];
+        if (statusText) parts.push(statusText);
+        if (divSummary) parts.push(divSummary);
+        if (dateSpan) parts.push(dateSpan);
+        tfCount.textContent = parts.join(' ');
+      }
+
+      // Check existence of older / newer orders
+      const hasOlder = start ? allDates.some(d => d < start) : false;
+      const hasNewer = end ? allDates.some(d => d > end) : false;
+
+      // Identify mode
+      const isAllTime = !start || activePreset === 'all';
+      let mode: 'all' | 'month' | 'week' | 'day' | 'custom' = 'custom';
+
+      if (isAllTime) {
+        mode = 'all';
+      } else if (activePreset === 'today' || activePreset === 'yesterday' || activePreset === 'custom_day' || start === end) {
+        mode = 'day';
+      } else if (activePreset === 'week' || activePreset === 'custom_week') {
+        mode = 'week';
+      } else if (activePreset === 'month' || activePreset === 'last_month' || activePreset === 'custom_month') {
+        mode = 'month';
+      } else if (start && end) {
+        const sD = new Date(start + 'T00:00:00');
+        const eD = new Date(end + 'T00:00:00');
+        const lastDayOfMonth = new Date(sD.getFullYear(), sD.getMonth() + 1, 0).getDate();
+        if (sD.getDate() === 1 && (eD.getDate() === lastDayOfMonth || (sD.getMonth() === new Date().getMonth() && eD.getDate() === new Date().getDate()))) {
+          mode = 'month';
+        } else {
+          mode = 'custom';
+        }
+      }
+
+      tfActions.innerHTML = '';
+
+      if (mode === 'all') {
+        tfLabel.textContent = 'All Time View';
+        return;
+      }
+
+      if (mode === 'month' && start) {
+        const [y, m] = start.split('-').map(Number);
+        const curMonthDate = new Date(y, m - 1, 1);
+        tfLabel.textContent = `Month: ${curMonthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`;
+
+        const prevMonthDate = new Date(y, m - 2, 1);
+        const prevMonthStart = toISODate(prevMonthDate);
+        const prevMonthEnd = toISODate(new Date(y, m - 1, 0));
+        const prevMonthLabel = fmtMonthName(prevMonthDate);
+
+        const nextMonthDate = new Date(y, m, 1);
+        const nextMonthStart = toISODate(nextMonthDate);
+        const nextMonthEnd = toISODate(new Date(y, m + 1, 0));
+        const nextMonthLabel = fmtMonthName(nextMonthDate);
+
+        // Previous Month button (if older orders exist)
+        if (hasOlder) {
+          const btn = createNavBtn(`← Previous Month (${prevMonthLabel})`, prevMonthStart, prevMonthEnd, 'custom_month', prevMonthLabel);
+          tfActions.appendChild(btn);
+        }
+
+        // Next Month button (if newer orders exist)
+        if (hasNewer) {
+          const btn = createNavBtn(`Next Month (${nextMonthLabel}) →`, nextMonthStart, nextMonthEnd, 'custom_month', nextMonthLabel);
+          tfActions.appendChild(btn);
+        }
+
+        // Show More / All Time button
+        if (hasOlder || hasNewer) {
+          const allBtn = createAllTimeBtn();
+          tfActions.appendChild(allBtn);
+        }
+      } else if (mode === 'week' && start && end) {
+        const sD = new Date(start + 'T00:00:00');
+        const eD = new Date(end + 'T00:00:00');
+        tfLabel.textContent = `Week: ${fmtWeekRange(sD, eD)}`;
+
+        const prevS = new Date(sD); prevS.setDate(sD.getDate() - 7);
+        const prevE = new Date(eD); prevE.setDate(eD.getDate() - 7);
+        const prevLabel = fmtWeekRange(prevS, prevE);
+
+        const nextS = new Date(sD); nextS.setDate(sD.getDate() + 7);
+        const nextE = new Date(eD); nextE.setDate(eD.getDate() + 7);
+        const nextLabel = fmtWeekRange(nextS, nextE);
+
+        if (hasOlder) {
+          const btn = createNavBtn(`← Previous Week (${prevLabel})`, toISODate(prevS), toISODate(prevE), 'custom_week', prevLabel);
+          tfActions.appendChild(btn);
+        }
+
+        if (hasNewer) {
+          const btn = createNavBtn(`Next Week (${nextLabel}) →`, toISODate(nextS), toISODate(nextE), 'custom_week', nextLabel);
+          tfActions.appendChild(btn);
+        }
+
+        if (hasOlder || hasNewer) {
+          const allBtn = createAllTimeBtn();
+          tfActions.appendChild(allBtn);
+        }
+      } else if (mode === 'day' && start) {
+        const dayD = new Date(start + 'T00:00:00');
+        tfLabel.textContent = `Day: ${fmtFullDay(dayD)}`;
+
+        const prevD = new Date(dayD); prevD.setDate(dayD.getDate() - 1);
+        const prevDateStr = toISODate(prevD);
+        const prevLabel = fmtFullDay(prevD);
+
+        const nextD = new Date(dayD); nextD.setDate(dayD.getDate() + 1);
+        const nextDateStr = toISODate(nextD);
+        const nextLabel = fmtFullDay(nextD);
+
+        if (hasOlder) {
+          const btn = createNavBtn(`← Previous Day (${prevLabel})`, prevDateStr, prevDateStr, 'custom_day', prevLabel);
+          tfActions.appendChild(btn);
+        }
+
+        if (hasNewer) {
+          const btn = createNavBtn(`Next Day (${nextLabel}) →`, nextDateStr, nextDateStr, 'custom_day', nextLabel);
+          tfActions.appendChild(btn);
+        }
+
+        if (hasOlder || hasNewer) {
+          const allBtn = createAllTimeBtn();
+          tfActions.appendChild(allBtn);
+        }
+      } else {
+        // Custom timeframe
+        tfLabel.textContent = activeLabel && activeLabel !== 'All Time' ? activeLabel : 'Custom Date Range';
+        if (hasOlder || hasNewer) {
+          const allBtn = createAllTimeBtn('Show More Orders (All Time)');
+          tfActions.appendChild(allBtn);
+        }
+      }
+    }
+
+    function createNavBtn(text: string, start: string, end: string, preset: string, label: string) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-3xs flex items-center gap-1.5 transition-colors cursor-pointer';
+      btn.textContent = text;
+      btn.addEventListener('click', () => {
+        pickerEl?.dispatchEvent(new CustomEvent('daterange-set', {
+          detail: { start, end, preset, label }
+        }));
+      });
+      return btn;
+    }
+
+    function createAllTimeBtn(customText = 'View All Time Orders') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-3xs flex items-center gap-1.5 transition-colors cursor-pointer';
+      btn.textContent = customText;
+      btn.addEventListener('click', () => {
+        pickerEl?.dispatchEvent(new CustomEvent('daterange-set', {
+          detail: { preset: 'all' }
+        }));
+      });
+      return btn;
+    }
+
+    function renderPaginationButtons(totalPages: number) {
+      if (!paginationButtons) return;
+      paginationButtons.innerHTML = '';
+
+      if (totalPages <= 1) return;
+
+      // First button
+      const firstBtn = document.createElement('button');
+      firstBtn.type = 'button';
+      firstBtn.disabled = currentPage === 1;
+      firstBtn.className = `px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-bold ${
+        currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'
+      }`;
+      firstBtn.innerHTML = '&laquo;';
+      firstBtn.title = 'First Page';
+      firstBtn.addEventListener('click', () => {
+        if (currentPage > 1) { currentPage = 1; filterAndSortInvoices(false); }
+      });
+      paginationButtons.appendChild(firstBtn);
+
+      // Prev button
+      const prevBtn = document.createElement('button');
+      prevBtn.type = 'button';
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold ${
+        currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'
+      }`;
+      prevBtn.innerHTML = '&lsaquo; Prev';
+      prevBtn.addEventListener('click', () => {
+        if (currentPage > 1) { currentPage--; filterAndSortInvoices(false); }
+      });
+      paginationButtons.appendChild(prevBtn);
+
+      // Numbered buttons
+      const maxVisiblePages = 5;
+      let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+      if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+      }
+
+      if (startPage > 1) {
+        const dot = document.createElement('span');
+        dot.className = 'px-1.5 text-xs font-bold text-slate-400 select-none';
+        dot.textContent = '...';
+        paginationButtons.appendChild(dot);
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.type = 'button';
+        pageBtn.className = `px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors ${
+          currentPage === i
+            ? 'bg-cyan-600 border-cyan-600 text-white shadow-3xs'
+            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+        }`;
+        pageBtn.textContent = String(i);
+        pageBtn.addEventListener('click', () => {
+          currentPage = i;
+          filterAndSortInvoices(false);
+        });
+        paginationButtons.appendChild(pageBtn);
+      }
+
+      if (endPage < totalPages) {
+        const dot = document.createElement('span');
+        dot.className = 'px-1.5 text-xs font-bold text-slate-400 select-none';
+        dot.textContent = '...';
+        paginationButtons.appendChild(dot);
+      }
+
+      // Next button
+      const nextBtn = document.createElement('button');
+      nextBtn.type = 'button';
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold ${
+        currentPage === totalPages ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'
+      }`;
+      nextBtn.innerHTML = 'Next &rsaquo;';
+      nextBtn.addEventListener('click', () => {
+        if (currentPage < totalPages) { currentPage++; filterAndSortInvoices(false); }
+      });
+      paginationButtons.appendChild(nextBtn);
+
+      // Last button
+      const lastBtn = document.createElement('button');
+      lastBtn.type = 'button';
+      lastBtn.disabled = currentPage === totalPages;
+      lastBtn.className = `px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-bold ${
+        currentPage === totalPages ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors'
+      }`;
+      lastBtn.innerHTML = '&raquo;';
+      lastBtn.title = 'Last Page';
+      lastBtn.addEventListener('click', () => {
+        if (currentPage < totalPages) { currentPage = totalPages; filterAndSortInvoices(false); }
+      });
+      paginationButtons.appendChild(lastBtn);
+    }
+
+    searchInput?.addEventListener('input', () => filterAndSortInvoices(true));
+    statusFilter?.addEventListener('change', () => filterAndSortInvoices(true));
+    divisionFilter?.addEventListener('change', () => filterAndSortInvoices(true));
+    sortSelect?.addEventListener('change', () => filterAndSortInvoices(true));
 
     // Wire up the date range picker
     document.addEventListener('daterange-change', (e: Event) => {
@@ -784,7 +1278,9 @@ invoices = invoices.map(inv => {
       if (detail.pickerId !== 'invoices-date-picker') return;
       (window as any)._drpInvoiceStart = detail.start;
       (window as any)._drpInvoiceEnd = detail.end;
-      filterAndSortInvoices();
+      activePreset = detail.preset || 'custom';
+      activeLabel = detail.label || 'All Time';
+      filterAndSortInvoices(true);
     });
 
     // Sync header button states with status filter dropdown
@@ -1245,6 +1741,8 @@ invoices = invoices.map(inv => {
         docTypeSelect.value = 'TAX INVOICE';
       } else if (inv.order_type === 'delivery_note') {
         docTypeSelect.value = 'DELIVERY NOTE';
+      } else if (inv.order_type === 'sample_order') {
+        docTypeSelect.value = 'SAMPLE ORDER';
       } else {
         docTypeSelect.value = 'TAX INVOICE';
       }

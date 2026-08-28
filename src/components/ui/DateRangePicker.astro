@@ -119,8 +119,9 @@ const { id = 'date-range-picker', class: className = '' } = Astro.props;
       }
     }
 
-    function fire(start: string | null, end: string | null, preset: string) {
-      const detail = { start, end, preset, pickerId: container.id };
+    function fire(start: string | null, end: string | null, preset: string, customLbl?: string) {
+      const currentLbl = customLbl || label.textContent || 'All Time';
+      const detail = { start, end, preset, label: currentLbl, pickerId: container.id };
       container.dispatchEvent(new CustomEvent('daterange-change', { bubbles: true, detail }));
       document.dispatchEvent(new CustomEvent('daterange-change', { detail }));
     }
@@ -140,7 +141,8 @@ const { id = 'date-range-picker', class: className = '' } = Astro.props;
       if (preset === 'all') {
         setActive('all');
         setLabel('All Time', false);
-        if (!silent) { closePanel(); fire(null, null, 'all'); }
+        if (!silent) { closePanel(); fire(null, null, 'all', 'All Time'); }
+        else fire(null, null, 'all', 'All Time');
         return;
       } else if (preset === 'today') {
         start = end = toISO(today);
@@ -171,8 +173,8 @@ const { id = 'date-range-picker', class: className = '' } = Astro.props;
 
       setActive(preset);
       setLabel(lbl, true);
-      if (!silent) { closePanel(); fire(start, end, preset); }
-      else fire(start, end, preset);
+      if (!silent) { closePanel(); fire(start, end, preset, lbl); }
+      else fire(start, end, preset, lbl);
     }
 
     items.forEach(item => {
@@ -187,15 +189,15 @@ const { id = 'date-range-picker', class: className = '' } = Astro.props;
       const lbl = start === end ? fmtDate(start) : `${fmtDate(start)} – ${fmtDate(end)}`;
       setLabel(lbl, true);
       closePanel();
-      fire(start, end, 'custom');
+      fire(start, end, 'custom', lbl);
     });
 
     // ── External API: listen for 'daterange-set' on the element ──────────
     container.addEventListener('daterange-set', (e: Event) => {
-      const detail = (e as CustomEvent).detail as { start?: string; end?: string; preset?: string };
+      const detail = (e as CustomEvent).detail as { start?: string; end?: string; preset?: string; label?: string; silent?: boolean };
 
-      if (detail.preset) {
-        applyPreset(detail.preset);
+      if (detail.preset && ['all', 'today', 'yesterday', 'week', 'month', 'last_month'].includes(detail.preset)) {
+        applyPreset(detail.preset, detail.silent);
         return;
       }
       if (detail.start && detail.end) {
@@ -203,10 +205,15 @@ const { id = 'date-range-picker', class: className = '' } = Astro.props;
         // Update inputs
         startInput.value = start;
         endInput.value   = end;
-        setActive('custom');
-        const lbl = start === end ? fmtDate(start) : `${fmtDate(start)} – ${fmtDate(end)}`;
-        setLabel(lbl, true);
-        fire(start, end, 'custom');
+        if (detail.preset) {
+          setActive(detail.preset);
+        } else {
+          setActive('custom');
+        }
+        const lbl = detail.label || (start === end ? fmtDate(start) : `${fmtDate(start)} – ${fmtDate(end)}`);
+        setLabel(lbl, detail.preset !== 'all');
+        if (!detail.silent) closePanel();
+        fire(start, end, detail.preset || 'custom', lbl);
       }
     });
   }

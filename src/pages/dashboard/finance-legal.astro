@@ -1,7 +1,7 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
-import { Settings, Save, Building2, Receipt, PenTool, Plus, Trash2, CheckCircle2 } from '@lucide/astro';
+import { Settings, Save, Building2, Receipt, PenTool, Plus, Trash2, CheckCircle2, ScrollText, History } from '@lucide/astro';
 
 let settings: Record<string, any> = {};
 try {
@@ -15,7 +15,7 @@ try {
 }
 
 // Parse collections from settings
-let banks = [];
+let banks: any[] = [];
 try {
   banks = settings.banks ? JSON.parse(settings.banks) : [];
 } catch (e) {}
@@ -30,7 +30,7 @@ if (banks.length === 0 && (settings.bank_name || settings.account_number)) {
   }];
 }
 
-let signatures = [];
+let signatures: any[] = [];
 try {
   signatures = settings.signatures ? JSON.parse(settings.signatures) : [];
 } catch (e) {}
@@ -38,11 +38,12 @@ if (signatures.length === 0 && settings.signatory_name) {
   signatures = [{
     id: 'sig_legacy_' + Math.random().toString(36).substr(2, 9),
     signatory_name: settings.signatory_name || '',
-    signatory_title: settings.signatory_title || ''
+    signatory_title: settings.signatory_title || '',
+    signature_image: settings.signature_image || ''
   }];
 }
 
-let addresses = [];
+let addresses: any[] = [];
 try {
   addresses = settings.addresses ? JSON.parse(settings.addresses) : [];
 } catch (e) {}
@@ -61,10 +62,28 @@ if (addresses.length === 0 && (settings.business_address || settings.trn_number)
 const default_bank_id = settings.default_bank_id || (banks[0]?.id || '');
 const default_signature_id = settings.default_signature_id || (signatures[0]?.id || '');
 const default_address_id = settings.default_address_id || (addresses[0]?.id || '');
+
+let recentLogs: any[] = [];
+try {
+  const logsRes = await query(`
+    SELECT al.*, u.name as user_name, u.email as user_email
+    FROM audit_logs al
+    LEFT JOIN users u ON u.id = al.user_id
+    WHERE al.entity_type = 'finance_legal' 
+       OR al.action LIKE '%FINANCE%' 
+       OR al.details ILIKE '%finance%'
+       OR (al.entity_type = 'settings' AND al.entity_id = 'finance_legal_config')
+    ORDER BY al.timestamp DESC
+    LIMIT 6
+  `);
+  recentLogs = logsRes.rows;
+} catch (e) {
+  console.error("Audit logs query error:", e);
+}
 ---
 
 <DashboardLayout title="Finance & Legal | Delight Group LLC" activeItem="finance-legal">
-  <div class="max-w-4xl mx-auto space-y-8">
+  <div class="max-w-4xl mx-auto space-y-8 pb-12">
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-black font-display text-slate-900 tracking-tight uppercase">Finance & Legal</h1>
@@ -73,7 +92,7 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
       <button 
         type="button"
         id="save-settings-btn"
-        class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm"
+        class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm cursor-pointer"
       >
         <Save class="w-4 h-4" />
         Save Configuration
@@ -92,13 +111,47 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
               Remittance Details & Bank Accounts
             </h2>
           </div>
-          <button type="button" id="add-bank-btn" class="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+          <button type="button" id="add-bank-btn" class="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
             <Plus class="w-3.5 h-3.5" /> Add Bank
           </button>
         </div>
         <div class="p-6">
           <div id="bank-list-container" class="space-y-6">
-            <!-- Dynamic Bank Accounts Rendered Here -->
+            {banks.map((b: any) => (
+              <div class="bank-card p-4 rounded-xl border border-slate-200 bg-slate-50/30 relative space-y-4 transition-all hover:border-slate-300" data-id={b.id}>
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                    <input type="radio" name="default_bank" value={b.id} checked={b.id === default_bank_id} class="text-blue-600 focus:ring-0" />
+                    <span>Set as Default Remittance Account</span>
+                  </label>
+                  <button type="button" class="remove-btn text-slate-400 hover:text-red-500 p-1 rounded transition-colors cursor-pointer" title="Delete Account">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bank Name</label>
+                    <input type="text" name="bank_name" value={b.bank_name || ''} placeholder="e.g. Abu Dhabi Islamic Bank" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+                  </div>
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Account Name</label>
+                    <input type="text" name="account_name" value={b.account_name || ''} placeholder="e.g. Delight Group LLC" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+                  </div>
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Account Number</label>
+                    <input type="text" name="account_number" value={b.account_number || ''} class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+                  </div>
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Swift / BIC Code</label>
+                    <input type="text" name="swift_code" value={b.swift_code || ''} class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+                  </div>
+                  <div class="space-y-1 md:col-span-2">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">IBAN Number</label>
+                    <input type="text" name="iban_number" value={b.iban_number || ''} class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -113,13 +166,54 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
               Authorized Signatures (Company Stamp)
             </h2>
           </div>
-          <button type="button" id="add-sig-btn" class="inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors">
+          <button type="button" id="add-sig-btn" class="inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
             <Plus class="w-3.5 h-3.5" /> Add Signature
           </button>
         </div>
         <div class="p-6">
           <div id="signature-list-container" class="space-y-6">
-            <!-- Dynamic Signatures Rendered Here -->
+            {signatures.map((s: any) => (
+              <div class="sig-card p-4 rounded-xl border border-slate-200 bg-slate-50/30 relative space-y-4 transition-all hover:border-slate-300" data-id={s.id}>
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                    <input type="radio" name="default_signature" value={s.id} checked={s.id === default_signature_id} class="text-purple-600 focus:ring-0" />
+                    <span>Set as Default Signatory Stamp</span>
+                  </label>
+                  <button type="button" class="remove-btn text-slate-400 hover:text-red-500 p-1 rounded transition-colors cursor-pointer" title="Delete Signatory">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Signatory Name</label>
+                    <input type="text" name="signatory_name" value={s.signatory_name || ''} placeholder="e.g. Authorized Signatory" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-purple-500 focus:outline-none transition-colors" />
+                  </div>
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Signatory Title</label>
+                    <input type="text" name="signatory_title" value={s.signatory_title || ''} placeholder="e.g. Managing Partner" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-purple-500 focus:outline-none transition-colors" />
+                  </div>
+                  <div class="space-y-1 md:col-span-2">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Signature Image (PNG only, &lt; 500kb, 3:1 or 4:1 ratio)</label>
+                    <div class="flex items-center gap-4 mt-1.5 flex-wrap">
+                      <input type="file" name="signature_image_file" accept="image/png" class="hidden" />
+                      <button type="button" class="upload-img-btn bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        Upload PNG
+                      </button>
+                      <input type="hidden" name="signature_image" value={s.signature_image || ''} />
+                      <div class={`preview-img-wrapper relative border border-slate-200 rounded-lg p-1 bg-white ${s.signature_image ? '' : 'hidden'}`}>
+                        <img class="signature-preview h-10 w-auto object-contain" src={s.signature_image || ''} />
+                        <button type="button" class="remove-img-btn absolute -top-1.5 -right-1.5 bg-red-100 hover:bg-red-200 text-red-700 p-0.5 rounded-full border border-red-200 transition-colors cursor-pointer">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                      <span class="upload-status-text text-[10px] text-slate-400 font-medium italic">{s.signature_image ? 'PNG uploaded' : 'No file uploaded'}</span>
+                      <button type="button" class="save-sig-card-btn hidden ml-auto bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer">Save Signature</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -128,7 +222,7 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div class="flex items-center gap-3">
-            <div class="w-1.5 h-6 bg-teal-650 bg-teal-600 rounded-full"></div>
+            <div class="w-1.5 h-6 bg-teal-600 rounded-full"></div>
             <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Settings class="w-4 h-4 text-slate-400" />
               Company Stamp (Official Corporate Stamp)
@@ -140,7 +234,7 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
             <label class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Stamp Image (PNG format, &lt; 500kb, transparent background recommended)</label>
             <div class="flex items-center gap-4 mt-2 flex-wrap">
               <input type="file" id="stamp-file-input" accept="image/png" class="hidden" />
-              <button type="button" id="stamp-upload-btn" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
+              <button type="button" id="stamp-upload-btn" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold py-2 px-3.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                 Upload Stamp PNG
               </button>
@@ -148,12 +242,12 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
               
               <div id="stamp-preview-wrapper" class={`preview-img-wrapper relative border border-slate-200 rounded-lg p-2 bg-white ${settings.company_stamp ? '' : 'hidden'}`}>
                 <img id="stamp-preview-img" class="h-16 w-16 object-contain" src={settings.company_stamp || ''} />
-                <button type="button" id="stamp-remove-img-btn" class="absolute -top-1.5 -right-1.5 bg-red-100 hover:bg-red-200 text-red-700 p-0.5 rounded-full border border-red-200 transition-colors">
+                <button type="button" id="stamp-remove-img-btn" class="absolute -top-1.5 -right-1.5 bg-red-100 hover:bg-red-200 text-red-700 p-0.5 rounded-full border border-red-200 transition-colors cursor-pointer">
                   <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
               <span id="stamp-status-text" class="text-[10px] text-slate-450 font-medium italic">{settings.company_stamp ? 'Stamp uploaded successfully' : 'No corporate stamp uploaded'}</span>
-              <button type="button" id="save-stamp-btn" class="hidden ml-auto bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Save Stamp</button>
+              <button type="button" id="save-stamp-btn" class="hidden ml-auto bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer">Save Stamp</button>
             </div>
           </div>
         </div>
@@ -163,20 +257,140 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div class="flex items-center gap-3">
-            <div class="w-1.5 h-6 bg-orange-505 bg-orange-500 rounded-full"></div>
+            <div class="w-1.5 h-6 bg-orange-500 rounded-full"></div>
             <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Building2 class="w-4 h-4 text-slate-400" />
               Office Addresses & Regulatory Profiles
             </h2>
           </div>
-          <button type="button" id="add-addr-btn" class="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-colors">
+          <button type="button" id="add-addr-btn" class="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
             <Plus class="w-3.5 h-3.5" /> Add Profile
           </button>
         </div>
         <div class="p-6">
           <div id="address-list-container" class="space-y-6">
-            <!-- Dynamic Addresses Rendered Here -->
+            {addresses.map((a: any) => (
+              <div class="addr-card p-4 rounded-xl border border-slate-200 bg-slate-50/30 relative space-y-4 transition-all hover:border-slate-300" data-id={a.id}>
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                    <input type="radio" name="default_address" value={a.id} checked={a.id === default_address_id} class="text-orange-500 focus:ring-0" />
+                    <span>Set as Default Building Address Profile</span>
+                  </label>
+                  <button type="button" class="remove-btn text-slate-400 hover:text-red-500 p-1 rounded transition-colors cursor-pointer" title="Delete Address">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+                <div class="space-y-4">
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Official Office / Building Address (UAE Format)</label>
+                    <textarea name="business_address" rows="3" placeholder="Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors">{a.business_address || ''}</textarea>
+                  </div>
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                      <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">TRN (Tax Registration Number)</label>
+                      <input type="text" name="trn_number" value={a.trn_number || ''} placeholder="15-digit TRN" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors" />
+                    </div>
+                    <div class="space-y-1">
+                      <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Registration / License Info</label>
+                      <input type="text" name="business_registration" value={a.business_registration || ''} placeholder="e.g. License No. 623456" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors" />
+                    </div>
+                  </div>
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                      <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+                      <input type="text" name="phone_number" value={a.phone_number || ''} placeholder="e.g. +971 4 123 4567" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors" />
+                    </div>
+                    <div class="space-y-1">
+                      <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phone Type</label>
+                      <select name="phone_type" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors">
+                        <option value="Landline" selected={a.phone_type === 'Landline'}>Landline</option>
+                        <option value="Telephone" selected={a.phone_type === 'Telephone'}>Telephone</option>
+                        <option value="Mobile" selected={a.phone_type === 'Mobile'}>Mobile</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Permits & Other Information</label>
+                    <textarea name="permits_info" rows="2" placeholder="e.g. Civil Defense Permit No. 5623, Municipality Approval No. 9012" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors">{a.permits_info || ''}</textarea>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
+      </div>
+
+      <!-- MULTI-DIVISION & COMBINED BILLING POLICY -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div class="flex items-center gap-3">
+            <div class="w-1.5 h-6 bg-purple-600 rounded-full"></div>
+            <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <Building2 class="w-4 h-4 text-slate-400" />
+              Multi-Division &amp; Group Billing Operations
+            </h2>
+          </div>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="flex items-start justify-between gap-6 p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+            <div class="space-y-1">
+              <label for="toggle-both-divisions" class="text-sm font-bold text-slate-900 cursor-pointer flex items-center gap-2">
+                <span>Allow "Both Divisions" (Combined Master Group Invoicing)</span>
+                <span id="both-divisions-status-badge" class={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${settings.enable_both_divisions === 'true' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                  {settings.enable_both_divisions === 'true' ? 'Enabled' : 'Disabled (Default)'}
+                </span>
+              </label>
+              <p class="text-xs text-slate-500 leading-relaxed max-w-2xl">
+                When <strong>disabled</strong>, all order creators are restricted to single-division orders (Delight Technical Lighting - DTL or Delight Greenscapes - DGS). When <strong>enabled</strong>, staff can select "Both Divisions" to generate combined group invoices with Master Delight Group LLC branding.
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+              <input type="checkbox" id="toggle-both-divisions" name="enable_both_divisions" class="sr-only peer" checked={settings.enable_both_divisions === 'true'} />
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- FINANCE & LEGAL AUDIT LOG HISTORY -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div class="flex items-center gap-3">
+            <div class="w-1.5 h-6 bg-slate-700 rounded-full"></div>
+            <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <ScrollText class="w-4 h-4 text-slate-400" />
+              Finance &amp; Legal Audit Trail &amp; History
+            </h2>
+          </div>
+          <a href="/dashboard/logs" class="text-xs font-bold text-cyan-600 hover:text-cyan-700 flex items-center gap-1 transition-colors">
+            View All Audit Logs →
+          </a>
+        </div>
+        <div class="p-6">
+          {recentLogs.length === 0 ? (
+            <div class="text-center py-6 text-slate-400 text-xs font-medium">
+              No configuration changes recorded yet. Future updates will be logged here.
+            </div>
+          ) : (
+            <div class="divide-y divide-slate-100">
+              {recentLogs.map((log: any) => (
+                <div class="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div class="space-y-0.5">
+                    <p class="font-bold text-slate-800">{log.details}</p>
+                    <p class="text-[11px] text-slate-400">
+                      Modified by <span class="font-semibold text-slate-600">{log.user_name || log.user_email || 'Admin User'}</span>
+                    </p>
+                  </div>
+                  <span class="text-[10px] font-bold text-slate-500 shrink-0 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md">
+                    {new Date(log.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -187,544 +401,434 @@ const default_address_id = settings.default_address_id || (addresses[0]?.id || '
     <div class="w-2 h-2 rounded-full bg-green-500"></div>
     <span id="toast-text">Settings saved successfully</span>
   </div>
-</DashboardLayout>
 
-<!-- Templates for dynamically created elements -->
-<template id="bank-template">
-  <div class="bank-card p-4 rounded-xl border border-slate-200 bg-slate-50/30 relative space-y-4 transition-all hover:border-slate-300" data-id="">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-      <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
-        <input type="radio" name="default_bank" class="text-blue-600 focus:ring-0" />
-        <span>Set as Default Remittance Account</span>
-      </label>
-      <button type="button" class="remove-btn text-slate-400 hover:text-red-500 p-1 rounded transition-colors" title="Delete Account">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-      </button>
+  <!-- Templates for dynamically created elements -->
+  <template id="bank-template">
+    <div class="bank-card p-4 rounded-xl border border-slate-200 bg-slate-50/30 relative space-y-4 transition-all hover:border-slate-300" data-id="">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+          <input type="radio" name="default_bank" class="text-blue-600 focus:ring-0" />
+          <span>Set as Default Remittance Account</span>
+        </label>
+        <button type="button" class="remove-btn text-slate-400 hover:text-red-500 p-1 rounded transition-colors cursor-pointer" title="Delete Account">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        </button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bank Name</label>
+          <input type="text" name="bank_name" placeholder="e.g. Abu Dhabi Islamic Bank" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Account Name</label>
+          <input type="text" name="account_name" placeholder="e.g. Delight Group LLC" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Account Number</label>
+          <input type="text" name="account_number" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Swift / BIC Code</label>
+          <input type="text" name="swift_code" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+        </div>
+        <div class="space-y-1 md:col-span-2">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">IBAN Number</label>
+          <input type="text" name="iban_number" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
+        </div>
+      </div>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bank Name</label>
-        <input type="text" name="bank_name" placeholder="e.g. Abu Dhabi Islamic Bank" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
-      </div>
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Account Name</label>
-        <input type="text" name="account_name" placeholder="e.g. Delight Group LLC" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
-      </div>
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Account Number</label>
-        <input type="text" name="account_number" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
-      </div>
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Swift / BIC Code</label>
-        <input type="text" name="swift_code" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
-      </div>
-      <div class="space-y-1 md:col-span-2">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">IBAN Number</label>
-        <input type="text" name="iban_number" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-none transition-colors" />
-      </div>
-    </div>
-  </div>
-</template>
+  </template>
 
-<template id="sig-template">
-  <div class="sig-card p-4 rounded-xl border border-slate-200 bg-slate-50/30 relative space-y-4 transition-all hover:border-slate-300" data-id="">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-      <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
-        <input type="radio" name="default_signature" class="text-purple-600 focus:ring-0" />
-        <span>Set as Default Signatory Stamp</span>
-      </label>
-      <button type="button" class="remove-btn text-slate-400 hover:text-red-500 p-1 rounded transition-colors" title="Delete Signatory">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-      </button>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Signatory Name</label>
-        <input type="text" name="signatory_name" placeholder="e.g. Authorized Signatory" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-purple-500 focus:outline-none transition-colors" />
+  <template id="sig-template">
+    <div class="sig-card p-4 rounded-xl border border-slate-200 bg-slate-50/30 relative space-y-4 transition-all hover:border-slate-300" data-id="">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+          <input type="radio" name="default_signature" class="text-purple-600 focus:ring-0" />
+          <span>Set as Default Signatory Stamp</span>
+        </label>
+        <button type="button" class="remove-btn text-slate-400 hover:text-red-500 p-1 rounded transition-colors cursor-pointer" title="Delete Signatory">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        </button>
       </div>
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Signatory Title</label>
-        <input type="text" name="signatory_title" placeholder="e.g. Managing Partner" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-purple-500 focus:outline-none transition-colors" />
-      </div>
-      <div class="space-y-1 md:col-span-2">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Signature Image (PNG only, &lt; 500kb, 3:1 or 4:1 ratio)</label>
-        <div class="flex items-center gap-4 mt-1.5 flex-wrap">
-          <input type="file" name="signature_image_file" accept="image/png" class="hidden" />
-          <button type="button" class="upload-img-btn bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-            Upload PNG
-          </button>
-          <input type="hidden" name="signature_image" />
-          <div class="preview-img-wrapper hidden relative border border-slate-200 rounded-lg p-1 bg-white">
-            <img class="signature-preview h-10 w-auto object-contain" src="" />
-            <button type="button" class="remove-img-btn absolute -top-1.5 -right-1.5 bg-red-100 hover:bg-red-200 text-red-750 text-red-700 p-0.5 rounded-full border border-red-200 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Signatory Name</label>
+          <input type="text" name="signatory_name" placeholder="e.g. Authorized Signatory" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-purple-500 focus:outline-none transition-colors" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Signatory Title</label>
+          <input type="text" name="signatory_title" placeholder="e.g. Managing Partner" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-purple-500 focus:outline-none transition-colors" />
+        </div>
+        <div class="space-y-1 md:col-span-2">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Signature Image (PNG only, &lt; 500kb, 3:1 or 4:1 ratio)</label>
+          <div class="flex items-center gap-4 mt-1.5 flex-wrap">
+            <input type="file" name="signature_image_file" accept="image/png" class="hidden" />
+            <button type="button" class="upload-img-btn bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              Upload PNG
             </button>
+            <input type="hidden" name="signature_image" />
+            <div class="preview-img-wrapper hidden relative border border-slate-200 rounded-lg p-1 bg-white">
+              <img class="signature-preview h-10 w-auto object-contain" src="" />
+              <button type="button" class="remove-img-btn absolute -top-1.5 -right-1.5 bg-red-100 hover:bg-red-200 text-red-700 p-0.5 rounded-full border border-red-200 transition-colors cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <span class="upload-status-text text-[10px] text-slate-400 font-medium italic">No file uploaded</span>
+            <button type="button" class="save-sig-card-btn hidden ml-auto bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer">Save Signature</button>
           </div>
-          <span class="upload-status-text text-[10px] text-slate-400 font-medium italic">No file uploaded</span>
-          <button type="button" class="save-sig-card-btn hidden ml-auto bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Save Signature</button>
         </div>
       </div>
     </div>
-  </div>
-</template>
+  </template>
 
-<template id="addr-template">
-  <div class="addr-card p-4 rounded-xl border border-slate-200 bg-slate-50/30 relative space-y-4 transition-all hover:border-slate-300" data-id="">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-      <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
-        <input type="radio" name="default_address" class="text-orange-500 focus:ring-0" />
-        <span>Set as Default Building Address Profile</span>
-      </label>
-      <button type="button" class="remove-btn text-slate-400 hover:text-red-500 p-1 rounded transition-colors" title="Delete Address">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-      </button>
-    </div>
-    <div class="space-y-4">
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Official Office / Building Address (UAE Format)</label>
-        <textarea name="business_address" rows="3" placeholder="Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors"></textarea>
+  <template id="addr-template">
+    <div class="addr-card p-4 rounded-xl border border-slate-200 bg-slate-50/30 relative space-y-4 transition-all hover:border-slate-300" data-id="">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+          <input type="radio" name="default_address" class="text-orange-500 focus:ring-0" />
+          <span>Set as Default Building Address Profile</span>
+        </label>
+        <button type="button" class="remove-btn text-slate-400 hover:text-red-500 p-1 rounded transition-colors cursor-pointer" title="Delete Address">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        </button>
       </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="space-y-4">
         <div class="space-y-1">
-          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">TRN (Tax Registration Number)</label>
-          <input type="text" name="trn_number" placeholder="15-digit TRN" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors" />
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Official Office / Building Address (UAE Format)</label>
+          <textarea name="business_address" rows="3" placeholder="Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors"></textarea>
         </div>
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Registration / License Info</label>
-          <input type="text" name="business_registration" placeholder="e.g. License No. 623456" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors" />
-        </div>
-      </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
-          <input type="text" name="phone_number" placeholder="e.g. +971 4 123 4567" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors" />
-        </div>
-        <div class="space-y-1">
-          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phone Type</label>
-          <select name="phone_type" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors">
-            <option value="Landline">Landline</option>
-            <option value="Telephone">Telephone</option>
-            <option value="Mobile">Mobile</option>
-          </select>
-        </div>
-      </div>
-      
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Permits & Other Information</label>
-        <textarea name="permits_info" rows="2" placeholder="e.g. Civil Defense Permit No. 5623, Municipality Approval No. 9012" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors"></textarea>
-      </div>
-    </div>
-  </div>
-</template>
-
-<script define:vars={{ initialBanks: banks, initialSignatures: signatures, initialAddresses: addresses, defaultBankId: default_bank_id, defaultSignatureId: default_signature_id, defaultAddressId: default_address_id }}>
-  const bankContainer = document.getElementById('bank-list-container');
-  const signatureContainer = document.getElementById('signature-list-container');
-  const addressContainer = document.getElementById('address-list-container');
-
-  const bankTemplate = document.getElementById('bank-template');
-  const sigTemplate = document.getElementById('sig-template');
-  const addrTemplate = document.getElementById('addr-template');
-
-  // Helper to generate unique random IDs for new settings items
-  const generateId = () => 'item_' + Math.random().toString(36).substr(2, 9);
-
-  // Bank item rendering
-  const addBankCard = (data = null) => {
-    const clone = bankTemplate.content.cloneNode(true);
-    const card = clone.querySelector('.bank-card');
-    const id = data?.id || generateId();
-    card.setAttribute('data-id', id);
-
-    const bankInput = card.querySelector('[name="bank_name"]');
-    const nameInput = card.querySelector('[name="account_name"]');
-    const numberInput = card.querySelector('[name="account_number"]');
-    const swiftInput = card.querySelector('[name="swift_code"]');
-    const ibanInput = card.querySelector('[name="iban_number"]');
-    const radio = card.querySelector('input[type="radio"]');
-
-    if (data) {
-      bankInput.value = data.bank_name || '';
-      nameInput.value = data.account_name || '';
-      numberInput.value = data.account_number || '';
-      swiftInput.value = data.swift_code || '';
-      ibanInput.value = data.iban_number || '';
-    }
-
-    radio.value = id;
-    if (id === defaultBankId || (!defaultBankId && bankContainer.children.length === 0)) {
-      radio.checked = true;
-    }
-
-    card.querySelector('.remove-btn').addEventListener('click', () => {
-      card.remove();
-    });
-
-    bankContainer.appendChild(clone);
-  };
-
-  // Signatory item rendering
-  const addSignatureCard = (data = null) => {
-    const clone = sigTemplate.content.cloneNode(true);
-    const card = clone.querySelector('.sig-card');
-    const id = data?.id || generateId();
-    card.setAttribute('data-id', id);
-
-    const nameInput = card.querySelector('[name="signatory_name"]');
-    const titleInput = card.querySelector('[name="signatory_title"]');
-    const imageInput = card.querySelector('[name="signature_image"]');
-    const fileInput = card.querySelector('[name="signature_image_file"]');
-    const uploadBtn = card.querySelector('.upload-img-btn');
-    const previewWrapper = card.querySelector('.preview-img-wrapper');
-    const previewImg = card.querySelector('.signature-preview');
-    const removeImgBtn = card.querySelector('.remove-img-btn');
-    const statusText = card.querySelector('.upload-status-text');
-    const saveSigBtn = card.querySelector('.save-sig-card-btn');
-    const radio = card.querySelector('input[type="radio"]');
-
-    const updatePreview = (base64) => {
-      if (base64) {
-        imageInput.value = base64;
-        previewImg.src = base64;
-        previewWrapper.classList.remove('hidden');
-        statusText.textContent = 'PNG uploaded';
-        saveSigBtn.classList.remove('hidden');
-      } else {
-        imageInput.value = '';
-        previewImg.src = '';
-        previewWrapper.classList.add('hidden');
-        statusText.textContent = 'No file uploaded';
-        saveSigBtn.classList.add('hidden');
-      }
-    };
-
-    if (data) {
-      nameInput.value = data.signatory_name || '';
-      titleInput.value = data.signatory_title || '';
-      if (data.signature_image && data.signature_image.trim() !== '') {
-        updatePreview(data.signature_image);
-      }
-    }
-
-    uploadBtn.addEventListener('click', () => fileInput.click());
-    
-    saveSigBtn.addEventListener('click', () => {
-      const originalText = saveSigBtn.innerHTML;
-      saveSigBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving...';
-      saveSigBtn.disabled = true;
-      document.getElementById('save-settings-btn').click();
-      
-      const resetBtn = () => {
-        saveSigBtn.innerHTML = originalText;
-        saveSigBtn.disabled = false;
-        window.removeEventListener('settings-saved', resetBtn);
-        window.removeEventListener('settings-save-error', resetBtn);
-      };
-      window.addEventListener('settings-saved', resetBtn);
-      window.addEventListener('settings-save-error', resetBtn);
-    });
-
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      statusText.textContent = 'Processing image...';
-
-      // 1. Enforce only PNG format
-      if (file.type !== 'image/png') {
-        alert('Error: Only PNG images are accepted.');
-        fileInput.value = '';
-        return;
-      }
-
-      // 2. Enforce file size limit of 500KB
-      if (file.size > 500 * 1024) {
-        alert('Error: File size must be under 500KB.');
-        fileInput.value = '';
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target.result;
         
-        // 3. Enforce aspect ratio (3:1 or 4:1)
-        const img = new Image();
-        img.onload = () => {
-          const ratio = img.width / img.height;
-          // Accept ratios between 2.5:1 and 4.5:1
-          if (ratio < 2.5 || ratio > 4.5) {
-            alert(`Error: Invalid aspect ratio (${ratio.toFixed(2)}:1). Image must be around 3:1 or 4:1 aspect ratio.`);
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">TRN (Tax Registration Number)</label>
+            <input type="text" name="trn_number" placeholder="15-digit TRN" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors" />
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Business Registration / License Info</label>
+            <input type="text" name="business_registration" placeholder="e.g. License No. 623456" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors" />
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+            <input type="text" name="phone_number" placeholder="e.g. +971 4 123 4567" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors" />
+          </div>
+          <div class="space-y-1">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phone Type</label>
+            <select name="phone_type" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors">
+              <option value="Landline">Landline</option>
+              <option value="Telephone">Telephone</option>
+              <option value="Mobile">Mobile</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Permits & Other Information</label>
+          <textarea name="permits_info" rows="2" placeholder="e.g. Civil Defense Permit No. 5623, Municipality Approval No. 9012" class="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:border-orange-500 focus:outline-none transition-colors"></textarea>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script is:inline>
+    function setupFinanceLegal() {
+      const bankContainer = document.getElementById('bank-list-container');
+      const signatureContainer = document.getElementById('signature-list-container');
+      const addressContainer = document.getElementById('address-list-container');
+
+      const bankTemplate = document.getElementById('bank-template');
+      const sigTemplate = document.getElementById('sig-template');
+      const addrTemplate = document.getElementById('addr-template');
+
+      const generateId = () => 'item_' + Math.random().toString(36).substr(2, 9);
+
+      // Event delegation for card remove buttons
+      document.getElementById('settings-form')?.addEventListener('click', (e) => {
+        const removeBtn = e.target.closest('.remove-btn');
+        if (removeBtn) {
+          const card = removeBtn.closest('.bank-card, .sig-card, .addr-card');
+          if (card) card.remove();
+        }
+
+        const uploadBtn = e.target.closest('.upload-img-btn');
+        if (uploadBtn) {
+          const sigCard = uploadBtn.closest('.sig-card');
+          const fileInput = sigCard?.querySelector('input[name="signature_image_file"]');
+          fileInput?.click();
+        }
+
+        const removeImgBtn = e.target.closest('.remove-img-btn');
+        if (removeImgBtn) {
+          const sigCard = removeImgBtn.closest('.sig-card');
+          if (sigCard) {
+            const hiddenInput = sigCard.querySelector('input[name="signature_image"]');
+            const previewImg = sigCard.querySelector('.signature-preview');
+            const previewWrapper = sigCard.querySelector('.preview-img-wrapper');
+            const statusText = sigCard.querySelector('.upload-status-text');
+            const saveBtn = sigCard.querySelector('.save-sig-card-btn');
+            if (hiddenInput) hiddenInput.value = '';
+            if (previewImg) previewImg.src = '';
+            if (previewWrapper) previewWrapper.classList.add('hidden');
+            if (statusText) statusText.textContent = 'No file uploaded';
+            if (saveBtn) saveBtn.classList.add('hidden');
+          }
+        }
+
+        const saveSigBtn = e.target.closest('.save-sig-card-btn');
+        if (saveSigBtn) {
+          document.getElementById('save-settings-btn')?.click();
+        }
+      });
+
+      // Handle signature file changes via delegation
+      document.getElementById('signature-list-container')?.addEventListener('change', (e) => {
+        const fileInput = e.target;
+        if (fileInput && fileInput.name === 'signature_image_file') {
+          const file = fileInput.files[0];
+          if (!file) return;
+          const sigCard = fileInput.closest('.sig-card');
+          const statusText = sigCard?.querySelector('.upload-status-text');
+          const hiddenInput = sigCard?.querySelector('input[name="signature_image"]');
+          const previewImg = sigCard?.querySelector('.signature-preview');
+          const previewWrapper = sigCard?.querySelector('.preview-img-wrapper');
+          const saveSigBtn = sigCard?.querySelector('.save-sig-card-btn');
+
+          if (file.type !== 'image/png') {
+            alert('Error: Only PNG images are accepted.');
             fileInput.value = '';
             return;
           }
-          updatePreview(base64);
-        };
-        img.src = base64;
-      };
-      reader.readAsDataURL(file);
-    });
+          if (file.size > 500 * 1024) {
+            alert('Error: File size must be under 500KB.');
+            fileInput.value = '';
+            return;
+          }
 
-    removeImgBtn.addEventListener('click', () => {
-      try { fileInput.value = ''; } catch(e) {}
-      updatePreview(null);
-      // Automatically save to persist the deletion
-      document.getElementById('save-settings-btn').click();
-    });
-
-    radio.value = id;
-    if (id === defaultSignatureId || (!defaultSignatureId && signatureContainer.children.length === 0)) {
-      radio.checked = true;
-    }
-
-    card.querySelector('.remove-btn').addEventListener('click', () => {
-      card.remove();
-      // Automatically save to persist the deletion
-      document.getElementById('save-settings-btn').click();
-    });
-
-    signatureContainer.appendChild(clone);
-  };
-
-  // Address item rendering
-  const addAddressCard = (data = null) => {
-    const clone = addrTemplate.content.cloneNode(true);
-    const card = clone.querySelector('.addr-card');
-    const id = data?.id || generateId();
-    card.setAttribute('data-id', id);
-
-    const addressInput = card.querySelector('[name="business_address"]');
-    const trnInput = card.querySelector('[name="trn_number"]');
-    const regInput = card.querySelector('[name="business_registration"]');
-    const permitInput = card.querySelector('[name="permits_info"]');
-    const phoneInput = card.querySelector('[name="phone_number"]');
-    const phoneTypeSelect = card.querySelector('[name="phone_type"]');
-    const radio = card.querySelector('input[type="radio"]');
-
-    if (data) {
-      addressInput.value = data.business_address || '';
-      trnInput.value = data.trn_number || '';
-      regInput.value = data.business_registration || '';
-      permitInput.value = data.permits_info || '';
-      if (phoneInput) phoneInput.value = data.phone_number || '';
-      if (phoneTypeSelect) phoneTypeSelect.value = data.phone_type || 'Landline';
-    }
-
-    radio.value = id;
-    if (id === defaultAddressId || (!defaultAddressId && addressContainer.children.length === 0)) {
-      radio.checked = true;
-    }
-
-    card.querySelector('.remove-btn').addEventListener('click', () => {
-      card.remove();
-    });
-
-    addressContainer.appendChild(clone);
-  };
-
-  // Initialize Lists
-  initialBanks.forEach(b => addBankCard(b));
-  initialSignatures.forEach(s => addSignatureCard(s));
-  initialAddresses.forEach(a => addAddressCard(a));
-
-  // Add Button Event Listeners
-  document.getElementById('add-bank-btn').addEventListener('click', () => addBankCard());
-  document.getElementById('add-sig-btn').addEventListener('click', () => addSignatureCard());
-  document.getElementById('add-addr-btn').addEventListener('click', () => addAddressCard());
-
-  // Bind Company Stamp Event Listeners
-  const stampUploadBtn = document.getElementById('stamp-upload-btn');
-  const stampFileInput = document.getElementById('stamp-file-input');
-  const stampHiddenInput = document.getElementById('company-stamp-value');
-  const stampPreviewWrapper = document.getElementById('stamp-preview-wrapper');
-  const stampPreviewImg = document.getElementById('stamp-preview-img');
-  const stampRemoveBtn = document.getElementById('stamp-remove-img-btn');
-  const stampStatusText = document.getElementById('stamp-status-text');
-
-  stampUploadBtn?.addEventListener('click', () => stampFileInput?.click());
-
-  const saveStampBtn = document.getElementById('save-stamp-btn');
-
-  const updateStampPreview = (base64) => {
-    if (base64) {
-      if (stampHiddenInput) stampHiddenInput.value = base64;
-      if (stampPreviewImg) stampPreviewImg.src = base64;
-      stampPreviewWrapper?.classList.remove('hidden');
-      if (stampStatusText) stampStatusText.textContent = 'Stamp uploaded successfully';
-    } else {
-      if (stampHiddenInput) stampHiddenInput.value = '';
-      if (stampPreviewImg) stampPreviewImg.src = '';
-      stampPreviewWrapper?.classList.add('hidden');
-      if (stampStatusText) stampStatusText.textContent = 'No corporate stamp uploaded';
-    }
-    
-    // Toggle Save Button Visibility
-    if (saveStampBtn) {
-      saveStampBtn.classList.remove('hidden');
-    }
-  };
-
-  saveStampBtn?.addEventListener('click', () => {
-    const originalText = saveStampBtn.innerHTML;
-    saveStampBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving...';
-    saveStampBtn.disabled = true;
-    document.getElementById('save-settings-btn')?.click();
-    
-    const resetBtn = () => {
-      saveStampBtn.innerHTML = originalText;
-      saveStampBtn.disabled = false;
-      saveStampBtn.classList.add('hidden');
-      window.removeEventListener('settings-saved', resetBtn);
-      window.removeEventListener('settings-save-error', resetBtn);
-    };
-    window.addEventListener('settings-saved', resetBtn);
-    window.addEventListener('settings-save-error', resetBtn);
-  });
-
-  stampFileInput?.addEventListener('change', () => {
-    const file = stampFileInput.files?.[0];
-    if (!file) return;
-
-    if (stampStatusText) stampStatusText.textContent = 'Processing stamp image...';
-
-    // 1. Enforce only PNG format
-    if (file.type !== 'image/png') {
-      alert('Error: Stamp must be a PNG image.');
-      stampFileInput.value = '';
-      if (stampStatusText) stampStatusText.textContent = 'Error: Invalid file type';
-      return;
-    }
-
-    // 2. Enforce file size limit of 500KB
-    if (file.size > 500 * 1024) {
-      alert('Error: Stamp file size must be under 500KB.');
-      stampFileInput.value = '';
-      if (stampStatusText) stampStatusText.textContent = 'Error: File too large';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result;
-      updateStampPreview(base64);
-    };
-    reader.readAsDataURL(file);
-  });
-
-  stampRemoveBtn?.addEventListener('click', () => {
-    if (stampFileInput) stampFileInput.value = '';
-    updateStampPreview(null);
-  });
-
-  // Save Event Listener
-  const saveBtn = document.getElementById('save-settings-btn');
-  const toast = document.getElementById('toast-msg');
-  const toastText = document.getElementById('toast-text');
-
-  const showToast = (msg, isError = false) => {
-    if (!toast || !toastText) return;
-    toastText.textContent = msg;
-    toast.querySelector('.w-2')?.classList.toggle('bg-green-505', !isError);
-    toast.querySelector('.w-2')?.classList.toggle('bg-green-500', !isError);
-    toast.querySelector('.w-2')?.classList.toggle('bg-red-500', isError);
-    toast.classList.remove('translate-y-20', 'opacity-0');
-    setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
-  };
-
-  saveBtn?.addEventListener('click', async () => {
-    saveBtn.setAttribute('disabled', 'true');
-    saveBtn.innerHTML = '<span class="animate-pulse">Saving...</span>';
-
-    // Build lists from UI elements
-    const bankCards = document.querySelectorAll('.bank-card');
-    const banks = Array.from(bankCards).map(card => {
-      return {
-        id: card.getAttribute('data-id'),
-        bank_name: card.querySelector('[name="bank_name"]').value,
-        account_name: card.querySelector('[name="account_name"]').value,
-        account_number: card.querySelector('[name="account_number"]').value,
-        swift_code: card.querySelector('[name="swift_code"]').value,
-        iban_number: card.querySelector('[name="iban_number"]').value,
-      };
-    });
-
-    const sigCards = document.querySelectorAll('.sig-card');
-    const signatures = Array.from(sigCards).map(card => {
-      return {
-        id: card.getAttribute('data-id'),
-        signatory_name: card.querySelector('[name="signatory_name"]').value,
-        signatory_title: card.querySelector('[name="signatory_title"]').value,
-        signature_image: card.querySelector('[name="signature_image"]').value,
-      };
-    });
-
-    const addrCards = document.querySelectorAll('.addr-card');
-    const addresses = Array.from(addrCards).map(card => {
-      return {
-        id: card.getAttribute('data-id'),
-        business_address: card.querySelector('[name="business_address"]').value,
-        trn_number: card.querySelector('[name="trn_number"]').value,
-        business_registration: card.querySelector('[name="business_registration"]').value,
-        permits_info: card.querySelector('[name="permits_info"]').value,
-        phone_number: card.querySelector('[name="phone_number"]').value,
-        phone_type: card.querySelector('[name="phone_type"]').value,
-      };
-    });
-
-    const default_bank_id = document.querySelector('input[name="default_bank"]:checked')?.value || '';
-    const default_signature_id = document.querySelector('input[name="default_signature"]:checked')?.value || '';
-    const default_address_id = document.querySelector('input[name="default_address"]:checked')?.value || '';
-
-    // Find defaults to store as legacy keys to keep rest of app happy
-    const defBank = banks.find(b => b.id === default_bank_id) || banks[0];
-    const defSig = signatures.find(s => s.id === default_signature_id) || signatures[0];
-    const defAddr = addresses.find(a => a.id === default_address_id) || addresses[0];
-
-    const company_stamp = document.getElementById('company-stamp-value')?.value || '';
-
-    const payload = {
-      banks: JSON.stringify(banks),
-      signatures: JSON.stringify(signatures),
-      addresses: JSON.stringify(addresses),
-      default_bank_id,
-      company_stamp,
-      default_signature_id,
-      default_address_id,
-      // Legacy compatibility scalars
-      bank_name: defBank?.bank_name || '',
-      account_name: defBank?.account_name || '',
-      account_number: defBank?.account_number || '',
-      swift_code: defBank?.swift_code || '',
-      iban_number: defBank?.iban_number || '',
-      signatory_name: defSig?.signatory_name || '',
-      signatory_title: defSig?.signatory_title || '',
-      business_address: defAddr?.business_address || '',
-      trn_number: defAddr?.trn_number || '',
-      business_registration: defAddr?.business_registration || '',
-      permits_info: defAddr?.permits_info || '',
-      phone_number: defAddr?.phone_number || '',
-      phone_type: defAddr?.phone_type || 'Landline',
-      contact_phone: defAddr?.phone_number || ''
-    };
-
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+          if (statusText) statusText.textContent = 'Processing image...';
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const base64 = evt.target?.result;
+            if (hiddenInput) hiddenInput.value = base64;
+            if (previewImg) previewImg.src = base64;
+            if (previewWrapper) previewWrapper.classList.remove('hidden');
+            if (statusText) statusText.textContent = 'PNG uploaded';
+            if (saveSigBtn) saveSigBtn.classList.remove('hidden');
+          };
+          reader.readAsDataURL(file);
+        }
       });
-      if (!res.ok) throw new Error('Failed to save settings');
-      showToast('Settings saved successfully');
-      window.dispatchEvent(new Event('settings-saved'));
-    } catch (err) {
-      showToast(err.message || 'Error saving settings', true);
-      window.dispatchEvent(new Event('settings-save-error'));
-    } finally {
-      saveBtn.removeAttribute('disabled');
-      saveBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg> Save Configuration';
+
+      // Add New Cards
+      document.getElementById('add-bank-btn')?.addEventListener('click', () => {
+        if (!bankTemplate || !bankContainer) return;
+        const clone = bankTemplate.content.cloneNode(true);
+        const card = clone.querySelector('.bank-card');
+        const id = generateId();
+        card.setAttribute('data-id', id);
+        card.querySelector('input[type="radio"]').value = id;
+        if (bankContainer.children.length === 0) {
+          card.querySelector('input[type="radio"]').checked = true;
+        }
+        bankContainer.appendChild(clone);
+      });
+
+      document.getElementById('add-sig-btn')?.addEventListener('click', () => {
+        if (!sigTemplate || !signatureContainer) return;
+        const clone = sigTemplate.content.cloneNode(true);
+        const card = clone.querySelector('.sig-card');
+        const id = generateId();
+        card.setAttribute('data-id', id);
+        card.querySelector('input[type="radio"]').value = id;
+        if (signatureContainer.children.length === 0) {
+          card.querySelector('input[type="radio"]').checked = true;
+        }
+        signatureContainer.appendChild(clone);
+      });
+
+      document.getElementById('add-addr-btn')?.addEventListener('click', () => {
+        if (!addrTemplate || !addressContainer) return;
+        const clone = addrTemplate.content.cloneNode(true);
+        const card = clone.querySelector('.addr-card');
+        const id = generateId();
+        card.setAttribute('data-id', id);
+        card.querySelector('input[type="radio"]').value = id;
+        if (addressContainer.children.length === 0) {
+          card.querySelector('input[type="radio"]').checked = true;
+        }
+        addressContainer.appendChild(clone);
+      });
+
+      // Corporate Stamp Uploader
+      const stampUploadBtn = document.getElementById('stamp-upload-btn');
+      const stampFileInput = document.getElementById('stamp-file-input');
+      const stampHiddenInput = document.getElementById('company-stamp-value');
+      const stampPreviewWrapper = document.getElementById('stamp-preview-wrapper');
+      const stampPreviewImg = document.getElementById('stamp-preview-img');
+      const stampRemoveBtn = document.getElementById('stamp-remove-img-btn');
+      const stampStatusText = document.getElementById('stamp-status-text');
+      const saveStampBtn = document.getElementById('save-stamp-btn');
+
+      stampUploadBtn?.addEventListener('click', () => stampFileInput?.click());
+
+      const updateStampPreview = (base64) => {
+        if (base64) {
+          if (stampHiddenInput) stampHiddenInput.value = base64;
+          if (stampPreviewImg) stampPreviewImg.src = base64;
+          stampPreviewWrapper?.classList.remove('hidden');
+          if (stampStatusText) stampStatusText.textContent = 'Stamp uploaded successfully';
+        } else {
+          if (stampHiddenInput) stampHiddenInput.value = '';
+          if (stampPreviewImg) stampPreviewImg.src = '';
+          stampPreviewWrapper?.classList.add('hidden');
+          if (stampStatusText) stampStatusText.textContent = 'No corporate stamp uploaded';
+        }
+        if (saveStampBtn) saveStampBtn.classList.remove('hidden');
+      };
+
+      saveStampBtn?.addEventListener('click', () => {
+        document.getElementById('save-settings-btn')?.click();
+      });
+
+      stampFileInput?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.type !== 'image/png') {
+          alert('Error: Stamp must be a PNG image.');
+          stampFileInput.value = '';
+          return;
+        }
+        if (file.size > 500 * 1024) {
+          alert('Error: Stamp file size must be under 500KB.');
+          stampFileInput.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => updateStampPreview(event.target?.result);
+        reader.readAsDataURL(file);
+      });
+
+      stampRemoveBtn?.addEventListener('click', () => {
+        if (stampFileInput) stampFileInput.value = '';
+        updateStampPreview(null);
+      });
+
+      // Multi-Division Toggle Dynamic Badge
+      const bothDivToggle = document.getElementById('toggle-both-divisions');
+      const bothDivBadge = document.getElementById('both-divisions-status-badge');
+      bothDivToggle?.addEventListener('change', () => {
+        if (bothDivBadge) {
+          if (bothDivToggle.checked) {
+            bothDivBadge.textContent = 'Enabled';
+            bothDivBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider bg-emerald-100 text-emerald-700';
+          } else {
+            bothDivBadge.textContent = 'Disabled (Default)';
+            bothDivBadge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider bg-slate-200 text-slate-600';
+          }
+        }
+      });
+
+      // Save Event Listener
+      const saveBtn = document.getElementById('save-settings-btn');
+      const toast = document.getElementById('toast-msg');
+      const toastText = document.getElementById('toast-text');
+
+      const showToast = (msg, isError = false) => {
+        if (!toast || !toastText) return;
+        toastText.textContent = msg;
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+      };
+
+      saveBtn?.addEventListener('click', async () => {
+        saveBtn.setAttribute('disabled', 'true');
+        saveBtn.innerHTML = '<span class="animate-pulse">Saving...</span>';
+
+        const bankCards = document.querySelectorAll('.bank-card');
+        const banksList = Array.from(bankCards).map(card => ({
+          id: card.getAttribute('data-id'),
+          bank_name: card.querySelector('[name="bank_name"]')?.value || '',
+          account_name: card.querySelector('[name="account_name"]')?.value || '',
+          account_number: card.querySelector('[name="account_number"]')?.value || '',
+          swift_code: card.querySelector('[name="swift_code"]')?.value || '',
+          iban_number: card.querySelector('[name="iban_number"]')?.value || '',
+        }));
+
+        const sigCards = document.querySelectorAll('.sig-card');
+        const signaturesList = Array.from(sigCards).map(card => ({
+          id: card.getAttribute('data-id'),
+          signatory_name: card.querySelector('[name="signatory_name"]')?.value || '',
+          signatory_title: card.querySelector('[name="signatory_title"]')?.value || '',
+          signature_image: card.querySelector('[name="signature_image"]')?.value || '',
+        }));
+
+        const addrCards = document.querySelectorAll('.addr-card');
+        const addressesList = Array.from(addrCards).map(card => ({
+          id: card.getAttribute('data-id'),
+          business_address: card.querySelector('[name="business_address"]')?.value || '',
+          trn_number: card.querySelector('[name="trn_number"]')?.value || '',
+          business_registration: card.querySelector('[name="business_registration"]')?.value || '',
+          permits_info: card.querySelector('[name="permits_info"]')?.value || '',
+          phone_number: card.querySelector('[name="phone_number"]')?.value || '',
+          phone_type: card.querySelector('[name="phone_type"]')?.value || 'Landline',
+        }));
+
+        const defBankId = document.querySelector('input[name="default_bank"]:checked')?.value || (banksList[0]?.id || '');
+        const defSigId = document.querySelector('input[name="default_signature"]:checked')?.value || (signaturesList[0]?.id || '');
+        const defAddrId = document.querySelector('input[name="default_address"]:checked')?.value || (addressesList[0]?.id || '');
+
+        const defBank = banksList.find(b => b.id === defBankId) || banksList[0];
+        const defSig = signaturesList.find(s => s.id === defSigId) || signaturesList[0];
+        const defAddr = addressesList.find(a => a.id === defAddrId) || addressesList[0];
+
+        const companyStampVal = document.getElementById('company-stamp-value')?.value || '';
+        const enableBothDivsVal = document.getElementById('toggle-both-divisions')?.checked ? 'true' : 'false';
+
+        const payload = {
+          banks: JSON.stringify(banksList),
+          signatures: JSON.stringify(signaturesList),
+          addresses: JSON.stringify(addressesList),
+          default_bank_id: defBankId,
+          company_stamp: companyStampVal,
+          default_signature_id: defSigId,
+          default_address_id: defAddrId,
+          enable_both_divisions: enableBothDivsVal,
+          bank_name: defBank?.bank_name || '',
+          account_name: defBank?.account_name || '',
+          account_number: defBank?.account_number || '',
+          swift_code: defBank?.swift_code || '',
+          iban_number: defBank?.iban_number || '',
+          signatory_name: defSig?.signatory_name || '',
+          signatory_title: defSig?.signatory_title || '',
+          business_address: defAddr?.business_address || '',
+          trn_number: defAddr?.trn_number || '',
+          business_registration: defAddr?.business_registration || '',
+          permits_info: defAddr?.permits_info || '',
+          phone_number: defAddr?.phone_number || '',
+          phone_type: defAddr?.phone_type || 'Landline',
+          contact_phone: defAddr?.phone_number || ''
+        };
+
+        try {
+          const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('Failed to save settings');
+          showToast('Settings saved successfully');
+        } catch (err) {
+          showToast(err.message || 'Error saving settings', true);
+        } finally {
+          saveBtn.removeAttribute('disabled');
+          saveBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg> Save Configuration';
+        }
+      });
     }
-  });
-</script>
+
+    setupFinanceLegal();
+    document.addEventListener('astro:page-load', setupFinanceLegal);
+  </script>
+</DashboardLayout>

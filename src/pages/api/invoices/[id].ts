@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { pool, query, withTransaction } from '../../../lib/db';
 import { z } from 'zod';
 import { optimizeAndSaveImage } from '../../../lib/imageOptimizer';
+import { createSanitizedOrderSnapshot } from '../../../lib/auditSnapshot';
 
 const itemSchema = z.object({
   description: z.string().min(1, 'Item name is required'),
@@ -24,7 +25,7 @@ const invoiceSchema = z.object({
   show_images: z.boolean().default(false),
   billing_address: z.string().optional().nullable().or(z.literal('')),
   shipping_address: z.string().optional().nullable().or(z.literal('')),
-  order_type: z.enum(['standard', 'quotation', 'proforma', 'service', 'recurring', 'lpo', 'tax_invoice', 'inquiry', 'delivery_note', 'commercial_invoice', 'payment']).default('standard'),
+  order_type: z.enum(['standard', 'quotation', 'proforma', 'service', 'recurring', 'lpo', 'tax_invoice', 'inquiry', 'delivery_note', 'sample_order', 'commercial_invoice', 'payment']).default('standard'),
   source_division: z.enum(['DTL', 'DGS', 'both']).optional().nullable(),
   issue_date: z.string().min(1, 'Issue date is required'),
   due_date: z.string().optional().nullable().or(z.literal('')),
@@ -102,6 +103,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
         if (parsed.order_type === 'quotation') prefix = 'EST';
         else if (parsed.order_type === 'lpo' || parsed.order_type === 'proforma') prefix = 'PRO';
         else if (parsed.order_type === 'delivery_note') prefix = 'DLN';
+        else if (parsed.order_type === 'sample_order') prefix = 'SMP';
         newInvoiceNumber = `${prefix}-${new Date().getFullYear()}-${rand}`;
       }
 
@@ -315,7 +317,7 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
       }
 
       // Inventory Deduction Logic
-      const shouldDeduct = parsed.payment_status === 'paid' || parsed.order_type === 'delivery_note';
+      const shouldDeduct = parsed.payment_status === 'paid' || parsed.order_type === 'delivery_note' || parsed.order_type === 'sample_order';
       const prevInvoice = await client.query('SELECT inventory_deducted, order_type, payment_status, invoice_number FROM invoices WHERE id = $1', [id]);
       const alreadyDeducted = prevInvoice.rows[0]?.inventory_deducted;
 
@@ -353,10 +355,12 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
         actionType = 'STATUS_CHANGE';
       }
 
+      const snapshot = createSanitizedOrderSnapshot(res.rows[0], parsed.items);
+
       await client.query(
-        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
-         VALUES ($1, 'invoices', $2, $3, $4)`,
-        [actionType, id, detailsMsg, locals.user?.id || null]
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+         VALUES ($1, 'invoices', $2, $3, $4, $5)`,
+        [actionType, id, detailsMsg, locals.user?.id || null, JSON.stringify(snapshot)]
       );
 
       return res.rows[0];
@@ -384,11 +388,12 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
       }
 
       await withTransaction(async (client) => {
-        const currentRes = await client.query('SELECT payment_status, invoice_number, inventory_deducted FROM invoices WHERE id = $1', [id]);
+        const currentRes = await client.query('SELECT * FROM invoices WHERE id = $1', [id]);
         if (currentRes.rows.length === 0) throw new Error('Invoice not found');
         const current = currentRes.rows[0];
 
-        await client.query('UPDATE invoices SET payment_status = $1, updated_at = NOW() WHERE id = $2', [data.payment_status, id]);
+        const updatedInvRes = await client.query('UPDATE invoices SET payment_status = $1, updated_at = NOW() WHERE id = $2 RETURNING *', [data.payment_status, id]);
+        const updatedInv = updatedInvRes.rows[0];
         
         if (data.payment_status === 'cancelled') {
           if (current.inventory_deducted) {
@@ -409,18 +414,21 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
           }
         }
 
+        const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+        const snapshot = createSanitizedOrderSnapshot(updatedInv, itemsRes.rows);
+
         const detailsMsg = `Status of document ${current.invoice_number} set to ${data.payment_status}`;
         await client.query(
-          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
-           VALUES ('STATUS_CHANGE', 'invoices', $1, $2, $3)`,
-          [id, detailsMsg, locals.user?.id || null]
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+           VALUES ('STATUS_CHANGE', 'invoices', $1, $2, $3, $4)`,
+          [id, detailsMsg, locals.user?.id || null, JSON.stringify(snapshot)]
         );
       });
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     
     if (data.order_type) {
-      const currentRes = await query('SELECT order_type, invoice_number FROM invoices WHERE id = $1', [id]);
+      const currentRes = await query('SELECT * FROM invoices WHERE id = $1', [id]);
       if (currentRes.rows.length === 0) {
         return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
       }
@@ -429,26 +437,31 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
       let newInvoiceNumber = current.invoice_number;
 
       if (data.order_type === 'quotation') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'EST-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'EST-');
       } else if (data.order_type === 'lpo' || data.order_type === 'proforma') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'PRO-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'PRO-');
       } else if (data.order_type === 'delivery_note') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'DLN-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'DLN-');
+      } else if (data.order_type === 'sample_order') {
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'SMP-');
       } else {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN)-/, 'INV-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'INV-');
       }
 
       await withTransaction(async (client) => {
-        await client.query(
-          'UPDATE invoices SET order_type = $1, invoice_number = $2, updated_at = NOW() WHERE id = $3',
+        const updateRes = await client.query(
+          'UPDATE invoices SET order_type = $1, invoice_number = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
           [data.order_type, newInvoiceNumber, id]
         );
         
+        const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+        const snapshot = createSanitizedOrderSnapshot(updateRes.rows[0], itemsRes.rows);
+
         const detailsMsg = `Converted document ${current.invoice_number} from ${oldType} to ${data.order_type} (New Document No: ${newInvoiceNumber})`;
         await client.query(
-          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
-           VALUES ('INVOICE_CONVERT', 'invoices', $1, $2, $3)`,
-          [id, detailsMsg, locals.user?.id || null]
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+           VALUES ('INVOICE_CONVERT', 'invoices', $1, $2, $3, $4)`,
+          [id, detailsMsg, locals.user?.id || null, JSON.stringify(snapshot)]
         );
       });
 
@@ -456,20 +469,22 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
     }
 
     if (data.is_archived !== undefined) {
-      const currentRes = await query('SELECT is_archived, invoice_number FROM invoices WHERE id = $1', [id]);
+      const currentRes = await query('SELECT * FROM invoices WHERE id = $1', [id]);
       if (currentRes.rows.length === 0) {
         return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
       }
       const current = currentRes.rows[0];
 
-      await query('UPDATE invoices SET is_archived = $1, updated_at = NOW() WHERE id = $2', [data.is_archived, id]);
+      const updateRes = await query('UPDATE invoices SET is_archived = $1, updated_at = NOW() WHERE id = $2 RETURNING *', [data.is_archived, id]);
+      const itemsRes = await query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+      const snapshot = createSanitizedOrderSnapshot(updateRes.rows[0], itemsRes.rows);
 
       const actionText = data.is_archived ? 'Archived' : 'Restored from archive';
       const detailsMsg = `${actionText} document ${current.invoice_number}`;
       await query(
-        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
-         VALUES ($1, 'invoices', $2, $3, $4)`,
-        [data.is_archived ? 'INVOICE_ARCHIVE' : 'INVOICE_RESTORE', id, detailsMsg, locals.user?.id || null]
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+         VALUES ($1, 'invoices', $2, $3, $4, $5)`,
+        [data.is_archived ? 'INVOICE_ARCHIVE' : 'INVOICE_RESTORE', id, detailsMsg, locals.user?.id || null, JSON.stringify(snapshot)]
       );
 
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -477,11 +492,11 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
 
     if (data.is_deleted !== undefined) {
       await withTransaction(async (client) => {
-        const currentRes = await client.query('SELECT is_deleted, invoice_number, inventory_deducted FROM invoices WHERE id = $1', [id]);
+        const currentRes = await client.query('SELECT * FROM invoices WHERE id = $1', [id]);
         if (currentRes.rows.length === 0) throw new Error('Invoice not found');
         const current = currentRes.rows[0];
 
-        await client.query('UPDATE invoices SET is_deleted = $1, updated_at = NOW() WHERE id = $2', [data.is_deleted, id]);
+        const updateRes = await client.query('UPDATE invoices SET is_deleted = $1, updated_at = NOW() WHERE id = $2 RETURNING *', [data.is_deleted, id]);
         
         if (data.is_deleted === true) {
           if (current.inventory_deducted) {
@@ -502,12 +517,15 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
           }
         }
 
+        const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+        const snapshot = createSanitizedOrderSnapshot(updateRes.rows[0], itemsRes.rows);
+
         const actionText = data.is_deleted ? 'Moved to Trash' : 'Restored from Trash';
         const detailsMsg = `${actionText} document ${current.invoice_number}`;
         await client.query(
-          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
-           VALUES ($1, 'invoices', $2, $3, $4)`,
-          [data.is_deleted ? 'INVOICE_TRASH' : 'INVOICE_RESTORE', id, detailsMsg, locals.user?.id || null]
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+           VALUES ($1, 'invoices', $2, $3, $4, $5)`,
+          [data.is_deleted ? 'INVOICE_TRASH' : 'INVOICE_RESTORE', id, detailsMsg, locals.user?.id || null, JSON.stringify(snapshot)]
         );
       });
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -527,17 +545,24 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      const res = await client.query('DELETE FROM invoices WHERE id = $1 RETURNING invoice_number', [id]);
-      if (res.rows.length === 0) {
+      
+      // Fetch full order & items before permanent deletion to preserve complete snapshot
+      const currentRes = await client.query('SELECT * FROM invoices WHERE id = $1', [id]);
+      if (currentRes.rows.length === 0) {
         await client.query('ROLLBACK');
         return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
       }
-      const deleted = res.rows[0];
+      const invoiceData = currentRes.rows[0];
+      const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+      const itemsData = itemsRes.rows;
+      const snapshot = createSanitizedOrderSnapshot(invoiceData, itemsData);
+
+      await client.query('DELETE FROM invoices WHERE id = $1', [id]);
 
       await client.query(
-        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
-         VALUES ('INVOICE_DELETE', 'invoices', $1, $2, $3)`,
-        [id, `Permanently deleted document ${deleted.invoice_number}`, locals.user?.id || null]
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+         VALUES ('INVOICE_DELETE', 'invoices', $1, $2, $3, $4)`,
+        [id, `Permanently deleted document ${invoiceData.invoice_number} (Customer: ${invoiceData.customer_name}, Total: ${invoiceData.total_amount})`, locals.user?.id || null, JSON.stringify(snapshot)]
       );
 
       await client.query('COMMIT');

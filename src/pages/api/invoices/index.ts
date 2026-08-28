@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { query, withTransaction, exportTableAsCSV } from '../../../lib/db';
 import { z } from 'zod';
 import { optimizeAndSaveImage } from '../../../lib/imageOptimizer';
+import { createSanitizedOrderSnapshot } from '../../../lib/auditSnapshot';
 
 const itemSchema = z.object({
   description: z.string().min(1, 'Item name is required'),
@@ -32,7 +33,7 @@ const invoiceSchema = z.object({
   show_images: z.boolean().default(false),
   billing_address: z.string().optional().nullable().or(z.literal('')),
   shipping_address: z.string().optional().nullable().or(z.literal('')),
-  order_type: z.enum(['standard', 'quotation', 'proforma', 'service', 'recurring', 'lpo', 'tax_invoice', 'inquiry', 'delivery_note', 'commercial_invoice', 'payment']).default('standard'),
+  order_type: z.enum(['standard', 'quotation', 'proforma', 'service', 'recurring', 'lpo', 'tax_invoice', 'inquiry', 'delivery_note', 'sample_order', 'commercial_invoice', 'payment']).default('standard'),
   source_division: z.enum(['DTL', 'DGS', 'both']).optional().nullable(),
   issue_date: z.string().min(1, 'Issue date is required'),
   due_date: z.string().optional().nullable().or(z.literal('')),
@@ -144,10 +145,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
           );
         }
 
+        const snapshot = createSanitizedOrderSnapshot(newInv, sourceItems);
         await client.query(
-          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
-           VALUES ($1, $2, $3, $4, $5)`,
-          ['INVOICE_DUPLICATE', 'invoices', newInv.id, `Duplicated order from reference document ${sourceInv.invoice_number} (New Document: ${newInv.invoice_number})`, locals.user?.id || null]
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          ['INVOICE_DUPLICATE', 'invoices', newInv.id, `Duplicated order from reference document ${sourceInv.invoice_number} (New Document: ${newInv.invoice_number})`, locals.user?.id || null, JSON.stringify(snapshot)]
         );
 
         return newInv;
@@ -203,6 +205,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (parsed.order_type === 'quotation') prefix = 'EST';
     else if (parsed.order_type === 'lpo' || parsed.order_type === 'proforma') prefix = 'PRO';
     else if (parsed.order_type === 'delivery_note') prefix = 'DLN';
+    else if (parsed.order_type === 'sample_order') prefix = 'SMP';
     const invoice_number = `${prefix}-${new Date().getFullYear()}-${rand}`;
 
     // ACID transaction
@@ -424,7 +427,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       }
 
       // Inventory Deduction Logic
-      const shouldDeduct = parsed.payment_status === 'paid' || parsed.order_type === 'delivery_note';
+      const shouldDeduct = parsed.payment_status === 'paid' || parsed.order_type === 'delivery_note' || parsed.order_type === 'sample_order';
       if (shouldDeduct) {
         for (const item of parsed.items) {
           if (!item.product_id) continue;
@@ -447,10 +450,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
         inv.inventory_deducted = true;
       }
 
+      const snapshot = createSanitizedOrderSnapshot(inv, parsed.items);
       await client.query(
-        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
-         VALUES ($1, $2, $3, $4, $5)`,
-        ['CREATE', 'invoices', inv.id, `Created document ${inv.invoice_number} for customer ${inv.customer_name} (Order Type: ${inv.order_type}, Total: ${inv.total_amount})`, locals.user?.id || null]
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        ['CREATE', 'invoices', inv.id, `Created document ${inv.invoice_number} for customer ${inv.customer_name} (Order Type: ${inv.order_type}, Total: ${inv.total_amount})`, locals.user?.id || null, JSON.stringify(snapshot)]
       );
 
       return inv;

@@ -19,7 +19,7 @@ export const GET: APIRoute = async () => {
   }
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const data = await request.json();
     const parsed = settingsSchema.parse(data);
@@ -58,6 +58,58 @@ export const POST: APIRoute = async ({ request }) => {
           [key, valueToStore]
         );
       }
+
+      // Record update event in audit_logs
+      const isFinanceLegal = keys.some(k => ['banks', 'signatures', 'addresses', 'company_stamp', 'enable_both_divisions', 'bank_name', 'trn_number'].includes(k));
+      let action = 'UPDATE_SETTINGS';
+      let entityType = 'settings';
+      let details = `Updated system settings (${keys.join(', ')})`;
+
+      if (isFinanceLegal) {
+        action = 'UPDATE_FINANCE_LEGAL';
+        entityType = 'finance_legal';
+
+        const detailsParts: string[] = [];
+        if (keys.includes('banks')) {
+          try {
+            const b = typeof parsed.banks === 'string' ? JSON.parse(parsed.banks) : parsed.banks;
+            detailsParts.push(`${b.length} bank account(s)`);
+          } catch(e) {
+            detailsParts.push('bank accounts');
+          }
+        }
+        if (keys.includes('signatures')) {
+          try {
+            const s = typeof parsed.signatures === 'string' ? JSON.parse(parsed.signatures) : parsed.signatures;
+            detailsParts.push(`${s.length} signatory stamp(s)`);
+          } catch(e) {
+            detailsParts.push('signatory stamps');
+          }
+        }
+        if (keys.includes('addresses')) {
+          try {
+            const a = typeof parsed.addresses === 'string' ? JSON.parse(parsed.addresses) : parsed.addresses;
+            detailsParts.push(`${a.length} office profile(s)`);
+          } catch(e) {
+            detailsParts.push('office addresses');
+          }
+        }
+        if (keys.includes('company_stamp')) {
+          detailsParts.push(parsed.company_stamp ? 'corporate stamp updated' : 'corporate stamp cleared');
+        }
+        if (keys.includes('enable_both_divisions')) {
+          detailsParts.push(`Multi-Division Combined Invoicing ${parsed.enable_both_divisions === 'true' ? 'ENABLED' : 'DISABLED'}`);
+        }
+
+        details = `Updated Finance & Legal settings: ${detailsParts.join(', ')}`;
+      }
+
+      await client.query(
+        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [action, entityType, 'finance_legal_config', details, (locals as any)?.user?.id || null]
+      );
+
       await client.query('COMMIT');
     } catch (e) {
       await client.query('ROLLBACK');

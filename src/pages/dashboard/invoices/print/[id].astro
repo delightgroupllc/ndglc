@@ -110,7 +110,10 @@ if (!inv) {
   return Astro.redirect('/dashboard/invoices');
 }
 
-const documentTitle = inv.order_type === 'proforma' ? 'PRO FORMA' : 
+const allowBothDivisions = settings.enable_both_divisions === 'true';
+
+const documentTitle = inv.order_type === 'sample_order' ? 'SAMPLE ORDER' :
+                      inv.order_type === 'proforma' ? 'PRO FORMA' : 
                       inv.order_type === 'lpo' ? 'PURCHASE ORDER' : 
                       inv.order_type === 'delivery_note' ? 'DELIVERY NOTE' : 
                       inv.order_type === 'tax_invoice' ? 'COMMERCIAL BILL' :
@@ -157,7 +160,7 @@ const totalQty = items.reduce((sum, item) => sum + Number(item.quantity), 0);
 const totalQtyInWords = numberToWords(totalQty).replace(/Dirham.*/i, 'Only');
 
 // Division branding
-const isDGS = inv.source_division === 'DGS';
+const isDGS = (inv.source_division || '').toUpperCase() === 'DGS';
 const companyNameEN = isDGS ? 'Delight Greenscapes' : 'Delight Technical Lighting';
 const companyNameAR = isDGS ? 'ديلايت جرين سكيبس' : 'ديلايت للاضاءة الفنية';
 const websiteURL = 'www.delightgroupllc.com';
@@ -1200,10 +1203,11 @@ const isTermChecked = (identifier: string): boolean => {
             <div class="space-y-1">
               <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Document Header Title</label>
               <select id="config-doc-type" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
-                <option value="TAX INVOICE" selected={inv.order_type !== 'quotation' && inv.order_type !== 'lpo' && inv.order_type !== 'delivery_note'}>TAX INVOICE</option>
+                <option value="TAX INVOICE" selected={inv.order_type !== 'quotation' && inv.order_type !== 'lpo' && inv.order_type !== 'delivery_note' && inv.order_type !== 'sample_order'}>TAX INVOICE</option>
                 <option value="ESTIMATION / QUOTE" selected={inv.order_type === 'quotation'}>ESTIMATION / QUOTE</option>
                 <option value="PRO FORMA INVOICE" selected={inv.order_type === 'lpo'}>PRO FORMA INVOICE</option>
                 <option value="DELIVERY NOTE" selected={inv.order_type === 'delivery_note'}>DELIVERY NOTE</option>
+                <option value="SAMPLE ORDER" selected={inv.order_type === 'sample_order'}>SAMPLE ORDER</option>
                 <option value="COMMERCIAL BILL">COMMERCIAL BILL</option>
                 <option value="PURCHASE ORDER">PURCHASE ORDER</option>
               </select>
@@ -1213,13 +1217,17 @@ const isTermChecked = (identifier: string): boolean => {
             <div class="space-y-1">
               <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Company Logo Branding</label>
               <select id="config-branding-logo" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
-                <option value="auto">Auto-detect</option>
+                <option value="auto">Auto-detect ({isDGS ? 'DGS Logo' : 'DTL Logo'})</option>
                 {isDGS ? (
                   <option value="dgs">DGS Logo Only</option>
                 ) : (
                   <option value="dtl">DTL Logo Only</option>
                 )}
-                <option value="dgllc">DGLLC Master Logo</option>
+                {allowBothDivisions ? (
+                  <option value="dgllc">DGLLC Master Logo</option>
+                ) : (
+                  <option value="dgllc" disabled class="text-slate-500 italic bg-slate-900 cursor-not-allowed" title="To enable Master Group branding, go to Finance & Legal settings and enable it there.">DGLLC Master Logo (Disabled - Configure in Finance & Legal)</option>
+                )}
               </select>
             </div>
 
@@ -1227,16 +1235,24 @@ const isTermChecked = (identifier: string): boolean => {
             <div class="space-y-1 mt-1.5">
               <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Company Name Branding</label>
               <select id="config-branding-name" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
-                <option value="auto">Auto-detect</option>
+                <option value="auto">Auto-detect ({isDGS ? 'Delight Greenscapes' : 'Delight Technical Lighting'})</option>
                 {isDGS ? (
                   <>
                     <option value="dgs">Delight Greenscapes</option>
-                    <option value="dgllc">Delight Group LLC</option>
+                    {allowBothDivisions ? (
+                      <option value="dgllc">Delight Group LLC</option>
+                    ) : (
+                      <option value="dgllc" disabled class="text-slate-500 italic bg-slate-900 cursor-not-allowed" title="To enable Group branding, go to Finance & Legal settings and enable it there.">Delight Group LLC (Disabled - Configure in Finance & Legal)</option>
+                    )}
                   </>
                 ) : (
                   <>
                     <option value="dtl">Delight Technical Lighting</option>
-                    <option value="dgllc">Delight Group LLC</option>
+                    {allowBothDivisions ? (
+                      <option value="dgllc">Delight Group LLC</option>
+                    ) : (
+                      <option value="dgllc" disabled class="text-slate-500 italic bg-slate-900 cursor-not-allowed" title="To enable Group branding, go to Finance & Legal settings and enable it there.">Delight Group LLC (Disabled - Configure in Finance & Legal)</option>
+                    )}
                   </>
                 )}
               </select>
@@ -1972,6 +1988,10 @@ const isTermChecked = (identifier: string): boolean => {
          targetOrderType = 'delivery_note';
          targetPrefix = 'DLN-';
          promptMsg = 'Would you like to convert this order to a Delivery Note (DLN)?';
+      } else if (val === 'SAMPLE ORDER') {
+         targetOrderType = 'sample_order';
+         targetPrefix = 'SMP-';
+         promptMsg = 'Would you like to convert this order to a Sample Order (SMP)?';
       }
 
       const needsConversion = targetOrderType && (orderType !== targetOrderType || (currentInvoiceNumber && !currentInvoiceNumber.startsWith(targetPrefix)));
@@ -2005,6 +2025,7 @@ const isTermChecked = (identifier: string): boolean => {
           'quotation': 'ESTIMATION / QUOTE',
           'lpo': 'PRO FORMA INVOICE',
           'delivery_note': 'DELIVERY NOTE',
+          'sample_order': 'SAMPLE ORDER',
           'standard': 'TAX INVOICE'
         };
         e.target.value = oldValMapping[orderType || 'standard'] || 'TAX INVOICE';
@@ -2017,7 +2038,7 @@ const isTermChecked = (identifier: string): boolean => {
 
       const layoutWrapper = document.getElementById('layout-delightgroupllc');
       if (layoutWrapper) {
-        if (val === 'DELIVERY NOTE') {
+        if (val === 'DELIVERY NOTE' || val === 'SAMPLE ORDER') {
           layoutWrapper.classList.remove('mode-invoice');
           layoutWrapper.classList.add('mode-delivery-note');
         } else {
@@ -2026,7 +2047,7 @@ const isTermChecked = (identifier: string): boolean => {
         }
       }
 
-      if (val === 'DELIVERY NOTE') {
+      if (val === 'DELIVERY NOTE' || val === 'SAMPLE ORDER') {
         const toUntick = [
           'config-show-col-spec',
           'config-show-col-price',
@@ -2219,7 +2240,7 @@ const isTermChecked = (identifier: string): boolean => {
 
       const specsChecked = document.getElementById('config-show-col-spec')?.checked;
       const docType = document.getElementById('config-doc-type')?.value;
-      const isDeliveryNote = docType === 'DELIVERY NOTE';
+      const isDeliveryNote = docType === 'DELIVERY NOTE' || docType === 'SAMPLE ORDER';
       
       let maxItemsPage1 = 5;
       let maxItemsSubsequent = 14;

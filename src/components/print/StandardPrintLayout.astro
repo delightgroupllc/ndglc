@@ -96,7 +96,7 @@ const hasVat = Number(inv.gst_amount) > 0 || items.some((i: any) => Number(i.tax
                     <span class="print-info-duplicate">Status: <span style="border: 1.5px solid #ef4444; color: #ef4444; padding: 1px 6px; font-size: 8pt; font-weight: 800; text-transform: uppercase; border-radius: 2px; display: inline-block; margin-bottom: 4px;">DUPLICATE</span><br/></span>
                   )}
                   <span class="print-info-date">Issue Date: <span class="font-bold">{inv.issue_date}</span><br></span>
-                  {inv.due_date && <span class={`print-info-due ${inv.order_type !== 'delivery_note' ? 'hidden' : ''}`}>Due Date: <span class="font-bold">{inv.due_date}</span><br></span>}
+                  {inv.due_date && <span class={`print-info-due ${inv.order_type !== 'delivery_note' && inv.order_type !== 'sample_order' ? 'hidden' : ''}`}>Due Date: <span class="font-bold">{inv.due_date}</span><br></span>}
                   {inv.lpo_number && <span class="print-info-status">Ref LPO No: <span class="font-mono font-bold">{inv.lpo_number}</span><br></span>}
                   <span class="print-info-status">Division: <span class="font-bold">{inv.source_division || 'DTL'}</span></span>
                 </div>

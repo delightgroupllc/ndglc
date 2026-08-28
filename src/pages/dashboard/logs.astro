@@ -1,32 +1,63 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
-import { ScrollText, Search, AlertTriangle, ShieldCheck, Activity, Users, Eye, Sparkles, Filter, Calendar } from '@lucide/astro';
+import { ScrollText, Search, AlertTriangle, ShieldCheck, Activity, Users, Eye, Sparkles, Filter, Calendar, Building2, Layers, RefreshCw, AlertCircle, ChevronDown, Receipt, Printer, Copy, Check, X, ShieldAlert, Trash2 } from '@lucide/astro';
 
-let auditLogs: any[] = [];
+let rawAuditLogs: any[] = [];
 let dbConnected = true;
 
 try {
-  // Query logs and fetch roles list dynamically
+  // Query logs and fetch roles list & invoice division dynamically
   const res = await query(
-    `SELECT al.*, u.name as user_name, u.email as user_email,
+    `SELECT al.*, 
+       u.name as user_name, 
+       u.email as user_email,
+       inv.source_division,
        (SELECT ARRAY_TO_STRING(ARRAY_AGG(r.name), ', ') 
         FROM roles r 
         JOIN user_roles ur ON ur.role_id = r.id 
         WHERE ur.user_id = al.user_id) as roles_list
      FROM audit_logs al
      LEFT JOIN users u ON u.id = al.user_id
+     LEFT JOIN invoices inv ON (al.entity_type = 'invoices' AND (al.entity_id = inv.id::text OR al.entity_id = inv.invoice_number))
      ORDER BY al.timestamp DESC
-     LIMIT 500`
+     LIMIT 1000`
   );
-  auditLogs = res.rows;
+  rawAuditLogs = res.rows;
 } catch (err: any) {
   console.warn('Database offline:', err.message);
   dbConnected = false;
 }
 
+// Compute normalized division for each log
+const auditLogs = rawAuditLogs.map(l => {
+  let div = 'SYSTEM';
+  if (l.source_division) {
+    const sd = String(l.source_division).toUpperCase();
+    if (sd === 'DTL') div = 'DTL';
+    else if (sd === 'DGS') div = 'DGS';
+    else if (sd === 'BOTH') div = 'BOTH';
+  } else {
+    const text = ((l.details || '') + ' ' + (l.entity_type || '')).toLowerCase();
+    if (text.includes('dtl') || text.includes('lighting')) div = 'DTL';
+    else if (text.includes('dgs') || text.includes('greenscape')) div = 'DGS';
+    else if (text.includes('both')) div = 'BOTH';
+    else if (l.entity_type === 'finance_legal') div = 'FINANCE';
+  }
+  return { ...l, division: div };
+});
+
 // Analytics calculations
 const totalLogs = auditLogs.length;
+
+// Division counts
+const divisionCounts = {
+  DTL: auditLogs.filter(l => l.division === 'DTL').length,
+  DGS: auditLogs.filter(l => l.division === 'DGS').length,
+  BOTH: auditLogs.filter(l => l.division === 'BOTH').length,
+  FINANCE: auditLogs.filter(l => l.division === 'FINANCE').length,
+  SYSTEM: auditLogs.filter(l => l.division === 'SYSTEM').length,
+};
 
 // Operators count & activity distribution
 const operatorsMap = new Map<string, { name: string; email: string; count: number }>();
@@ -54,7 +85,7 @@ const moduleStats = Array.from(modulesMap.entries())
 const anomalousAlerts: any[] = [];
 const rapidAccessLogs: { [key: string]: number } = {};
 
-auditLogs.forEach((log, index) => {
+auditLogs.forEach((log) => {
   const isSecurityToggle = ['PERMISSION_TOGGLE', 'PERMISSION_OVERRIDE_ADD', 'PERMISSION_OVERRIDE_DELETE'].includes(log.action);
   const userRoles = (log.roles_list || '').split(', ').map((r: string) => r.trim());
   const isNonAdminSecurityAction = isSecurityToggle && !userRoles.includes('admin');
@@ -78,7 +109,12 @@ auditLogs.forEach((log, index) => {
       title: 'Unauthorized Security Alteration',
       desc: `${log.user_name || 'User'} (${log.user_email || 'unknown'}) attempted to toggle access rules without Admin status.`,
       logId: log.id,
-      timestamp: log.timestamp
+      details: log.details,
+      timestamp: log.timestamp,
+      action: log.action,
+      operator: log.user_name || 'Operator',
+      operatorEmail: log.user_email || 'system@delightgroupllc.com',
+      roles: log.roles_list || 'Staff'
     });
   } else if (hasFailureKeywords) {
     anomalousAlerts.push({
@@ -86,30 +122,80 @@ auditLogs.forEach((log, index) => {
       title: 'Action Access Failure Triggered',
       desc: `Log details flagged authentication/access warnings: "${log.details}"`,
       logId: log.id,
-      timestamp: log.timestamp
+      details: log.details,
+      timestamp: log.timestamp,
+      action: log.action,
+      operator: log.user_name || 'Operator',
+      operatorEmail: log.user_email || 'system@delightgroupllc.com',
+      roles: log.roles_list || 'Staff'
     });
   } else if (isRapidAction) {
     anomalousAlerts.push({
       type: 'info',
       title: 'High-frequency Operator Activity',
-      desc: `Operator (${log.user_email}) executing multiple quick updates within 5 seconds.`,
+      desc: `Operator (${log.user_name || log.user_email || 'Operator'}) executed rapid batch modifications within 5 seconds.`,
       logId: log.id,
-      timestamp: log.timestamp
+      details: log.details,
+      timestamp: log.timestamp,
+      action: log.action,
+      operator: log.user_name || 'Operator',
+      operatorEmail: log.user_email || 'system@delightgroupllc.com',
+      roles: log.roles_list || 'Staff'
     });
   }
 });
 
-const criticalAlertCount = anomalousAlerts.filter(a => a.type === 'critical').length;
-const warningAlertCount = anomalousAlerts.filter(a => a.type === 'warning').length;
+const alertCounts = {
+  all: anomalousAlerts.length,
+  critical: anomalousAlerts.filter(a => a.type === 'critical').length,
+  warning: anomalousAlerts.filter(a => a.type === 'warning').length,
+  info: anomalousAlerts.filter(a => a.type === 'info').length,
+};
+
+const anomalousLogIds = new Set(anomalousAlerts.map(a => a.logId));
 
 // Unique Actions & Target Modules for filter lists
-const uniqueActions = Array.from(new Set(auditLogs.map(l => l.action)));
-const uniqueModules = Array.from(new Set(auditLogs.map(l => l.entity_type)));
-const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.user_email || 'system@delightgroupllc.com')));
+const uniqueActions = Array.from(new Set(auditLogs.map(l => l.action))).sort();
+const uniqueModules = Array.from(new Set(auditLogs.map(l => l.entity_type))).sort();
+const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.user_email || 'system@delightgroupllc.com'))).sort();
+
+// Safe Snapshots map for client-side hydration without HTML escaping issues
+const snapshotsMap: Record<string, any> = {};
+auditLogs.forEach(l => {
+  if (l.snapshot) {
+    snapshotsMap[l.id] = typeof l.snapshot === 'string' ? JSON.parse(l.snapshot) : l.snapshot;
+  }
+});
 ---
 
 <DashboardLayout title="Security Audit Analytics" activeItem="logs">
-  <div class="space-y-8 p-6 lg:p-8 w-full max-w-7xl mx-auto">
+  <!-- Hidden Snapshot Payloads Store -->
+  <script id="audit-snapshots-data" type="application/json" set:html={JSON.stringify(snapshotsMap)}></script>
+
+  <style is:inline>
+    .logs-table-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: #0891b2 #f1f5f9;
+    }
+    .logs-table-scroll::-webkit-scrollbar {
+      height: 9px;
+      width: 9px;
+    }
+    .logs-table-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 6px;
+    }
+    .logs-table-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 6px;
+      border: 2px solid #f1f5f9;
+    }
+    .logs-table-scroll::-webkit-scrollbar-thumb:hover {
+      background: #0891b2;
+    }
+  </style>
+
+  <div class="space-y-8 p-4 sm:p-6 lg:p-8 w-full max-w-[1720px] mx-auto pb-16">
     
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
@@ -120,8 +206,15 @@ const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.user_email || 'syste
           </svg>
           Interactive Security & Audit Analytics
         </h1>
-        <p class="text-slate-500 text-sm mt-2 font-medium">Verify system security parameters, query operator actions, and spot anomalous access attempts.</p>
+        <p class="text-slate-500 text-sm mt-2 font-medium">Verify system telemetry, inspect immutable point-in-time order snapshots, query operator actions, and spot anomalous access attempts.</p>
       </div>
+      <button 
+        type="button" 
+        id="btn-reset-filters" 
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shadow-2xs self-start sm:self-auto cursor-pointer"
+      >
+        <RefreshCw class="w-3.5 h-3.5" /> Reset Filters
+      </button>
     </div>
 
     <!-- Offline DB Notification -->
@@ -133,161 +226,314 @@ const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.user_email || 'syste
     )}
 
     <!-- STATS COUNTERS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       
-      <!-- Counter 1 -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
-        <div class="p-3 bg-cyan-50 rounded-xl text-cyan-600">
-          <Activity class="h-6 w-6" />
+      <!-- Counter 1: Total -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center gap-3.5">
+        <div class="p-2.5 bg-cyan-50 rounded-xl text-cyan-600 shrink-0">
+          <Activity class="h-5 w-5" />
         </div>
         <div>
           <span class="text-2xs font-extrabold text-slate-450 uppercase tracking-wider block">Total Audits</span>
-          <span class="text-2xl font-black text-slate-900 mt-0.5 block">{totalLogs}</span>
+          <span class="text-xl font-black text-slate-900 block" id="kpi-total-logs">{totalLogs}</span>
         </div>
       </div>
 
-      <!-- Counter 2 -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
-        <div class="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-          <Users class="h-6 w-6" />
+      <!-- Counter 2: DTL -->
+      <div class="bg-white rounded-2xl border border-blue-100 p-4 shadow-xs flex items-center gap-3.5">
+        <div class="p-2.5 bg-blue-50 rounded-xl text-blue-600 shrink-0">
+          <Building2 class="h-5 w-5" />
         </div>
         <div>
-          <span class="text-2xs font-extrabold text-slate-450 uppercase tracking-wider block">Unique Operators</span>
-          <span class="text-2xl font-black text-slate-900 mt-0.5 block">{operatorsMap.size}</span>
+          <span class="text-2xs font-extrabold text-blue-600 uppercase tracking-wider block">DTL Division</span>
+          <span class="text-xl font-black text-slate-900 block" id="kpi-dtl-logs">{divisionCounts.DTL}</span>
         </div>
       </div>
 
-      <!-- Counter 3 -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
-        <div class="p-3 bg-rose-50 rounded-xl text-rose-600">
-          <AlertTriangle class="h-6 w-6" />
+      <!-- Counter 3: DGS -->
+      <div class="bg-white rounded-2xl border border-emerald-100 p-4 shadow-xs flex items-center gap-3.5">
+        <div class="p-2.5 bg-emerald-50 rounded-xl text-emerald-600 shrink-0">
+          <Building2 class="h-5 w-5" />
         </div>
         <div>
-          <span class="text-2xs font-extrabold text-slate-450 uppercase tracking-wider block">Anomalous Alerts</span>
-          <span class="text-2xl font-black text-rose-600 mt-0.5 block">{anomalousAlerts.length}</span>
+          <span class="text-2xs font-extrabold text-emerald-600 uppercase tracking-wider block">DGS Division</span>
+          <span class="text-xl font-black text-slate-900 block" id="kpi-dgs-logs">{divisionCounts.DGS}</span>
         </div>
       </div>
 
-      <!-- Counter 4 -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
-        <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-          <ShieldCheck class="h-6 w-6" />
+      <!-- Counter 4: Both / Finance -->
+      <div class="bg-white rounded-2xl border border-purple-100 p-4 shadow-xs flex items-center gap-3.5">
+        <div class="p-2.5 bg-purple-50 rounded-xl text-purple-600 shrink-0">
+          <Layers class="h-5 w-5" />
         </div>
         <div>
-          <span class="text-2xs font-extrabold text-slate-450 uppercase tracking-wider block">Most Target Module</span>
-          <span class="text-lg font-black text-slate-900 mt-0.5 block truncate max-w-[140px] uppercase font-mono">{moduleStats[0]?.[0] || '—'}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- ANALYTICS VISUALIZATION CHARTS -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      
-      <!-- Chart 1: Operator Activity -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-          <Sparkles class="h-4.5 w-4.5 text-cyan-600" />
-          Top Operators Activity Frequency
-        </h3>
-        
-        <div class="space-y-4 pt-2">
-          {topOperators.map(op => {
-            const percentage = totalLogs > 0 ? Math.round((op.count / totalLogs) * 100) : 0;
-            return (
-              <div class="space-y-1.5">
-                <div class="flex justify-between text-2xs font-bold text-slate-700">
-                  <span class="truncate max-w-[200px]">{op.name} <span class="font-mono text-[10px] text-slate-450">({op.email})</span></span>
-                  <span>{op.count} actions ({percentage}%)</span>
-                </div>
-                <div class="w-full bg-slate-100 rounded-full h-2">
-                  <div class="bg-cyan-650 h-2 rounded-full transition-all duration-500" style={`width: ${percentage}%`}></div>
-                </div>
-              </div>
-            );
-          })}
+          <span class="text-2xs font-extrabold text-purple-600 uppercase tracking-wider block">Both / Finance</span>
+          <span class="text-xl font-black text-slate-900 block" id="kpi-both-logs">{divisionCounts.BOTH + divisionCounts.FINANCE}</span>
         </div>
       </div>
 
-      <!-- Chart 2: Target Modules Allocation -->
-      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-          <Sparkles class="h-4.5 w-4.5 text-indigo-600" />
-          Target Namespace Action Allocation
-        </h3>
-        
-        <div class="space-y-4 pt-2">
-          {moduleStats.slice(0, 5).map(mod => {
-            const count = mod[1];
-            const percentage = totalLogs > 0 ? Math.round((count / totalLogs) * 100) : 0;
-            return (
-              <div class="space-y-1.5">
-                <div class="flex justify-between text-2xs font-bold text-slate-700">
-                  <span class="uppercase font-mono tracking-wider">{mod[0]}</span>
-                  <span>{count} actions ({percentage}%)</span>
-                </div>
-                <div class="w-full bg-slate-100 rounded-full h-2">
-                  <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={`width: ${percentage}%`}></div>
-                </div>
-              </div>
-            );
-          })}
+      <!-- Counter 5: Anomalies (Clickable to jump to Alert Center) -->
+      <button 
+        type="button" 
+        id="kpi-anomalies-btn"
+        class="bg-white rounded-2xl border border-rose-200 hover:border-rose-300 hover:bg-rose-50/40 p-4 shadow-xs flex items-center gap-3.5 transition-all text-left cursor-pointer group"
+        title="Click to view Anomalous Activity Alerts"
+      >
+        <div class="p-2.5 bg-rose-50 group-hover:bg-rose-100 rounded-xl text-rose-600 shrink-0 transition-colors">
+          <AlertTriangle class="h-5 w-5 animate-pulse" />
         </div>
-      </div>
-    </div>
-
-    <!-- ANOMALOUS ALERTS WARNING PANEL -->
-    <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800 space-y-4">
-      <div class="flex items-center justify-between">
-        <div>
-          <h3 class="text-xs font-black uppercase tracking-wider text-rose-400 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Security Anomalous Activity Alert Center
-          </h3>
-          <p class="text-[11px] text-slate-400 font-semibold mt-1">Telemetry flags critical updates or unauthorized attempts instantly.</p>
-        </div>
-        <span class="rounded bg-rose-500/20 border border-rose-500/30 px-2.5 py-1 text-2xs font-black text-rose-300 uppercase font-mono">
-          {anomalousAlerts.length} Flagged
-        </span>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        {anomalousAlerts.length === 0 ? (
-          <div class="md:col-span-2 py-6 text-center text-slate-500 text-xs font-semibold">
-            No anomalous access attempt flags detected in telemetry cache.
+        <div class="flex-1">
+          <div class="flex items-center justify-between">
+            <span class="text-2xs font-extrabold text-rose-600 uppercase tracking-wider block">Anomalous Alerts</span>
+            <span class="text-[9px] font-black uppercase text-rose-500 bg-rose-100 px-1.5 py-0.5 rounded">View</span>
           </div>
-        ) : (
-          anomalousAlerts.map(alert => (
-            <div class={`p-4 rounded-xl border flex gap-3 ${
-              alert.type === 'critical' 
-                ? 'bg-rose-950/20 border-rose-500/30 text-rose-250' 
-                : alert.type === 'warning'
-                ? 'bg-amber-950/20 border-amber-500/30 text-amber-250'
-                : 'bg-slate-800/40 border-slate-700 text-slate-200'
-            }`}>
-              <AlertTriangle class="h-5 w-5 shrink-0" />
-              <div>
-                <span class="text-xs font-extrabold block">{alert.title}</span>
-                <span class="text-[10px] text-slate-400 font-semibold block mt-1 leading-relaxed">{alert.desc}</span>
-                <span class="text-[9px] text-slate-500 font-mono block mt-2">{new Date(alert.timestamp).toLocaleString()}</span>
+          <span class="text-xl font-black text-rose-600 block">{anomalousAlerts.length} Flagged</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- ANOMALOUS ACTIVITY ALERT & THREAT MANAGEMENT CENTER -->
+    <div id="anomalous-alert-center" class="bg-slate-900 text-white rounded-3xl p-6 lg:p-7 shadow-xl border border-slate-800 space-y-6">
+      
+      <!-- Card Header -->
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div class="flex items-start gap-3.5">
+          <div class="p-3 bg-rose-500/20 text-rose-400 rounded-2xl border border-rose-500/30 shrink-0 mt-0.5">
+            <ShieldAlert class="w-6 h-6" />
+          </div>
+          <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <h2 class="text-base font-black uppercase tracking-wider text-white">Security Alerts & Threat Management Center</h2>
+              <span class="px-2.5 py-0.5 text-xs font-black uppercase rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                {anomalousAlerts.length} Flagged Telemetry Events
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 font-medium mt-1">Real-time heuristics detect unauthorized privilege escalation, access denials, and burst velocity anomalies.</p>
+          </div>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <button 
+            type="button" 
+            id="btn-filter-anomalies" 
+            class="inline-flex items-center gap-1.5 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-xl transition-all shadow-md cursor-pointer"
+          >
+            <Filter class="w-3.5 h-3.5" /> Filter Log Table ({anomalousAlerts.length})
+          </button>
+        </div>
+      </div>
+
+      <!-- Interactive Alert Category Tabs -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-800/80">
+        <button 
+          type="button" 
+          class="alert-tab-btn active inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-cyan-600 text-white shadow-sm"
+          data-target-tab="all"
+        >
+          <span>All Security Alerts</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-white/20">{alertCounts.all}</span>
+        </button>
+
+        <button 
+          type="button" 
+          class="alert-tab-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white"
+          data-target-tab="critical"
+        >
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+          <span>Critical Access & Rules</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/30">{alertCounts.critical}</span>
+        </button>
+
+        <button 
+          type="button" 
+          class="alert-tab-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white"
+          data-target-tab="warning"
+        >
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          <span>Access Denials & Failures</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/30">{alertCounts.warning}</span>
+        </button>
+
+        <button 
+          type="button" 
+          class="alert-tab-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white"
+          data-target-tab="info"
+        >
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <span>Velocity & Batch Spikes</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">{alertCounts.info}</span>
+        </button>
+      </div>
+
+      <!-- Alerts Grid Container -->
+      <div id="alerts-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5 pt-1">
+        {anomalousAlerts.map((alert, idx) => {
+          let badgeBorder = 'border-rose-500/30 bg-rose-950/40 text-rose-300';
+          let borderHighlight = 'border-slate-800 hover:border-rose-500/50';
+          if (alert.type === 'warning') {
+            badgeBorder = 'border-amber-500/30 bg-amber-950/40 text-amber-300';
+            borderHighlight = 'border-slate-800 hover:border-amber-500/50';
+          } else if (alert.type === 'info') {
+            badgeBorder = 'border-cyan-500/30 bg-cyan-950/40 text-cyan-300';
+            borderHighlight = 'border-slate-800 hover:border-cyan-500/50';
+          }
+
+          return (
+            <div 
+              class={`alert-card bg-slate-800/80 rounded-2xl p-5 border ${borderHighlight} flex flex-col justify-between space-y-4 transition-all shadow-sm group`}
+              data-alert-type={alert.type}
+            >
+              <div class="space-y-2.5">
+                <!-- Header badge & Timestamp -->
+                <div class="flex items-center justify-between gap-2">
+                  <span class={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${badgeBorder}`}>
+                    <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                    {alert.title}
+                  </span>
+                  <span class="text-[10px] font-mono text-slate-400">
+                    {new Date(alert.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+
+                <!-- Event Details & Vector -->
+                <div>
+                  <h4 class="text-xs font-bold text-slate-100 leading-snug break-words">{alert.details}</h4>
+                  <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">{alert.desc}</p>
+                </div>
+
+                <!-- Operator Attribution Box -->
+                <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 space-y-1">
+                  <div class="flex items-center justify-between text-[10px]">
+                    <span class="text-slate-400 uppercase font-extrabold tracking-wider">Operator:</span>
+                    <span class="font-bold text-slate-200">{alert.operator}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                    <span>Email:</span>
+                    <span class="text-slate-300 truncate max-w-[180px]" title={alert.operatorEmail}>{alert.operatorEmail}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-[10px]">
+                    <span class="text-slate-400 uppercase font-extrabold tracking-wider">Roles:</span>
+                    <span class="font-mono text-cyan-400 text-[10px] font-bold truncate max-w-[180px]">{alert.roles}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card Action Footer -->
+              <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                <span class="text-[10px] font-mono text-slate-500 uppercase">Log #{alert.logId}</span>
+                <button 
+                  type="button" 
+                  class="btn-inspect-alert-log inline-flex items-center gap-1 text-[11px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                  data-log-id={alert.logId}
+                  data-action={alert.action}
+                  data-user={alert.operatorEmail}
+                >
+                  <span>Filter this event</span> →
+                </button>
               </div>
             </div>
-          ))
-        )}
+          );
+        })}
+      </div>
+
+      <!-- Empty Tab Fallback -->
+      <div id="no-alerts-in-tab" class="hidden py-10 text-center text-slate-400 text-xs font-semibold">
+        No security alerts found in this category.
+      </div>
+
+      <!-- Security Alerts Dedicated Pagination Footer -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800/80 text-slate-400 text-xs">
+        <div class="flex items-center gap-2">
+          <span>Show</span>
+          <div class="flex items-center rounded-xl border border-slate-700 bg-slate-800 overflow-hidden" id="alerts-pagination-limit-btns">
+            <button type="button" class="alerts-limit-btn px-2.5 py-1 text-xs font-black transition-colors bg-cyan-600 text-white" data-limit="6">6</button>
+            <button type="button" class="alerts-limit-btn px-2.5 py-1 text-xs font-semibold transition-colors bg-slate-800 text-slate-300 hover:bg-slate-750 border-l border-slate-700" data-limit="12">12</button>
+            <button type="button" class="alerts-limit-btn px-2.5 py-1 text-xs font-semibold transition-colors bg-slate-800 text-slate-300 hover:bg-slate-750 border-l border-slate-700" data-limit="24">24</button>
+          </div>
+          <span>alerts per page</span>
+        </div>
+
+        <div>
+          Showing <span id="alerts-pagination-start" class="text-white font-bold">0</span> to <span id="alerts-pagination-end" class="text-white font-bold">0</span> of <span id="alerts-pagination-total" class="text-white font-bold">{anomalousAlerts.length}</span> alerts
+        </div>
+
+        <div class="flex items-center gap-1" id="alerts-pagination-buttons">
+          <!-- Dynamically injected alert pagination buttons -->
+        </div>
       </div>
     </div>
 
-    <!-- FILTER TOOLBAR -->
+    <!-- FILTER TOOLBAR WITH DATE SELECTOR & DIVISION FILTER -->
     <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-      <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-        <Filter class="h-4.5 w-4.5 text-slate-500" />
-        <h3 class="text-xs font-black text-slate-850 uppercase tracking-wider">Dynamic Audits Filters</h3>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <Filter class="h-4.5 w-4.5 text-slate-500" />
+          <h3 class="text-xs font-black text-slate-850 uppercase tracking-wider">Multi-Dimension Audit Filters</h3>
+        </div>
+        
+        <!-- Live Matching Counter Badge -->
+        <div id="filter-matching-badge" class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg self-start sm:self-auto">
+          Showing <span id="count-visible" class="text-cyan-700 font-black">{totalLogs}</span> of {totalLogs} records
+        </div>
       </div>
       
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5">
         
-        <!-- Filter 1: Action -->
+        <!-- 1. DIVISION SELECTOR -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block flex items-center gap-1">
+            <Building2 class="w-3 h-3 text-cyan-600" />
+            Division
+          </label>
+          <select id="filter-division" class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700">
+            <option value="">All Divisions</option>
+            <option value="dtl">DTL (Technical Lighting)</option>
+            <option value="dgs">DGS (Greenscapes)</option>
+            <option value="both">Both (Combined Group)</option>
+            <option value="finance">Finance & Legal</option>
+            <option value="system">System / Operations</option>
+          </select>
+        </div>
+
+        <!-- 2. DATE PRESET SELECTOR -->
+        <div class="space-y-1">
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block flex items-center gap-1">
+            <Calendar class="w-3 h-3 text-cyan-600" />
+            Date Period
+          </label>
+          <select id="filter-date-preset" class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+            <option value="this_month">This Month</option>
+            <option value="custom">Custom Date Range</option>
+          </select>
+        </div>
+
+        <!-- 3. CUSTOM START DATE -->
+        <div class="space-y-1" id="start-date-container">
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Start Date</label>
+          <input 
+            type="date" 
+            id="filter-date-start" 
+            class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700" 
+          />
+        </div>
+
+        <!-- 4. CUSTOM END DATE -->
+        <div class="space-y-1" id="end-date-container">
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">End Date</label>
+          <input 
+            type="date" 
+            id="filter-date-end" 
+            class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700" 
+          />
+        </div>
+
+        <!-- 5. ACTION TYPE -->
         <div class="space-y-1">
           <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Action Type</label>
           <select id="filter-action" class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700 font-mono">
@@ -298,7 +544,7 @@ const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.user_email || 'syste
           </select>
         </div>
 
-        <!-- Filter 2: Module -->
+        <!-- 6. TARGET MODULE -->
         <div class="space-y-1">
           <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Target Module</label>
           <select id="filter-module" class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700 font-mono">
@@ -309,9 +555,12 @@ const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.user_email || 'syste
           </select>
         </div>
 
-        <!-- Filter 3: User -->
+      </div>
+
+      <!-- SECOND ROW OF FILTERS: OPERATOR, ANOMALIES ONLY & SEARCH -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1 border-t border-slate-100">
         <div class="space-y-1">
-          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Operator</label>
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Operator Email / Account</label>
           <select id="filter-user" class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700">
             <option value="">All Operators</option>
             {uniqueUsers.map(usr => (
@@ -320,16 +569,23 @@ const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.user_email || 'syste
           </select>
         </div>
 
-        <!-- Search input -->
         <div class="space-y-1">
-          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Keyword Search</label>
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Alert Filter</label>
+          <select id="filter-anomalous-only" class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-slate-700">
+            <option value="all">All Logs (Normal & Flagged)</option>
+            <option value="anomalous">Flagged Anomalies Only ({anomalousAlerts.length})</option>
+          </select>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Search Document / Details</label>
           <div class="relative">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <input 
               type="text" 
               id="admin-search-logs"
-              placeholder="Search details..." 
-              class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-8.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold"
+              placeholder="Search invoice number, customer, actions..." 
+              class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold"
             />
           </div>
         </div>
@@ -338,103 +594,977 @@ const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.user_email || 'syste
 
     <!-- LOGS DATA TABLE -->
     <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
+      <div class="overflow-x-auto logs-table-scroll pb-2">
+        <table class="w-full min-w-[1250px] text-left border-collapse">
           <thead>
             <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-2xs tracking-wider">
-              <th class="px-6 py-4.5 font-semibold">Action Token</th>
-              <th class="px-6 py-4.5 font-semibold">Details & Target Entity</th>
-              <th class="px-6 py-4.5 font-semibold">Operator Session</th>
-              <th class="px-6 py-4.5 font-semibold">Roles</th>
-              <th class="px-6 py-4.5 font-semibold">IP Address</th>
-              <th class="px-6 py-4.5 font-semibold text-right">Timestamp</th>
+              <th class="px-4 py-4 font-semibold whitespace-nowrap w-28">Division</th>
+              <th class="px-4 py-4 font-semibold whitespace-nowrap w-44">Action Token</th>
+              <th class="px-4 py-4 font-semibold min-w-[280px]">Details & Target Entity</th>
+              <th class="px-4 py-4 font-semibold whitespace-nowrap w-48">Operator Session</th>
+              <th class="px-4 py-4 font-semibold whitespace-nowrap w-28">Roles</th>
+              <th class="px-4 py-4 font-semibold text-right whitespace-nowrap w-40">Timestamp</th>
+              <th class="px-4 py-4 font-semibold text-center whitespace-nowrap w-40">Verification</th>
             </tr>
           </thead>
           <tbody id="admin-logs-table">
-            {auditLogs.map(log => (
-              <tr 
-                class="admin-log-row border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors" 
-                data-action={log.action.toLowerCase()} 
-                data-details={(log.details || '').toLowerCase()} 
-                data-user={(log.user_email || 'system@delightgroupllc.com').toLowerCase()}
-                data-module={(log.entity_type || 'other').toLowerCase()}
-              >
-                <td class="px-6 py-4">
-                  <span class="rounded bg-slate-100 border border-slate-200 px-2 py-0.5 text-2xs font-mono font-bold text-cyan-600 uppercase">
-                    {log.action}
-                  </span>
-                </td>
-                <td class="px-6 py-4">
-                  <div class="font-bold text-slate-900 max-w-sm truncate" title={log.details}>{log.details}</div>
-                  <div class="text-3xs text-slate-500 mt-1 uppercase font-mono tracking-wider">Target: {log.entity_type} {log.entity_id ? `(${log.entity_id})` : ''}</div>
-                </td>
-                <td class="px-6 py-4">
-                  <div class="font-bold text-slate-800 leading-tight">{log.user_name || 'System Auto'}</div>
-                  <div class="text-3xs text-slate-500 mt-0.5 font-mono">{log.user_email || ''}</div>
-                </td>
-                <td class="px-6 py-4">
-                  {log.roles_list ? (
-                    <div class="flex flex-wrap gap-1">
-                      {log.roles_list.split(', ').map((role: string) => (
-                        <span class="rounded bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 text-3xs font-extrabold text-cyan-600 uppercase font-mono">
-                          {role}
+            {auditLogs.map(log => {
+              const divLower = log.division.toLowerCase();
+              const isAnomalous = anomalousLogIds.has(log.id);
+              const hasSnapshot = Boolean(log.snapshot);
+              const isInvoiceLog = log.entity_type === 'invoices' || (log.action && log.action.startsWith('INVOICE_'));
+
+              let badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+              if (log.division === 'DTL') badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+              else if (log.division === 'DGS') badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+              else if (log.division === 'BOTH') badgeColor = 'bg-purple-50 text-purple-700 border-purple-200';
+              else if (log.division === 'FINANCE') badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+
+              return (
+                <tr 
+                  class={`admin-log-row border-b border-slate-100 hover:bg-slate-50/50 text-xs transition-colors ${isAnomalous ? 'bg-rose-50/30' : ''}`}
+                  data-action={log.action.toLowerCase()} 
+                  data-details={(log.details || '').toLowerCase()} 
+                  data-user={(log.user_email || 'system@delightgroupllc.com').toLowerCase()}
+                  data-module={(log.entity_type || 'other').toLowerCase()}
+                  data-division={divLower}
+                  data-anomalous={isAnomalous ? 'true' : 'false'}
+                  data-timestamp={new Date(log.timestamp).toISOString()}
+                >
+                  <!-- Division Badge -->
+                  <td class="px-4 py-3.5 whitespace-nowrap">
+                    <div class="flex items-center gap-1.5">
+                      <span class={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${badgeColor}`}>
+                        {log.division}
+                      </span>
+                      {isAnomalous && (
+                        <span class="inline-flex items-center gap-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider" title="Flagged Anomalous Activity">
+                          <AlertTriangle class="w-2.5 h-2.5" /> Flagged
                         </span>
-                      ))}
+                      )}
                     </div>
-                  ) : (
-                    <span class="text-3xs text-slate-400 italic">None</span>
-                  )}
-                </td>
-                <td class="px-6 py-4 text-slate-500 font-mono text-2xs">{log.ip_address || '::1'}</td>
-                <td class="px-6 py-4 text-right text-slate-500 font-mono text-2xs">{new Date(log.timestamp).toLocaleString()}</td>
-              </tr>
-            ))}
+                  </td>
+
+                  <!-- Action Token -->
+                  <td class="px-4 py-3.5 whitespace-nowrap">
+                    <span class="rounded bg-slate-100 border border-slate-200 px-2 py-0.5 text-2xs font-mono font-bold text-cyan-700 uppercase">
+                      {log.action}
+                    </span>
+                  </td>
+
+                  <!-- Details & Target Entity -->
+                  <td class="px-4 py-3.5">
+                    <div class="font-bold text-slate-900 max-w-lg break-words line-clamp-2" title={log.details}>{log.details}</div>
+                    <div class="text-3xs text-slate-400 mt-0.5 uppercase font-mono tracking-wider">Target: {log.entity_type} {log.entity_id ? `(${log.entity_id})` : ''}</div>
+                  </td>
+
+                  <!-- Operator Session -->
+                  <td class="px-4 py-3.5 whitespace-nowrap">
+                    <div class="font-bold text-slate-800 leading-tight">{log.user_name || 'System Auto'}</div>
+                    <div class="text-3xs text-slate-400 mt-0.5 font-mono">{log.user_email || ''}</div>
+                  </td>
+
+                  <!-- Roles -->
+                  <td class="px-4 py-3.5 whitespace-nowrap">
+                    {log.roles_list ? (
+                      <div class="flex flex-wrap gap-1">
+                        {log.roles_list.split(', ').map((role: string) => (
+                          <span class="rounded bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 text-3xs font-extrabold text-cyan-600 uppercase font-mono">
+                            {role}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span class="text-3xs text-slate-400 italic">None</span>
+                    )}
+                  </td>
+
+                  <!-- Timestamp -->
+                  <td class="px-4 py-3.5 text-right text-slate-500 font-mono text-2xs whitespace-nowrap">
+                    {new Date(log.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+
+                  <!-- Snapshot Verification Button -->
+                  <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                    {hasSnapshot ? (
+                      <button 
+                        type="button" 
+                        class="btn-verify-snapshot inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-200 transition-colors shadow-2xs cursor-pointer"
+                        data-log-id={log.id}
+                        data-action={log.action}
+                        data-details={log.details}
+                        data-timestamp={log.timestamp}
+                        data-operator={log.user_name || log.user_email || 'System'}
+                        onclick="window.openSnapshotModalForLog && window.openSnapshotModalForLog(this)"
+                      >
+                        <Receipt class="w-3.5 h-3.5 text-cyan-600" />
+                        <span>Verify Order</span>
+                      </button>
+                    ) : (
+                      <span class="text-3xs text-slate-350 italic font-mono">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+      </div>
+
+      <div id="no-logs-found" class="hidden py-12 text-center text-slate-400 text-xs font-semibold">
+        No audit log records match the selected filters.
+      </div>
+
+      <!-- Pagination Controls Footer -->
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/90 border-t border-slate-200 p-4">
+        <!-- Items per page selector (15, 25, 50, 100) -->
+        <div class="flex items-center gap-2 text-xs text-slate-500 font-bold">
+          <span>Show</span>
+          <div class="flex items-center rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs" id="logs-pagination-limit-btns">
+            <button type="button" class="logs-limit-btn px-3 py-1.5 text-xs font-black transition-colors bg-cyan-600 text-white" data-limit="15">15</button>
+            <button type="button" class="logs-limit-btn px-3 py-1.5 text-xs font-semibold transition-colors bg-white text-slate-600 hover:bg-slate-50 border-l border-slate-200" data-limit="25">25</button>
+            <button type="button" class="logs-limit-btn px-3 py-1.5 text-xs font-semibold transition-colors bg-white text-slate-600 hover:bg-slate-50 border-l border-slate-200" data-limit="50">50</button>
+            <button type="button" class="logs-limit-btn px-3 py-1.5 text-xs font-semibold transition-colors bg-white text-slate-600 hover:bg-slate-50 border-l border-slate-200" data-limit="100">100</button>
+          </div>
+          <span>logs per page</span>
+        </div>
+
+        <!-- Showing X to Y of Z logs -->
+        <div class="text-xs text-slate-500 font-medium">
+          Showing <span id="logs-pagination-start" class="text-slate-900 font-black">0</span> to <span id="logs-pagination-end" class="text-slate-900 font-black">0</span> of <span id="logs-pagination-total" class="text-slate-900 font-black">0</span> records
+        </div>
+
+        <!-- Pagination page navigation buttons -->
+        <div class="flex items-center gap-1.5" id="logs-pagination-buttons">
+          <!-- Buttons injected dynamically -->
+        </div>
       </div>
     </div>
   </div>
 
-  <script>
-    const setupLogsDashboard = () => {
-      const searchInput = document.getElementById('admin-search-logs') as HTMLInputElement | null;
-      const filterAction = document.getElementById('filter-action') as HTMLSelectElement | null;
-      const filterModule = document.getElementById('filter-module') as HTMLSelectElement | null;
-      const filterUser = document.getElementById('filter-user') as HTMLSelectElement | null;
+  <!-- POINT-IN-TIME ORDER SNAPSHOT VERIFICATION MODAL -->
+  <div id="snapshot-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden transition-opacity" onclick="if (event.target === this) window.closeSnapshotModal && window.closeSnapshotModal()">
+    <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4.5 bg-slate-900 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-cyan-500/20 text-cyan-400 rounded-xl">
+            <Receipt class="w-5 h-5" />
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 id="modal-doc-number" class="text-base font-black font-mono tracking-tight text-white">INV-2026-XXXX</h3>
+              <span id="modal-division-badge" class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">DTL</span>
+              <span id="modal-status-badge" class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">PAID</span>
+            </div>
+            <p id="modal-meta-info" class="text-xs text-slate-400 mt-0.5">Point-in-time snapshot captured during action</p>
+          </div>
+        </div>
+        <button type="button" id="btn-close-modal" class="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer" title="Close Preview" onclick="window.closeSnapshotModal && window.closeSnapshotModal()">
+          <X class="w-5 h-5" />
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-6 overflow-y-auto overflow-x-hidden space-y-6 flex-1 text-xs">
+        
+        <!-- Historical Retention Notice -->
+        <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-start gap-3">
+          <ShieldAlert class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div class="space-y-0.5 leading-relaxed">
+            <p class="font-bold text-amber-900">Immutable Audit Snapshot Retained</p>
+            <p class="text-[11px] text-amber-700">Even if this order was permanently deleted or modified in the database, this cryptographic point-in-time record preserves the exact customer data, items, and financial values.</p>
+          </div>
+        </div>
+
+        <!-- Customer & Order Metadata Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+          <div class="space-y-0.5 min-w-0">
+            <span class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Customer</span>
+            <span id="modal-customer-name" class="font-bold text-slate-900 text-xs block break-words">—</span>
+            <span id="modal-customer-company" class="text-[10px] text-slate-500 block break-words">—</span>
+          </div>
+          <div class="space-y-0.5 min-w-0">
+            <span class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Contact & TRN</span>
+            <span id="modal-customer-phone" class="font-mono text-slate-700 text-[11px] block break-all">—</span>
+            <span id="modal-customer-trn" class="text-[10px] font-mono text-slate-500 block break-all">TRN: —</span>
+          </div>
+          <div class="space-y-0.5 min-w-0">
+            <span class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Document Type</span>
+            <span id="modal-order-type" class="font-bold uppercase text-slate-900 text-xs block break-words">—</span>
+            <span id="modal-lpo" class="text-[10px] text-slate-500 font-mono block break-words">LPO: —</span>
+          </div>
+          <div class="space-y-0.5 min-w-0">
+            <span class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Issue Date & Terms</span>
+            <span id="modal-issue-date" class="font-mono text-slate-900 text-xs block">—</span>
+            <span id="modal-payment-terms" class="text-[10px] text-slate-600 block break-words leading-tight mt-1 max-h-16 overflow-y-auto">Terms: —</span>
+          </div>
+        </div>
+
+        <!-- Line Items Table -->
+        <div class="space-y-2">
+          <h4 class="font-extrabold uppercase tracking-wider text-slate-700 text-2xs">Order Line Items</h4>
+          <div class="rounded-xl border border-slate-200 overflow-x-auto bg-white">
+            <table class="w-full min-w-[500px] text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-2xs font-semibold text-slate-500 uppercase">
+                  <th class="px-4 py-2.5">Item Description</th>
+                  <th class="px-4 py-2.5 text-center">Qty</th>
+                  <th class="px-4 py-2.5 text-right">Unit Price</th>
+                  <th class="px-4 py-2.5 text-right">VAT (5%)</th>
+                  <th class="px-4 py-2.5 text-right">Total Price</th>
+                </tr>
+              </thead>
+              <tbody id="modal-items-tbody" class="divide-y divide-slate-100 font-medium">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Financial Summary Breakdown -->
+        <div class="flex flex-col sm:flex-row justify-between items-start gap-4 pt-2">
+          <div class="max-w-xs space-y-1">
+            <span class="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Notes & Conditions</span>
+            <p id="modal-notes" class="text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200 italic leading-relaxed break-words whitespace-pre-wrap">None</p>
+          </div>
+
+          <div class="w-full sm:w-64 space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div class="flex justify-between text-slate-600 text-xs">
+              <span>Subtotal:</span>
+              <span id="modal-subtotal" class="font-mono font-semibold">AED 0.00</span>
+            </div>
+            <div class="flex justify-between text-slate-600 text-xs">
+              <span>VAT Amount:</span>
+              <span id="modal-vat" class="font-mono font-semibold">AED 0.00</span>
+            </div>
+            <div class="flex justify-between text-slate-600 text-xs">
+              <span>Discount:</span>
+              <span id="modal-discount" class="font-mono font-semibold">AED 0.00</span>
+            </div>
+            <div class="flex justify-between text-slate-900 font-black text-sm border-t border-slate-200 pt-2">
+              <span>Total Amount:</span>
+              <span id="modal-total" class="font-mono text-cyan-800">AED 0.00</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer Actions -->
+      <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <span class="text-[11px] text-slate-500 font-medium">Verified by Security Audit Engine</span>
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <!-- Restore to Active Orders -->
+          <button 
+            type="button" 
+            id="btn-restore-active"
+            class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+            onclick="window.restoreActiveSnapshotToDb && window.restoreActiveSnapshotToDb('active')"
+            title="Re-creates this order directly into active orders list"
+          >
+            <ShieldCheck class="w-3.5 h-3.5" /> Restore to Orders
+          </button>
+
+          <!-- Restore to Bin (Trash) -->
+          <button 
+            type="button" 
+            id="btn-restore-bin"
+            class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold px-3.5 py-2 rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+            onclick="window.restoreActiveSnapshotToDb && window.restoreActiveSnapshotToDb('bin')"
+            title="Re-creates this order placed safely in the Bin (Trash)"
+          >
+            <Trash2 class="w-3.5 h-3.5 text-amber-600" /> Restore to Bin
+          </button>
+
+          <!-- Open in Order Editor -->
+          <button 
+            type="button" 
+            id="btn-recreate-order"
+            class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 bg-cyan-700 hover:bg-cyan-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+            onclick="window.openActiveSnapshotInEditor && window.openActiveSnapshotInEditor()"
+            title="Pre-fills a new order draft form with snapshot data"
+          >
+            <Copy class="w-3.5 h-3.5" /> Open in Editor
+          </button>
+
+          <button 
+            type="button" 
+            id="btn-close-modal-bottom"
+            class="inline-flex items-center justify-center px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+            onclick="window.closeSnapshotModal && window.closeSnapshotModal()"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script is:inline>
+    function initLogsDashboard() {
+      const searchInput = document.getElementById('admin-search-logs');
+      const filterDivision = document.getElementById('filter-division');
+      const filterDatePreset = document.getElementById('filter-date-preset');
+      const filterDateStart = document.getElementById('filter-date-start');
+      const filterDateEnd = document.getElementById('filter-date-end');
+      const filterAction = document.getElementById('filter-action');
+      const filterModule = document.getElementById('filter-module');
+      const filterUser = document.getElementById('filter-user');
+      const filterAnomalousOnly = document.getElementById('filter-anomalous-only');
+      const btnReset = document.getElementById('btn-reset-filters');
+      const countVisible = document.getElementById('count-visible');
+      const noLogsFound = document.getElementById('no-logs-found');
+      const kpiAnomaliesBtn = document.getElementById('kpi-anomalies-btn');
+      const btnFilterAnomalies = document.getElementById('btn-filter-anomalies');
+      const alertCenter = document.getElementById('anomalous-alert-center');
       const rows = document.querySelectorAll('.admin-log-row');
 
-      const applyFilters = () => {
-        const queryVal = searchInput?.value.toLowerCase() || '';
-        const actionVal = filterAction?.value || '';
-        const moduleVal = filterModule?.value || '';
-        const userVal = filterUser?.value || '';
+      // Modal elements
+      const snapshotModal = document.getElementById('snapshot-modal');
+      const btnCloseModal = document.getElementById('btn-close-modal');
+      const btnCloseModalBottom = document.getElementById('btn-close-modal-bottom');
+      const btnRecreateOrder = document.getElementById('btn-recreate-order');
+
+      let currentActiveSnapshot = null;
+
+      // Date Preset Handler
+      function applyDatePreset(preset) {
+        const now = new Date();
+        const fmt = (d) => d.toISOString().split('T')[0];
+
+        if (preset === 'today') {
+          if (filterDateStart) filterDateStart.value = fmt(now);
+          if (filterDateEnd) filterDateEnd.value = fmt(now);
+        } else if (preset === 'yesterday') {
+          const yest = new Date(now);
+          yest.setDate(yest.getDate() - 1);
+          if (filterDateStart) filterDateStart.value = fmt(yest);
+          if (filterDateEnd) filterDateEnd.value = fmt(yest);
+        } else if (preset === '7d') {
+          const d7 = new Date(now);
+          d7.setDate(d7.getDate() - 7);
+          if (filterDateStart) filterDateStart.value = fmt(d7);
+          if (filterDateEnd) filterDateEnd.value = fmt(now);
+        } else if (preset === '30d') {
+          const d30 = new Date(now);
+          d30.setDate(d30.getDate() - 30);
+          if (filterDateStart) filterDateStart.value = fmt(d30);
+          if (filterDateEnd) filterDateEnd.value = fmt(now);
+        } else if (preset === 'this_month') {
+          const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+          if (filterDateStart) filterDateStart.value = fmt(firstDay);
+          if (filterDateEnd) filterDateEnd.value = fmt(now);
+        } else if (preset === 'all') {
+          if (filterDateStart) filterDateStart.value = '';
+          if (filterDateEnd) filterDateEnd.value = '';
+        }
+      }
+
+      filterDatePreset?.addEventListener('change', () => {
+        applyDatePreset(filterDatePreset.value);
+        applyFilters();
+      });
+
+      filterDateStart?.addEventListener('change', () => {
+        if (filterDatePreset && filterDatePreset.value !== 'custom') {
+          filterDatePreset.value = 'custom';
+        }
+        applyFilters();
+      });
+
+      filterDateEnd?.addEventListener('change', () => {
+        if (filterDatePreset && filterDatePreset.value !== 'custom') {
+          filterDatePreset.value = 'custom';
+        }
+        applyFilters();
+      });
+
+      // Pagination elements
+      const startEl = document.getElementById('logs-pagination-start');
+      const endEl = document.getElementById('logs-pagination-end');
+      const totalEl = document.getElementById('logs-pagination-total');
+      const paginationButtons = document.getElementById('logs-pagination-buttons');
+      const limitBtns = document.querySelectorAll('.logs-limit-btn');
+
+      let currentPage = 1;
+      let itemsPerPage = 15;
+
+      limitBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          limitBtns.forEach(b => {
+            b.className = 'logs-limit-btn px-3 py-1.5 text-xs font-semibold transition-colors bg-white text-slate-600 hover:bg-slate-50 border-l border-slate-200';
+          });
+          btn.className = 'logs-limit-btn px-3 py-1.5 text-xs font-black transition-colors bg-cyan-600 text-white';
+          itemsPerPage = parseInt(btn.getAttribute('data-limit') || '15', 10);
+          currentPage = 1;
+          applyFilters(true);
+        });
+      });
+
+      function renderPaginationButtons(totalPages, shouldScroll = false) {
+        if (!paginationButtons) return;
+        paginationButtons.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        // First button
+        const firstBtn = document.createElement('button');
+        firstBtn.type = 'button';
+        firstBtn.disabled = currentPage === 1;
+        firstBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold ${
+          currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer'
+        }`;
+        firstBtn.innerHTML = '&laquo;';
+        firstBtn.title = 'First Page';
+        firstBtn.addEventListener('click', () => {
+          if (currentPage > 1) { 
+            currentPage = 1; 
+            applyFilters(false, true); 
+          }
+        });
+        paginationButtons.appendChild(firstBtn);
+
+        // Prev button
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold ${
+          currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer'
+        }`;
+        prevBtn.innerHTML = '&lsaquo; Prev';
+        prevBtn.addEventListener('click', () => {
+          if (currentPage > 1) { 
+            currentPage--; 
+            applyFilters(false, true); 
+          }
+        });
+        paginationButtons.appendChild(prevBtn);
+
+        // Numbered buttons
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        if (endPage - startPage + 1 < maxVisiblePages) {
+          startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        if (startPage > 1) {
+          const dot = document.createElement('span');
+          dot.className = 'px-1.5 text-xs font-bold text-slate-400 select-none';
+          dot.textContent = '...';
+          paginationButtons.appendChild(dot);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+          const pageBtn = document.createElement('button');
+          pageBtn.type = 'button';
+          pageBtn.className = `px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
+            currentPage === i
+              ? 'bg-cyan-600 border-cyan-600 text-white shadow-xs'
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`;
+          pageBtn.textContent = String(i);
+          pageBtn.addEventListener('click', () => {
+            currentPage = i;
+            applyFilters(false, true);
+          });
+          paginationButtons.appendChild(pageBtn);
+        }
+
+        if (endPage < totalPages) {
+          const dot = document.createElement('span');
+          dot.className = 'px-1.5 text-xs font-bold text-slate-400 select-none';
+          dot.textContent = '...';
+          paginationButtons.appendChild(dot);
+        }
+
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold ${
+          currentPage === totalPages ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer'
+        }`;
+        nextBtn.innerHTML = 'Next &rsaquo;';
+        nextBtn.addEventListener('click', () => {
+          if (currentPage < totalPages) { 
+            currentPage++; 
+            applyFilters(false, true); 
+          }
+        });
+        paginationButtons.appendChild(nextBtn);
+
+        // Last button
+        const lastBtn = document.createElement('button');
+        lastBtn.type = 'button';
+        lastBtn.disabled = currentPage === totalPages;
+        lastBtn.className = `px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold ${
+          currentPage === totalPages ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer'
+        }`;
+        lastBtn.innerHTML = '&raquo;';
+        lastBtn.title = 'Last Page';
+        lastBtn.addEventListener('click', () => {
+          if (currentPage < totalPages) { 
+            currentPage = totalPages; 
+            applyFilters(false, true); 
+          }
+        });
+        paginationButtons.appendChild(lastBtn);
+      }
+
+      function applyFilters(resetPage = true, shouldScroll = false) {
+        if (resetPage) currentPage = 1;
+
+        const queryVal = searchInput?.value.toLowerCase().trim() || '';
+        const divisionVal = filterDivision?.value.toLowerCase().trim() || '';
+        const actionVal = filterAction?.value.toLowerCase().trim() || '';
+        const moduleVal = filterModule?.value.toLowerCase().trim() || '';
+        const userVal = filterUser?.value.toLowerCase().trim() || '';
+        const anomalousOnly = filterAnomalousOnly?.value === 'anomalous';
+
+        const startVal = filterDateStart?.value ? new Date(filterDateStart.value + 'T00:00:00') : null;
+        const endVal = filterDateEnd?.value ? new Date(filterDateEnd.value + 'T23:59:59') : null;
+
+        const matchingRows = [];
 
         rows.forEach(row => {
           const rowAction = row.getAttribute('data-action') || '';
           const rowDetails = row.getAttribute('data-details') || '';
           const rowUser = row.getAttribute('data-user') || '';
           const rowModule = row.getAttribute('data-module') || '';
+          const rowDivision = row.getAttribute('data-division') || '';
+          const rowAnomalous = row.getAttribute('data-anomalous') === 'true';
+          const rowTimestamp = new Date(row.getAttribute('data-timestamp') || 0);
 
-          const matchesSearch = rowAction.includes(queryVal) || rowDetails.includes(queryVal) || rowUser.includes(queryVal);
+          const matchesSearch = !queryVal || rowAction.includes(queryVal) || rowDetails.includes(queryVal) || rowUser.includes(queryVal);
+          const matchesDivision = !divisionVal || rowDivision === divisionVal;
           const matchesAction = !actionVal || rowAction === actionVal;
           const matchesModule = !moduleVal || rowModule === moduleVal;
           const matchesUser = !userVal || rowUser === userVal;
+          const matchesAnomalous = !anomalousOnly || rowAnomalous;
 
-          if (matchesSearch && matchesAction && matchesModule && matchesUser) {
-            (row as HTMLElement).classList.remove('hidden');
-          } else {
-            (row as HTMLElement).classList.add('hidden');
+          let matchesDate = true;
+          if (startVal && rowTimestamp < startVal) matchesDate = false;
+          if (endVal && rowTimestamp > endVal) matchesDate = false;
+
+          if (matchesSearch && matchesDivision && matchesAction && matchesModule && matchesUser && matchesDate && matchesAnomalous) {
+            matchingRows.push(row);
+          }
+          row.classList.add('hidden');
+        });
+
+        const totalMatching = matchingRows.length;
+        const totalPages = Math.ceil(totalMatching / itemsPerPage) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const startIndex = totalMatching === 0 ? 0 : (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, totalMatching);
+
+        for (let i = startIndex; i < endIndex; i++) {
+          if (matchingRows[i]) {
+            matchingRows[i].classList.remove('hidden');
+          }
+        }
+
+        if (countVisible) countVisible.textContent = String(totalMatching);
+        if (startEl) startEl.textContent = totalMatching === 0 ? '0' : String(startIndex + 1);
+        if (endEl) endEl.textContent = String(endIndex);
+        if (totalEl) totalEl.textContent = String(totalMatching);
+
+        if (noLogsFound) {
+          if (totalMatching === 0) noLogsFound.classList.remove('hidden');
+          else noLogsFound.classList.add('hidden');
+        }
+
+        renderPaginationButtons(totalPages);
+
+        if (shouldScroll) {
+          document.getElementById('admin-logs-table')?.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+
+      searchInput?.addEventListener('input', () => applyFilters(true));
+      filterDivision?.addEventListener('change', () => applyFilters(true));
+      filterAction?.addEventListener('change', () => applyFilters(true));
+      filterModule?.addEventListener('change', () => applyFilters(true));
+      filterUser?.addEventListener('change', () => applyFilters(true));
+      filterAnomalousOnly?.addEventListener('change', () => applyFilters(true));
+
+      // Jump to Alert Center or filter
+      kpiAnomaliesBtn?.addEventListener('click', () => {
+        alertCenter?.scrollIntoView({ behavior: 'smooth' });
+      });
+
+      btnFilterAnomalies?.addEventListener('click', () => {
+        if (filterAnomalousOnly) filterAnomalousOnly.value = 'anomalous';
+        applyFilters();
+        document.getElementById('admin-logs-table')?.scrollIntoView({ behavior: 'smooth' });
+      });
+
+      // Interactive Security Alert Category Tabs & Pagination
+      const alertTabs = document.querySelectorAll('.alert-tab-btn');
+      const alertCards = document.querySelectorAll('.alert-card');
+      const noAlertsInTab = document.getElementById('no-alerts-in-tab');
+
+      let currentAlertPage = 1;
+      let alertsPerPage = 6;
+      let currentAlertTab = 'all';
+
+      const alertStartEl = document.getElementById('alerts-pagination-start');
+      const alertEndEl = document.getElementById('alerts-pagination-end');
+      const alertTotalEl = document.getElementById('alerts-pagination-total');
+      const alertPaginationButtons = document.getElementById('alerts-pagination-buttons');
+      const alertLimitBtns = document.querySelectorAll('.alerts-limit-btn');
+
+      alertLimitBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          alertLimitBtns.forEach(b => {
+            b.className = 'alerts-limit-btn px-2.5 py-1 text-xs font-semibold transition-colors bg-slate-800 text-slate-300 hover:bg-slate-750 border-l border-slate-700';
+          });
+          btn.className = 'alerts-limit-btn px-2.5 py-1 text-xs font-black transition-colors bg-cyan-600 text-white';
+          alertsPerPage = parseInt(btn.getAttribute('data-limit') || '6', 10);
+          currentAlertPage = 1;
+          renderAlertsPagination();
+        });
+      });
+
+      function renderAlertPaginationButtons(totalPages) {
+        if (!alertPaginationButtons) return;
+        alertPaginationButtons.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        // Prev Button
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.disabled = currentAlertPage === 1;
+        prevBtn.className = `px-2.5 py-1 rounded-lg border border-slate-700 text-xs font-bold ${
+          currentAlertPage === 1 ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500' : 'bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer'
+        }`;
+        prevBtn.innerHTML = '&lsaquo; Prev';
+        prevBtn.addEventListener('click', () => {
+          if (currentAlertPage > 1) {
+            currentAlertPage--;
+            renderAlertsPagination();
           }
         });
-      };
+        alertPaginationButtons.appendChild(prevBtn);
 
-      searchInput?.addEventListener('input', applyFilters);
-      filterAction?.addEventListener('change', applyFilters);
-      filterModule?.addEventListener('change', applyFilters);
-      filterUser?.addEventListener('change', applyFilters);
+        // Page Number Buttons
+        for (let i = 1; i <= totalPages; i++) {
+          const pageBtn = document.createElement('button');
+          pageBtn.type = 'button';
+          pageBtn.className = `px-3 py-1 rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
+            currentAlertPage === i
+              ? 'bg-cyan-600 border-cyan-500 text-white'
+              : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+          }`;
+          pageBtn.textContent = String(i);
+          pageBtn.addEventListener('click', () => {
+            currentAlertPage = i;
+            renderAlertsPagination();
+          });
+          alertPaginationButtons.appendChild(pageBtn);
+        }
+
+        // Next Button
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.disabled = currentAlertPage === totalPages;
+        nextBtn.className = `px-2.5 py-1 rounded-lg border border-slate-700 text-xs font-bold ${
+          currentAlertPage === totalPages ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500' : 'bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer'
+        }`;
+        nextBtn.innerHTML = 'Next &rsaquo;';
+        nextBtn.addEventListener('click', () => {
+          if (currentAlertPage < totalPages) {
+            currentAlertPage++;
+            renderAlertsPagination();
+          }
+        });
+        alertPaginationButtons.appendChild(nextBtn);
+      }
+
+      function renderAlertsPagination() {
+        const matchingAlerts = [];
+        alertCards.forEach(card => {
+          const cardType = card.getAttribute('data-alert-type');
+          if (currentAlertTab === 'all' || cardType === currentAlertTab) {
+            matchingAlerts.push(card);
+          }
+          card.classList.add('hidden');
+        });
+
+        const totalAlerts = matchingAlerts.length;
+        const totalAlertPages = Math.ceil(totalAlerts / alertsPerPage) || 1;
+        if (currentAlertPage > totalAlertPages) currentAlertPage = totalAlertPages;
+
+        const startIndex = totalAlerts === 0 ? 0 : (currentAlertPage - 1) * alertsPerPage;
+        const endIndex = Math.min(startIndex + alertsPerPage, totalAlerts);
+
+        for (let i = startIndex; i < endIndex; i++) {
+          if (matchingAlerts[i]) matchingAlerts[i].classList.remove('hidden');
+        }
+
+        if (alertStartEl) alertStartEl.textContent = totalAlerts === 0 ? '0' : String(startIndex + 1);
+        if (alertEndEl) alertEndEl.textContent = String(endIndex);
+        if (alertTotalEl) alertTotalEl.textContent = String(totalAlerts);
+
+        if (noAlertsInTab) {
+          if (totalAlerts === 0) noAlertsInTab.classList.remove('hidden');
+          else noAlertsInTab.classList.add('hidden');
+        }
+
+        renderAlertPaginationButtons(totalAlertPages);
+      }
+
+      alertTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          alertTabs.forEach(t => {
+            t.className = 'alert-tab-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white';
+          });
+          tab.className = 'alert-tab-btn active inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-cyan-600 text-white shadow-sm';
+
+          currentAlertTab = tab.getAttribute('data-target-tab') || 'all';
+          currentAlertPage = 1;
+          renderAlertsPagination();
+        });
+      });
+
+      renderAlertsPagination();
+
+      // Filter table when clicking "Filter this event" on an alert card
+      document.querySelectorAll('.btn-inspect-alert-log').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const user = btn.getAttribute('data-user') || '';
+          const action = btn.getAttribute('data-action') || '';
+          if (searchInput) searchInput.value = user || action;
+          applyFilters();
+          document.getElementById('admin-logs-table')?.scrollIntoView({ behavior: 'smooth' });
+        });
+      });
+
+      btnReset?.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
+        if (filterDivision) filterDivision.value = '';
+        if (filterDatePreset) filterDatePreset.value = 'all';
+        if (filterDateStart) filterDateStart.value = '';
+        if (filterDateEnd) filterDateEnd.value = '';
+        if (filterAction) filterAction.value = '';
+        if (filterModule) filterModule.value = '';
+        if (filterUser) filterUser.value = '';
+        if (filterAnomalousOnly) filterAnomalousOnly.value = 'all';
+        applyFilters();
+      });
+
+      applyFilters();
+    }
+
+    initLogsDashboard();
+    document.addEventListener('astro:page-load', initLogsDashboard);
+  </script>
+
+  <!-- Global Direct Verification & Recovery Handlers -->
+  <script is:inline define:vars={{ initialSnapshots: snapshotsMap }}>
+    window.__AUDIT_SNAPSHOTS = initialSnapshots || {};
+    window.__currentActiveSnapshot = null;
+
+    window.openSnapshotModalForLog = function(btn) {
+      try {
+        const logId = btn.getAttribute('data-log-id') || '';
+        if (!logId) return;
+
+        let snapshots = window.__AUDIT_SNAPSHOTS || {};
+        if (Object.keys(snapshots).length === 0) {
+          const dataEl = document.getElementById('audit-snapshots-data');
+          if (dataEl && dataEl.textContent) {
+            try {
+              snapshots = JSON.parse(dataEl.textContent);
+              window.__AUDIT_SNAPSHOTS = snapshots;
+            } catch (e) {}
+          }
+        }
+
+        const snapshot = snapshots[logId] || snapshots[Number(logId)] || snapshots[String(logId)];
+        if (!snapshot) {
+          console.warn('Snapshot not found for logId:', logId);
+          alert('No snapshot recorded for this audit entry.');
+          return;
+        }
+        window.__currentActiveSnapshot = snapshot;
+
+        const action = btn.getAttribute('data-action') || 'AUDIT_EVENT';
+        const operator = btn.getAttribute('data-operator') || 'System';
+        const timestamp = new Date(btn.getAttribute('data-timestamp') || Date.now()).toLocaleString();
+
+        const elDocNum = document.getElementById('modal-doc-number');
+        const elDivBadge = document.getElementById('modal-division-badge');
+        const elStatusBadge = document.getElementById('modal-status-badge');
+        const elMetaInfo = document.getElementById('modal-meta-info');
+
+        if (elDocNum) elDocNum.textContent = snapshot.invoice_number || 'Document';
+        if (elDivBadge) elDivBadge.textContent = (snapshot.source_division || 'DTL').toUpperCase();
+        if (elStatusBadge) elStatusBadge.textContent = (snapshot.payment_status || 'unpaid').toUpperCase();
+        if (elMetaInfo) elMetaInfo.textContent = `Action: ${action} by ${operator} on ${timestamp}`;
+
+        const elCustName = document.getElementById('modal-customer-name');
+        const elCustComp = document.getElementById('modal-customer-company');
+        const elCustPhone = document.getElementById('modal-customer-phone');
+        const elCustTrn = document.getElementById('modal-customer-trn');
+
+        if (elCustName) elCustName.textContent = snapshot.customer_name || '—';
+        if (elCustComp) elCustComp.textContent = snapshot.company_name || 'No company';
+        if (elCustPhone) elCustPhone.textContent = snapshot.customer_phone || snapshot.customer_email || '—';
+        if (elCustTrn) elCustTrn.textContent = snapshot.trn_number ? `TRN: ${snapshot.trn_number}` : 'TRN: None';
+
+        const elOrderType = document.getElementById('modal-order-type');
+        const elLpo = document.getElementById('modal-lpo');
+        const elIssueDate = document.getElementById('modal-issue-date');
+        const elTerms = document.getElementById('modal-payment-terms');
+        const elNotes = document.getElementById('modal-notes');
+
+        if (elOrderType) elOrderType.textContent = (snapshot.order_type || 'standard').replace('_', ' ');
+        if (elLpo) elLpo.textContent = snapshot.lpo_number ? `LPO: ${snapshot.lpo_number}` : 'LPO: —';
+        if (elIssueDate) elIssueDate.textContent = snapshot.issue_date ? new Date(snapshot.issue_date).toLocaleDateString() : '—';
+
+        let termsDisplay = snapshot.payment_terms || 'Standard';
+        if (typeof termsDisplay === 'string' && (termsDisplay.trim().startsWith('[') || termsDisplay.trim().startsWith('{'))) {
+          try {
+            const parsedTerms = JSON.parse(termsDisplay);
+            if (Array.isArray(parsedTerms)) {
+              termsDisplay = parsedTerms.map(t => typeof t === 'string' ? t.replace(/[:"']/g, '').trim() : String(t)).filter(Boolean).join(' • ');
+            }
+          } catch (e) {}
+        }
+        if (elTerms) elTerms.textContent = `Terms: ${termsDisplay}`;
+        if (elNotes) elNotes.textContent = snapshot.notes || snapshot.internal_notes || 'No special notes recorded on this snapshot.';
+
+        // Line Items
+        const tbody = document.getElementById('modal-items-tbody');
+        if (tbody) {
+          tbody.innerHTML = '';
+          const items = snapshot.items || [];
+          if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-3 text-center text-slate-400 italic">No line items recorded</td></tr>';
+          } else {
+            items.forEach(item => {
+              const tr = document.createElement('tr');
+              tr.className = 'hover:bg-slate-50/50';
+              tr.innerHTML = `
+                <td class="px-4 py-2.5">
+                  <div class="font-bold text-slate-900">${item.description || 'Item'}</div>
+                  ${item.catalogue_ref ? `<div class="text-[10px] font-mono text-slate-400">Ref: ${item.catalogue_ref}</div>` : ''}
+                </td>
+                <td class="px-4 py-2.5 text-center font-mono font-bold">${item.quantity || 1}</td>
+                <td class="px-4 py-2.5 text-right font-mono">AED ${(Number(item.unit_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td class="px-4 py-2.5 text-right font-mono text-slate-500">AED ${(Number(item.tax_amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td class="px-4 py-2.5 text-right font-mono font-bold text-slate-900">AED ${(Number(item.total_price) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+        }
+
+        // Totals
+        const currency = snapshot.currency || 'AED';
+        const elSub = document.getElementById('modal-subtotal');
+        const elVat = document.getElementById('modal-vat');
+        const elDisc = document.getElementById('modal-discount');
+        const elTot = document.getElementById('modal-total');
+
+        if (elSub) elSub.textContent = `${currency} ${(Number(snapshot.subtotal) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        if (elVat) elVat.textContent = `${currency} ${(Number(snapshot.tax_amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        if (elDisc) elDisc.textContent = `${currency} ${(Number(snapshot.discount_amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        if (elTot) elTot.textContent = `${currency} ${(Number(snapshot.total_amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+        const modal = document.getElementById('snapshot-modal');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        }
+      } catch (err) {
+        console.error('Error opening snapshot modal:', err);
+      }
     };
 
-    setupLogsDashboard();
-    document.addEventListener('astro:page-load', setupLogsDashboard);
+    window.closeSnapshotModal = function() {
+      const modal = document.getElementById('snapshot-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      window.__currentActiveSnapshot = null;
+      const btnActive = document.getElementById('btn-restore-active');
+      const btnBin = document.getElementById('btn-restore-bin');
+      if (btnActive) {
+        btnActive.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg> Restore to Orders`;
+        btnActive.disabled = false;
+      }
+      if (btnBin) {
+        btnBin.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> Restore to Bin`;
+        btnBin.disabled = false;
+      }
+    };
+
+    window.restoreActiveSnapshotToDb = async function(targetLocation = 'active') {
+      const snapshot = window.__currentActiveSnapshot;
+      if (!snapshot) return;
+      
+      const btnActive = document.getElementById('btn-restore-active');
+      const btnBin = document.getElementById('btn-restore-bin');
+      const targetBtn = targetLocation === 'bin' ? btnBin : btnActive;
+      if (!targetBtn) return;
+
+      const origActiveText = btnActive ? btnActive.innerHTML : '';
+      const origBinText = btnBin ? btnBin.innerHTML : '';
+
+      if (btnActive) btnActive.disabled = true;
+      if (btnBin) btnBin.disabled = true;
+
+      targetBtn.innerHTML = `<span class="animate-spin inline-block mr-1">↻</span> Restoring to ${targetLocation === 'bin' ? 'Bin' : 'Orders'}...`;
+
+      try {
+        const res = await fetch('/api/invoices/restore-snapshot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ snapshot, targetLocation })
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed to restore document');
+
+        targetBtn.className = 'flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-colors shadow-sm';
+        targetBtn.innerHTML = `✓ Restored as ${result.invoice.invoice_number}!`;
+        
+        setTimeout(() => {
+          if (targetLocation === 'bin') {
+            window.location.href = '/dashboard/invoices?tab=bin';
+          } else {
+            window.location.href = `/dashboard/invoices/${result.invoice.id}`;
+          }
+        }, 600);
+      } catch (err) {
+        alert('❌ Restoration failed: ' + (err.message || 'Unknown error'));
+        if (btnActive) {
+          btnActive.innerHTML = origActiveText;
+          btnActive.disabled = false;
+        }
+        if (btnBin) {
+          btnBin.innerHTML = origBinText;
+          btnBin.disabled = false;
+        }
+      }
+    };
+
+    window.openActiveSnapshotInEditor = function() {
+      const snapshot = window.__currentActiveSnapshot;
+      if (!snapshot) return;
+      try {
+        sessionStorage.setItem('restore_invoice_draft', JSON.stringify(snapshot));
+        window.location.href = '/dashboard/invoices/create?from_audit=1';
+      } catch (e) {
+        window.location.href = '/dashboard/invoices/create';
+      }
+    };
   </script>
 </DashboardLayout>

@@ -78,6 +78,8 @@ if (signaturesList.length === 0 && settings.signatory_name) {
   }];
 }
 
+const allowBothDivisions = settings.enable_both_divisions === 'true';
+
 const productsJson = JSON.stringify(products);
 const categoriesJson = JSON.stringify(categories);
 const disclaimersJson = JSON.stringify(disclaimers);
@@ -217,6 +219,7 @@ const companiesJson = JSON.stringify(companiesList);
             <option value="proforma">PFI - Pro Forma</option>
             <option value="lpo">PO / LPO (Purchase Order)</option>
             <option value="delivery_note">DLN (Delivery Note)</option>
+            <option value="sample_order">SMP (Sample Order)</option>
             <option value="tax_invoice">BILL - Commercial Bill</option>
             <option value="quotation">EST - Estimation/Quote</option>
           </select>
@@ -228,9 +231,21 @@ const companiesJson = JSON.stringify(companiesList);
             <option value="">-- Select Division --</option>
             <option value="DTL">Division DTL</option>
             <option value="DGS">Division DGS</option>
-            <option value="both">Both Divisions</option>
+            {allowBothDivisions ? (
+              <option value="both">Both Divisions</option>
+            ) : (
+              <option value="both" disabled class="bg-slate-100 text-slate-400 cursor-not-allowed italic" title="To enable this option, go to Finance & Legal and enable it there.">Both Divisions (Disabled - Configure in Finance & Legal)</option>
+            )}
           </select>
           <p id="source-division-error" class="hidden text-[10px] font-semibold text-rose-500">Source Division is required.</p>
+          <p id="both-division-guide-note" class="text-[11px] text-slate-500 flex items-center gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-200 mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {allowBothDivisions ? (
+              <span class="text-emerald-700 font-semibold">✓ <strong>Both Divisions</strong> mode is enabled in <a href="/dashboard/finance-legal" target="_blank" class="text-cyan-600 hover:underline">Finance &amp; Legal</a>.</span>
+            ) : (
+              <span>To enable <strong>Both Divisions</strong>, go to <a href="/dashboard/finance-legal" target="_blank" class="text-cyan-600 hover:underline font-bold">Finance &amp; Legal</a> and enable it there.</span>
+            )}
+          </p>
         </div>
         
         <div class="grid grid-cols-2 gap-4">
@@ -1226,7 +1241,7 @@ const companiesJson = JSON.stringify(companiesList);
     const dueDateInput = document.getElementById('invoice-due-date') as HTMLInputElement;
 
     const toggleDueDateVisibility = () => {
-      if (orderTypeSelect?.value === 'delivery_note') {
+      if (orderTypeSelect?.value === 'delivery_note' || orderTypeSelect?.value === 'sample_order') {
         dueDateContainer?.classList.remove('hidden');
       } else {
         dueDateContainer?.classList.add('hidden');
@@ -1530,9 +1545,65 @@ const companiesJson = JSON.stringify(companiesList);
       toggleDueDateVisibility();
       toggleTOSVisibility();
       
-      document.getElementById('invoice-items-container')!.innerHTML = '';
-      addRow();
+      const container = document.getElementById('invoice-items-container')!;
+      container.innerHTML = '';
+
+      // Check if opened from Audit Log Snapshot Recovery
+      const auditDraftRaw = sessionStorage.getItem('restore_invoice_draft');
+      if (auditDraftRaw) {
+        try {
+          const draft = JSON.parse(auditDraftRaw);
+          sessionStorage.removeItem('restore_invoice_draft');
+
+          if (draft.customer_name) (document.getElementById('invoice-customer-name') as HTMLInputElement).value = draft.customer_name;
+          if (draft.company_name) {
+            const selComp = document.getElementById('invoice-select-company') as HTMLSelectElement;
+            if (selComp) selComp.value = draft.company_name;
+          }
+          if (draft.customer_email) (document.getElementById('invoice-customer-email') as HTMLInputElement).value = draft.customer_email;
+          if (draft.customer_phone) (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = draft.customer_phone;
+          if (draft.trn_number) (document.getElementById('invoice-company-vat') as HTMLInputElement).value = draft.trn_number;
+          if (draft.billing_address) (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = draft.billing_address;
+          if (draft.shipping_address) (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = draft.shipping_address;
+
+          if (draft.order_type) (document.getElementById('inv-order-type') as HTMLSelectElement).value = draft.order_type;
+          if (draft.source_division) (document.getElementById('inv-source-division') as HTMLSelectElement).value = draft.source_division;
+          if (draft.issue_date) (document.getElementById('invoice-issue-date') as HTMLInputElement).value = draft.issue_date.split('T')[0];
+          if (draft.due_date) (document.getElementById('invoice-due-date') as HTMLInputElement).value = draft.due_date.split('T')[0];
+          if (draft.lpo_number) (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = draft.lpo_number;
+          if (draft.notes) (document.getElementById('invoice-notes') as HTMLTextAreaElement).value = draft.notes;
+          if (draft.signatory_incharge) (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = draft.signatory_incharge;
+
+          const items = draft.items || [];
+          items.forEach((item: any) => addRow({
+            product_id: item.product_id,
+            catalogue_ref: item.catalogue_ref,
+            description: item.description,
+            tech_spec: item.tech_spec,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            tax_type: item.tax_type || 'percentage',
+            tax_value: item.tax_value !== undefined ? item.tax_value : 5,
+          }));
+
+          if (items.length === 0) addRow();
+          
+          const msg = document.getElementById('invoice-form-msg');
+          if (msg) {
+            msg.className = 'p-4 rounded-xl text-sm font-semibold bg-cyan-50 text-cyan-800 border border-cyan-200';
+            msg.textContent = `📋 Loaded snapshot for document ${draft.invoice_number || 'Order'} from audit trail. Review details and click Generate when ready.`;
+            msg.classList.remove('hidden');
+          }
+        } catch (e) {
+          console.warn('Error loading audit snapshot draft:', e);
+          addRow();
+        }
+      } else {
+        addRow();
+      }
+
       recalcSummary();
+      updateGlobalSourceDivision();
     }
 
     // Submit
@@ -1717,6 +1788,18 @@ const companiesJson = JSON.stringify(companiesList);
     });
 
     document.getElementById('invoice-draft-btn')?.addEventListener('click', () => submitInvoice(true));
+
+    document.getElementById('cancel-invoice-btn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const modalBackdrop = document.getElementById('invoice-modal-backdrop');
+      if (modalBackdrop && !modalBackdrop.classList.contains('hidden')) {
+        modalBackdrop.classList.add('hidden');
+      } else if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/dashboard/invoices';
+      }
+    });
   };
 
   setupInvoiceForm();

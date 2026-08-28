@@ -65,7 +65,7 @@ export const POST: APIRoute = async ({ params, request }) => {
       await client.query('UPDATE invoices SET payment_status = $1, updated_at = NOW() WHERE id = $2', [newStatus, id]);
 
       // 6. Handle Inventory Deduction if moving to paid (and not already deducted)
-      const shouldDeduct = newStatus === 'paid' || invoice.order_type === 'delivery_note';
+      const shouldDeduct = newStatus === 'paid' || invoice.order_type === 'delivery_note' || invoice.order_type === 'sample_order';
       if (shouldDeduct && !invoice.inventory_deducted) {
         // Fetch invoice items to deduct
         const itemsRes = await client.query('SELECT product_id, quantity FROM invoice_items WHERE invoice_id = $1', [id]);
