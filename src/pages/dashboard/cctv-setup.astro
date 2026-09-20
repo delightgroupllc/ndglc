@@ -1,0 +1,550 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { 
+  ShieldCheck, Camera, Video, Monitor, Tablet, Smartphone, 
+  ExternalLink, RotateCcw, Save, CheckCircle2, Sparkles, SlidersHorizontal, 
+  Layers, Lock, Cpu, Lightbulb
+} from '@lucide/astro';
+
+let cctvSetup: any = {
+  hero: {
+    badge: 'DTL Security & Surveillance Department',
+    title: 'Commercial Surveillance: Precision Optics & AI Security.',
+    subtitle: "Expanding Delight Technical Lighting's engineering heritage to intelligent video surveillance. We deliver Ultra-HD 4K cameras, SIRA-compliant recording architectures, thermal perimeter defense, and intelligent deep-learning analytics tailored for the UAE's most demanding environments.",
+    imageUrl: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=1600&q=80',
+    ctaText: 'Explore CCTV Systems',
+    ctaUrl: '#cctv-catalog',
+    specs: [
+      { value: '4K UHD', label: 'Sony Starvis CMOS' },
+      { value: 'SIRA UAE', label: 'Regulatory Ready' },
+      { value: 'IP67 / IK10', label: 'Vandal & Weatherproof' },
+      { value: 'AI Vision', label: 'Target Analytics' }
+    ]
+  },
+  solutions: {
+    title: 'Tailored Surveillance Architectures for UAE Infrastructure',
+    subtitle: 'From private ultra-luxury estates to enterprise commercial towers and high-throughput logistics hubs, our surveillance solutions meet strict regulatory standards and zero-latency performance.',
+    items: [
+      {
+        title: 'Commercial Towers & Corporate Lobbies',
+        description: 'High-density facial detection, biometric access integration, and wide dynamic range (WDR) sensors handling floor-to-ceiling glass atrium backlighting.'
+      },
+      {
+        title: 'Luxury Villas & Private Estates',
+        description: 'Discreet architectural finish housings, 360° pan-tilt smart tracking, thermal perimeter fencing, and instant mobile push alerts with encrypted private cloud storage.'
+      },
+      {
+        title: 'High-End Retail & Showrooms',
+        description: 'Ultra-HD optical zoom, customer heatmap foot-traffic analytics, cash-register POS transaction synchronization, and zero-distortion fisheye coverage.'
+      },
+      {
+        title: 'Logistics Hubs & Industrial Warehouses',
+        description: 'License plate recognition (ANPR) gates, heavy-duty explosion-proof cameras, thermal overheating alarms, and long-range laser night vision.'
+      }
+    ]
+  },
+  compliance: {
+    badge: 'UAE Regulatory Assurance',
+    title: 'Engineered for SIRA & ADMCC Mandatory Compliance',
+    description: 'All DTL commercial surveillance projects are pre-engineered to meet Dubai Security Industry Regulatory Agency (SIRA) and Abu Dhabi Monitoring & Control Centre (ADMCC) technical specs: 31-day minimum recording at native 1080p/4K, UPS power backup architecture, and secure tamper-evident video watermarking.'
+  },
+  cta: {
+    title: 'Need an Enterprise Surveillance Design or SIRA-Compliant BOQ?',
+    subtitle: 'Our certified surveillance engineers evaluate CAD plans, perform lux/coverage studies, and provide turnkey BOQs with SIRA-approved hardware specifications.',
+    btnText: 'Request CCTV Consultation',
+    btnUrl: '/contact?dept=cctv'
+  }
+};
+
+try {
+  const res = await query("SELECT value FROM settings WHERE key = 'cctv_setup' LIMIT 1");
+  if (res.rows.length > 0 && res.rows[0].value) {
+    try {
+      const parsed = JSON.parse(res.rows[0].value);
+      cctvSetup = {
+        hero: { ...cctvSetup.hero, ...(parsed.hero || {}) },
+        solutions: { ...cctvSetup.solutions, ...(parsed.solutions || {}) },
+        compliance: { ...cctvSetup.compliance, ...(parsed.compliance || {}) },
+        cta: { ...cctvSetup.cta, ...(parsed.cta || {}) }
+      };
+    } catch (e) {}
+  }
+} catch (err: any) {
+  console.warn('DB offline or cctv_setup missing:', err?.message || err);
+}
+---
+
+<DashboardLayout title="DTL Camera Setup | Delight Group LLC" activeItem="cctv-setup">
+
+  <!-- Mobile Viewport Tabs Switcher -->
+  <div class="flex border-b border-slate-200 bg-white p-1 rounded-xl shadow-3xs lg:hidden shrink-0 mb-4 select-none">
+    <button type="button" id="tab-toggle-form" class="flex-1 text-center py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all bg-amber-50 text-amber-700">
+      Configuration
+    </button>
+    <button type="button" id="tab-toggle-preview" class="flex-1 text-center py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all text-slate-500 hover:text-slate-800">
+      Live Preview
+    </button>
+  </div>
+
+  <div class="min-h-[calc(100vh-120px)] lg:h-[calc(100vh-120px)] flex flex-col lg:flex-row gap-6 lg:overflow-hidden w-full">
+    
+    <!-- LEFT: Configuration Form Column -->
+    <div id="cctv-form-column" class="w-full lg:w-2/5 flex flex-col min-h-0 bg-white border border-slate-200 rounded-2xl shadow-sm">
+      
+      <!-- Department Switcher Banner (DTL Lighting vs DTL CAMERA) -->
+      <div class="p-3 bg-slate-50 border-b border-slate-200">
+        <div class="flex items-center gap-1.5 bg-slate-200/70 p-1 rounded-xl">
+          <a 
+            href="/dashboard/dtl-setup" 
+            class="flex-1 text-center py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center gap-1.5"
+            title="Switch to DTL Architectural Lighting Configuration"
+          >
+            <Lightbulb class="w-3.5 h-3.5 text-indigo-500" />
+            <span>DTL Lighting</span>
+          </a>
+          <a 
+            href="/dashboard/cctv-setup" 
+            class="flex-1 text-center py-2 rounded-lg text-xs font-black uppercase tracking-wider bg-white text-amber-700 shadow-xs flex items-center justify-center gap-1.5 border border-amber-300/40"
+            title="Active: DTL Security & Surveillance Camera Department"
+          >
+            <Camera class="w-3.5 h-3.5 text-amber-600" />
+            <span>DTL CAMERA</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[9px] font-black">ACTIVE</span>
+          </a>
+        </div>
+      </div>
+
+      <header class="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
+        <div>
+          <h1 class="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Camera class="w-5 h-5 text-amber-500" />
+            DTL Camera Setup
+          </h1>
+          <p class="text-[11px] text-slate-500 font-medium">Configure Surveillance Department Hero, Telemetry & Solutions</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div id="save-msg" class="hidden text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-md px-2.5 py-1.5"></div>
+          <button id="save-cctv-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5">
+            <Save class="w-3.5 h-3.5" />
+            Save Changes
+          </button>
+        </div>
+      </header>
+
+      <div class="overflow-y-auto p-5 flex-1 custom-scrollbar space-y-6">
+        <form id="cctv-form" class="space-y-6">
+
+          <!-- ═══ 1. HERO SECTION ═══ -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+            <h2 class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-black">1</span>
+              Hero Banner & Surveillance Intro
+            </h2>
+
+            <div class="space-y-3 text-left">
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Department Badge Text</label>
+                <input type="text" name="hero_badge" value={cctvSetup.hero?.badge || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+              </div>
+
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Hero Headline</label>
+                <input type="text" name="hero_title" value={cctvSetup.hero?.title || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+              </div>
+
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Department Subtitle / Pitch</label>
+                <textarea name="hero_subtitle" rows="3" class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none">{cctvSetup.hero?.subtitle || ''}</textarea>
+              </div>
+
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Hero Background Image URL</label>
+                <input type="text" name="hero_imageUrl" value={cctvSetup.hero?.imageUrl || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Hero CTA Text</label>
+                  <input type="text" name="hero_ctaText" value={cctvSetup.hero?.ctaText || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Hero CTA URL</label>
+                  <input type="text" name="hero_ctaUrl" value={cctvSetup.hero?.ctaUrl || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ 2. KEY HIGHLIGHTS / TELEMETRY BADGES ═══ -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+            <h2 class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-black">2</span>
+              Key Telemetry / Feature Highlights (4 Pillars)
+            </h2>
+
+            <div class="space-y-2.5">
+              {(cctvSetup.hero?.specs || []).map((spec: any, idx: number) => (
+                <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200">
+                  <span class="text-[10px] font-black text-amber-600 px-2 py-1 rounded bg-amber-50 shrink-0">#{idx + 1}</span>
+                  <input 
+                    type="text" 
+                    name={`spec_val_${idx}`} 
+                    value={spec.value} 
+                    placeholder="e.g. 4K UHD" 
+                    class="w-28 rounded border border-slate-200 px-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-amber-400" 
+                  />
+                  <input 
+                    type="text" 
+                    name={`spec_lbl_${idx}`} 
+                    value={spec.label} 
+                    placeholder="e.g. Sony Starvis CMOS" 
+                    class="flex-grow rounded border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" 
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <!-- ═══ 3. ENTERPRISE SOLUTIONS SECTION ═══ -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+            <h2 class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-black">3</span>
+              Enterprise Solutions Blueprints
+            </h2>
+
+            <div class="space-y-3">
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Solutions Section Title</label>
+                <input type="text" name="solutions_title" value={cctvSetup.solutions?.title || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+              </div>
+
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Solutions Section Subtitle</label>
+                <textarea name="solutions_subtitle" rows="2" class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none">{cctvSetup.solutions?.subtitle || ''}</textarea>
+              </div>
+
+              <div class="space-y-3 pt-2">
+                {(cctvSetup.solutions?.items || []).map((sol: any, idx: number) => (
+                  <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+                    <div class="flex items-center gap-2">
+                      <span class="w-4 h-4 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-[9px] font-black">{idx + 1}</span>
+                      <input 
+                        type="text" 
+                        name={`sol_title_${idx}`} 
+                        value={sol.title} 
+                        placeholder="Solution Title" 
+                        class="w-full rounded border border-slate-200 px-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-amber-400" 
+                      />
+                    </div>
+                    <textarea 
+                      name={`sol_desc_${idx}`} 
+                      rows="2" 
+                      placeholder="Solution Description & Technical Scope" 
+                      class="w-full rounded border border-slate-200 px-2 py-1 text-2xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    >{sol.description}</textarea>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ 4. SIRA REGULATORY COMPLIANCE ═══ -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+            <h2 class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-black">4</span>
+              SIRA & Regulatory Assurance Block
+            </h2>
+
+            <div class="space-y-3">
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Compliance Badge</label>
+                <input type="text" name="compliance_badge" value={cctvSetup.compliance?.badge || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+              </div>
+
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Compliance Title</label>
+                <input type="text" name="compliance_title" value={cctvSetup.compliance?.title || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+              </div>
+
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Compliance Body Description</label>
+                <textarea name="compliance_description" rows="3" class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none">{cctvSetup.compliance?.description || ''}</textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ 5. TURNKEY BOQ / CONSULTATION CTA ═══ -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+            <h2 class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-black">5</span>
+              Turnkey Consultation Call-to-Action
+            </h2>
+
+            <div class="space-y-3">
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">CTA Title</label>
+                <input type="text" name="cta_title" value={cctvSetup.cta?.title || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+              </div>
+
+              <div>
+                <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">CTA Subtitle</label>
+                <textarea name="cta_subtitle" rows="2" class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none">{cctvSetup.cta?.subtitle || ''}</textarea>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Button Text</label>
+                  <input type="text" name="cta_btnText" value={cctvSetup.cta?.btnText || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label class="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">Button URL</label>
+                  <input type="text" name="cta_btnUrl" value={cctvSetup.cta?.btnUrl || ''} class="w-full mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </form>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Live Preview Column -->
+    <div id="cctv-preview-column" class="w-full lg:w-3/5 flex flex-col min-h-0 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden hidden lg:flex">
+      
+      <!-- Preview Header Bar -->
+      <div class="flex items-center justify-between px-5 py-3.5 bg-slate-950 border-b border-slate-800 shrink-0">
+        <div class="flex items-center gap-3">
+          <span class="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-xs font-bold text-slate-300">Live CCTV Portal Preview</span>
+          <span class="text-[10px] text-slate-500 font-mono">/delighttechnicallighting/cctv</span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Viewport Switcher -->
+          <div class="flex items-center bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/80">
+            <button type="button" id="vp-desktop" class="p-1.5 rounded-md text-amber-400 bg-slate-700 shadow-xs" title="Desktop Preview">
+              <Monitor class="w-3.5 h-3.5" />
+            </button>
+            <button type="button" id="vp-tablet" class="p-1.5 rounded-md text-slate-400 hover:text-white transition-colors" title="Tablet Preview">
+              <Tablet class="w-3.5 h-3.5" />
+            </button>
+            <button type="button" id="vp-mobile" class="p-1.5 rounded-md text-slate-400 hover:text-white transition-colors" title="Mobile Preview">
+              <Smartphone class="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <button 
+            type="button" 
+            id="refresh-preview-btn" 
+            class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all border border-slate-700/80" 
+            title="Reload Preview Frame"
+          >
+            <RotateCcw class="w-3.5 h-3.5" />
+          </button>
+
+          <a 
+            href="/delighttechnicallighting/cctv" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all border border-slate-700/80 flex items-center gap-1 text-[11px] font-bold"
+            title="Open Live CCTV Department Page in New Tab"
+          >
+            <ExternalLink class="w-3.5 h-3.5" />
+          </a>
+        </div>
+      </div>
+
+      <!-- Live Iframe Canvas -->
+      <div class="flex-1 relative bg-slate-950 flex justify-center items-center overflow-hidden p-4">
+        <div id="iframe-wrapper" class="w-full h-full mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-0">
+          <iframe 
+            id="cctv-preview-frame" 
+            src="/delighttechnicallighting/cctv" 
+            class="w-full h-full border-0 absolute inset-0 bg-slate-900 rounded-xl"
+          ></iframe>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 10px;
+    }
+    .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+      background-color: #94a3b8;
+    }
+  </style>
+
+  <script>
+    const form = document.getElementById('cctv-form') as HTMLFormElement;
+    const saveBtn = document.getElementById('save-cctv-btn');
+    const saveMsg = document.getElementById('save-msg');
+    const previewFrame = document.getElementById('cctv-preview-frame') as HTMLIFrameElement;
+    const refreshBtn = document.getElementById('refresh-preview-btn');
+    const iframeWrapper = document.getElementById('iframe-wrapper');
+
+    // Read form values
+    const readForm = () => {
+      const data = new FormData(form);
+      return {
+        hero: {
+          badge: data.get('hero_badge') || '',
+          title: data.get('hero_title') || '',
+          subtitle: data.get('hero_subtitle') || '',
+          imageUrl: data.get('hero_imageUrl') || '',
+          ctaText: data.get('hero_ctaText') || '',
+          ctaUrl: data.get('hero_ctaUrl') || '',
+          specs: [
+            { value: data.get('spec_val_0') || '', label: data.get('spec_lbl_0') || '' },
+            { value: data.get('spec_val_1') || '', label: data.get('spec_lbl_1') || '' },
+            { value: data.get('spec_val_2') || '', label: data.get('spec_lbl_2') || '' },
+            { value: data.get('spec_val_3') || '', label: data.get('spec_lbl_3') || '' },
+          ]
+        },
+        solutions: {
+          title: data.get('solutions_title') || '',
+          subtitle: data.get('solutions_subtitle') || '',
+          items: [
+            { title: data.get('sol_title_0') || '', description: data.get('sol_desc_0') || '' },
+            { title: data.get('sol_title_1') || '', description: data.get('sol_desc_1') || '' },
+            { title: data.get('sol_title_2') || '', description: data.get('sol_desc_2') || '' },
+            { title: data.get('sol_title_3') || '', description: data.get('sol_desc_3') || '' },
+          ]
+        },
+        compliance: {
+          badge: data.get('compliance_badge') || '',
+          title: data.get('compliance_title') || '',
+          description: data.get('compliance_description') || ''
+        },
+        cta: {
+          title: data.get('cta_title') || '',
+          subtitle: data.get('cta_subtitle') || '',
+          btnText: data.get('cta_btnText') || '',
+          btnUrl: data.get('cta_btnUrl') || ''
+        }
+      };
+    };
+
+    // Refresh Preview
+    const refreshPreview = () => {
+      if (previewFrame) {
+        previewFrame.src = '/delighttechnicallighting/cctv?t=' + Date.now();
+      }
+    };
+    refreshBtn?.addEventListener('click', refreshPreview);
+
+    // Save handler
+    saveBtn?.addEventListener('click', async () => {
+      const payload = {
+        cctv_setup: JSON.stringify(readForm())
+      };
+
+      try {
+        saveBtn.setAttribute('disabled', 'true');
+        saveBtn.textContent = 'Saving...';
+
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error('Failed to save CCTV settings');
+
+        saveMsg!.classList.remove('hidden');
+        saveMsg!.textContent = '✓ Saved successfully';
+        refreshPreview();
+
+        setTimeout(() => {
+          saveMsg!.classList.add('hidden');
+        }, 2500);
+      } catch (err: any) {
+        alert(err?.message || 'Error saving settings');
+      } finally {
+        saveBtn.removeAttribute('disabled');
+        saveBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>
+          Save Changes
+        `;
+      }
+    });
+
+    // Viewport switcher
+    const btnDesktop = document.getElementById('vp-desktop');
+    const btnTablet = document.getElementById('vp-tablet');
+    const btnMobile = document.getElementById('vp-mobile');
+
+    const resetVpButtons = () => {
+      [btnDesktop, btnTablet, btnMobile].forEach(btn => {
+        btn?.classList.remove('bg-slate-700', 'text-amber-400', 'shadow-xs');
+        btn?.classList.add('text-slate-400');
+      });
+    };
+
+    btnDesktop?.addEventListener('click', () => {
+      resetVpButtons();
+      btnDesktop.classList.add('bg-slate-700', 'text-amber-400', 'shadow-xs');
+      if (iframeWrapper) {
+        iframeWrapper.style.width = '100%';
+        iframeWrapper.style.maxWidth = '100%';
+      }
+    });
+
+    btnTablet?.addEventListener('click', () => {
+      resetVpButtons();
+      btnTablet.classList.add('bg-slate-700', 'text-amber-400', 'shadow-xs');
+      if (iframeWrapper) {
+        iframeWrapper.style.width = '768px';
+        iframeWrapper.style.maxWidth = '100%';
+      }
+    });
+
+    btnMobile?.addEventListener('click', () => {
+      resetVpButtons();
+      btnMobile.classList.add('bg-slate-700', 'text-amber-400', 'shadow-xs');
+      if (iframeWrapper) {
+        iframeWrapper.style.width = '390px';
+        iframeWrapper.style.maxWidth = '100%';
+      }
+    });
+
+    // Mobile tabs
+    const tabForm = document.getElementById('tab-toggle-form');
+    const tabPreview = document.getElementById('tab-toggle-preview');
+    const formCol = document.getElementById('cctv-form-column');
+    const prevCol = document.getElementById('cctv-preview-column');
+
+    tabForm?.addEventListener('click', () => {
+      tabForm.classList.add('bg-amber-50', 'text-amber-700');
+      tabForm.classList.remove('text-slate-500');
+      tabPreview?.classList.remove('bg-amber-50', 'text-amber-700');
+      tabPreview?.classList.add('text-slate-500');
+      formCol?.classList.remove('hidden');
+      prevCol?.classList.add('hidden');
+    });
+
+    tabPreview?.addEventListener('click', () => {
+      tabPreview.classList.add('bg-amber-50', 'text-amber-700');
+      tabPreview.classList.remove('text-slate-500');
+      tabForm?.classList.remove('bg-amber-50', 'text-amber-700');
+      tabForm?.classList.add('text-slate-500');
+      prevCol?.classList.remove('hidden');
+      prevCol?.classList.add('flex');
+      formCol?.classList.add('hidden');
+      refreshPreview();
+    });
+  </script>
+
+</DashboardLayout>

@@ -1,0 +1,514 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { query } from '../../lib/db';
+import { 
+  ShieldCheck, 
+  ArrowRight, 
+  ChevronRight, 
+  SlidersHorizontal, 
+  Layers, 
+  Building2, 
+  Home, 
+  Store, 
+  Warehouse, 
+  BadgeCheck, 
+  PhoneCall, 
+  DownloadCloud,
+  Lock
+} from '@lucide/astro';
+
+// Fetch CCTV products under DTL division
+let cctvProducts: any[] = [];
+let cctvCategories: any[] = [];
+let dbConnected = true;
+
+try {
+  // Query categories under DTL that are CCTV-related
+  const catRes = await query(`
+    SELECT c.* 
+    FROM categories c
+    JOIN divisions d ON d.id = c.division_id
+    WHERE d.slug = 'delighttechnicallighting' AND (c.slug LIKE 'cctv%' OR LOWER(c.name) LIKE '%camera%' OR LOWER(c.name) LIKE '%cctv%')
+    ORDER BY c.display_order ASC
+  `);
+  cctvCategories = catRes.rows;
+
+  // Query products in these CCTV categories
+  const prodRes = await query(`
+    SELECT 
+      p.*, 
+      c.name as category_name, 
+      c.slug as category_slug,
+      COALESCE((SELECT SUM(stock_level) FROM inventory WHERE product_id = p.id), 0) as total_stock,
+      COALESCE((SELECT url FROM product_images WHERE product_id = p.id AND is_primary = true LIMIT 1), p.image_url) as primary_image
+    FROM products p
+    JOIN categories c ON c.id = p.category_id
+    JOIN divisions d ON d.id = p.division_id
+    WHERE d.slug = 'delighttechnicallighting' 
+      AND (c.slug LIKE 'cctv%' OR LOWER(c.name) LIKE '%camera%' OR LOWER(c.name) LIKE '%cctv%')
+      AND p.status = 'active'
+    ORDER BY p.featured DESC, p.created_at DESC
+  `);
+  cctvProducts = prodRes.rows;
+} catch (err: any) {
+  console.warn('Database error while loading CCTV page:', err.message);
+  dbConnected = false;
+}
+
+// Default CCTV Page Configuration (used if DB setting not populated)
+let cctvSetup: any = {
+  hero: {
+    badge: 'DTL Security & Surveillance Department',
+    title: 'Commercial Surveillance: Precision Optics & AI Security.',
+    subtitle: "Expanding Delight Technical Lighting's engineering heritage to intelligent video surveillance. We deliver Ultra-HD 4K cameras, SIRA-compliant recording architectures, thermal perimeter defense, and intelligent deep-learning analytics tailored for the UAE's most demanding environments.",
+    imageUrl: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=1600&q=80',
+    ctaText: 'Browse Cameras Catalog',
+    ctaUrl: '#catalog',
+    specs: [
+      { value: '4K UHD', label: 'Sony Starvis CMOS' },
+      { value: 'SIRA UAE', label: 'Regulatory Ready' },
+      { value: 'IP67 / IK10', label: 'Extreme Climate' },
+      { value: 'AI Vision', label: 'Target Detection' }
+    ]
+  },
+  solutions: {
+    title: 'Tailored Surveillance Architectures for UAE Infrastructure',
+    subtitle: 'From private ultra-luxury estates to enterprise commercial towers and high-throughput logistics hubs, our surveillance solutions meet strict regulatory standards and zero-latency performance.',
+    items: [
+      {
+        title: 'Commercial Towers & Corporate Lobbies',
+        description: 'High-density facial detection, biometric access integration, and wide dynamic range (WDR) sensors handling floor-to-ceiling glass atrium backlighting.'
+      },
+      {
+        title: 'Luxury Villas & Private Estates',
+        description: 'Discreet architectural finish housings, 360° pan-tilt smart tracking, thermal perimeter fencing, and instant mobile push alerts with encrypted private cloud storage.'
+      },
+      {
+        title: 'Retail & Showrooms',
+        description: 'Ultra-HD optical zoom, customer heatmap foot-traffic analytics, cash-register POS transaction synchronization, and zero-distortion fisheye coverage.'
+      },
+      {
+        title: 'Logistics & Warehouses',
+        description: 'License plate recognition (ANPR) gates, heavy-duty explosion-proof cameras, thermal overheating alarms, and long-range laser night vision.'
+      }
+    ]
+  },
+  compliance: {
+    badge: 'Full UAE Regulatory Compliance',
+    title: 'Approved Standards for SIRA & ADMCC Projects',
+    description: 'We supply camera models with certified video retention bitrates, tamper detection, and NDAA compliant chipsets, ensuring smooth authority sign-offs for municipal and commercial occupancy certificates across Dubai, Abu Dhabi, and the Northern Emirates.'
+  },
+  cta: {
+    title: 'Ready to Secure Your Project with Delight Technical Systems?',
+    subtitle: 'From schematic camera field-of-view layout planning to bulk volume supply and warehouse staging, our engineering team is at your disposal.',
+    btnText: 'Request Quotation & Engineering BOQ',
+    btnUrl: '/contact'
+  }
+};
+
+try {
+  const settingsRes = await query("SELECT value FROM settings WHERE key = 'cctv_setup' LIMIT 1");
+  if (settingsRes.rows.length > 0 && settingsRes.rows[0].value) {
+    try {
+      const parsed = JSON.parse(settingsRes.rows[0].value);
+      cctvSetup = {
+        hero: { ...cctvSetup.hero, ...(parsed.hero || {}) },
+        solutions: { ...cctvSetup.solutions, ...(parsed.solutions || {}) },
+        compliance: { ...cctvSetup.compliance, ...(parsed.compliance || {}) },
+        cta: { ...cctvSetup.cta, ...(parsed.cta || {}) }
+      };
+    } catch (e) {}
+  }
+} catch (err: any) {
+  console.warn('Unable to load cctv_setup from settings:', err?.message || err);
+}
+
+// Helper to parse specifications JSON safely
+const parseSpecs = (specsRaw: any) => {
+  if (!specsRaw) return [];
+  if (Array.isArray(specsRaw)) return specsRaw;
+  try {
+    return JSON.parse(specsRaw);
+  } catch {
+    return [];
+  }
+};
+---
+
+<Layout 
+  title="CCTV & Security Surveillance Cameras | Delight Technical Lighting UAE"
+  description="Delight Technical Lighting (DTL) supplies enterprise 4K CCTV surveillance cameras, AI vandal-proof dome cameras, 360° PTZ systems, long-range bullet cameras, and SIRA-compliant NVR systems across Dubai and the UAE."
+>
+  <!-- Main Page Wrapper -->
+  <main class="min-h-screen bg-slate-900 text-white selection:bg-amber-500 selection:text-slate-950">
+
+    <!-- Hero Section with Surveillance Ambient Background -->
+    <section class="relative overflow-hidden pt-12 pb-24 md:pt-20 md:pb-32 border-b border-slate-800">
+      <!-- Background Grid & Radial Glow -->
+      <div class="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-25"></div>
+      <div class="absolute -top-40 right-1/4 w-96 h-96 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute top-1/2 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Breadcrumbs -->
+        <nav class="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-8" aria-label="Breadcrumb">
+          <a href="/" class="hover:text-white transition-colors">Home</a>
+          <ChevronRight class="w-3.5 h-3.5 text-slate-650" />
+          <a href="/delighttechnicallighting" class="hover:text-white transition-colors">Delight Technical Lighting</a>
+          <ChevronRight class="w-3.5 h-3.5 text-slate-650" />
+          <span class="text-amber-400 font-bold">CCTV & Camera Department</span>
+        </nav>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          
+          <!-- Hero Text Left -->
+          <div class="lg:col-span-7 space-y-6 text-left">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-widest">
+              <ShieldCheck class="w-4 h-4 text-amber-400" />
+              <span>{cctvSetup.hero?.badge || 'DTL Security & Surveillance Department'}</span>
+            </div>
+
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-serif font-semibold tracking-tight text-white leading-[1.15]">
+              {cctvSetup.hero?.title || 'Commercial Surveillance: Precision Optics & AI Security.'}
+            </h1>
+
+            <p class="text-slate-300 text-sm sm:text-base md:text-lg leading-relaxed max-w-2xl font-normal">
+              {cctvSetup.hero?.subtitle}
+            </p>
+
+            <!-- Key Feature Badges -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              {(cctvSetup.hero?.specs || []).map((spec: any) => (
+                <div class="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3 text-left">
+                  <div class="text-amber-400 font-serif font-bold text-lg">{spec.value}</div>
+                  <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">{spec.label}</div>
+                </div>
+              ))}
+            </div>
+
+            <!-- Call to Actions -->
+            <div class="flex flex-wrap items-center gap-4 pt-4">
+              <a 
+                href={cctvSetup.hero?.ctaUrl || "#catalog"} 
+                class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-8 py-3.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all duration-200 shadow-lg shadow-amber-500/20 flex items-center gap-2"
+              >
+                <span>{cctvSetup.hero?.ctaText || "Browse Cameras Catalog"}</span>
+                <ArrowRight class="w-4 h-4" />
+              </a>
+
+              <a 
+                href="/contact" 
+                class="border border-slate-700 hover:border-slate-500 bg-slate-800/50 hover:bg-slate-800 text-white px-7 py-3.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all duration-200 flex items-center gap-2"
+              >
+                <PhoneCall class="w-4 h-4 text-amber-400" />
+                <span>Request Project BOQ</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Hero Image / Visual Right -->
+          <div class="lg:col-span-5 relative">
+            <div class="relative rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl group">
+              <img 
+                src={cctvSetup.hero?.imageUrl || "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&q=80&w=900"} 
+                alt="High-tech CCTV Surveillance Camera System" 
+                class="w-full aspect-[4/3] object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent"></div>
+              
+              <!-- Floating Live Camera Feed Overlay Badge -->
+              <div class="absolute top-4 left-4 flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/80 text-xs font-mono text-emerald-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span>SYSTEM ACTIVE // SIRA STANDARD</span>
+              </div>
+
+              <!-- Floating Metadata Info at bottom -->
+              <div class="absolute bottom-4 inset-x-4 p-4 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700/70 text-left">
+                <div class="flex items-center justify-between text-xs text-slate-300 font-semibold mb-1">
+                  <span>DTL HawkEye Sentinel Series</span>
+                  <span class="text-amber-400 font-bold">4K 60FPS</span>
+                </div>
+                <p class="text-[11px] text-slate-400">Deep learning perimeter defense, auto-tracking optical zoom, and encrypted cloud synchronization.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Subdivisions & Filter Navigation Section -->
+    <section id="catalog" class="py-12 bg-slate-950 border-b border-slate-800/80">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-slate-800">
+          <div>
+            <div class="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-widest mb-1">
+              <SlidersHorizontal class="w-4 h-4" />
+              <span>Department Catalog & Inventory</span>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-serif font-semibold text-white tracking-tight">CCTV & Camera Systems</h2>
+          </div>
+
+          <!-- Category Filter Tabs -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-2 md:pb-0 scrollbar-none" id="cctv-filter-tabs">
+            <button 
+              type="button" 
+              class="cctv-filter-btn px-4 py-2 rounded-lg text-xs font-bold tracking-wider uppercase transition-all duration-200 bg-amber-500 text-slate-950 shadow-md"
+              data-category="all"
+            >
+              All Systems ({cctvProducts.length})
+            </button>
+            {cctvCategories.map((cat) => {
+              const count = cctvProducts.filter(p => p.category_id === cat.id).length;
+              return (
+                <button 
+                  type="button" 
+                  class="cctv-filter-btn px-4 py-2 rounded-lg text-xs font-bold tracking-wider uppercase transition-all duration-200 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700"
+                  data-category={cat.slug}
+                >
+                  {cat.name.replace('CCTV & ', '')} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <!-- Products Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-10" id="cctv-products-grid">
+          {cctvProducts.map((product) => {
+            const specs = parseSpecs(product.specifications);
+            const inStock = product.total_stock > 0;
+
+            return (
+              <div 
+                class="cctv-product-card group relative bg-slate-900 border border-slate-800 hover:border-amber-500/50 rounded-2xl overflow-hidden transition-all duration-300 flex flex-col justify-between shadow-lg hover:shadow-2xl hover:shadow-amber-500/10 text-left"
+                data-category={product.category_slug}
+              >
+                <div>
+                  <!-- Product Image Container -->
+                  <div class="relative aspect-[4/3] bg-slate-950 overflow-hidden border-b border-slate-800">
+                    <img 
+                      src={product.primary_image || '/noimage.jpg'} 
+                      alt={product.name} 
+                      class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-108"
+                      onerror="this.onerror=null; this.src='/noimage.jpg'"
+                    />
+                    
+                    <!-- Top Overlay Badges -->
+                    <div class="absolute top-3 inset-x-3 flex items-center justify-between">
+                      <span class="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-950/80 backdrop-blur-md text-amber-400 border border-slate-700">
+                        {product.category_name}
+                      </span>
+
+                      {inStock ? (
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-950/80 backdrop-blur-md text-emerald-400 border border-emerald-800 flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                          In Stock ({product.total_stock})
+                        </span>
+                      ) : (
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-950/80 backdrop-blur-md text-slate-400 border border-slate-800">
+                          Available to Order
+                        </span>
+                      )}
+                    </div>
+
+                    <!-- SKU overlay bottom left -->
+                    <div class="absolute bottom-3 left-3 bg-slate-950/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 border border-slate-800">
+                      {product.sku}
+                    </div>
+                  </div>
+
+                  <!-- Product Content -->
+                  <div class="p-6 space-y-4">
+                    <h3 class="font-serif text-lg font-bold text-white group-hover:text-amber-400 transition-colors line-clamp-2">
+                      {product.name}
+                    </h3>
+                    
+                    <p class="text-xs text-slate-400 leading-relaxed line-clamp-3">
+                      {product.description}
+                    </p>
+
+                    <!-- Technical Specifications Pills -->
+                    {specs.length > 0 && (
+                      <div class="space-y-2 pt-2 border-t border-slate-800">
+                        <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Key Specifications</div>
+                        <div class="grid grid-cols-2 gap-2 text-left">
+                          {specs.slice(0, 4).map((spec: any) => (
+                            <div class="bg-slate-800/60 rounded-lg p-2 border border-slate-750/70">
+                              <span class="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider truncate">{spec.key}</span>
+                              <span class="block text-xs font-semibold text-slate-200 truncate">{spec.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <!-- Card Bottom Actions -->
+                <div class="p-6 pt-0 border-t border-slate-800/80 mt-4 flex items-center justify-between gap-3">
+                  <a 
+                    href={`/delighttechnicallighting/${product.category_slug}/${product.slug}`}
+                    class="flex-1 text-center bg-slate-800 hover:bg-slate-700 text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors border border-slate-700"
+                  >
+                    View Specs
+                  </a>
+                  <a 
+                    href={`/contact?subject=${encodeURIComponent('Inquiry: ' + product.name + ' (' + product.sku + ')')}`}
+                    class="flex-1 text-center bg-amber-500 hover:bg-amber-400 text-slate-950 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm"
+                  >
+                    Inquire Quote
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {cctvProducts.length === 0 && (
+          <div class="py-20 text-center text-slate-400 bg-slate-900/50 rounded-2xl border border-slate-800">
+            <Video class="w-12 h-12 mx-auto text-slate-600 mb-4" />
+            <h3 class="text-lg font-bold text-slate-200">No CCTV cameras found</h3>
+            <p class="text-xs text-slate-500 mt-1">Please configure products in the dashboard under Delight Technical Lighting.</p>
+          </div>
+        )}
+
+      </div>
+    </section>
+
+    <!-- Enterprise Surveillance Sectors & Solutions -->
+    <section class="py-20 bg-slate-900 border-b border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <div class="inline-flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-widest">
+            <Layers class="w-4 h-4" />
+            <span>Turnkey Deployments</span>
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-serif font-semibold text-white tracking-tight">
+            {cctvSetup.solutions?.title || 'Engineered for UAE Commercial & Architectural Sectors'}
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed font-normal">
+            {cctvSetup.solutions?.subtitle}
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+          {(cctvSetup.solutions?.items || []).map((item: any, idx: number) => {
+            const icons = [Building2, Home, Store, Warehouse];
+            const IconComponent = icons[idx % icons.length];
+            return (
+              <div class="bg-slate-950 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl space-y-4 transition-all duration-300">
+                <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <IconComponent class="w-6 h-6" />
+                </div>
+                <h3 class="text-lg font-serif font-bold text-white">{item.title}</h3>
+                <p class="text-xs text-slate-400 leading-relaxed font-medium">
+                  {item.description}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+
+    <!-- Standards & Regulatory Assurance -->
+    <section class="py-16 bg-slate-950 border-b border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 rounded-3xl p-8 sm:p-12 border border-slate-800 flex flex-col lg:flex-row items-center justify-between gap-8 text-left">
+          <div class="space-y-4 max-w-2xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-black text-amber-400 uppercase tracking-widest">
+              <BadgeCheck class="w-4 h-4 text-amber-400" />
+              <span>{cctvSetup.compliance?.badge || 'Full UAE Regulatory Compliance'}</span>
+            </span>
+            <h3 class="text-2xl sm:text-3xl font-serif font-bold text-white leading-tight">
+              {cctvSetup.compliance?.title || 'Approved Standards for SIRA & ADMCC Projects'}
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              {cctvSetup.compliance?.description}
+            </p>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-4 shrink-0 w-full lg:w-auto">
+            <a 
+              href="/downloads" 
+              class="border border-slate-700 hover:border-slate-500 bg-slate-800 text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-center transition flex items-center justify-center gap-2"
+            >
+              <DownloadCloud class="w-4 h-4 text-amber-400" />
+              <span>Download CCTV Specs</span>
+            </a>
+            <a 
+              href="/contact" 
+              class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-8 py-3 rounded-xl text-xs font-black uppercase tracking-wider text-center transition shadow-md shadow-amber-500/20"
+            >
+              Book SIRA Consultation
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom CTA Banner -->
+    <section class="py-20 bg-slate-900 text-center">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+          <Lock class="w-6 h-6" />
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-serif font-semibold text-white tracking-tight">
+          {cctvSetup.cta?.title || 'Ready to Secure Your Project with Delight Technical Systems?'}
+        </h2>
+        <p class="text-slate-400 text-xs sm:text-sm max-w-xl mx-auto leading-relaxed">
+          {cctvSetup.cta?.subtitle}
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <a 
+            href={cctvSetup.cta?.btnUrl || "/contact"} 
+            class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-10 py-4 rounded-xl text-xs font-black uppercase tracking-widest transition shadow-xl shadow-amber-500/20"
+          >
+            {cctvSetup.cta?.btnText || 'Request Quotation & Engineering BOQ'}
+          </a>
+          <a 
+            href="/delighttechnicallighting" 
+            class="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-xl text-xs font-bold uppercase tracking-widest transition border border-slate-700"
+          >
+            Explore Lighting Division
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Category Filter Functionality
+    const filterButtons = document.querySelectorAll('.cctv-filter-btn');
+    const productCards = document.querySelectorAll('.cctv-product-card');
+
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetCategory = btn.getAttribute('data-category');
+
+        // Update button states
+        filterButtons.forEach(b => {
+          b.classList.remove('bg-amber-500', 'text-slate-950', 'shadow-md');
+          b.classList.add('bg-slate-800/80', 'text-slate-300', 'border', 'border-slate-700');
+        });
+        btn.classList.add('bg-amber-500', 'text-slate-950', 'shadow-md');
+        btn.classList.remove('bg-slate-800/80', 'text-slate-300', 'border', 'border-slate-700');
+
+        // Filter cards
+        productCards.forEach(card => {
+          const cardCat = card.getAttribute('data-category');
+          if (targetCategory === 'all' || cardCat === targetCategory) {
+            (card as HTMLElement).style.display = 'flex';
+          } else {
+            (card as HTMLElement).style.display = 'none';
+          }
+        });
+      });
+    });
+  </script>
+</Layout>

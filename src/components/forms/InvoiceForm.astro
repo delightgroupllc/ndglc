@@ -1,6 +1,6 @@
 ---
-import { query } from '../../lib/db';
-import DirhamIcon from '../ui/DirhamIcon.astro';
+import { query } from "../../lib/db";
+import DirhamIcon from "../ui/DirhamIcon.astro";
 interface Props {
   invoice?: any;
 }
@@ -28,7 +28,12 @@ try {
     ORDER BY c.name ASC
   `);
   categories = catRes.rows;
-  console.log('InvoiceForm.astro: Products loaded:', products.length, 'Categories loaded:', categories.length);
+  console.log(
+    "InvoiceForm.astro: Products loaded:",
+    products.length,
+    "Categories loaded:",
+    categories.length,
+  );
   const custRes = await query(`
     SELECT c.*, co.code as company_code 
     FROM customers c 
@@ -37,7 +42,7 @@ try {
     ORDER BY c.name ASC
   `);
   customers = custRes.rows;
-  
+
   const compRes = await query(`
     SELECT co.*, 
       cust.name as default_customer_name,
@@ -54,16 +59,18 @@ try {
     ORDER BY co.name ASC
   `);
   companiesList = compRes.rows;
-  const legalRes = await query(`SELECT id, identifier, title, content, type, division FROM legal_artifacts WHERE show_in_invoice = TRUE ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
+  const legalRes = await query(
+    `SELECT id, identifier, title, content, type, division FROM legal_artifacts WHERE show_in_invoice = TRUE ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`,
+  );
   disclaimers = legalRes.rows;
 
-  const settingsRes = await query('SELECT key, value FROM settings');
+  const settingsRes = await query("SELECT key, value FROM settings");
   settings = settingsRes.rows.reduce((acc: any, row: any) => {
     acc[row.key] = row.value;
     return acc;
   }, {});
-} catch(e) {
-  console.error('InvoiceForm.astro load error:', e);
+} catch (e) {
+  console.error("InvoiceForm.astro load error:", e);
 }
 
 let signaturesList: any[] = [];
@@ -71,14 +78,16 @@ try {
   signaturesList = settings.signatures ? JSON.parse(settings.signatures) : [];
 } catch (e) {}
 if (signaturesList.length === 0 && settings.signatory_name) {
-  signaturesList = [{
-    id: 'sig_legacy',
-    signatory_name: settings.signatory_name || '',
-    signatory_title: settings.signatory_title || ''
-  }];
+  signaturesList = [
+    {
+      id: "sig_legacy",
+      signatory_name: settings.signatory_name || "",
+      signatory_title: settings.signatory_title || "",
+    },
+  ];
 }
 
-const allowBothDivisions = settings.enable_both_divisions === 'true';
+const allowBothDivisions = settings.enable_both_divisions === "true";
 
 const productsJson = JSON.stringify(products);
 const categoriesJson = JSON.stringify(categories);
@@ -86,56 +95,98 @@ const disclaimersJson = JSON.stringify(disclaimers);
 const companiesJson = JSON.stringify(companiesList);
 ---
 
-<form id="invoice-form" class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start pb-10" novalidate>
+<form
+  id="invoice-form"
+  class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start pb-10"
+  novalidate
+>
   <input type="hidden" id="invoice-id" name="id" value="" />
 
   <!-- LEFT COLUMN: Config & Details -->
   <div class="xl:col-span-4 space-y-6">
-    
     <!-- CARD 1: Customer Information -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-      <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Customer Information</h4>
-      
+    <div
+      class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4"
+    >
+      <h4
+        class="text-xs font-extrabold text-slate-400 uppercase tracking-widest"
+      >
+        Customer Information
+      </h4>
+
       <div class="space-y-4">
         {/* Select Company */}
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Company</label>
-          <select id="invoice-select-company" class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 font-semibold text-slate-750">
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Select Company</label
+          >
+          <select
+            id="invoice-select-company"
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 font-semibold text-slate-750"
+          >
             <option value="">-- All Companies --</option>
-            {companiesList.map(comp => (
-              <option value={comp.name}>{comp.name} {comp.code ? `(${comp.code})` : ''}</option>
-            ))}
+            {
+              companiesList.map((comp) => (
+                <option value={comp.name}>
+                  {comp.name} {comp.code ? `(${comp.code})` : ""}
+                </option>
+              ))
+            }
           </select>
         </div>
 
         <!-- Select Customer -->
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Customer</label>
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Select Customer</label
+          >
           <div class="relative">
-            <input type="text" id="invoice-customer-name" name="customer_name" list="customer-datalist"
+            <input
+              type="text"
+              id="invoice-customer-name"
+              name="customer_name"
+              list="customer-datalist"
               placeholder="Type to search by name or code…"
               class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
-              autocomplete="off" />
+              autocomplete="off"
+            />
             <datalist id="customer-datalist">
-              {customers.map(c => (
-                <option 
-                  value={c.code ? `${c.name} (${c.code})` : c.name} 
-                  data-real-name={c.name}
-                  data-code={c.code||''} 
-                  data-company-code={c.company_code||''} 
-                  data-email={c.email||''} 
-                  data-phone={c.phone||''} 
-                  data-company={c.company_name||''} 
-                  data-vat={c.company_vat||''} 
-                  data-billing={c.billing_address||''} 
-                  data-shipping={c.shipping_address||''}
-                >
-                  {c.code || ''} - {c.company_name ? `${c.company_name} (${c.company_code || ''})` : 'Individual'}
-                </option>
-              ))}
+              {
+                customers.map((c) => (
+                  <option
+                    value={c.code ? `${c.name} (${c.code})` : c.name}
+                    data-real-name={c.name}
+                    data-code={c.code || ""}
+                    data-company-code={c.company_code || ""}
+                    data-email={c.email || ""}
+                    data-phone={c.phone || ""}
+                    data-company={c.company_name || ""}
+                    data-vat={c.company_vat || ""}
+                    data-billing={c.billing_address || ""}
+                    data-shipping={c.shipping_address || ""}
+                  >
+                    {c.code || ""} -{" "}
+                    {c.company_name
+                      ? `${c.company_name} (${c.company_code || ""})`
+                      : "Individual"}
+                  </option>
+                ))
+              }
             </datalist>
-            <p id="new-customer-note" class="hidden mt-1 text-[10px] font-bold text-blue-600">✦ New customer — auto-linked to company on save.</p>
-            <p id="new-company-note" class="hidden mt-1 text-[10px] font-bold text-indigo-600">✦ New company — will be registered on save.</p>
+            <p
+              id="new-customer-note"
+              class="hidden mt-1 text-[10px] font-bold text-blue-600"
+            >
+              ✦ New customer — auto-linked to company on save.
+            </p>
+            <p
+              id="new-company-note"
+              class="hidden mt-1 text-[10px] font-bold text-indigo-600"
+            >
+              ✦ New company — will be registered on save.
+            </p>
           </div>
         </div>
       </div>
@@ -146,75 +197,188 @@ const companiesJson = JSON.stringify(companiesList);
       <input type="hidden" id="invoice-company-code" />
 
       <!-- Expandable Contact Details -->
-      <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-4 space-y-4">
-        <h5 class="text-xs font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
+      <div
+        class="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-4 space-y-4"
+      >
+        <h5
+          class="text-xs font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-2"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 text-cyan-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"
+            ></path></svg
+          >
           Contact & Tax Details
         </h5>
-        
+
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address <span class="text-rose-500">*</span></label>
-          <input type="email" id="invoice-customer-email" name="customer_email" placeholder="billing@company.com"
-            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-          <p id="email-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Email Address <span class="text-rose-500">*</span></label
+          >
+          <input
+            type="email"
+            id="invoice-customer-email"
+            name="customer_email"
+            placeholder="billing@company.com"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
+          />
+          <p
+            id="email-error"
+            class="hidden text-[10px] font-semibold text-rose-500"
+          >
+            Required.
+          </p>
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number <span class="text-rose-500">*</span></label>
-          <input type="tel" id="invoice-customer-phone" name="customer_phone" placeholder="+971 50 000 0000"
-            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-          <p id="phone-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Phone Number <span class="text-rose-500">*</span></label
+          >
+          <input
+            type="tel"
+            id="invoice-customer-phone"
+            name="customer_phone"
+            placeholder="+971 50 000 0000"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
+          />
+          <p
+            id="phone-error"
+            class="hidden text-[10px] font-semibold text-rose-500"
+          >
+            Required.
+          </p>
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Company Name <span class="text-rose-500">*</span></label>
-          <input type="text" id="invoice-company-name" name="company_name" list="company-datalist" placeholder="e.g. ACME LLC"
-            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" autocomplete="off" />
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Company Name <span class="text-rose-500">*</span></label
+          >
+          <input
+            type="text"
+            id="invoice-company-name"
+            name="company_name"
+            list="company-datalist"
+            placeholder="e.g. ACME LLC"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
+            autocomplete="off"
+          />
           <datalist id="company-datalist">
-            {companiesList.map(c => <option value={c.name} />)}
+            {companiesList.map((c) => <option value={c.name} />)}
           </datalist>
-          <p id="company-name-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+          <p
+            id="company-name-error"
+            class="hidden text-[10px] font-semibold text-rose-500"
+          >
+            Required.
+          </p>
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">TIN / VAT <span class="text-rose-500">*</span></label>
-          <input type="text" id="invoice-company-vat" name="company_vat" placeholder="100xxxxxxxxx003"
-            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30" />
-          <p id="company-vat-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >TIN / VAT <span class="text-rose-500">*</span></label
+          >
+          <input
+            type="text"
+            id="invoice-company-vat"
+            name="company_vat"
+            placeholder="100xxxxxxxxx003"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
+          />
+          <p
+            id="company-vat-error"
+            class="hidden text-[10px] font-semibold text-rose-500"
+          >
+            Required.
+          </p>
         </div>
 
         <div class="space-y-1.5 pt-2">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Billing Address <span class="text-rose-500">*</span></label>
-          <textarea id="invoice-billing-address" name="billing_address" rows="2"
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Billing Address <span class="text-rose-500">*</span></label
+          >
+          <textarea
+            id="invoice-billing-address"
+            name="billing_address"
+            rows="2"
             placeholder="Street, City, Country"
-            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
-          <p id="billing-address-error" class="hidden text-[10px] font-semibold text-rose-500">Billing address is required.</p>
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"
+          ></textarea>
+          <p
+            id="billing-address-error"
+            class="hidden text-[10px] font-semibold text-rose-500"
+          >
+            Billing address is required.
+          </p>
         </div>
-        
+
         <div class="space-y-1.5 pt-2">
           <div class="flex items-center justify-between">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Shipping Address <span class="text-rose-500">*</span></label>
-            <label class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 cursor-pointer">
-              <input type="checkbox" id="shipping-same-as-billing" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 w-3.5 h-3.5" checked />
+            <label
+              class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+              >Shipping Address <span class="text-rose-500">*</span></label
+            >
+            <label
+              class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                id="shipping-same-as-billing"
+                class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 w-3.5 h-3.5"
+                checked
+              />
               Same as Billing
             </label>
           </div>
           <div id="shipping-address-container" class="hidden">
-            <textarea id="invoice-shipping-address" name="shipping_address" rows="2"
+            <textarea
+              id="invoice-shipping-address"
+              name="shipping_address"
+              rows="2"
               placeholder="Street, City, Country"
-              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"></textarea>
-            <p id="shipping-address-error" class="hidden text-[10px] font-semibold text-rose-500">Shipping address is required.</p>
+              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 resize-none"
+            ></textarea>
+            <p
+              id="shipping-address-error"
+              class="hidden text-[10px] font-semibold text-rose-500"
+            >
+              Shipping address is required.
+            </p>
           </div>
         </div>
       </div>
     </div>
 
     <!-- CARD 2: Metadata -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-      <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Metadata</h4>
-      
+    <div
+      class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4"
+    >
+      <h4
+        class="text-xs font-extrabold text-slate-400 uppercase tracking-widest"
+      >
+        Metadata
+      </h4>
+
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Order Type</label>
-          <select name="order_type" id="inv-order-type"
-            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Order Type</label
+          >
+          <select
+            name="order_type"
+            id="inv-order-type"
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none"
+          >
             <option value="standard">INV (Invoice)</option>
             <option value="proforma">PFI - Pro Forma</option>
             <option value="lpo">PO / LPO (Purchase Order)</option>
@@ -225,130 +389,316 @@ const companiesJson = JSON.stringify(companiesList);
           </select>
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Source Division <span class="text-rose-500">*</span></label>
-          <select name="source_division" id="inv-source-division"
-            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none">
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Source Division <span class="text-rose-500">*</span></label
+          >
+          <select
+            name="source_division"
+            id="inv-source-division"
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none"
+          >
             <option value="">-- Select Division --</option>
-            <option value="DTL">Division DTL</option>
-            <option value="DGS">Division DGS</option>
-            {allowBothDivisions ? (
-              <option value="both">Both Divisions</option>
-            ) : (
-              <option value="both" disabled class="bg-slate-100 text-slate-400 cursor-not-allowed italic" title="To enable this option, go to Finance & Legal and enable it there.">Both Divisions (Disabled - Configure in Finance & Legal)</option>
-            )}
+            <option value="DTL">Delight Technical Lighting (DTL)</option>
+            <option value="DGS">Delight Green Scapes (DGS)</option>
+            {
+              allowBothDivisions ? (
+                <option value="both">Both Divisions</option>
+              ) : (
+                <option
+                  value="both"
+                  disabled
+                  class="bg-slate-100 text-slate-400 cursor-not-allowed italic"
+                  title="To enable this option, go to Finance & Legal and enable it there."
+                >
+                  Both Divisions (Disabled - Configure in Finance & Legal)
+                </option>
+              )
+            }
           </select>
-          <p id="source-division-error" class="hidden text-[10px] font-semibold text-rose-500">Source Division is required.</p>
-          <p id="both-division-guide-note" class="text-[11px] text-slate-500 flex items-center gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-200 mt-1">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            {allowBothDivisions ? (
-              <span class="text-emerald-700 font-semibold">✓ <strong>Both Divisions</strong> mode is enabled in <a href="/dashboard/finance-legal" target="_blank" class="text-cyan-600 hover:underline">Finance &amp; Legal</a>.</span>
-            ) : (
-              <span>To enable <strong>Both Divisions</strong>, go to <a href="/dashboard/finance-legal" target="_blank" class="text-cyan-600 hover:underline font-bold">Finance &amp; Legal</a> and enable it there.</span>
-            )}
+          <p
+            id="source-division-error"
+            class="hidden text-[10px] font-semibold text-rose-500"
+          >
+            Source Division is required.
+          </p>
+          <p
+            id="both-division-guide-note"
+            class="text-[11px] text-slate-500 flex items-center gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-200 mt-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-3.5 h-3.5 text-amber-500 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              ><circle cx="12" cy="12" r="10"></circle><line
+                x1="12"
+                y1="8"
+                x2="12"
+                y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"
+              ></line></svg
+            >
+            {
+              allowBothDivisions ? (
+                <span class="text-emerald-700 font-semibold">
+                  ✓ <strong>Both Divisions</strong> mode is enabled in{" "}
+                  <a
+                    href="/dashboard/finance-legal"
+                    target="_blank"
+                    class="text-cyan-600 hover:underline"
+                  >
+                    Finance &amp; Legal
+                  </a>
+                  .
+                </span>
+              ) : (
+                <span>
+                  To enable <strong>Both Divisions</strong>, go to{" "}
+                  <a
+                    href="/dashboard/finance-legal"
+                    target="_blank"
+                    class="text-cyan-600 hover:underline font-bold"
+                  >
+                    Finance &amp; Legal
+                  </a>{" "}
+                  and enable it there.
+                </span>
+              )
+            }
           </p>
         </div>
-        
+
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-1.5">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Issue Date <span class="text-rose-500">*</span></label>
-            <input type="date" id="invoice-issue-date" name="issue_date"
-              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" />
-            <p id="issue-date-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+            <label
+              class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+              >Issue Date <span class="text-rose-500">*</span></label
+            >
+            <input
+              type="date"
+              id="invoice-issue-date"
+              name="issue_date"
+              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none"
+            />
+            <p
+              id="issue-date-error"
+              class="hidden text-[10px] font-semibold text-rose-500"
+            >
+              Required.
+            </p>
           </div>
           <div class="space-y-1.5" id="due-date-container">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Due Date <span class="text-rose-500">*</span></label>
-            <input type="date" id="invoice-due-date" name="due_date"
-              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" />
-            <p id="due-date-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+            <label
+              class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+              >Due Date <span class="text-rose-500">*</span></label
+            >
+            <input
+              type="date"
+              id="invoice-due-date"
+              name="due_date"
+              class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none"
+            />
+            <p
+              id="due-date-error"
+              class="hidden text-[10px] font-semibold text-rose-500"
+            >
+              Required.
+            </p>
           </div>
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Signatory Incharge <span class="text-rose-500">*</span></label>
-          <select name="signatory_incharge" id="invoice-signatory-incharge"
-            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700">
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Signatory Incharge <span class="text-rose-500">*</span></label
+          >
+          <select
+            name="signatory_incharge"
+            id="invoice-signatory-incharge"
+            class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700"
+          >
             <option value="">-- Select Signatory --</option>
-            <option value="any" selected>Any (Authorized Signatory Only)</option>
-            {signaturesList.map((s: any) => (
-              <option value={s.id}>{s.signatory_name} ({s.signatory_title})</option>
-            ))}
+            <option value="any" selected>Any (Authorized Signatory Only)</option
+            >
+            {
+              signaturesList.map((s: any) => (
+                <option value={s.id}>
+                  {s.signatory_name} ({s.signatory_title})
+                </option>
+              ))
+            }
           </select>
-          <p id="signatory-error" class="hidden text-[10px] font-semibold text-rose-500">Required.</p>
+          <p
+            id="signatory-error"
+            class="hidden text-[10px] font-semibold text-rose-500"
+          >
+            Required.
+          </p>
         </div>
 
         <div class="space-y-1.5 pt-2 border-t border-slate-100">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Ref PO / LPO No</label>
-          <input type="text" id="invoice-lpo-number" name="lpo_number" placeholder="e.g. PO#00000859"
-            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" />
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Ref PO / LPO No</label
+          >
+          <input
+            type="text"
+            id="invoice-lpo-number"
+            name="lpo_number"
+            placeholder="e.g. PO#00000859"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none"
+          />
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Quotation Ref</label>
-          <input type="text" id="invoice-quotation-ref" name="quotation_ref" placeholder="e.g. QT-2026-4819"
-            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none" />
+          <label
+            class="text-xs font-bold text-slate-700 uppercase tracking-wider"
+            >Quotation Ref</label
+          >
+          <input
+            type="text"
+            id="invoice-quotation-ref"
+            name="quotation_ref"
+            placeholder="e.g. QT-2026-4819"
+            class="invoice-field w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none"
+          />
         </div>
       </div>
     </div>
 
     <!-- CARD 3: Disclaimers & Notes -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-      <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Notes & Terms</h4>
-      
+    <div
+      class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4"
+    >
+      <h4
+        class="text-xs font-extrabold text-slate-400 uppercase tracking-widest"
+      >
+        Notes & Terms
+      </h4>
+
       <div class="space-y-4">
         <details class="group space-y-3">
-          <summary class="text-xs font-black text-cyan-800 uppercase tracking-wider flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden p-4 bg-cyan-50/50 hover:bg-cyan-100/50 border border-cyan-100 rounded-xl transition-all shadow-sm">
+          <summary
+            class="text-xs font-black text-cyan-800 uppercase tracking-wider flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden p-4 bg-cyan-50/50 hover:bg-cyan-100/50 border border-cyan-100 rounded-xl transition-all shadow-sm"
+          >
             <span class="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4 text-cyan-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                ></path>
               </svg>
               Disclaimers & Terms (Page 2)
             </span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-600 group-open:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-cyan-600 group-open:rotate-180 transition-transform duration-200"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M19 9l-7 7-7-7"></path>
             </svg>
           </summary>
-          
+
           <div class="pt-2 pb-2 space-y-4">
-            <input type="hidden" id="invoice-payment-terms" name="payment_terms" value="" />
-            
+            <input
+              type="hidden"
+              id="invoice-payment-terms"
+              name="payment_terms"
+              value=""
+            />
+
             <!-- DTL Terms -->
             <div class="space-y-2" id="dtl-terms-group">
-              <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100">DTL Terms</span>
+              <span
+                class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100"
+                >DTL Terms</span
+              >
               <div class="space-y-2">
-                {disclaimers.filter(d => d.division === 'dtl').map((d, idx) => (
-                  <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
-                    <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
-                    <div>
-                      <span class="text-xs font-bold text-slate-800 block">{d.title}</span>
-                      <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
-                    </div>
-                  </label>
-                ))}
+                {
+                  disclaimers
+                    .filter((d) => d.division === "dtl")
+                    .map((d, idx) => (
+                      <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
+                        <input
+                          type="checkbox"
+                          checked
+                          data-identifier={d.identifier}
+                          class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5"
+                        />
+                        <div>
+                          <span class="text-xs font-bold text-slate-800 block">
+                            {d.title}
+                          </span>
+                          <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">
+                            {d.content}
+                          </span>
+                        </div>
+                      </label>
+                    ))
+                }
               </div>
             </div>
 
             <!-- DGS Terms -->
             <div class="space-y-2" id="dgs-terms-group">
-              <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100">DGS Terms</span>
+              <span
+                class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block border-b pb-1 border-slate-100"
+                >DGS Terms</span
+              >
               <div class="space-y-2">
-                {disclaimers.filter(d => d.division === 'dgs').map((d, idx) => (
-                  <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
-                    <input type="checkbox" data-identifier={d.identifier} class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5" />
-                    <div>
-                      <span class="text-xs font-bold text-slate-800 block">{idx + 1}. {d.title}</span>
-                      <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">{d.content}</span>
-                    </div>
-                  </label>
-                ))}
+                {
+                  disclaimers
+                    .filter((d) => d.division === "dgs")
+                    .map((d, idx) => (
+                      <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
+                        <input
+                          type="checkbox"
+                          data-identifier={d.identifier}
+                          class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5"
+                        />
+                        <div>
+                          <span class="text-xs font-bold text-slate-800 block">
+                            {idx + 1}. {d.title}
+                          </span>
+                          <span class="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">
+                            {d.content}
+                          </span>
+                        </div>
+                      </label>
+                    ))
+                }
               </div>
             </div>
           </div>
         </details>
 
         <div class="space-y-2 pt-2 border-t border-slate-100">
-          <label class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Internal Notes</label>
-          <textarea name="internal_notes" id="inv-internal-notes" rows="3"
+          <label
+            class="text-xs font-extrabold text-slate-400 uppercase tracking-widest"
+            >Internal Notes</label
+          >
+          <textarea
+            name="internal_notes"
+            id="inv-internal-notes"
+            rows="3"
             placeholder="Internal remarks (not shown on printed invoice)…"
-            class="w-full rounded-xl border border-slate-300 bg-slate-50 hover:bg-white transition-colors text-slate-900 p-4 text-sm focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 resize-y shadow-sm"></textarea>
+            class="w-full rounded-xl border border-slate-300 bg-slate-50 hover:bg-white transition-colors text-slate-900 p-4 text-sm focus:border-cyan-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 resize-y shadow-sm"
+          ></textarea>
         </div>
       </div>
     </div>
@@ -356,52 +706,179 @@ const companiesJson = JSON.stringify(companiesList);
 
   <!-- RIGHT COLUMN: Items & Summary -->
   <div class="xl:col-span-8 space-y-6">
-    
     <!-- CARD 4: Line Items -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-        <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Items</h4>
-        <div class="flex items-center gap-4">
-          <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
-            <input type="checkbox" id="invoice-show-images" name="show_images" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+    <div
+      class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4"
+    >
+      <div
+        class="flex items-center justify-between pb-2 border-b border-slate-100"
+      >
+        <h4
+          class="text-xs font-extrabold text-slate-400 uppercase tracking-widest"
+        >
+          Items
+        </h4>
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Sort Controls: A to Z and Z to A -->
+          <div
+            class="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shadow-2xs"
+          >
+            <button
+              type="button"
+              id="sort-items-az-btn"
+              title="Sort line items alphabetically (A to Z)"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-slate-600 hover:text-cyan-700 hover:bg-white rounded-md transition-all shadow-2xs"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-3.5 h-3.5 text-slate-500"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                ><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="m3 8 4-4 4 4"></path><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M7 4v16"></path><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 4h5l-5 6h5"></path><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 20v-3.5a2.5 2.5 0 0 1 5 0V20"></path><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M20 18h-5"></path></svg
+              >
+              <span>A → Z</span>
+            </button>
+            <button
+              type="button"
+              id="sort-items-za-btn"
+              title="Sort line items reverse alphabetically (Z to A)"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-slate-600 hover:text-cyan-700 hover:bg-white rounded-md transition-all shadow-2xs"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-3.5 h-3.5 text-slate-500"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                ><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="m3 16 4 4 4-4"></path><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M7 20V4"></path><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 4h5l-5 6h5"></path><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 20v-3.5a2.5 2.5 0 0 1 5 0V20"></path><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M20 18h-5"></path></svg
+              >
+              <span>Z → A</span>
+            </button>
+          </div>
+
+          <label
+            class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer select-none"
+          >
+            <input
+              type="checkbox"
+              id="invoice-show-images"
+              name="show_images"
+              class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+            />
             Show Product Images
           </label>
-          <button type="button" id="add-invoice-item-btn"
-            class="inline-flex items-center gap-1.5 text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-3 py-1.5 rounded-lg transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          <button
+            type="button"
+            id="add-invoice-item-btn"
+            class="inline-flex items-center gap-1.5 text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-3 py-1.5 rounded-lg transition-colors shadow-2xs"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2.5"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 4v16m8-8H4"></path></svg
+            >
             Add Row
           </button>
         </div>
       </div>
 
-      <script type="application/json" id="invoice-form-products-data" set:html={productsJson}></script>
-      <script type="application/json" id="invoice-form-categories-data" set:html={categoriesJson}></script>
-      <script type="application/json" id="invoice-form-disclaimers-data" set:html={disclaimersJson}></script>
-      <script type="application/json" id="invoice-form-companies-data" set:html={companiesJson}></script>
+      <script
+        type="application/json"
+        id="invoice-form-products-data"
+        set:html={productsJson}
+      />
+      <script
+        type="application/json"
+        id="invoice-form-categories-data"
+        set:html={categoriesJson}
+      />
+      <script
+        type="application/json"
+        id="invoice-form-disclaimers-data"
+        set:html={disclaimersJson}
+      />
+      <script
+        type="application/json"
+        id="invoice-form-companies-data"
+        set:html={companiesJson}
+      />
 
       <div id="invoice-items-container" class="space-y-3 pt-2">
         <!-- Rows injected by JS -->
       </div>
 
-      <p id="items-error" class="hidden text-xs font-semibold text-rose-500 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mt-2">
+      <p
+        id="items-error"
+        class="hidden text-xs font-semibold text-rose-500 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mt-2"
+      >
         ⚠ At least one complete line item is required.
       </p>
     </div>
 
     <!-- CARD 5: Summary & Submission -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      
+    <div
+      class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
+    >
       <!-- Summary Row -->
-      <div class="p-6 bg-slate-50 flex flex-col md:flex-row gap-8 justify-between">
-        
+      <div
+        class="p-6 bg-slate-50 flex flex-col md:flex-row gap-8 justify-between"
+      >
         <!-- Payment Status -->
         <div class="space-y-6 flex-1">
           <div class="space-y-1.5 max-w-[200px]">
-            <label class="text-xs font-extrabold text-slate-400 uppercase tracking-widest block">Payment Status</label>
-            <select name="payment_status" id="invoice-payment-status"
-              class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 shadow-sm">
+            <label
+              class="text-xs font-extrabold text-slate-400 uppercase tracking-widest block"
+              >Payment Status</label
+            >
+            <select
+              name="payment_status"
+              id="invoice-payment-status"
+              class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2.5 text-sm focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 shadow-sm"
+            >
               <option value="unpaid">Unpaid</option>
               <option value="paid">Paid</option>
+              <option value="win">Win (Closed Won)</option>
+              <option value="loss">Loss (Closed Lost)</option>
               <option value="overdue">Overdue</option>
               <option value="draft">Draft</option>
               <option value="cancelled">Cancelled</option>
@@ -411,118 +888,238 @@ const companiesJson = JSON.stringify(companiesList);
 
         <!-- Totals -->
         <div class="space-y-3 flex-1 max-w-[300px]">
-          <h4 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Totals</h4>
-          <div class="bg-white border border-slate-200 rounded-xl p-5 space-y-3 shadow-sm">
+          <h4
+            class="text-xs font-extrabold text-slate-400 uppercase tracking-widest"
+          >
+            Totals
+          </h4>
+          <div
+            class="bg-white border border-slate-200 rounded-xl p-5 space-y-3 shadow-sm"
+          >
             <div class="flex justify-between text-sm text-slate-600">
               <span>Subtotal</span>
-              <span class="font-semibold"><span id="summary-subtotal">0.00</span> <span class="text-slate-400 text-[10px]">EXCL</span></span>
+              <span class="font-semibold"
+                ><span id="summary-subtotal">0.00</span>
+                <span class="text-slate-400 text-[10px]">EXCL</span></span
+              >
             </div>
             <div class="flex justify-between text-sm text-slate-600">
               <span>Tax / VAT</span>
-              <span class="font-semibold text-amber-600">+ <span id="summary-tax">0.00</span></span>
+              <span class="font-semibold text-amber-600"
+                >+ <span id="summary-tax">0.00</span></span
+              >
             </div>
-            <div class="flex justify-between text-sm text-slate-600 items-center gap-2">
+            <div
+              class="flex justify-between text-sm text-slate-600 items-center gap-2"
+            >
               <div class="flex items-center gap-1.5">
                 <span class="font-medium">Discount</span>
-                <select id="inv-discount-type" name="discount_type" class="rounded border border-slate-300 bg-slate-50 px-1 py-0.5 text-xs font-semibold focus:outline-none text-slate-700">
+                <select
+                  id="inv-discount-type"
+                  name="discount_type"
+                  class="rounded border border-slate-300 bg-slate-50 px-1 py-0.5 text-xs font-semibold focus:outline-none text-slate-700"
+                >
                   <option value="fixed">Dirhams</option>
                   <option value="percentage">%</option>
                 </select>
               </div>
-              <input type="number" id="inv-discount" name="discount_value" min="0" step="0.01" value="0"
-                class="w-20 text-right rounded border border-slate-300 bg-white text-slate-900 px-2 py-1 text-sm focus:border-cyan-500 focus:outline-none font-medium" />
+              <input
+                type="number"
+                id="inv-discount"
+                name="discount_value"
+                min="0"
+                step="0.01"
+                value="0"
+                class="w-20 text-right rounded border border-slate-300 bg-white text-slate-900 px-2 py-1 text-sm focus:border-cyan-500 focus:outline-none font-medium"
+              />
             </div>
-            <div class="border-t border-slate-200 pt-3 flex justify-between items-center">
+            <div
+              class="border-t border-slate-200 pt-3 flex justify-between items-center"
+            >
               <span class="font-bold text-slate-900">Grand Total</span>
-              <span class="text-lg font-extrabold text-cyan-700 flex items-center gap-1.5"><DirhamIcon class="w-5 h-5" /> <span id="summary-total">0.00</span></span>
+              <span
+                class="text-lg font-extrabold text-cyan-700 flex items-center gap-1.5"
+                ><DirhamIcon class="w-5 h-5" />
+                <span id="summary-total">0.00</span></span
+              >
             </div>
           </div>
         </div>
       </div>
 
       <!-- Form Messages -->
-      <div id="invoice-form-msg" class="hidden p-4 m-6 rounded-xl text-sm font-semibold"></div>
+      <div
+        id="invoice-form-msg"
+        class="hidden p-4 m-6 rounded-xl text-sm font-semibold"
+      >
+      </div>
 
       <!-- Footer Buttons -->
-      <div class="p-5 border-t border-slate-200 flex flex-wrap gap-3 justify-end items-center bg-white">
-        <button type="button" id="cancel-invoice-btn"
-          class="px-5 py-2.5 rounded-xl text-sm font-bold bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors">
+      <div
+        class="p-5 border-t border-slate-200 flex flex-wrap gap-3 justify-end items-center bg-white"
+      >
+        <button
+          type="button"
+          id="cancel-invoice-btn"
+          class="px-5 py-2.5 rounded-xl text-sm font-bold bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors"
+        >
           Cancel
         </button>
-        <button type="button" id="invoice-draft-btn"
-          class="px-5 py-2.5 rounded-xl text-sm font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors">
+        <button
+          type="button"
+          id="invoice-draft-btn"
+          class="px-5 py-2.5 rounded-xl text-sm font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors"
+        >
           Save as Draft
         </button>
-        <button type="submit" id="invoice-submit-btn"
-          class="px-6 py-2.5 rounded-xl text-sm font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors shadow-sm">
+        <button
+          type="submit"
+          id="invoice-submit-btn"
+          class="px-6 py-2.5 rounded-xl text-sm font-bold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors shadow-sm"
+        >
           Generate Invoice
         </button>
       </div>
-
     </div>
   </div>
 </form>
-</div>
 
 <!-- SUCCESS DIALOG MODAL -->
-<div id="invoice-success-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 text-center space-y-4">
-    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+<div
+  id="invoice-success-modal"
+  class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4"
+>
+  <div
+    class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 text-center space-y-4"
+  >
+    <div
+      class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto text-green-600"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="w-6 h-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="2.5"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"
+        ></path>
       </svg>
     </div>
-    <h3 class="text-lg font-black text-slate-900 uppercase tracking-tight">Order Saved Successfully!</h3>
-    <p class="text-sm text-slate-500 font-medium">Order <span id="success-invoice-num" class="font-bold text-slate-800"></span> has been successfully saved. What would you like to do next?</p>
-    
+    <h3 class="text-lg font-black text-slate-900 uppercase tracking-tight">
+      Order Saved Successfully!
+    </h3>
+    <p class="text-sm text-slate-500 font-medium">
+      Order <span id="success-invoice-num" class="font-bold text-slate-800"
+      ></span> has been successfully saved. What would you like to do next?
+    </p>
+
     <div class="flex flex-col gap-2 pt-2">
-      <a id="success-print-link" href="#" target="_blank" class="w-full inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+      <a
+        id="success-print-link"
+        href="#"
+        target="_blank"
+        class="w-full inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><polyline points="6 9 6 2 18 2 18 9"></polyline><path
+            d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"
+          ></path><rect x="6" y="14" width="12" height="8"></rect></svg
+        >
         Print Order
       </a>
-      <a id="success-pdf-link" href="#" target="_blank" class="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      <a
+        id="success-pdf-link"
+        href="#"
+        target="_blank"
+        class="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline
+            points="7 10 12 15 17 10"></polyline><line
+            x1="12"
+            y1="15"
+            x2="12"
+            y2="3"></line></svg
+        >
         Download PDF
       </a>
-      <a id="success-view-link" href="#" class="w-full inline-flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all">
+      <a
+        id="success-view-link"
+        href="#"
+        class="w-full inline-flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-bold transition-all"
+      >
         View Order Details
       </a>
-      <button type="button" id="success-close-btn" class="w-full inline-flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700 text-xs font-bold transition-all pt-2 cursor-pointer">
+      <button
+        type="button"
+        id="success-close-btn"
+        class="w-full inline-flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700 text-xs font-bold transition-all pt-2 cursor-pointer"
+      >
         Close & Reload Page
       </button>
     </div>
   </div>
 </div>
 
-
 <script>
   // Parse global products and categories datasets
-  const allProducts: any[] = JSON.parse(document.getElementById('invoice-form-products-data')?.textContent || '[]');
-  const allCategories: any[] = JSON.parse(document.getElementById('invoice-form-categories-data')?.textContent || '[]');
-  const allCompanies: any[] = JSON.parse(document.getElementById('invoice-form-companies-data')?.textContent || '[]');
+  const allProducts: any[] = JSON.parse(
+    document.getElementById("invoice-form-products-data")?.textContent || "[]",
+  );
+  const allCategories: any[] = JSON.parse(
+    document.getElementById("invoice-form-categories-data")?.textContent ||
+      "[]",
+  );
+  const allCompanies: any[] = JSON.parse(
+    document.getElementById("invoice-form-companies-data")?.textContent || "[]",
+  );
 
   // =============================================
   // ITEM ROW TEMPLATE
   // =============================================
   function buildItemRow(data: any = {}): HTMLElement {
     const rowId = Math.random().toString(36).substring(2, 9);
-    const div = document.createElement('div');
-    div.className = 'invoice-item-row bg-slate-50 hover:bg-slate-100/50 border border-slate-200 hover:border-slate-300 rounded-xl p-4 space-y-4 transition-all duration-200 shadow-sm';
+    const div = document.createElement("div");
+    div.className =
+      "invoice-item-row bg-slate-50 hover:bg-slate-100/50 border border-slate-200 hover:border-slate-300 rounded-xl p-4 space-y-4 transition-all duration-200 shadow-sm";
 
     // Auto-detect category from product_id if editing/loading
-    let initialCategoryId = '';
+    let initialCategoryId = "";
     if (data.product_id) {
-      const match = allProducts.find(p => p.id === data.product_id);
-      if (match) initialCategoryId = match.category_id || '';
+      const match = allProducts.find((p) => p.id === data.product_id);
+      if (match) initialCategoryId = match.category_id || "";
     }
 
     // Build category select options
-    const categoryOptionsHtml = allCategories.map(c => 
-      `<option value="${c.id}" ${c.id === initialCategoryId ? 'selected' : ''}>${c.name}</option>`
-    ).join('');
+    const categoryOptionsHtml = allCategories
+      .map(
+        (c) =>
+          `<option value="${c.id}" ${c.id === initialCategoryId ? "selected" : ""}>${c.name}</option>`,
+      )
+      .join("");
 
     div.innerHTML = `
-      <input type="hidden" name="item_product_id" value="${data.product_id || ''}" />
+      <input type="hidden" name="item_product_id" value="${data.product_id || ""}" />
       <datalist id="products-name-datalist-${rowId}"></datalist>
       <datalist id="products-ref-datalist-${rowId}"></datalist>
       
@@ -532,7 +1129,7 @@ const companiesJson = JSON.stringify(companiesList);
           <label class="image-upload-label text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Product Image</label>
           <div class="flex flex-col items-center justify-center gap-3 p-3 bg-white border border-slate-200 rounded-xl shadow-2xs h-32 relative">
             <div class="existing-image-preview w-16 h-16 rounded-lg bg-slate-50 border border-slate-150 overflow-hidden flex items-center justify-center">
-              <img src="${(data.item_image && data.item_image !== '/no-image.svg') ? data.item_image : '/no-image.svg'}" class="w-full h-full object-cover" />
+              <img src="${data.item_image && data.item_image !== "/no-image.svg" ? data.item_image : "/no-image.svg"}" class="w-full h-full object-cover" />
             </div>
             <label class="cursor-pointer bg-slate-100 hover:bg-cyan-50 border border-slate-200 hover:border-cyan-200 text-slate-600 hover:text-cyan-700 text-[10px] font-bold px-2 py-1 rounded transition-colors text-center w-full truncate">
               Choose File
@@ -557,7 +1154,7 @@ const companiesJson = JSON.stringify(companiesList);
             <div class="space-y-1.5">
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Reference / Catalogue</label>
               <input type="text" name="item_ref" list="products-ref-datalist-${rowId}"
-                value="${data.catalogue_ref || ''}"
+                value="${data.catalogue_ref || ""}"
                 placeholder="Cat. ref / SKU"
                 class="item-ref-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
             </div>
@@ -565,7 +1162,7 @@ const companiesJson = JSON.stringify(companiesList);
             <div class="space-y-1.5 md:col-span-2">
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Item Name <span class="text-rose-500">*</span></label>
               <input type="text" name="item_desc" required list="products-name-datalist-${rowId}"
-                value="${data.description || ''}"
+                value="${data.description || ""}"
                 placeholder="Item name *"
                 class="item-desc-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
               <p class="desc-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
@@ -578,7 +1175,7 @@ const companiesJson = JSON.stringify(companiesList);
             <div class="space-y-1.5 md:col-span-2">
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Technical Spec</label>
               <input type="text" name="item_tech_spec"
-                value="${data.tech_spec || ''}"
+                value="${data.tech_spec || ""}"
                 placeholder="e.g. DN50, PN16, ANSI…"
                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
             </div>
@@ -586,7 +1183,7 @@ const companiesJson = JSON.stringify(companiesList);
             <div class="space-y-1.5">
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Qty <span class="text-rose-500">*</span></label>
               <input type="text" name="item_quantity" required
-                value="${data.quantity || ''}"
+                value="${data.quantity || ""}"
                 placeholder="Qty"
                 class="item-qty-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-center h-9" />
               <p class="qty-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
@@ -597,7 +1194,7 @@ const companiesJson = JSON.stringify(companiesList);
               <div class="relative">
                 <span class="absolute left-2.5 top-2.5 text-slate-400 flex items-center justify-center"><span class="dirham-symbol text-xs inline-block"></span></span>
                 <input type="text" name="item_price" required
-                  value="${data.unit_price || ''}"
+                  value="${data.unit_price || ""}"
                   placeholder="0.00"
                   class="item-price-input w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
               </div>
@@ -611,15 +1208,15 @@ const companiesJson = JSON.stringify(companiesList);
             <div class="space-y-1.5">
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Tax / VAT Type</label>
               <select name="item_tax_type" class="item-tax-type-select w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 h-9">
-                <option value="percentage" ${(data.tax_type === 'percentage' || !data.tax_type) ? 'selected' : ''}>% Percentage</option>
-                <option value="fixed" ${data.tax_type === 'fixed' ? 'selected' : ''}>Dirhams Fixed</option>
+                <option value="percentage" ${data.tax_type === "percentage" || !data.tax_type ? "selected" : ""}>% Percentage</option>
+                <option value="fixed" ${data.tax_type === "fixed" ? "selected" : ""}>Dirhams Fixed</option>
               </select>
             </div>
             <!-- Tax Rate / Amount -->
             <div class="space-y-1.5">
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Tax Rate / Amount</label>
               <input type="text" name="item_tax_value"
-                value="${data.tax_value !== undefined ? data.tax_value : (data.tax_rate !== undefined ? data.tax_rate : 5)}"
+                value="${data.tax_value !== undefined ? data.tax_value : data.tax_rate !== undefined ? data.tax_rate : 5}"
                 class="item-tax-input w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none text-right h-9" />
               <p class="tax-error-msg text-[10px] text-rose-500 hidden font-bold mt-0.5"></p>
             </div>
@@ -631,7 +1228,15 @@ const companiesJson = JSON.stringify(companiesList);
               </div>
             </div>
             <!-- Actions -->
-            <div class="flex justify-end h-9 items-center gap-1.5">
+            <div class="flex justify-end h-9 items-center gap-1">
+              <button type="button" class="move-item-up-btn text-slate-400 hover:text-cyan-700 hover:bg-cyan-50 rounded-lg p-2 transition-colors border border-transparent hover:border-cyan-100 flex items-center justify-center text-xs font-bold" title="Move row up">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                <span class="sr-only">Move Up</span>
+              </button>
+              <button type="button" class="move-item-down-btn text-slate-400 hover:text-cyan-700 hover:bg-cyan-50 rounded-lg p-2 transition-colors border border-transparent hover:border-cyan-100 flex items-center justify-center text-xs font-bold" title="Move row down">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7 7"/></svg>
+                <span class="sr-only">Move Down</span>
+              </button>
               <button type="button" class="insert-item-below-btn text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg p-2 transition-colors border border-transparent hover:border-cyan-100 flex items-center justify-center gap-1.5 text-xs font-bold w-full md:w-auto" title="Insert row below">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
                 <span class="md:hidden">Insert Below</span>
@@ -648,104 +1253,138 @@ const companiesJson = JSON.stringify(companiesList);
 
     // Global helper for auto-selecting source division based on ALL rows
     const updateGlobalSourceDivision = () => {
-      const sourceDivisionSelect = document.getElementById('inv-source-division') as HTMLSelectElement;
+      const sourceDivisionSelect = document.getElementById(
+        "inv-source-division",
+      ) as HTMLSelectElement;
       if (!sourceDivisionSelect) return;
-      
-      const allRowInputs = document.querySelectorAll('input[name="item_product_id"]');
+
+      const allRowInputs = document.querySelectorAll(
+        'input[name="item_product_id"]',
+      );
       const divisions = new Set<string>();
-      
-      allRowInputs.forEach(input => {
+
+      allRowInputs.forEach((input) => {
         const prodId = (input as HTMLInputElement).value;
         if (prodId) {
-          const match = allProducts.find(p => String(p.id) === String(prodId));
+          const match = allProducts.find(
+            (p) => String(p.id) === String(prodId),
+          );
           if (match && match.division_name) {
             const dName = match.division_name.toLowerCase();
-            if (dName.includes('technical') || dName.includes('dtl')) divisions.add('DTL');
-            if (dName.includes('greenscapes') || dName.includes('dgs')) divisions.add('DGS');
+            if (dName.includes("technical") || dName.includes("dtl"))
+              divisions.add("DTL");
+            if (dName.includes("greenscapes") || dName.includes("dgs"))
+              divisions.add("DGS");
           }
         }
       });
-      
-      if (divisions.has('DTL') && divisions.has('DGS')) {
-        sourceDivisionSelect.value = 'both';
-      } else if (divisions.has('DTL')) {
-        sourceDivisionSelect.value = 'DTL';
-      } else if (divisions.has('DGS')) {
-        sourceDivisionSelect.value = 'DGS';
+
+      if (divisions.has("DTL") && divisions.has("DGS")) {
+        sourceDivisionSelect.value = "both";
+      } else if (divisions.has("DTL")) {
+        sourceDivisionSelect.value = "DTL";
+      } else if (divisions.has("DGS")) {
+        sourceDivisionSelect.value = "DGS";
       }
     };
-    const categorySelect = div.querySelector('.item-category-select') as HTMLSelectElement;
-    const nameDatalist = div.querySelector(`#products-name-datalist-${rowId}`) as HTMLElement;
-    const refDatalist = div.querySelector(`#products-ref-datalist-${rowId}`) as HTMLElement;
-    const refInput = div.querySelector('.item-ref-input') as HTMLInputElement;
-    const descInput = div.querySelector('.item-desc-input') as HTMLInputElement;
-    const prodIdInput = div.querySelector('input[name="item_product_id"]') as HTMLInputElement;
+    const categorySelect = div.querySelector(
+      ".item-category-select",
+    ) as HTMLSelectElement;
+    const nameDatalist = div.querySelector(
+      `#products-name-datalist-${rowId}`,
+    ) as HTMLElement;
+    const refDatalist = div.querySelector(
+      `#products-ref-datalist-${rowId}`,
+    ) as HTMLElement;
+    const refInput = div.querySelector(".item-ref-input") as HTMLInputElement;
+    const descInput = div.querySelector(".item-desc-input") as HTMLInputElement;
+    const prodIdInput = div.querySelector(
+      'input[name="item_product_id"]',
+    ) as HTMLInputElement;
 
     // Helper to dynamically filter the datalists
     const filterDatalistOptions = (selectedCatId: string) => {
-      const filtered = selectedCatId 
-        ? allProducts.filter(p => p.category_id === selectedCatId)
+      const filtered = selectedCatId
+        ? allProducts.filter((p) => p.category_id === selectedCatId)
         : allProducts;
 
-      nameDatalist.innerHTML = filtered.map(p => {
-        const safeName = (p.name || '').replace(/"/g, '&quot;');
-        return `<option value="${safeName}" data-id="${p.id}" data-sku="${p.sku || ''}" data-category="${p.category_id}"></option>`;
-      }).join('');
+      nameDatalist.innerHTML = filtered
+        .map((p) => {
+          const safeName = (p.name || "").replace(/"/g, "&quot;");
+          return `<option value="${safeName}" data-id="${p.id}" data-sku="${p.sku || ""}" data-category="${p.category_id}"></option>`;
+        })
+        .join("");
 
-      refDatalist.innerHTML = filtered.filter(p => p.sku).map(p => {
-        const safeSku = (p.sku || '').replace(/"/g, '&quot;');
-        const safeName = (p.name || '').replace(/"/g, '&quot;');
-        return `<option value="${safeSku}" data-id="${p.id}" data-name="${safeName}" data-category="${p.category_id}"></option>`;
-      }).join('');
+      refDatalist.innerHTML = filtered
+        .filter((p) => p.sku)
+        .map((p) => {
+          const safeSku = (p.sku || "").replace(/"/g, "&quot;");
+          const safeName = (p.name || "").replace(/"/g, "&quot;");
+          return `<option value="${safeSku}" data-id="${p.id}" data-name="${safeName}" data-category="${p.category_id}"></option>`;
+        })
+        .join("");
     };
 
     // Initialize datalists
     filterDatalistOptions(initialCategoryId);
 
     // Bind Category change handler
-    categorySelect.addEventListener('change', () => {
+    categorySelect.addEventListener("change", () => {
       filterDatalistOptions(categorySelect.value);
-      
+
       // Auto-select Source Division based on all rows
       updateGlobalSourceDivision();
-      
+
       // If Category selected doesn't match current inputs, clear inputs
       const currentVal = descInput.value.trim();
       if (currentVal && categorySelect.value) {
-        const match = allProducts.find(p => p.name.toLowerCase() === currentVal.toLowerCase());
+        const match = allProducts.find(
+          (p) => p.name.toLowerCase() === currentVal.toLowerCase(),
+        );
         if (match && match.category_id !== categorySelect.value) {
-          descInput.value = '';
-          refInput.value = '';
-          prodIdInput.value = '';
+          descInput.value = "";
+          refInput.value = "";
+          prodIdInput.value = "";
         }
       }
     });
 
     // Bind calculation on qty/price/tax change
     const bindCalc = () => {
-      const qty = parseFloat((div.querySelector('.item-qty-input') as HTMLInputElement)?.value) || 0;
-      const price = parseFloat((div.querySelector('.item-price-input') as HTMLInputElement)?.value) || 0;
+      const qty =
+        parseFloat(
+          (div.querySelector(".item-qty-input") as HTMLInputElement)?.value,
+        ) || 0;
+      const price =
+        parseFloat(
+          (div.querySelector(".item-price-input") as HTMLInputElement)?.value,
+        ) || 0;
       const lineTotal = qty * price;
-      const subtotalEl = div.querySelector('.item-subtotal');
-      if (subtotalEl) subtotalEl.innerHTML = `<span class="dirham-symbol inline-block text-[1em] mr-1"></span> ${lineTotal.toFixed(2)}`;
+      const subtotalEl = div.querySelector(".item-subtotal");
+      if (subtotalEl)
+        subtotalEl.innerHTML = `<span class="dirham-symbol inline-block text-[1em] mr-1"></span> ${lineTotal.toFixed(2)}`;
       recalcSummary();
     };
 
-    div.querySelector('.item-qty-input')?.addEventListener('input', bindCalc);
-    div.querySelector('.item-price-input')?.addEventListener('input', bindCalc);
-    div.querySelector('.item-tax-input')?.addEventListener('input', bindCalc);
-    div.querySelector('.item-tax-type-select')?.addEventListener('change', bindCalc);
+    div.querySelector(".item-qty-input")?.addEventListener("input", bindCalc);
+    div.querySelector(".item-price-input")?.addEventListener("input", bindCalc);
+    div.querySelector(".item-tax-input")?.addEventListener("input", bindCalc);
+    div
+      .querySelector(".item-tax-type-select")
+      ?.addEventListener("change", bindCalc);
 
     // SKU Autocomplete Handler
     const handleSkuChange = (e: Event) => {
       const val = (e.target as HTMLInputElement).value.trim().toLowerCase();
       if (!val) return;
-      
-      const match = allProducts.find(p => p.sku && p.sku.trim().toLowerCase() === val);
+
+      const match = allProducts.find(
+        (p) => p.sku && p.sku.trim().toLowerCase() === val,
+      );
       if (match) {
-        descInput.value = match.name || '';
-        prodIdInput.value = match.id || '';
-        
+        descInput.value = match.name || "";
+        prodIdInput.value = match.id || "";
+
         // Auto-select category
         if (match.category_id) {
           categorySelect.value = match.category_id;
@@ -756,33 +1395,44 @@ const companiesJson = JSON.stringify(companiesList);
         updateGlobalSourceDivision();
 
         // Show existing image preview
-        const previewDiv = div.querySelector('.existing-image-preview');
-        const previewImg = previewDiv?.querySelector('img');
+        const previewDiv = div.querySelector(".existing-image-preview");
+        const previewImg = previewDiv?.querySelector("img");
         if (previewImg) {
-          previewImg.src = (match.image_url && match.image_url !== '/no-image.svg') ? match.image_url : '/no-image.svg';
+          previewImg.src =
+            match.image_url && match.image_url !== "/no-image.svg"
+              ? match.image_url
+              : "/no-image.svg";
         }
       }
     };
-    refInput.addEventListener('input', handleSkuChange);
-    refInput.addEventListener('change', handleSkuChange);
+    refInput.addEventListener("input", handleSkuChange);
+    refInput.addEventListener("change", handleSkuChange);
 
     // Name Autocomplete Handler
     const handleNameChange = (e: Event) => {
       const val = (e.target as HTMLInputElement).value.trim().toLowerCase();
       if (!val) return;
-      
+
       const currentSku = refInput.value.trim().toLowerCase();
       let match = null;
       if (currentSku) {
-        match = allProducts.find(p => p.name && p.name.trim().toLowerCase() === val && p.sku && p.sku.trim().toLowerCase() === currentSku);
+        match = allProducts.find(
+          (p) =>
+            p.name &&
+            p.name.trim().toLowerCase() === val &&
+            p.sku &&
+            p.sku.trim().toLowerCase() === currentSku,
+        );
       }
       if (!match) {
-        match = allProducts.find(p => p.name && p.name.trim().toLowerCase() === val);
+        match = allProducts.find(
+          (p) => p.name && p.name.trim().toLowerCase() === val,
+        );
       }
       if (match) {
-        refInput.value = match.sku || '';
-        prodIdInput.value = match.id || '';
-        
+        refInput.value = match.sku || "";
+        prodIdInput.value = match.id || "";
+
         // Auto-select category
         if (match.category_id) {
           categorySelect.value = match.category_id;
@@ -793,64 +1443,101 @@ const companiesJson = JSON.stringify(companiesList);
         updateGlobalSourceDivision();
 
         // Show existing image preview
-        const previewDiv = div.querySelector('.existing-image-preview');
-        const previewImg = previewDiv?.querySelector('img');
+        const previewDiv = div.querySelector(".existing-image-preview");
+        const previewImg = previewDiv?.querySelector("img");
         if (previewImg) {
-          previewImg.src = (match.image_url && match.image_url !== '/no-image.svg') ? match.image_url : '/no-image.svg';
+          previewImg.src =
+            match.image_url && match.image_url !== "/no-image.svg"
+              ? match.image_url
+              : "/no-image.svg";
         }
       }
     };
-    descInput.addEventListener('input', handleNameChange);
-    descInput.addEventListener('change', handleNameChange);
+    descInput.addEventListener("input", handleNameChange);
+    descInput.addEventListener("change", handleNameChange);
 
-    // Insert row below handler
-    div.querySelector('.insert-item-below-btn')?.addEventListener('click', () => {
-      addRow({}, div);
+    // Move row up handler
+    div.querySelector(".move-item-up-btn")?.addEventListener("click", () => {
+      const prev = div.previousElementSibling;
+      if (prev && prev.classList.contains("invoice-item-row")) {
+        div.parentNode?.insertBefore(div, prev);
+        div.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
     });
 
+    // Move row down handler
+    div.querySelector(".move-item-down-btn")?.addEventListener("click", () => {
+      const next = div.nextElementSibling;
+      if (next && next.classList.contains("invoice-item-row")) {
+        div.parentNode?.insertBefore(next, div);
+        div.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    });
+
+    // Insert row below handler
+    div
+      .querySelector(".insert-item-below-btn")
+      ?.addEventListener("click", () => {
+        addRow({}, div);
+      });
+
     // Remove row handler
-    div.querySelector('.remove-item-btn')?.addEventListener('click', () => {
+    div.querySelector(".remove-item-btn")?.addEventListener("click", () => {
       div.remove();
       recalcSummary();
       updateGlobalSourceDivision();
     });
 
     // Image file upload base64 converter
-    const fileInput = div.querySelector('.item-image-input') as HTMLInputElement;
-    const uploadLabel = div.querySelector('.image-upload-label') as HTMLLabelElement;
-    fileInput?.addEventListener('change', (e) => {
+    const fileInput = div.querySelector(
+      ".item-image-input",
+    ) as HTMLInputElement;
+    const uploadLabel = div.querySelector(
+      ".image-upload-label",
+    ) as HTMLLabelElement;
+    fileInput?.addEventListener("change", (e) => {
       const file = fileInput.files?.[0];
       if (file) {
-        const submitBtn = document.getElementById('invoice-submit-btn') as HTMLButtonElement;
-        const draftBtn = document.getElementById('invoice-draft-btn') as HTMLButtonElement;
-        
+        const submitBtn = document.getElementById(
+          "invoice-submit-btn",
+        ) as HTMLButtonElement;
+        const draftBtn = document.getElementById(
+          "invoice-draft-btn",
+        ) as HTMLButtonElement;
+
         if (submitBtn) submitBtn.disabled = true;
         if (draftBtn) draftBtn.disabled = true;
-        if (uploadLabel) uploadLabel.innerHTML = 'Processing image <span class="animate-pulse text-cyan-500 font-bold ml-1">...</span>';
+        if (uploadLabel)
+          uploadLabel.innerHTML =
+            'Processing image <span class="animate-pulse text-cyan-500 font-bold ml-1">...</span>';
 
         const reader = new FileReader();
         reader.onload = (event) => {
           const base64 = event.target?.result as string;
-          div.setAttribute('data-image-base64', base64);
-          
+          div.setAttribute("data-image-base64", base64);
+
           // Update preview image
-          const previewDiv = div.querySelector('.existing-image-preview');
-          const previewImg = previewDiv?.querySelector('img');
+          const previewDiv = div.querySelector(".existing-image-preview");
+          const previewImg = previewDiv?.querySelector("img");
           if (previewImg) previewImg.src = base64;
-          
-          if (uploadLabel) uploadLabel.innerHTML = 'Product Image <span class="text-emerald-500 font-bold ml-1">✓ Ready for Save</span>';
+
+          if (uploadLabel)
+            uploadLabel.innerHTML =
+              'Product Image <span class="text-emerald-500 font-bold ml-1">✓ Ready for Save</span>';
           if (submitBtn) submitBtn.disabled = false;
           if (draftBtn) draftBtn.disabled = false;
         };
         reader.onerror = () => {
-          if (uploadLabel) uploadLabel.innerHTML = 'Upload Image (1:1 max 1000px) <span class="text-rose-500 font-bold ml-1">✕ Failed</span>';
+          if (uploadLabel)
+            uploadLabel.innerHTML =
+              'Upload Image (1:1 max 1000px) <span class="text-rose-500 font-bold ml-1">✕ Failed</span>';
           if (submitBtn) submitBtn.disabled = false;
           if (draftBtn) draftBtn.disabled = false;
         };
         reader.readAsDataURL(file);
       } else {
-        div.removeAttribute('data-image-base64');
-        if (uploadLabel) uploadLabel.innerHTML = 'Product Image';
+        div.removeAttribute("data-image-base64");
+        if (uploadLabel) uploadLabel.innerHTML = "Product Image";
       }
     });
 
@@ -864,46 +1551,62 @@ const companiesJson = JSON.stringify(companiesList);
   // ROW MANAGEMENT & AUTO-SELECTION
   // =============================================
   function updateGlobalSourceDivision() {
-    const rows = document.querySelectorAll('.invoice-item-row');
-    const divisionSelect = document.getElementById('inv-source-division') as HTMLSelectElement;
+    const rows = document.querySelectorAll(".invoice-item-row");
+    const divisionSelect = document.getElementById(
+      "inv-source-division",
+    ) as HTMLSelectElement;
     if (!divisionSelect) return;
-    
+
     let hasDTL = false;
     let hasDGS = false;
-    
-    rows.forEach(row => {
-      const prodId = (row.querySelector('input[name="item_product_id"]') as HTMLInputElement)?.value;
+
+    rows.forEach((row) => {
+      const prodId = (
+        row.querySelector('input[name="item_product_id"]') as HTMLInputElement
+      )?.value;
       if (prodId) {
-        const prod = allProducts.find(p => p.id === prodId);
+        const prod = allProducts.find((p) => p.id === prodId);
         if (prod) {
           // Check division name on the product directly
-          const divName = (prod.division_name || '').toLowerCase();
-          if (divName.includes('dtl') || divName.includes('technical lighting')) hasDTL = true;
-          if (divName.includes('dgs') || divName.includes('greenscapes')) hasDGS = true;
+          const divName = (prod.division_name || "").toLowerCase();
+          if (divName.includes("dtl") || divName.includes("technical lighting"))
+            hasDTL = true;
+          if (divName.includes("dgs") || divName.includes("greenscapes"))
+            hasDGS = true;
 
-          const cat = allCategories.find(c => c.id === prod.category_id);
+          const cat = allCategories.find((c) => c.id === prod.category_id);
           if (cat) {
-            const catDiv = (cat.division_name || '').toLowerCase();
-            if (cat.name?.toLowerCase().includes('dtl') || cat.division_id === 'DTL' || catDiv.includes('dtl')) hasDTL = true;
-            if (cat.name?.toLowerCase().includes('dgs') || cat.division_id === 'DGS' || catDiv.includes('dgs')) hasDGS = true;
+            const catDiv = (cat.division_name || "").toLowerCase();
+            if (
+              cat.name?.toLowerCase().includes("dtl") ||
+              cat.division_id === "DTL" ||
+              catDiv.includes("dtl")
+            )
+              hasDTL = true;
+            if (
+              cat.name?.toLowerCase().includes("dgs") ||
+              cat.division_id === "DGS" ||
+              catDiv.includes("dgs")
+            )
+              hasDGS = true;
           }
         }
       }
     });
 
-    let newDiv = '';
-    if (hasDTL && hasDGS) newDiv = 'both';
-    else if (hasDTL) newDiv = 'DTL';
-    else if (hasDGS) newDiv = 'DGS';
-    
+    let newDiv = "";
+    if (hasDTL && hasDGS) newDiv = "both";
+    else if (hasDTL) newDiv = "DTL";
+    else if (hasDGS) newDiv = "DGS";
+
     if (newDiv && divisionSelect.value !== newDiv) {
       divisionSelect.value = newDiv;
-      divisionSelect.dispatchEvent(new Event('change'));
+      divisionSelect.dispatchEvent(new Event("change"));
     }
   }
 
   function addRow(data: any = {}, afterNode?: HTMLElement) {
-    const container = document.getElementById('invoice-items-container');
+    const container = document.getElementById("invoice-items-container");
     if (container) {
       const newRow = buildItemRow(data);
       if (afterNode && afterNode.nextSibling) {
@@ -919,46 +1622,118 @@ const companiesJson = JSON.stringify(companiesList);
   }
 
   // Bind Add Row button
-  document.getElementById('add-invoice-item-btn')?.addEventListener('click', () => addRow());
+  document
+    .getElementById("add-invoice-item-btn")
+    ?.addEventListener("click", () => addRow());
+
+  // =============================================
+  // SORT ITEMS (A TO Z and Z TO A)
+  // =============================================
+  function sortItems(ascending = true) {
+    const container = document.getElementById("invoice-items-container");
+    if (!container) return;
+    const rows = Array.from(
+      container.querySelectorAll(".invoice-item-row"),
+    ) as HTMLElement[];
+    if (rows.length <= 1) return;
+
+    rows.sort((a, b) => {
+      const descA = (
+        (a.querySelector(".item-desc-input") as HTMLInputElement)?.value ||
+        (a.querySelector(".item-ref-input") as HTMLInputElement)?.value ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+      const descB = (
+        (b.querySelector(".item-desc-input") as HTMLInputElement)?.value ||
+        (b.querySelector(".item-ref-input") as HTMLInputElement)?.value ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+
+      // Keep empty rows at the bottom
+      if (!descA && descB) return 1;
+      if (descA && !descB) return -1;
+      if (!descA && !descB) return 0;
+
+      const cmp = descA.localeCompare(descB, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+      return ascending ? cmp : -cmp;
+    });
+
+    // Re-append in sorted order (preserves elements, listeners, and input states)
+    rows.forEach((row) => container.appendChild(row));
+  }
+
+  document
+    .getElementById("sort-items-az-btn")
+    ?.addEventListener("click", () => sortItems(true));
+  document
+    .getElementById("sort-items-za-btn")
+    ?.addEventListener("click", () => sortItems(false));
 
   // =============================================
   // SUMMARY RECALCULATION
   // =============================================
   function recalcSummary() {
-    const rows = document.querySelectorAll('.invoice-item-row');
+    const rows = document.querySelectorAll(".invoice-item-row");
     let subtotal = 0;
     let totalTax = 0;
-    rows.forEach(row => {
-      const qty = parseFloat((row.querySelector('.item-qty-input') as HTMLInputElement)?.value) || 0;
-      const price = parseFloat((row.querySelector('.item-price-input') as HTMLInputElement)?.value) || 0;
-      const taxValue = parseFloat((row.querySelector('.item-tax-input') as HTMLInputElement)?.value) || 0;
-      const taxType = (row.querySelector('.item-tax-type-select') as HTMLSelectElement)?.value || 'percentage';
-      
+    rows.forEach((row) => {
+      const qty =
+        parseFloat(
+          (row.querySelector(".item-qty-input") as HTMLInputElement)?.value,
+        ) || 0;
+      const price =
+        parseFloat(
+          (row.querySelector(".item-price-input") as HTMLInputElement)?.value,
+        ) || 0;
+      const taxValue =
+        parseFloat(
+          (row.querySelector(".item-tax-input") as HTMLInputElement)?.value,
+        ) || 0;
+      const taxType =
+        (row.querySelector(".item-tax-type-select") as HTMLSelectElement)
+          ?.value || "percentage";
+
       const lineTotal = qty * price;
       subtotal += lineTotal;
-      if (taxType === 'percentage') {
+      if (taxType === "percentage") {
         totalTax += lineTotal * (taxValue / 100);
       } else {
         totalTax += taxValue;
       }
     });
-    
-    const discountVal = parseFloat((document.getElementById('inv-discount') as HTMLInputElement)?.value) || 0;
-    const discountType = (document.getElementById('inv-discount-type') as HTMLSelectElement)?.value || 'fixed';
-    
+
+    const discountVal =
+      parseFloat(
+        (document.getElementById("inv-discount") as HTMLInputElement)?.value,
+      ) || 0;
+    const discountType =
+      (document.getElementById("inv-discount-type") as HTMLSelectElement)
+        ?.value || "fixed";
+
     let discountAmount = 0;
-    if (discountType === 'percentage') {
+    if (discountType === "percentage") {
       discountAmount = subtotal * (discountVal / 100);
     } else {
       discountAmount = discountVal;
     }
-    
+
     const grand = subtotal + totalTax - discountAmount;
 
-    const fmt = (n: number) => n.toLocaleString('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const subtotalEl = document.getElementById('summary-subtotal');
-    const taxEl = document.getElementById('summary-tax');
-    const totalEl = document.getElementById('summary-total');
+    const fmt = (n: number) =>
+      n.toLocaleString("en-AE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    const subtotalEl = document.getElementById("summary-subtotal");
+    const taxEl = document.getElementById("summary-tax");
+    const totalEl = document.getElementById("summary-total");
     if (subtotalEl) subtotalEl.textContent = fmt(subtotal);
     if (taxEl) taxEl.textContent = fmt(totalTax);
     if (totalEl) totalEl.textContent = fmt(Math.max(0, grand));
@@ -971,154 +1746,191 @@ const companiesJson = JSON.stringify(companiesList);
     let valid = true;
 
     // Customer name
-    const custName = (document.getElementById('invoice-customer-name') as HTMLInputElement)?.value?.trim();
-    const custNameInput = document.getElementById('invoice-customer-name') as HTMLInputElement;
+    const custName = (
+      document.getElementById("invoice-customer-name") as HTMLInputElement
+    )?.value?.trim();
+    const custNameInput = document.getElementById(
+      "invoice-customer-name",
+    ) as HTMLInputElement;
     if (!custName) {
-      custNameInput?.classList.add('border-rose-400', 'bg-rose-50');
+      custNameInput?.classList.add("border-rose-400", "bg-rose-50");
       valid = false;
     } else {
-      custNameInput?.classList.remove('border-rose-400', 'bg-rose-50');
+      custNameInput?.classList.remove("border-rose-400", "bg-rose-50");
     }
 
     // Email validation
-    const emailInput = document.getElementById('invoice-customer-email') as HTMLInputElement;
-    const emailError = document.getElementById('email-error');
+    const emailInput = document.getElementById(
+      "invoice-customer-email",
+    ) as HTMLInputElement;
+    const emailError = document.getElementById("email-error");
     const emailVal = emailInput?.value?.trim();
     if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
-      if (emailError) emailError.textContent = 'Enter a valid email address.';
-      emailError?.classList.remove('hidden');
-      emailInput?.classList.add('border-rose-400');
+      if (emailError) emailError.textContent = "Enter a valid email address.";
+      emailError?.classList.remove("hidden");
+      emailInput?.classList.add("border-rose-400");
       valid = false;
     } else {
-      emailError?.classList.add('hidden');
-      emailInput?.classList.remove('border-rose-400');
+      emailError?.classList.add("hidden");
+      emailInput?.classList.remove("border-rose-400");
     }
 
     // Phone validation
-    const phoneInput = document.getElementById('invoice-customer-phone') as HTMLInputElement;
-    const phoneError = document.getElementById('phone-error');
+    const phoneInput = document.getElementById(
+      "invoice-customer-phone",
+    ) as HTMLInputElement;
+    const phoneError = document.getElementById("phone-error");
     const phoneVal = phoneInput?.value?.trim();
     if (phoneVal && !/^\+?[\d\s\-()]{7,25}$/.test(phoneVal)) {
-      if (phoneError) phoneError.textContent = 'Invalid phone number format (7-25 characters comprising digits, spaces, hyphens, parentheses, or +).';
-      phoneError?.classList.remove('hidden');
-      phoneInput?.classList.add('border-rose-400');
+      if (phoneError)
+        phoneError.textContent =
+          "Invalid phone number format (7-25 characters comprising digits, spaces, hyphens, parentheses, or +).";
+      phoneError?.classList.remove("hidden");
+      phoneInput?.classList.add("border-rose-400");
       valid = false;
     } else {
-      phoneError?.classList.add('hidden');
-      phoneInput?.classList.remove('border-rose-400');
+      phoneError?.classList.add("hidden");
+      phoneInput?.classList.remove("border-rose-400");
     }
 
     // Company Name validation (Optional)
-    const companyNameInput = document.getElementById('invoice-company-name') as HTMLInputElement;
-    const companyNameError = document.getElementById('company-name-error');
-    companyNameError?.classList.add('hidden');
-    companyNameInput?.classList.remove('border-rose-400');
+    const companyNameInput = document.getElementById(
+      "invoice-company-name",
+    ) as HTMLInputElement;
+    const companyNameError = document.getElementById("company-name-error");
+    companyNameError?.classList.add("hidden");
+    companyNameInput?.classList.remove("border-rose-400");
 
     // Company VAT / TRN validation
-    const companyVatInput = document.getElementById('invoice-company-vat') as HTMLInputElement;
-    const companyVatError = document.getElementById('company-vat-error');
+    const companyVatInput = document.getElementById(
+      "invoice-company-vat",
+    ) as HTMLInputElement;
+    const companyVatError = document.getElementById("company-vat-error");
     const companyVatVal = companyVatInput?.value?.trim();
     if (!companyVatVal) {
-      if (companyVatError) companyVatError.textContent = 'Company TIN / VAT Number is required.';
-      companyVatError?.classList.remove('hidden');
-      companyVatInput?.classList.add('border-rose-400');
+      if (companyVatError)
+        companyVatError.textContent = "Company TIN / VAT Number is required.";
+      companyVatError?.classList.remove("hidden");
+      companyVatInput?.classList.add("border-rose-400");
       valid = false;
     } else if (!/^[a-zA-Z0-9\s\-]+$/.test(companyVatVal)) {
-      if (companyVatError) companyVatError.textContent = 'Only alphanumeric characters, spaces, and hyphens allowed.';
-      companyVatError?.classList.remove('hidden');
-      companyVatInput?.classList.add('border-rose-400');
+      if (companyVatError)
+        companyVatError.textContent =
+          "Only alphanumeric characters, spaces, and hyphens allowed.";
+      companyVatError?.classList.remove("hidden");
+      companyVatInput?.classList.add("border-rose-400");
       valid = false;
     } else {
-      companyVatError?.classList.add('hidden');
-      companyVatInput?.classList.remove('border-rose-400');
+      companyVatError?.classList.add("hidden");
+      companyVatInput?.classList.remove("border-rose-400");
     }
 
     // Billing Address validation (Optional)
-    const billingInput = document.getElementById('invoice-billing-address') as HTMLTextAreaElement;
-    const billingError = document.getElementById('billing-address-error');
-    billingError?.classList.add('hidden');
-    billingInput?.classList.remove('border-rose-400');
+    const billingInput = document.getElementById(
+      "invoice-billing-address",
+    ) as HTMLTextAreaElement;
+    const billingError = document.getElementById("billing-address-error");
+    billingError?.classList.add("hidden");
+    billingInput?.classList.remove("border-rose-400");
 
     // Shipping Address validation (Optional)
-    const shippingInput = document.getElementById('invoice-shipping-address') as HTMLTextAreaElement;
-    const shippingError = document.getElementById('shipping-address-error');
-    shippingError?.classList.add('hidden');
-    shippingInput?.classList.remove('border-rose-400');
+    const shippingInput = document.getElementById(
+      "invoice-shipping-address",
+    ) as HTMLTextAreaElement;
+    const shippingError = document.getElementById("shipping-address-error");
+    shippingError?.classList.add("hidden");
+    shippingInput?.classList.remove("border-rose-400");
 
     // Issue date
-    const issueDateInput = document.getElementById('invoice-issue-date') as HTMLInputElement;
-    const issueDateError = document.getElementById('issue-date-error');
+    const issueDateInput = document.getElementById(
+      "invoice-issue-date",
+    ) as HTMLInputElement;
+    const issueDateError = document.getElementById("issue-date-error");
     if (!issueDateInput?.value) {
-      issueDateError?.classList.remove('hidden');
-      issueDateInput?.classList.add('border-rose-400');
+      issueDateError?.classList.remove("hidden");
+      issueDateInput?.classList.add("border-rose-400");
       valid = false;
     } else {
-      issueDateError?.classList.add('hidden');
-      issueDateInput?.classList.remove('border-rose-400');
+      issueDateError?.classList.add("hidden");
+      issueDateInput?.classList.remove("border-rose-400");
     }
 
     // Due date (Optional)
-    const dueDateInput = document.getElementById('invoice-due-date') as HTMLInputElement;
-    const dueDateError = document.getElementById('due-date-error');
-    dueDateError?.classList.add('hidden');
-    dueDateInput?.classList.remove('border-rose-400');
+    const dueDateInput = document.getElementById(
+      "invoice-due-date",
+    ) as HTMLInputElement;
+    const dueDateError = document.getElementById("due-date-error");
+    dueDateError?.classList.add("hidden");
+    dueDateInput?.classList.remove("border-rose-400");
 
     // Discount input validation
-    const discountInput = document.getElementById('inv-discount') as HTMLInputElement;
+    const discountInput = document.getElementById(
+      "inv-discount",
+    ) as HTMLInputElement;
     const discountVal = parseFloat(discountInput?.value);
     if (isNaN(discountVal) || discountVal < 0) {
-      discountInput?.classList.add('border-rose-400');
+      discountInput?.classList.add("border-rose-400");
       valid = false;
     } else {
-      discountInput?.classList.remove('border-rose-400');
+      discountInput?.classList.remove("border-rose-400");
     }
 
     // Signatory validation
-    const signatorySelect = document.getElementById('invoice-signatory-incharge') as HTMLSelectElement;
-    const signatoryError = document.getElementById('signatory-error');
+    const signatorySelect = document.getElementById(
+      "invoice-signatory-incharge",
+    ) as HTMLSelectElement;
+    const signatoryError = document.getElementById("signatory-error");
     if (!signatorySelect?.value) {
-      signatoryError?.classList.remove('hidden');
-      signatorySelect?.classList.add('border-rose-400');
+      signatoryError?.classList.remove("hidden");
+      signatorySelect?.classList.add("border-rose-400");
       valid = false;
     } else {
-      signatoryError?.classList.add('hidden');
-      signatorySelect?.classList.remove('border-rose-400');
+      signatoryError?.classList.add("hidden");
+      signatorySelect?.classList.remove("border-rose-400");
     }
 
     // Source Division validation (Optional)
-    const sourceDivisionSelect = document.getElementById('inv-source-division') as HTMLSelectElement;
-    const sourceDivisionError = document.getElementById('source-division-error');
-    sourceDivisionError?.classList.add('hidden');
-    sourceDivisionSelect?.classList.remove('border-rose-400');
+    const sourceDivisionSelect = document.getElementById(
+      "inv-source-division",
+    ) as HTMLSelectElement;
+    const sourceDivisionError = document.getElementById(
+      "source-division-error",
+    );
+    sourceDivisionError?.classList.add("hidden");
+    sourceDivisionSelect?.classList.remove("border-rose-400");
 
     // Line items — at least one must have desc + qty + price
-    const itemsError = document.getElementById('items-error');
-    const rows = document.querySelectorAll('.invoice-item-row');
+    const itemsError = document.getElementById("items-error");
+    const rows = document.querySelectorAll(".invoice-item-row");
     let hasValidItem = false;
     let hasValidationError = false;
     let hasAtLeastOneRow = false;
 
-    rows.forEach(row => {
-      const descInput = row.querySelector('.item-desc-input') as HTMLInputElement;
-      const qtyInput = row.querySelector('.item-qty-input') as HTMLInputElement;
-      const priceInput = row.querySelector('.item-price-input') as HTMLInputElement;
-      const taxInput = row.querySelector('.item-tax-input') as HTMLInputElement;
+    rows.forEach((row) => {
+      const descInput = row.querySelector(
+        ".item-desc-input",
+      ) as HTMLInputElement;
+      const qtyInput = row.querySelector(".item-qty-input") as HTMLInputElement;
+      const priceInput = row.querySelector(
+        ".item-price-input",
+      ) as HTMLInputElement;
+      const taxInput = row.querySelector(".item-tax-input") as HTMLInputElement;
 
-      const descError = row.querySelector('.desc-error-msg') as HTMLElement;
-      const qtyError = row.querySelector('.qty-error-msg') as HTMLElement;
-      const priceError = row.querySelector('.price-error-msg') as HTMLElement;
-      const taxError = row.querySelector('.tax-error-msg') as HTMLElement;
+      const descError = row.querySelector(".desc-error-msg") as HTMLElement;
+      const qtyError = row.querySelector(".qty-error-msg") as HTMLElement;
+      const priceError = row.querySelector(".price-error-msg") as HTMLElement;
+      const taxError = row.querySelector(".tax-error-msg") as HTMLElement;
 
       // Hide all errors initially
-      descError?.classList.add('hidden');
-      qtyError?.classList.add('hidden');
-      priceError?.classList.add('hidden');
-      taxError?.classList.add('hidden');
+      descError?.classList.add("hidden");
+      qtyError?.classList.add("hidden");
+      priceError?.classList.add("hidden");
+      taxError?.classList.add("hidden");
 
-      const desc = descInput?.value?.trim() || '';
-      const qtyStr = qtyInput?.value?.trim() || '';
-      const priceStr = priceInput?.value?.trim() || '';
-      const taxStr = taxInput?.value?.trim() || '';
+      const desc = descInput?.value?.trim() || "";
+      const qtyStr = qtyInput?.value?.trim() || "";
+      const priceStr = priceInput?.value?.trim() || "";
+      const taxStr = taxInput?.value?.trim() || "";
 
       const qty = parseFloat(qtyStr);
       const price = parseFloat(priceStr);
@@ -1127,10 +1939,10 @@ const companiesJson = JSON.stringify(companiesList);
       const isRowEmpty = !desc && !qtyStr && !priceStr && !taxStr;
 
       if (isRowEmpty) {
-        descInput?.classList.remove('border-rose-400');
-        qtyInput?.classList.remove('border-rose-400');
-        priceInput?.classList.remove('border-rose-400');
-        taxInput?.classList.remove('border-rose-400');
+        descInput?.classList.remove("border-rose-400");
+        qtyInput?.classList.remove("border-rose-400");
+        priceInput?.classList.remove("border-rose-400");
+        taxInput?.classList.remove("border-rose-400");
         return;
       }
 
@@ -1138,61 +1950,61 @@ const companiesJson = JSON.stringify(companiesList);
       let rowValid = true;
 
       if (!desc) {
-        descInput?.classList.add('border-rose-400');
+        descInput?.classList.add("border-rose-400");
         if (descError) {
-          descError.textContent = 'Item name is required';
-          descError.classList.remove('hidden');
+          descError.textContent = "Item name is required";
+          descError.classList.remove("hidden");
         }
         rowValid = false;
       } else {
-        descInput?.classList.remove('border-rose-400');
+        descInput?.classList.remove("border-rose-400");
       }
 
       if (!qtyStr) {
-        qtyInput?.classList.add('border-rose-400');
+        qtyInput?.classList.add("border-rose-400");
         if (qtyError) {
-          qtyError.textContent = 'Quantity is required';
-          qtyError.classList.remove('hidden');
+          qtyError.textContent = "Quantity is required";
+          qtyError.classList.remove("hidden");
         }
         rowValid = false;
       } else if (isNaN(qty) || qty < 1 || !/^\d+$/.test(qtyStr)) {
-        qtyInput?.classList.add('border-rose-400');
+        qtyInput?.classList.add("border-rose-400");
         if (qtyError) {
-          qtyError.textContent = 'Only positive integers allowed';
-          qtyError.classList.remove('hidden');
+          qtyError.textContent = "Only positive integers allowed";
+          qtyError.classList.remove("hidden");
         }
         rowValid = false;
       } else {
-        qtyInput?.classList.remove('border-rose-400');
+        qtyInput?.classList.remove("border-rose-400");
       }
 
       if (!priceStr) {
-        priceInput?.classList.add('border-rose-400');
+        priceInput?.classList.add("border-rose-400");
         if (priceError) {
-          priceError.textContent = 'Unit price is required';
-          priceError.classList.remove('hidden');
+          priceError.textContent = "Unit price is required";
+          priceError.classList.remove("hidden");
         }
         rowValid = false;
       } else if (isNaN(price) || price < 0 || !/^\d+(\.\d+)?$/.test(priceStr)) {
-        priceInput?.classList.add('border-rose-400');
+        priceInput?.classList.add("border-rose-400");
         if (priceError) {
-          priceError.textContent = 'Only positive numbers allowed';
-          priceError.classList.remove('hidden');
+          priceError.textContent = "Only positive numbers allowed";
+          priceError.classList.remove("hidden");
         }
         rowValid = false;
       } else {
-        priceInput?.classList.remove('border-rose-400');
+        priceInput?.classList.remove("border-rose-400");
       }
 
       if (taxStr && (isNaN(tax) || tax < 0 || !/^\d+(\.\d+)?$/.test(taxStr))) {
-        taxInput?.classList.add('border-rose-400');
+        taxInput?.classList.add("border-rose-400");
         if (taxError) {
-          taxError.textContent = 'Only positive numbers allowed';
-          taxError.classList.remove('hidden');
+          taxError.textContent = "Only positive numbers allowed";
+          taxError.classList.remove("hidden");
         }
         rowValid = false;
       } else {
-        taxInput?.classList.remove('border-rose-400');
+        taxInput?.classList.remove("border-rose-400");
       }
 
       if (rowValid) {
@@ -1206,15 +2018,17 @@ const companiesJson = JSON.stringify(companiesList);
     if (!hasValidItem) {
       if (itemsError) {
         if (hasValidationError) {
-          itemsError.textContent = '⚠ Please fix the highlighted errors in the line items.';
+          itemsError.textContent =
+            "⚠ Please fix the highlighted errors in the line items.";
         } else {
-          itemsError.textContent = '⚠ At least one complete line item is required.';
+          itemsError.textContent =
+            "⚠ At least one complete line item is required.";
         }
-        itemsError.classList.remove('hidden');
+        itemsError.classList.remove("hidden");
       }
       valid = false;
     } else {
-      itemsError?.classList.add('hidden');
+      itemsError?.classList.add("hidden");
     }
 
     return valid;
@@ -1224,378 +2038,720 @@ const companiesJson = JSON.stringify(companiesList);
   // SETUP (runs on load + re-runs on Astro nav)
   // =============================================
   const setupInvoiceForm = () => {
-    const form = document.getElementById('invoice-form') as HTMLFormElement;
+    const form = document.getElementById("invoice-form") as HTMLFormElement;
     if (!form) return;
 
-    const companySelect = document.getElementById('invoice-company-select') as HTMLSelectElement | null;
-    const allCustomerOpts = Array.from(document.querySelectorAll('#customer-datalist option'));
+    const companySelect = document.getElementById(
+      "invoice-company-select",
+    ) as HTMLSelectElement | null;
+    const allCustomerOpts = Array.from(
+      document.querySelectorAll("#customer-datalist option"),
+    );
 
     // Discount changes affect summary
-    document.getElementById('inv-discount')?.addEventListener('input', recalcSummary);
-    document.getElementById('inv-discount-type')?.addEventListener('change', recalcSummary);
-
+    document
+      .getElementById("inv-discount")
+      ?.addEventListener("input", recalcSummary);
+    document
+      .getElementById("inv-discount-type")
+      ?.addEventListener("change", recalcSummary);
 
     // Order Type & Due Date visibility toggle
-    const orderTypeSelect = document.getElementById('inv-order-type') as HTMLSelectElement;
-    const dueDateContainer = document.getElementById('due-date-container');
-    const dueDateInput = document.getElementById('invoice-due-date') as HTMLInputElement;
+    const orderTypeSelect = document.getElementById(
+      "inv-order-type",
+    ) as HTMLSelectElement;
+    const dueDateContainer = document.getElementById("due-date-container");
+    const dueDateInput = document.getElementById(
+      "invoice-due-date",
+    ) as HTMLInputElement;
 
     const toggleDueDateVisibility = () => {
-      if (orderTypeSelect?.value === 'delivery_note' || orderTypeSelect?.value === 'sample_order') {
-        dueDateContainer?.classList.remove('hidden');
+      if (
+        orderTypeSelect?.value === "delivery_note" ||
+        orderTypeSelect?.value === "sample_order"
+      ) {
+        dueDateContainer?.classList.remove("hidden");
       } else {
-        dueDateContainer?.classList.add('hidden');
-        if (dueDateInput) dueDateInput.value = '';
+        dueDateContainer?.classList.add("hidden");
+        if (dueDateInput) dueDateInput.value = "";
       }
     };
-    orderTypeSelect?.addEventListener('change', toggleDueDateVisibility);
+    orderTypeSelect?.addEventListener("change", toggleDueDateVisibility);
 
     // Division & Terms of Sale toggle
-    const divisionSelect = document.getElementById('inv-source-division') as HTMLSelectElement;
-    const dtlTermsGroup = document.getElementById('dtl-terms-group');
-    const dgsTermsGroup = document.getElementById('dgs-terms-group');
+    const divisionSelect = document.getElementById(
+      "inv-source-division",
+    ) as HTMLSelectElement;
+    const dtlTermsGroup = document.getElementById("dtl-terms-group");
+    const dgsTermsGroup = document.getElementById("dgs-terms-group");
 
-    let lastSelectedDiv = divisionSelect?.value;
-    const toggleTOSVisibility = (e?: Event) => {
-      const selectedDiv = divisionSelect?.value;
-      const isManualChange = e?.type === 'change';
-      
-      if (selectedDiv === 'DTL') {
-        dtlTermsGroup?.classList.remove('hidden');
-        dgsTermsGroup?.classList.add('hidden');
-        if (lastSelectedDiv !== 'DTL') {
-           dgsTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
-           dtlTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = true);
+    let lastSelectedDiv = (divisionSelect?.value || "").trim().toUpperCase();
+    const toggleTOSVisibility = (preserveExisting = false) => {
+      const selectedDiv = (divisionSelect?.value || "").trim().toUpperCase();
+
+      if (selectedDiv === "DTL") {
+        dtlTermsGroup?.classList.remove("hidden");
+        dgsTermsGroup?.classList.add("hidden");
+        // Strictly uncheck any DGS terms
+        dgsTermsGroup
+          ?.querySelectorAll(".disclaimer-toggle-checkbox")
+          .forEach((cb) => ((cb as HTMLInputElement).checked = false));
+        // Ensure DTL terms are checked if not preserving existing state
+        if (!preserveExisting) {
+          const dtlChecked = Array.from(
+            dtlTermsGroup?.querySelectorAll(".disclaimer-toggle-checkbox") ||
+              [],
+          ).some((cb) => (cb as HTMLInputElement).checked);
+          if (!dtlChecked || lastSelectedDiv !== "DTL") {
+            dtlTermsGroup
+              ?.querySelectorAll(".disclaimer-toggle-checkbox")
+              .forEach((cb) => ((cb as HTMLInputElement).checked = true));
+          }
         }
-      } else if (selectedDiv === 'DGS') {
-        dgsTermsGroup?.classList.remove('hidden');
-        dtlTermsGroup?.classList.add('hidden');
-        if (lastSelectedDiv !== 'DGS') {
-           dtlTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
-           dgsTermsGroup?.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = true);
+      } else if (selectedDiv === "DGS") {
+        dgsTermsGroup?.classList.remove("hidden");
+        dtlTermsGroup?.classList.add("hidden");
+        // Strictly uncheck any DTL terms
+        dtlTermsGroup
+          ?.querySelectorAll(".disclaimer-toggle-checkbox")
+          .forEach((cb) => ((cb as HTMLInputElement).checked = false));
+        // Ensure DGS terms are checked if not preserving existing state
+        if (!preserveExisting) {
+          const dgsChecked = Array.from(
+            dgsTermsGroup?.querySelectorAll(".disclaimer-toggle-checkbox") ||
+              [],
+          ).some((cb) => (cb as HTMLInputElement).checked);
+          if (!dgsChecked || lastSelectedDiv !== "DGS") {
+            dgsTermsGroup
+              ?.querySelectorAll(".disclaimer-toggle-checkbox")
+              .forEach((cb) => ((cb as HTMLInputElement).checked = true));
+          }
         }
-      } else if (selectedDiv === 'both') {
-        dtlTermsGroup?.classList.remove('hidden');
-        dgsTermsGroup?.classList.remove('hidden');
-        if (lastSelectedDiv !== 'both') {
-           document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = true);
+      } else if (selectedDiv === "BOTH") {
+        dtlTermsGroup?.classList.remove("hidden");
+        dgsTermsGroup?.classList.remove("hidden");
+        if (!preserveExisting && lastSelectedDiv !== "BOTH") {
+          document
+            .querySelectorAll(".disclaimer-toggle-checkbox")
+            .forEach((cb) => ((cb as HTMLInputElement).checked = true));
         }
       } else {
-        dtlTermsGroup?.classList.add('hidden');
-        dgsTermsGroup?.classList.add('hidden');
-        if (lastSelectedDiv !== '') {
-           document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => (cb as HTMLInputElement).checked = false);
-        }
+        dtlTermsGroup?.classList.add("hidden");
+        dgsTermsGroup?.classList.add("hidden");
+        document
+          .querySelectorAll(".disclaimer-toggle-checkbox")
+          .forEach((cb) => ((cb as HTMLInputElement).checked = false));
       }
       lastSelectedDiv = selectedDiv;
       updatePaymentTermsHiddenInput();
     };
-    divisionSelect?.addEventListener('change', toggleTOSVisibility);
+    divisionSelect?.addEventListener("change", () =>
+      toggleTOSVisibility(false),
+    );
 
     // Customer autocomplete fill
-    const custInput = document.getElementById('invoice-customer-name') as HTMLInputElement;
+    const custInput = document.getElementById(
+      "invoice-customer-name",
+    ) as HTMLInputElement;
     const handleCustomerAutofill = () => {
       const val = custInput.value.trim();
-      const opts = document.querySelectorAll('#customer-datalist option');
+      const opts = document.querySelectorAll("#customer-datalist option");
       let found = false;
-      opts.forEach(opt => {
+      opts.forEach((opt) => {
         const o = opt as HTMLOptionElement;
         if (o.value === val) {
           found = true;
-          const realName = o.getAttribute('data-real-name') || val;
-          (document.getElementById('inv-full-name') as HTMLInputElement).value = realName;
-          (document.getElementById('invoice-customer-email') as HTMLInputElement).value = o.getAttribute('data-email') || '';
-          (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = o.getAttribute('data-phone') || '';
-          (document.getElementById('invoice-company-name') as HTMLInputElement).value = o.getAttribute('data-company') || '';
-          (document.getElementById('invoice-company-vat') as HTMLInputElement).value = o.getAttribute('data-vat') || '';
-          (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = o.getAttribute('data-billing') || '';
-          (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = o.getAttribute('data-shipping') || '';
-          (document.getElementById('invoice-customer-code') as HTMLInputElement).value = o.getAttribute('data-code') || '';
-          (document.getElementById('invoice-company-code') as HTMLInputElement).value = o.getAttribute('data-company-code') || '';
+          const realName = o.getAttribute("data-real-name") || val;
+          (document.getElementById("inv-full-name") as HTMLInputElement).value =
+            realName;
+          (
+            document.getElementById(
+              "invoice-customer-email",
+            ) as HTMLInputElement
+          ).value = o.getAttribute("data-email") || "";
+          (
+            document.getElementById(
+              "invoice-customer-phone",
+            ) as HTMLInputElement
+          ).value = o.getAttribute("data-phone") || "";
+          (
+            document.getElementById("invoice-company-name") as HTMLInputElement
+          ).value = o.getAttribute("data-company") || "";
+          (
+            document.getElementById("invoice-company-vat") as HTMLInputElement
+          ).value = o.getAttribute("data-vat") || "";
+          (
+            document.getElementById(
+              "invoice-billing-address",
+            ) as HTMLTextAreaElement
+          ).value = o.getAttribute("data-billing") || "";
+          (
+            document.getElementById(
+              "invoice-shipping-address",
+            ) as HTMLTextAreaElement
+          ).value = o.getAttribute("data-shipping") || "";
+          (
+            document.getElementById("invoice-customer-code") as HTMLInputElement
+          ).value = o.getAttribute("data-code") || "";
+          (
+            document.getElementById("invoice-company-code") as HTMLInputElement
+          ).value = o.getAttribute("data-company-code") || "";
 
           // Also auto-select the company in the company dropdown
-          const companyName = o.getAttribute('data-company') || '';
-          const companySelect = document.getElementById('invoice-select-company') as HTMLSelectElement;
+          const companyName = o.getAttribute("data-company") || "";
+          const companySelect = document.getElementById(
+            "invoice-select-company",
+          ) as HTMLSelectElement;
           if (companySelect && companyName) {
             const options = Array.from(companySelect.options);
-            const match = options.find(opt => opt.value === companyName);
+            const match = options.find((opt) => opt.value === companyName);
             if (match) {
               companySelect.value = companyName;
-              companySelect.dispatchEvent(new Event('change'));
+              companySelect.dispatchEvent(new Event("change"));
             }
           }
         }
       });
       if (!found) {
-        const fullNameInput = document.getElementById('inv-full-name') as HTMLInputElement;
+        const fullNameInput = document.getElementById(
+          "inv-full-name",
+        ) as HTMLInputElement;
         if (fullNameInput) fullNameInput.value = val;
-        (document.getElementById('invoice-customer-code') as HTMLInputElement).value = '';
-        (document.getElementById('invoice-company-code') as HTMLInputElement).value = '';
+        (
+          document.getElementById("invoice-customer-code") as HTMLInputElement
+        ).value = "";
+        (
+          document.getElementById("invoice-company-code") as HTMLInputElement
+        ).value = "";
       }
-      document.getElementById('new-customer-note')?.classList.toggle('hidden', found || val.length === 0);
+      document
+        .getElementById("new-customer-note")
+        ?.classList.toggle("hidden", found || val.length === 0);
     };
-    custInput?.addEventListener('input', handleCustomerAutofill);
-    custInput?.addEventListener('change', handleCustomerAutofill);
+    custInput?.addEventListener("input", handleCustomerAutofill);
+    custInput?.addEventListener("change", handleCustomerAutofill);
 
     // Company autofill and customer list filtering
-    const companyNameInput = document.getElementById('invoice-company-name') as HTMLInputElement;
+    const companyNameInput = document.getElementById(
+      "invoice-company-name",
+    ) as HTMLInputElement;
     const handleCompanyAutofill = (forceOverwriteCustomer = false) => {
       const val = companyNameInput.value.trim();
-      const match = allCompanies.find(c => c.name === val);
-      document.getElementById('new-company-note')?.classList.toggle('hidden', !!match || val.length === 0);
+      const match = allCompanies.find((c) => c.name === val);
+      document
+        .getElementById("new-company-note")
+        ?.classList.toggle("hidden", !!match || val.length === 0);
 
       // Autofill if matched
       if (match) {
-        const customerNameEl = document.getElementById('invoice-customer-name') as HTMLInputElement;
-        if (match.default_customer_name && (forceOverwriteCustomer || !customerNameEl.value)) {
-          const custCode = match.default_customer_code ? ` (${match.default_customer_code})` : '';
+        const customerNameEl = document.getElementById(
+          "invoice-customer-name",
+        ) as HTMLInputElement;
+        if (
+          match.default_customer_name &&
+          (forceOverwriteCustomer || !customerNameEl.value)
+        ) {
+          const custCode = match.default_customer_code
+            ? ` (${match.default_customer_code})`
+            : "";
           customerNameEl.value = match.default_customer_name + custCode;
-          (document.getElementById('inv-full-name') as HTMLInputElement).value = match.default_customer_name;
-          (document.getElementById('invoice-customer-email') as HTMLInputElement).value = match.default_customer_email || '';
-          (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = match.default_customer_phone || '';
-          (document.getElementById('invoice-customer-code') as HTMLInputElement).value = match.default_customer_code || '';
+          (document.getElementById("inv-full-name") as HTMLInputElement).value =
+            match.default_customer_name;
+          (
+            document.getElementById(
+              "invoice-customer-email",
+            ) as HTMLInputElement
+          ).value = match.default_customer_email || "";
+          (
+            document.getElementById(
+              "invoice-customer-phone",
+            ) as HTMLInputElement
+          ).value = match.default_customer_phone || "";
+          (
+            document.getElementById("invoice-customer-code") as HTMLInputElement
+          ).value = match.default_customer_code || "";
         }
-        (document.getElementById('invoice-company-vat') as HTMLInputElement).value = match.default_customer_vat || match.vat_number || '';
-        (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = match.default_customer_billing || match.billing_address || '';
-        (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = match.default_customer_shipping || match.shipping_address || '';
-        (document.getElementById('invoice-company-code') as HTMLInputElement).value = match.code || '';
+        (
+          document.getElementById("invoice-company-vat") as HTMLInputElement
+        ).value = match.default_customer_vat || match.vat_number || "";
+        (
+          document.getElementById(
+            "invoice-billing-address",
+          ) as HTMLTextAreaElement
+        ).value = match.default_customer_billing || match.billing_address || "";
+        (
+          document.getElementById(
+            "invoice-shipping-address",
+          ) as HTMLTextAreaElement
+        ).value =
+          match.default_customer_shipping || match.shipping_address || "";
+        (
+          document.getElementById("invoice-company-code") as HTMLInputElement
+        ).value = match.code || "";
       } else {
-        (document.getElementById('invoice-company-code') as HTMLInputElement).value = '';
+        (
+          document.getElementById("invoice-company-code") as HTMLInputElement
+        ).value = "";
       }
 
       // Filter customer datalist by company
-      const datalist = document.getElementById('customer-datalist')!;
-      datalist.innerHTML = '';
+      const datalist = document.getElementById("customer-datalist")!;
+      datalist.innerHTML = "";
       const filtered = val
-        ? allCustomerOpts.filter(o => (o.getAttribute('data-company') || '').toLowerCase().includes(val.toLowerCase()))
+        ? allCustomerOpts.filter((o) =>
+            (o.getAttribute("data-company") || "")
+              .toLowerCase()
+              .includes(val.toLowerCase()),
+          )
         : allCustomerOpts;
-      filtered.forEach(o => datalist.appendChild(o.cloneNode(true)));
+      filtered.forEach((o) => datalist.appendChild(o.cloneNode(true)));
     };
-    companyNameInput?.addEventListener('input', () => handleCompanyAutofill(false));
-    companyNameInput?.addEventListener('change', () => handleCompanyAutofill(false));
+    companyNameInput?.addEventListener("input", () =>
+      handleCompanyAutofill(false),
+    );
+    companyNameInput?.addEventListener("change", () =>
+      handleCompanyAutofill(false),
+    );
 
     // Select Company dropdown change handler
-    const selectCompanyDropdown = document.getElementById('invoice-select-company') as HTMLSelectElement;
-    selectCompanyDropdown?.addEventListener('change', () => {
+    const selectCompanyDropdown = document.getElementById(
+      "invoice-select-company",
+    ) as HTMLSelectElement;
+    selectCompanyDropdown?.addEventListener("change", () => {
       const selectedCompanyName = selectCompanyDropdown.value;
       if (selectedCompanyName) {
-        (document.getElementById('invoice-company-name') as HTMLInputElement).value = selectedCompanyName;
+        (
+          document.getElementById("invoice-company-name") as HTMLInputElement
+        ).value = selectedCompanyName;
         handleCompanyAutofill(true); // force overwrite customer fields since user explicitly picked a company
       } else {
-        const datalist = document.getElementById('customer-datalist')!;
-        datalist.innerHTML = '';
-        allCustomerOpts.forEach(o => datalist.appendChild(o.cloneNode(true)));
+        const datalist = document.getElementById("customer-datalist")!;
+        datalist.innerHTML = "";
+        allCustomerOpts.forEach((o) => datalist.appendChild(o.cloneNode(true)));
       }
     });
 
     // Shipping address toggle
-    const shippingToggle = document.getElementById('shipping-same-as-billing') as HTMLInputElement;
-    const shippingContainer = document.getElementById('shipping-address-container');
-    shippingToggle?.addEventListener('change', () => {
+    const shippingToggle = document.getElementById(
+      "shipping-same-as-billing",
+    ) as HTMLInputElement;
+    const shippingContainer = document.getElementById(
+      "shipping-address-container",
+    );
+    shippingToggle?.addEventListener("change", () => {
       if (shippingToggle.checked) {
-        shippingContainer?.classList.add('hidden');
+        shippingContainer?.classList.add("hidden");
       } else {
-        shippingContainer?.classList.remove('hidden');
+        shippingContainer?.classList.remove("hidden");
       }
     });
 
     const updatePaymentTermsHiddenInput = () => {
-      const checkboxes = document.querySelectorAll('.disclaimer-toggle-checkbox') as NodeListOf<HTMLInputElement>;
-      const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.getAttribute('data-identifier'));
-      const hiddenInput = document.getElementById('invoice-payment-terms') as HTMLInputElement;
+      const selectedDiv = (divisionSelect?.value || "").trim().toUpperCase();
+      let activeCheckboxes: HTMLInputElement[] = [];
+      if (selectedDiv === "DTL") {
+        activeCheckboxes = Array.from(
+          dtlTermsGroup?.querySelectorAll(".disclaimer-toggle-checkbox") || [],
+        ) as HTMLInputElement[];
+      } else if (selectedDiv === "DGS") {
+        activeCheckboxes = Array.from(
+          dgsTermsGroup?.querySelectorAll(".disclaimer-toggle-checkbox") || [],
+        ) as HTMLInputElement[];
+      } else if (selectedDiv === "BOTH") {
+        activeCheckboxes = Array.from(
+          document.querySelectorAll(".disclaimer-toggle-checkbox"),
+        ) as HTMLInputElement[];
+      }
+      const selected = activeCheckboxes
+        .filter((cb) => cb.checked)
+        .map((cb) => cb.getAttribute("data-identifier"))
+        .filter(Boolean);
+      const hiddenInput = document.getElementById(
+        "invoice-payment-terms",
+      ) as HTMLInputElement;
       if (hiddenInput) {
         hiddenInput.value = JSON.stringify(selected);
       }
     };
 
-    document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
-      cb.addEventListener('change', updatePaymentTermsHiddenInput);
+    document.querySelectorAll(".disclaimer-toggle-checkbox").forEach((cb) => {
+      cb.addEventListener("change", updatePaymentTermsHiddenInput);
     });
 
     // Fetch existing invoice if ?edit is in URL
     const params = new URLSearchParams(window.location.search);
-    const editId = params.get('edit');
+    const editId = params.get("edit");
     if (editId) {
       fetch(`/api/invoices/${editId}`)
-        .then(res => res.json())
-        .then(inv => {
+        .then((res) => res.json())
+        .then((inv) => {
           if (inv.error) throw new Error(inv.error);
-          
-          (document.getElementById('invoice-submit-btn') as HTMLButtonElement).textContent = 'Update Order';
-          (document.getElementById('invoice-id') as HTMLInputElement).value = inv.id || '';
-          
+
+          (
+            document.getElementById("invoice-submit-btn") as HTMLButtonElement
+          ).textContent = "Update Order";
+          (document.getElementById("invoice-id") as HTMLInputElement).value =
+            inv.id || "";
+
           // Dynamically change page title to "Editing Order" instead of "Generate Order"
-          const pageTitleText = document.getElementById('page-title-text');
+          const pageTitleText = document.getElementById("page-title-text");
           if (pageTitleText) {
-            pageTitleText.textContent = 'Editing Order';
+            pageTitleText.textContent = "Editing Order";
           }
 
-          
-          const customerCodeStr = inv.customer_code ? ` (${inv.customer_code})` : '';
-          (document.getElementById('invoice-customer-name') as HTMLInputElement).value = (inv.customer_name || '') + customerCodeStr;
-          (document.getElementById('inv-full-name') as HTMLInputElement).value = inv.customer_name || '';
-          (document.getElementById('invoice-customer-email') as HTMLInputElement).value = inv.customer_email || '';
-          (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = inv.customer_phone || '';
-          (document.getElementById('invoice-company-name') as HTMLInputElement).value = inv.company_name || '';
-          (document.getElementById('invoice-company-vat') as HTMLInputElement).value = inv.company_vat || '';
-          (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = inv.lpo_number || '';
-          (document.getElementById('invoice-quotation-ref') as HTMLInputElement).value = inv.quotation_ref || '';
-          (document.getElementById('invoice-payment-terms') as HTMLInputElement).value = inv.payment_terms || '';
-          
-          let selectedDisclaimers = [];
-          try {
-            selectedDisclaimers = JSON.parse(inv.payment_terms || '[]');
-          } catch(err) {
-            selectedDisclaimers = [];
-          }
-          document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
-            const ident = cb.getAttribute('data-identifier') || '';
-            (cb as HTMLInputElement).checked = Array.isArray(selectedDisclaimers) && selectedDisclaimers.includes(ident);
-          });
-          updatePaymentTermsHiddenInput();
+          const customerCodeStr = inv.customer_code
+            ? ` (${inv.customer_code})`
+            : "";
+          (
+            document.getElementById("invoice-customer-name") as HTMLInputElement
+          ).value = (inv.customer_name || "") + customerCodeStr;
+          (document.getElementById("inv-full-name") as HTMLInputElement).value =
+            inv.customer_name || "";
+          (
+            document.getElementById(
+              "invoice-customer-email",
+            ) as HTMLInputElement
+          ).value = inv.customer_email || "";
+          (
+            document.getElementById(
+              "invoice-customer-phone",
+            ) as HTMLInputElement
+          ).value = inv.customer_phone || "";
+          (
+            document.getElementById("invoice-company-name") as HTMLInputElement
+          ).value = inv.company_name || "";
+          (
+            document.getElementById("invoice-company-vat") as HTMLInputElement
+          ).value = inv.company_vat || "";
+          (
+            document.getElementById("invoice-lpo-number") as HTMLInputElement
+          ).value = inv.lpo_number || "";
+          (
+            document.getElementById("invoice-quotation-ref") as HTMLInputElement
+          ).value = inv.quotation_ref || "";
+          (
+            document.getElementById("invoice-payment-terms") as HTMLInputElement
+          ).value = inv.payment_terms || "";
 
-          (document.getElementById('invoice-show-images') as HTMLInputElement).checked = !!inv.show_images;
-          (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = inv.billing_address || '';
-          (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = inv.shipping_address || '';
-          
-          const billingStr = (inv.billing_address || '').trim();
-          const shippingStr = (inv.shipping_address || '').trim();
+          (
+            document.getElementById("invoice-show-images") as HTMLInputElement
+          ).checked = !!inv.show_images;
+          (
+            document.getElementById(
+              "invoice-billing-address",
+            ) as HTMLTextAreaElement
+          ).value = inv.billing_address || "";
+          (
+            document.getElementById(
+              "invoice-shipping-address",
+            ) as HTMLTextAreaElement
+          ).value = inv.shipping_address || "";
+
+          const billingStr = (inv.billing_address || "").trim();
+          const shippingStr = (inv.shipping_address || "").trim();
           if (shippingToggle) {
             if (!shippingStr || billingStr === shippingStr) {
               shippingToggle.checked = true;
-              shippingContainer?.classList.add('hidden');
+              shippingContainer?.classList.add("hidden");
             } else {
               shippingToggle.checked = false;
-              shippingContainer?.classList.remove('hidden');
+              shippingContainer?.classList.remove("hidden");
             }
           }
 
-          (document.getElementById('inv-order-type') as HTMLSelectElement).value = inv.order_type || 'proforma';
-          (document.getElementById('inv-source-division') as HTMLSelectElement).value = inv.source_division || '';
-          
+          (
+            document.getElementById("inv-order-type") as HTMLSelectElement
+          ).value = inv.order_type || "proforma";
+          (
+            document.getElementById("inv-source-division") as HTMLSelectElement
+          ).value = inv.source_division || "";
+
           toggleDueDateVisibility();
-          toggleTOSVisibility();
-          (document.getElementById('invoice-issue-date') as HTMLInputElement).value = inv.issue_date ? new Date(inv.issue_date).toISOString().split('T')[0] : '';
-          (document.getElementById('invoice-due-date') as HTMLInputElement).value = inv.due_date ? new Date(inv.due_date).toISOString().split('T')[0] : '';
-          (document.getElementById('invoice-payment-status') as HTMLSelectElement).value = inv.payment_status || 'unpaid';
-          (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = inv.signatory_incharge || '';
+          toggleTOSVisibility(true);
 
-          const typeSelect = document.getElementById('inv-order-type') as HTMLSelectElement;
-          typeSelect.dispatchEvent(new Event('change'));
-
-          (document.getElementById('inv-discount-type') as HTMLSelectElement).value = inv.discount_type || 'fixed';
-          (document.getElementById('inv-discount') as HTMLInputElement).value = inv.discount_value !== undefined ? inv.discount_value : (inv.discount_amount || '0');
-          (document.getElementById('inv-internal-notes') as HTMLTextAreaElement).value = inv.internal_notes || '';
-
-          // Select matching company if any
-          const compMatch = allCompanies.find(c => c.name === inv.company_name);
-          if (compMatch) {
-             const selComp = document.getElementById('invoice-select-company') as HTMLSelectElement;
-             if (selComp) selComp.value = inv.company_name;
-             handleCompanyAutofill(false);
+          let selectedDisclaimers: string[] = [];
+          try {
+            selectedDisclaimers = JSON.parse(inv.payment_terms || "[]");
+          } catch (err) {
+            selectedDisclaimers = [];
           }
 
-          const container = document.getElementById('invoice-items-container')!;
-          container.innerHTML = '';
-          const items = typeof inv.items_list === 'string' ? JSON.parse(inv.items_list) : (inv.items_list || []);
-          items.forEach((item: any) => addRow({
-            product_id: item.product_id,
-            catalogue_ref: item.catalogue_ref,
-            description: item.description,
-            tech_spec: item.tech_spec,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            tax_type: item.tax_type || 'percentage',
-            tax_value: item.tax_value !== undefined ? item.tax_value : (item.tax_rate ?? 5),
-            item_image: item.item_image,
-          }));
+          const currentDiv = (inv.source_division || "").trim().toUpperCase();
+          const targetGroup =
+            currentDiv === "DGS"
+              ? dgsTermsGroup
+              : currentDiv === "DTL"
+                ? dtlTermsGroup
+                : null;
+          if (targetGroup) {
+            if (
+              Array.isArray(selectedDisclaimers) &&
+              selectedDisclaimers.length > 0
+            ) {
+              targetGroup
+                .querySelectorAll(".disclaimer-toggle-checkbox")
+                .forEach((cb) => {
+                  const ident = cb.getAttribute("data-identifier") || "";
+                  (cb as HTMLInputElement).checked =
+                    selectedDisclaimers.includes(ident);
+                });
+            } else {
+              targetGroup
+                .querySelectorAll(".disclaimer-toggle-checkbox")
+                .forEach((cb) => {
+                  (cb as HTMLInputElement).checked = true;
+                });
+            }
+          } else if (currentDiv === "BOTH") {
+            document
+              .querySelectorAll(".disclaimer-toggle-checkbox")
+              .forEach((cb) => {
+                const ident = cb.getAttribute("data-identifier") || "";
+                (cb as HTMLInputElement).checked =
+                  Array.isArray(selectedDisclaimers) &&
+                  selectedDisclaimers.length > 0
+                    ? selectedDisclaimers.includes(ident)
+                    : true;
+              });
+          }
+          updatePaymentTermsHiddenInput();
+
+          (
+            document.getElementById("invoice-issue-date") as HTMLInputElement
+          ).value = inv.issue_date
+            ? new Date(inv.issue_date).toISOString().split("T")[0]
+            : "";
+          (
+            document.getElementById("invoice-due-date") as HTMLInputElement
+          ).value = inv.due_date
+            ? new Date(inv.due_date).toISOString().split("T")[0]
+            : "";
+          (
+            document.getElementById(
+              "invoice-payment-status",
+            ) as HTMLSelectElement
+          ).value = inv.payment_status || "unpaid";
+          (
+            document.getElementById(
+              "invoice-signatory-incharge",
+            ) as HTMLSelectElement
+          ).value = inv.signatory_incharge || "";
+
+          const typeSelect = document.getElementById(
+            "inv-order-type",
+          ) as HTMLSelectElement;
+          typeSelect.dispatchEvent(new Event("change"));
+
+          (
+            document.getElementById("inv-discount-type") as HTMLSelectElement
+          ).value = inv.discount_type || "fixed";
+          (document.getElementById("inv-discount") as HTMLInputElement).value =
+            inv.discount_value !== undefined
+              ? inv.discount_value
+              : inv.discount_amount || "0";
+          (
+            document.getElementById("inv-internal-notes") as HTMLTextAreaElement
+          ).value = inv.internal_notes || "";
+
+          // Select matching company if any
+          const compMatch = allCompanies.find(
+            (c) => c.name === inv.company_name,
+          );
+          if (compMatch) {
+            const selComp = document.getElementById(
+              "invoice-select-company",
+            ) as HTMLSelectElement;
+            if (selComp) selComp.value = inv.company_name;
+            handleCompanyAutofill(false);
+          }
+
+          const container = document.getElementById("invoice-items-container")!;
+          container.innerHTML = "";
+          const items =
+            typeof inv.items_list === "string"
+              ? JSON.parse(inv.items_list)
+              : inv.items_list || [];
+          items.forEach((item: any) =>
+            addRow({
+              product_id: item.product_id,
+              catalogue_ref: item.catalogue_ref,
+              description: item.description,
+              tech_spec: item.tech_spec,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              tax_type: item.tax_type || "percentage",
+              tax_value:
+                item.tax_value !== undefined
+                  ? item.tax_value
+                  : (item.tax_rate ?? 5),
+              item_image: item.item_image,
+            }),
+          );
           if (items.length === 0) {
             addRow();
           }
-          
+
           recalcSummary();
-          updateGlobalSourceDivision();
+          if (!inv.source_division) {
+            updateGlobalSourceDivision();
+          }
         })
-        .catch(err => {
+        .catch((err) => {
           console.error("Error loading invoice:", err);
           alert("Failed to load invoice data.");
         });
     } else {
-      (document.getElementById('invoice-submit-btn') as HTMLButtonElement).textContent = 'Generate Invoice';
-      (document.getElementById('invoice-issue-date') as HTMLInputElement).value = new Date().toISOString().split('T')[0];
-      (document.getElementById('invoice-company-vat') as HTMLInputElement).value = '';
-      (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = '';
-      (document.getElementById('invoice-payment-terms') as HTMLInputElement).value = '';
-      (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = 'any';
-      
-      document.querySelectorAll('.disclaimer-toggle-checkbox').forEach(cb => {
+      (
+        document.getElementById("invoice-submit-btn") as HTMLButtonElement
+      ).textContent = "Generate Invoice";
+      (
+        document.getElementById("invoice-issue-date") as HTMLInputElement
+      ).value = new Date().toISOString().split("T")[0];
+      (
+        document.getElementById("invoice-company-vat") as HTMLInputElement
+      ).value = "";
+      (
+        document.getElementById("invoice-lpo-number") as HTMLInputElement
+      ).value = "";
+      (
+        document.getElementById("invoice-payment-terms") as HTMLInputElement
+      ).value = "";
+      (
+        document.getElementById(
+          "invoice-signatory-incharge",
+        ) as HTMLSelectElement
+      ).value = "any";
+
+      document.querySelectorAll(".disclaimer-toggle-checkbox").forEach((cb) => {
         (cb as HTMLInputElement).checked = false;
       });
       updatePaymentTermsHiddenInput();
 
-      (document.getElementById('invoice-show-images') as HTMLInputElement).checked = false;
-      (document.getElementById('inv-discount-type') as HTMLSelectElement).value = 'fixed';
-      (document.getElementById('inv-discount') as HTMLInputElement).value = '0';
-      
+      (
+        document.getElementById("invoice-show-images") as HTMLInputElement
+      ).checked = false;
+      (
+        document.getElementById("inv-discount-type") as HTMLSelectElement
+      ).value = "fixed";
+      (document.getElementById("inv-discount") as HTMLInputElement).value = "0";
+
       if (shippingToggle) {
         shippingToggle.checked = true;
-        shippingContainer?.classList.add('hidden');
+        shippingContainer?.classList.add("hidden");
       }
-      
+
       toggleDueDateVisibility();
       toggleTOSVisibility();
-      
-      const container = document.getElementById('invoice-items-container')!;
-      container.innerHTML = '';
+
+      const container = document.getElementById("invoice-items-container")!;
+      container.innerHTML = "";
 
       // Check if opened from Audit Log Snapshot Recovery
-      const auditDraftRaw = sessionStorage.getItem('restore_invoice_draft');
+      const auditDraftRaw = sessionStorage.getItem("restore_invoice_draft");
       if (auditDraftRaw) {
         try {
           const draft = JSON.parse(auditDraftRaw);
-          sessionStorage.removeItem('restore_invoice_draft');
+          sessionStorage.removeItem("restore_invoice_draft");
 
-          if (draft.customer_name) (document.getElementById('invoice-customer-name') as HTMLInputElement).value = draft.customer_name;
+          if (draft.customer_name)
+            (
+              document.getElementById(
+                "invoice-customer-name",
+              ) as HTMLInputElement
+            ).value = draft.customer_name;
           if (draft.company_name) {
-            const selComp = document.getElementById('invoice-select-company') as HTMLSelectElement;
+            const selComp = document.getElementById(
+              "invoice-select-company",
+            ) as HTMLSelectElement;
             if (selComp) selComp.value = draft.company_name;
           }
-          if (draft.customer_email) (document.getElementById('invoice-customer-email') as HTMLInputElement).value = draft.customer_email;
-          if (draft.customer_phone) (document.getElementById('invoice-customer-phone') as HTMLInputElement).value = draft.customer_phone;
-          if (draft.trn_number) (document.getElementById('invoice-company-vat') as HTMLInputElement).value = draft.trn_number;
-          if (draft.billing_address) (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value = draft.billing_address;
-          if (draft.shipping_address) (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value = draft.shipping_address;
+          if (draft.customer_email)
+            (
+              document.getElementById(
+                "invoice-customer-email",
+              ) as HTMLInputElement
+            ).value = draft.customer_email;
+          if (draft.customer_phone)
+            (
+              document.getElementById(
+                "invoice-customer-phone",
+              ) as HTMLInputElement
+            ).value = draft.customer_phone;
+          if (draft.trn_number)
+            (
+              document.getElementById("invoice-company-vat") as HTMLInputElement
+            ).value = draft.trn_number;
+          if (draft.billing_address)
+            (
+              document.getElementById(
+                "invoice-billing-address",
+              ) as HTMLTextAreaElement
+            ).value = draft.billing_address;
+          if (draft.shipping_address)
+            (
+              document.getElementById(
+                "invoice-shipping-address",
+              ) as HTMLTextAreaElement
+            ).value = draft.shipping_address;
 
-          if (draft.order_type) (document.getElementById('inv-order-type') as HTMLSelectElement).value = draft.order_type;
-          if (draft.source_division) (document.getElementById('inv-source-division') as HTMLSelectElement).value = draft.source_division;
-          if (draft.issue_date) (document.getElementById('invoice-issue-date') as HTMLInputElement).value = draft.issue_date.split('T')[0];
-          if (draft.due_date) (document.getElementById('invoice-due-date') as HTMLInputElement).value = draft.due_date.split('T')[0];
-          if (draft.lpo_number) (document.getElementById('invoice-lpo-number') as HTMLInputElement).value = draft.lpo_number;
-          if (draft.notes) (document.getElementById('invoice-notes') as HTMLTextAreaElement).value = draft.notes;
-          if (draft.signatory_incharge) (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value = draft.signatory_incharge;
+          if (draft.order_type)
+            (
+              document.getElementById("inv-order-type") as HTMLSelectElement
+            ).value = draft.order_type;
+          if (draft.source_division)
+            (
+              document.getElementById(
+                "inv-source-division",
+              ) as HTMLSelectElement
+            ).value = draft.source_division;
+          if (draft.issue_date)
+            (
+              document.getElementById("invoice-issue-date") as HTMLInputElement
+            ).value = draft.issue_date.split("T")[0];
+          if (draft.due_date)
+            (
+              document.getElementById("invoice-due-date") as HTMLInputElement
+            ).value = draft.due_date.split("T")[0];
+          if (draft.lpo_number)
+            (
+              document.getElementById("invoice-lpo-number") as HTMLInputElement
+            ).value = draft.lpo_number;
+          if (draft.notes)
+            (
+              document.getElementById("invoice-notes") as HTMLTextAreaElement
+            ).value = draft.notes;
+          if (draft.signatory_incharge)
+            (
+              document.getElementById(
+                "invoice-signatory-incharge",
+              ) as HTMLSelectElement
+            ).value = draft.signatory_incharge;
 
           const items = draft.items || [];
-          items.forEach((item: any) => addRow({
-            product_id: item.product_id,
-            catalogue_ref: item.catalogue_ref,
-            description: item.description,
-            tech_spec: item.tech_spec,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            tax_type: item.tax_type || 'percentage',
-            tax_value: item.tax_value !== undefined ? item.tax_value : 5,
-          }));
+          items.forEach((item: any) =>
+            addRow({
+              product_id: item.product_id,
+              catalogue_ref: item.catalogue_ref,
+              description: item.description,
+              tech_spec: item.tech_spec,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              tax_type: item.tax_type || "percentage",
+              tax_value: item.tax_value !== undefined ? item.tax_value : 5,
+            }),
+          );
 
           if (items.length === 0) addRow();
-          
-          const msg = document.getElementById('invoice-form-msg');
+
+          const msg = document.getElementById("invoice-form-msg");
           if (msg) {
-            msg.className = 'p-4 rounded-xl text-sm font-semibold bg-cyan-50 text-cyan-800 border border-cyan-200';
-            msg.textContent = `📋 Loaded snapshot for document ${draft.invoice_number || 'Order'} from audit trail. Review details and click Generate when ready.`;
-            msg.classList.remove('hidden');
+            msg.className =
+              "p-4 rounded-xl text-sm font-semibold bg-cyan-50 text-cyan-800 border border-cyan-200";
+            msg.textContent = `📋 Loaded snapshot for document ${draft.invoice_number || "Order"} from audit trail. Review details and click Generate when ready.`;
+            msg.classList.remove("hidden");
           }
         } catch (e) {
-          console.warn('Error loading audit snapshot draft:', e);
+          console.warn("Error loading audit snapshot draft:", e);
           addRow();
         }
       } else {
@@ -1608,106 +2764,204 @@ const companiesJson = JSON.stringify(companiesList);
 
     // Submit
     const submitInvoice = async (isDraft = false) => {
-      const msg = document.getElementById('invoice-form-msg')!;
-      const submitBtn = document.getElementById('invoice-submit-btn') as HTMLButtonElement;
-      const draftBtn = document.getElementById('invoice-draft-btn') as HTMLButtonElement;
+      const msg = document.getElementById("invoice-form-msg")!;
+      const submitBtn = document.getElementById(
+        "invoice-submit-btn",
+      ) as HTMLButtonElement;
+      const draftBtn = document.getElementById(
+        "invoice-draft-btn",
+      ) as HTMLButtonElement;
 
       if (!validateForm()) {
-        msg.className = 'p-4 rounded-xl text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200';
-        msg.textContent = 'Please fix the errors above before submitting.';
-        msg.classList.remove('hidden');
-        msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        msg.className =
+          "p-4 rounded-xl text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200";
+        msg.textContent = "Please fix the errors above before submitting.";
+        msg.classList.remove("hidden");
+        msg.scrollIntoView({ behavior: "smooth", block: "nearest" });
         return;
       }
 
       submitBtn.disabled = true;
       draftBtn.disabled = true;
       const origSubmit = submitBtn.textContent;
-      submitBtn.textContent = isDraft ? 'Saving...' : 'Processing...';
+      submitBtn.textContent = isDraft ? "Saving..." : "Processing...";
 
       // Build payload
-      const rows = document.querySelectorAll('.invoice-item-row');
+      const rows = document.querySelectorAll(".invoice-item-row");
       const items: any[] = [];
-      rows.forEach(row => {
-        const desc = (row.querySelector('.item-desc-input') as HTMLInputElement)?.value?.trim();
-        const qty = parseInt((row.querySelector('.item-qty-input') as HTMLInputElement)?.value);
-        const price = parseFloat((row.querySelector('.item-price-input') as HTMLInputElement)?.value);
-        const taxVal = parseFloat((row.querySelector('.item-tax-input') as HTMLInputElement)?.value) || 0;
-        const taxType = (row.querySelector('.item-tax-type-select') as HTMLSelectElement)?.value || 'percentage';
-        const ref = (row.querySelector('input[name="item_ref"]') as HTMLInputElement)?.value?.trim();
-        const techSpec = (row.querySelector('input[name="item_tech_spec"]') as HTMLInputElement)?.value?.trim();
-        const productId = (row.querySelector('input[name="item_product_id"]') as HTMLInputElement)?.value;
-        const imageBase64 = row.getAttribute('data-image-base64');
+      rows.forEach((row) => {
+        const desc = (
+          row.querySelector(".item-desc-input") as HTMLInputElement
+        )?.value?.trim();
+        const qty = parseInt(
+          (row.querySelector(".item-qty-input") as HTMLInputElement)?.value,
+        );
+        const price = parseFloat(
+          (row.querySelector(".item-price-input") as HTMLInputElement)?.value,
+        );
+        const taxVal =
+          parseFloat(
+            (row.querySelector(".item-tax-input") as HTMLInputElement)?.value,
+          ) || 0;
+        const taxType =
+          (row.querySelector(".item-tax-type-select") as HTMLSelectElement)
+            ?.value || "percentage";
+        const ref = (
+          row.querySelector('input[name="item_ref"]') as HTMLInputElement
+        )?.value?.trim();
+        const techSpec = (
+          row.querySelector('input[name="item_tech_spec"]') as HTMLInputElement
+        )?.value?.trim();
+        const productId = (
+          row.querySelector('input[name="item_product_id"]') as HTMLInputElement
+        )?.value;
+        const imageBase64 = row.getAttribute("data-image-base64");
         if (desc && qty >= 1 && price >= 0) {
-          items.push({ 
-            description: desc, 
-            quantity: qty, 
-            unit_price: price, 
-            tax_value: taxVal, 
-            tax_type: taxType, 
-            catalogue_ref: ref || null, 
-            tech_spec: techSpec || null, 
+          items.push({
+            description: desc,
+            quantity: qty,
+            unit_price: price,
+            tax_value: taxVal,
+            tax_type: taxType,
+            catalogue_ref: ref || null,
+            tech_spec: techSpec || null,
             product_id: productId || null,
-            image_base64: imageBase64 || null
+            image_base64: imageBase64 || null,
           });
         }
       });
 
-      const billingVal = (document.getElementById('invoice-billing-address') as HTMLTextAreaElement).value.trim();
-      const isShippingSame = (document.getElementById('shipping-same-as-billing') as HTMLInputElement)?.checked;
-      const shippingVal = isShippingSame ? billingVal : (document.getElementById('invoice-shipping-address') as HTMLTextAreaElement).value.trim();
+      const billingVal = (
+        document.getElementById(
+          "invoice-billing-address",
+        ) as HTMLTextAreaElement
+      ).value.trim();
+      const isShippingSame = (
+        document.getElementById("shipping-same-as-billing") as HTMLInputElement
+      )?.checked;
+      const shippingVal = isShippingSame
+        ? billingVal
+        : (
+            document.getElementById(
+              "invoice-shipping-address",
+            ) as HTMLTextAreaElement
+          ).value.trim();
 
       // Clean customer name from "Name (CUS-XXXX)"
-      let finalCustomerName = (document.getElementById('invoice-customer-name') as HTMLInputElement).value.trim();
-      const realNameInput = (document.getElementById('inv-full-name') as HTMLInputElement).value.trim();
+      let finalCustomerName = (
+        document.getElementById("invoice-customer-name") as HTMLInputElement
+      ).value.trim();
+      const realNameInput = (
+        document.getElementById("inv-full-name") as HTMLInputElement
+      ).value.trim();
       if (realNameInput && finalCustomerName.startsWith(realNameInput)) {
         finalCustomerName = realNameInput;
       } else {
-        finalCustomerName = finalCustomerName.replace(/\s*\(CUS-[a-zA-Z0-9-]+\)$/i, '');
+        finalCustomerName = finalCustomerName.replace(
+          /\s*\(CUS-[a-zA-Z0-9-]+\)$/i,
+          "",
+        );
       }
 
       const payload: any = {
         customer_name: finalCustomerName,
-        customer_email: (document.getElementById('invoice-customer-email') as HTMLInputElement).value.trim() || undefined,
-        customer_phone: (document.getElementById('invoice-customer-phone') as HTMLInputElement).value.trim() || undefined,
-        company_name: (document.getElementById('invoice-company-name') as HTMLInputElement).value.trim() || undefined,
-        company_vat: (document.getElementById('invoice-company-vat') as HTMLInputElement).value.trim() || undefined,
-        show_images: (document.getElementById('invoice-show-images') as HTMLInputElement).checked,
+        customer_email:
+          (
+            document.getElementById(
+              "invoice-customer-email",
+            ) as HTMLInputElement
+          ).value.trim() || undefined,
+        customer_phone:
+          (
+            document.getElementById(
+              "invoice-customer-phone",
+            ) as HTMLInputElement
+          ).value.trim() || undefined,
+        company_name:
+          (
+            document.getElementById("invoice-company-name") as HTMLInputElement
+          ).value.trim() || undefined,
+        company_vat:
+          (
+            document.getElementById("invoice-company-vat") as HTMLInputElement
+          ).value.trim() || undefined,
+        show_images: (
+          document.getElementById("invoice-show-images") as HTMLInputElement
+        ).checked,
         billing_address: billingVal || undefined,
         shipping_address: shippingVal || undefined,
-        order_type: (document.getElementById('inv-order-type') as HTMLSelectElement).value,
-        source_division: (document.getElementById('inv-source-division') as HTMLSelectElement).value || null,
-        issue_date: (document.getElementById('invoice-issue-date') as HTMLInputElement).value,
-        due_date: (document.getElementById('invoice-due-date') as HTMLInputElement).value || undefined,
-        payment_status: isDraft ? 'draft' : (document.getElementById('invoice-payment-status') as HTMLSelectElement).value,
-        signatory_incharge: (document.getElementById('invoice-signatory-incharge') as HTMLSelectElement).value || undefined,
-        discount_type: (document.getElementById('inv-discount-type') as HTMLSelectElement).value,
-        discount_value: parseFloat((document.getElementById('inv-discount') as HTMLInputElement).value) || 0,
-        internal_notes: (document.getElementById('inv-internal-notes') as HTMLTextAreaElement).value.trim() || undefined,
-        lpo_number: (document.getElementById('invoice-lpo-number') as HTMLInputElement).value.trim() || undefined,
-        payment_terms: (document.getElementById('invoice-payment-terms') as HTMLInputElement).value.trim() || undefined,
+        order_type: (
+          document.getElementById("inv-order-type") as HTMLSelectElement
+        ).value,
+        source_division:
+          (document.getElementById("inv-source-division") as HTMLSelectElement)
+            .value || null,
+        issue_date: (
+          document.getElementById("invoice-issue-date") as HTMLInputElement
+        ).value,
+        due_date:
+          (document.getElementById("invoice-due-date") as HTMLInputElement)
+            .value || undefined,
+        payment_status: isDraft
+          ? "draft"
+          : (
+              document.getElementById(
+                "invoice-payment-status",
+              ) as HTMLSelectElement
+            ).value,
+        signatory_incharge:
+          (
+            document.getElementById(
+              "invoice-signatory-incharge",
+            ) as HTMLSelectElement
+          ).value || undefined,
+        discount_type: (
+          document.getElementById("inv-discount-type") as HTMLSelectElement
+        ).value,
+        discount_value:
+          parseFloat(
+            (document.getElementById("inv-discount") as HTMLInputElement).value,
+          ) || 0,
+        internal_notes:
+          (
+            document.getElementById("inv-internal-notes") as HTMLTextAreaElement
+          ).value.trim() || undefined,
+        lpo_number:
+          (
+            document.getElementById("invoice-lpo-number") as HTMLInputElement
+          ).value.trim() || undefined,
+        payment_terms:
+          (
+            document.getElementById("invoice-payment-terms") as HTMLInputElement
+          ).value.trim() || undefined,
         items,
       };
 
-      const id = (document.getElementById('invoice-id') as HTMLInputElement).value;
-      const url = id ? `/api/invoices/${id}` : '/api/invoices';
-      const method = id ? 'PUT' : 'POST';
+      const id = (document.getElementById("invoice-id") as HTMLInputElement)
+        .value;
+      const url = id ? `/api/invoices/${id}` : "/api/invoices";
+      const method = id ? "PUT" : "POST";
 
       try {
         let res = await fetch(url, {
           method,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
 
         if (res.status === 409) {
           const cloneRes = res.clone();
           const result = await cloneRes.json();
-          if (confirm(result.error + '\n\nDo you want to proceed and save this invoice anyway?')) {
+          if (
+            confirm(
+              result.error +
+                "\n\nDo you want to proceed and save this invoice anyway?",
+            )
+          ) {
             payload.bypassDuplicateCheck = true;
             res = await fetch(url, {
               method,
-              headers: { 'Content-Type': 'application/json' },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify(payload),
             });
           } else {
@@ -1722,86 +2976,120 @@ const companiesJson = JSON.stringify(companiesList);
         const result = await res.json();
 
         if (res.ok) {
-          msg.className = 'p-4 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
-          msg.textContent = isDraft ? '✓ Draft saved.' : (id ? `✓ Order ${result.invoice_number || ''} updated successfully!` : `✓ Invoice ${result.invoice_number || ''} generated successfully!`);
-          msg.classList.remove('hidden');
+          msg.className =
+            "p-4 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
+          msg.textContent = isDraft
+            ? "✓ Draft saved."
+            : id
+              ? `✓ Order ${result.invoice_number || ""} updated successfully!`
+              : `✓ Invoice ${result.invoice_number || ""} generated successfully!`;
+          msg.classList.remove("hidden");
 
           if (isDraft || id) {
             // For drafts or updates: redirect back to the orders list or detail page
-            const dest = id ? `/dashboard/invoices/${id}` : '/dashboard/invoices';
-            setTimeout(() => window.location.href = dest, 900);
+            const dest = id
+              ? `/dashboard/invoices/${id}`
+              : "/dashboard/invoices";
+            setTimeout(() => (window.location.href = dest), 900);
           } else {
             // Hide main modal and show success modal
-            const invoiceModal = document.getElementById('invoice-modal-backdrop');
-            if (invoiceModal) invoiceModal.classList.add('hidden');
-            
-            const successModal = document.getElementById('invoice-success-modal');
-            const successNum = document.getElementById('success-invoice-num');
-            const successPrint = document.getElementById('success-print-link') as HTMLAnchorElement;
-            const successPdf = document.getElementById('success-pdf-link') as HTMLAnchorElement;
-            const successView = document.getElementById('success-view-link') as HTMLAnchorElement;
-            const successClose = document.getElementById('success-close-btn');
+            const invoiceModal = document.getElementById(
+              "invoice-modal-backdrop",
+            );
+            if (invoiceModal) invoiceModal.classList.add("hidden");
+
+            const successModal = document.getElementById(
+              "invoice-success-modal",
+            );
+            const successNum = document.getElementById("success-invoice-num");
+            const successPrint = document.getElementById(
+              "success-print-link",
+            ) as HTMLAnchorElement;
+            const successPdf = document.getElementById(
+              "success-pdf-link",
+            ) as HTMLAnchorElement;
+            const successView = document.getElementById(
+              "success-view-link",
+            ) as HTMLAnchorElement;
+            const successClose = document.getElementById("success-close-btn");
 
             if (successModal && successNum) {
-              successNum.textContent = result.invoice_number || '';
-              if (successPrint) successPrint.href = `/dashboard/invoices/print/${result.id}`;
-              if (successPdf) successPdf.href = `/dashboard/invoices/print/${result.id}`;
-              if (successView) successView.href = `/dashboard/invoices/${result.id}`;
-              
-              successClose?.addEventListener('click', () => {
-                successModal.classList.add('hidden');
-                window.location.href = '/dashboard/invoices';
+              successNum.textContent = result.invoice_number || "";
+              if (successPrint)
+                successPrint.href = `/dashboard/invoices/print/${result.id}`;
+              if (successPdf)
+                successPdf.href = `/dashboard/invoices/print/${result.id}`;
+              if (successView)
+                successView.href = `/dashboard/invoices/${result.id}`;
+
+              successClose?.addEventListener("click", () => {
+                successModal.classList.add("hidden");
+                window.location.href = "/dashboard/invoices";
               });
 
-              successModal.classList.remove('hidden');
-              successModal.classList.add('flex');
+              successModal.classList.remove("hidden");
+              successModal.classList.add("flex");
             } else {
-              setTimeout(() => window.location.href = '/dashboard/invoices', 900);
+              setTimeout(
+                () => (window.location.href = "/dashboard/invoices"),
+                900,
+              );
             }
           }
         } else {
-          const errMsg = result.details?.map((d: any) => d.message).join(', ') || result.error || 'Unknown error';
+          const errMsg =
+            result.details?.map((d: any) => d.message).join(", ") ||
+            result.error ||
+            "Unknown error";
           throw new Error(errMsg);
         }
       } catch (err: any) {
-        msg.className = 'p-4 rounded-xl text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200';
+        msg.className =
+          "p-4 rounded-xl text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200";
         msg.textContent = `Error: ${err.message}`;
-        msg.classList.remove('hidden');
+        msg.classList.remove("hidden");
       } finally {
         submitBtn.disabled = false;
         draftBtn.disabled = false;
-        submitBtn.textContent = origSubmit || 'Generate Invoice';
+        submitBtn.textContent = origSubmit || "Generate Invoice";
       }
     };
 
-    form.addEventListener('submit', (e) => { e.preventDefault(); submitInvoice(false); });
-    
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      submitInvoice(false);
+    });
+
     // Prevent Enter key from submitting the form when typing in text fields
-    form.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+    form.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
         const target = e.target as HTMLElement;
         // Allow Enter to submit only if pressed inside textarea fields or buttons
-        if (target.tagName !== 'TEXTAREA' && target.tagName !== 'BUTTON') {
+        if (target.tagName !== "TEXTAREA" && target.tagName !== "BUTTON") {
           e.preventDefault();
         }
       }
     });
 
-    document.getElementById('invoice-draft-btn')?.addEventListener('click', () => submitInvoice(true));
+    document
+      .getElementById("invoice-draft-btn")
+      ?.addEventListener("click", () => submitInvoice(true));
 
-    document.getElementById('cancel-invoice-btn')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      const modalBackdrop = document.getElementById('invoice-modal-backdrop');
-      if (modalBackdrop && !modalBackdrop.classList.contains('hidden')) {
-        modalBackdrop.classList.add('hidden');
-      } else if (window.history.length > 1) {
-        window.history.back();
-      } else {
-        window.location.href = '/dashboard/invoices';
-      }
-    });
+    document
+      .getElementById("cancel-invoice-btn")
+      ?.addEventListener("click", (e) => {
+        e.preventDefault();
+        const modalBackdrop = document.getElementById("invoice-modal-backdrop");
+        if (modalBackdrop && !modalBackdrop.classList.contains("hidden")) {
+          modalBackdrop.classList.add("hidden");
+        } else if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = "/dashboard/invoices";
+        }
+      });
   };
 
   setupInvoiceForm();
-  document.addEventListener('astro:page-load', setupInvoiceForm);
+  document.addEventListener("astro:page-load", setupInvoiceForm);
 </script>

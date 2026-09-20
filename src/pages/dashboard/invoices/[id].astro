@@ -19,7 +19,7 @@ let printConfig: any = null;
 try {
   const invRes = await query(`
     SELECT i.*, 
-       (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list,
+       (SELECT JSON_AGG(it ORDER BY it.sort_order ASC, it.id ASC) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list,
        COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted,
        (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code,
        (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code
@@ -49,7 +49,7 @@ try {
     return acc;
   }, {});
 
-  // Fetch selected disclaimers/clauses
+  // Fetch selected disclaimers/clauses strictly for this division
   if (inv) {
     let activeTerms: string[] = [];
     try {
@@ -61,8 +61,15 @@ try {
     }
     
     if (activeTerms.length > 0) {
-      const legalRes = await query('SELECT title, content, identifier FROM legal_artifacts WHERE identifier = ANY($1)', [activeTerms]);
-      selectedClauses = legalRes.rows;
+      const legalRes = await query('SELECT title, content, identifier, division FROM legal_artifacts WHERE identifier = ANY($1)', [activeTerms]);
+      const activeDiv = (inv.source_division || '').toLowerCase().trim();
+      const isDTL = activeDiv === 'dtl' || activeDiv.includes('technical') || activeDiv.includes('lighting');
+      const isDGS = activeDiv === 'dgs' || activeDiv.includes('greenscapes') || activeDiv.includes('green');
+      selectedClauses = legalRes.rows.filter((c: any) => {
+        if (isDTL && !isDGS) return c.division === 'dtl';
+        if (isDGS && !isDTL) return c.division === 'dgs';
+        return true;
+      });
     }
   }
 
@@ -156,8 +163,10 @@ if (inv.payment_status === 'draft') {
 }
 
 // Enforce Document Progression Pipeline Rules
-const isPaid = inv.payment_status === 'paid';
-const isConfirmed = inv.payment_status === 'paid' || inv.payment_status === 'confirmed';
+const isWin = inv.payment_status === 'paid' || inv.payment_status === 'win' || inv.payment_status === 'confirmed';
+const isLoss = inv.payment_status === 'cancelled' || inv.payment_status === 'loss';
+const isPaid = inv.payment_status === 'paid' || inv.payment_status === 'win';
+const isConfirmed = isPaid || inv.payment_status === 'confirmed';
 const type = inv.order_type || 'tax_invoice';
 
 let stage = 6;
@@ -216,13 +225,24 @@ const showArchiveAction = !isDraftOrUnconfirmed;
         <div class="flex items-center gap-3 flex-wrap">
           <h1 class="text-2xl font-black text-slate-900 tracking-tight">{inv.invoice_number}</h1>
           <span class={`px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
-            inv.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+            inv.payment_status === 'paid' || inv.payment_status === 'win' ? 'bg-green-100 text-green-800' :
             inv.payment_status === 'partially_paid' ? 'bg-amber-100 text-amber-800' :
             inv.payment_status === 'draft' ? 'bg-slate-100 text-slate-700' :
-            inv.payment_status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-red-50 text-rose-700'
+            inv.payment_status === 'cancelled' || inv.payment_status === 'loss' ? 'bg-red-100 text-red-800' : 'bg-red-50 text-rose-700'
           }`}>
             {inv.payment_status === 'partially_paid' ? 'Partially Paid' : inv.payment_status}
           </span>
+          {isWin ? (
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-3xs" title="Order Outcome: Win">
+              <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+              WIN
+            </span>
+          ) : isLoss ? (
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300 shadow-3xs" title="Order Outcome: Loss">
+              <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+              LOSS
+            </span>
+          ) : null}
           {Boolean(inv.internal_notes?.includes('[AUDIT RECOVERY]') || inv.invoice_number?.includes('-REC')) && (
             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-300 shadow-3xs">
               <ShieldCheck class="w-3 h-3 text-amber-600" />
@@ -284,7 +304,27 @@ const showArchiveAction = !isDraftOrUnconfirmed;
           <Printer class="h-4 w-4" />
           Print / Download PDF
         </a>
-        {inv.payment_status !== 'cancelled' && (
+        {inv.payment_status !== 'win' && inv.payment_status !== 'paid' && (
+          <button 
+            type="button" 
+            id="mark-win-btn"
+            class="inline-flex items-center justify-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
+          >
+            <CheckCircle2 class="h-4 w-4 text-emerald-600" />
+            Mark as Win
+          </button>
+        )}
+        {inv.payment_status !== 'loss' && inv.payment_status !== 'cancelled' && (
+          <button 
+            type="button" 
+            id="mark-loss-btn"
+            class="inline-flex items-center justify-center gap-1.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-800 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm"
+          >
+            <AlertCircle class="h-4 w-4 text-rose-600" />
+            Mark as Loss
+          </button>
+        )}
+        {inv.payment_status !== 'cancelled' && inv.payment_status !== 'loss' && (
           <button 
             type="button" 
             id="cancel-order-btn"
@@ -1067,6 +1107,66 @@ const showArchiveAction = !isDraftOrUnconfirmed;
       convertOrder('delivery_note');
     }
   });
+  // Mark as Win button handler
+  document.getElementById('mark-win-btn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const isConfirmed = await showConfirm('Are you sure you want to mark this order as WIN?');
+    if (!isConfirmed) return;
+
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_status: 'win' })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert('Failed to update order status.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error executing operation.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  });
+
+  // Mark as Loss button handler
+  document.getElementById('mark-loss-btn')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const isConfirmed = await showConfirm('Are you sure you want to mark this order as LOSS? Any deducted inventory will be restored.');
+    if (!isConfirmed) return;
+
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_status: 'loss' })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert('Failed to update order status.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error executing operation.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  });
+
   // Cancel Order button handler
   document.getElementById('cancel-order-btn')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget as HTMLButtonElement;

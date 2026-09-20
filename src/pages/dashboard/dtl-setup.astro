@@ -1,6 +1,7 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
+import { Lightbulb, Camera, ExternalLink } from '@lucide/astro';
 
 let dtlSetup: any = {
   hero: { imageUrl: '/hero-dtl.jpg', title: 'Every corner deserves\\nPERFECT LIGHTING.', subtitle: '', ctaText: '', ctaUrl: '' },
@@ -73,9 +74,36 @@ const selectedProjects = homepageProjectIds
     <!-- LEFT: Configuration Form -->
     <div id="dtl-form-column" class="w-full lg:w-2/5 flex flex-col min-h-0 bg-white border border-slate-200 rounded-2xl shadow-sm">
       
+      <!-- Department Switcher Banner (DTL Lighting vs DTL CAMERA) -->
+      <div class="p-3 bg-slate-50 border-b border-slate-200">
+        <div class="flex items-center gap-1.5 bg-slate-200/70 p-1 rounded-xl">
+          <a 
+            href="/dashboard/dtl-setup" 
+            class="flex-1 text-center py-2 rounded-lg text-xs font-black uppercase tracking-wider bg-white text-indigo-700 shadow-xs flex items-center justify-center gap-1.5 border border-indigo-300/40"
+            title="Active: DTL Architectural Lighting Configuration"
+          >
+            <Lightbulb class="w-3.5 h-3.5 text-indigo-600" />
+            <span>DTL Lighting</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 text-[9px] font-black">ACTIVE</span>
+          </a>
+          <a 
+            href="/dashboard/cctv-setup" 
+            class="flex-1 text-center py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-slate-600 hover:text-amber-700 hover:bg-white/80 transition-all flex items-center justify-center gap-1.5"
+            title="Switch to DTL Security & Surveillance Camera Department"
+          >
+            <Camera class="w-3.5 h-3.5 text-amber-500" />
+            <span>DTL CAMERA</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[9px] font-black shadow-xs animate-pulse">NEW</span>
+          </a>
+        </div>
+      </div>
+
       <header class="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
         <div>
-          <h1 class="text-lg font-black text-slate-900 tracking-tight">DTL Setup</h1>
+          <h1 class="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Lightbulb class="w-5 h-5 text-indigo-600" />
+            DTL Lighting Setup
+          </h1>
           <p class="text-[11px] text-slate-500 font-medium">Configure Hero, Discover & Projects</p>
         </div>
         <div class="flex items-center gap-2">

@@ -49,9 +49,13 @@ try {
   }
 }
 
+// Strictly isolate and auto-select terms for this order's division
+const divisionClauseIds = selectedClauses.map((c: any) => c.identifier);
+const matchingDivisionTerms = activeTerms.filter((t: string) => divisionClauseIds.includes(t));
+const finalActiveTerms = matchingDivisionTerms.length > 0 ? matchingDivisionTerms : divisionClauseIds;
+
 const isTermActive = (identifier: string): boolean => {
-  if (!inv.payment_terms) return true;
-  return activeTerms.includes(identifier);
+  return finalActiveTerms.includes(identifier);
 };
 
 const hasVat = Number(inv.gst_amount) > 0 || items.some((i: any) => Number(i.tax_value) > 0);

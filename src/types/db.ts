@@ -103,7 +103,7 @@ export interface Invoice {
   customer_phone: string | null;
   issue_date: string;
   due_date: string;
-  payment_status: 'paid' | 'unpaid' | 'overdue' | 'cancelled';
+  payment_status: 'paid' | 'partially_paid' | 'unpaid' | 'overdue' | 'cancelled' | 'draft' | 'win' | 'loss';
   subtotal: number;
   gst_amount: number;
   total_amount: number;

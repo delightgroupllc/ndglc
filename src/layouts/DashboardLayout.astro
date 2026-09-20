@@ -4,7 +4,8 @@ import { UserButton } from '@clerk/astro/components';
 import { 
   LayoutDashboard, Package, FolderGit2, FileSpreadsheet, FileClock, 
   DownloadCloud, Inbox, Users2, ShieldAlert, ScrollText, 
-  Menu, X, ChevronLeft, LogOut, ExternalLink, Activity, Handshake, Image, Settings2
+  Menu, X, ChevronLeft, LogOut, ExternalLink, Activity, Handshake, Image, Settings2,
+  Camera
 } from '@lucide/astro';
 import ResourcePicker from '../components/ui/ResourcePicker.astro';
 import ThemeSelector from '../components/ui/ThemeSelector.astro';
@@ -43,7 +44,8 @@ const navGroups = [
       { id: 'about-setup', name: 'About Us Setup', href: '/dashboard/about-setup', icon: Image, show: isAdmin },
       { id: 'contact-setup', name: 'Contact Us Setup', href: '/dashboard/contact-setup', icon: Image, show: isAdmin },
       { id: 'downloads-setup', name: 'Downloads Setup', href: '/dashboard/downloads-setup', icon: Image, show: isAdmin },
-      { id: 'dtl-setup', name: 'DTL Setup', href: '/dashboard/dtl-setup', icon: Image, show: isAdmin },
+      { id: 'dtl-setup', name: 'DTL Lighting Setup', href: '/dashboard/dtl-setup', icon: Image, show: isAdmin },
+      { id: 'cctv-setup', name: 'DTL Camera Setup', href: '/dashboard/cctv-setup', icon: Camera, show: isAdmin },
       { id: 'dgs-setup', name: 'DGS Setup', href: '/dashboard/dgs-setup', icon: Image, show: isAdmin },
       { id: 'site-disclaimers', name: 'Site Disclaimers', href: '/dashboard/site-disclaimers', icon: ScrollText, show: isAdmin },
       { id: 'page-visibility', name: 'Visibility Configurator', href: '/dashboard/page-visibility', icon: Settings2, show: isAdmin },

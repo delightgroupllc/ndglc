@@ -68,7 +68,7 @@ try {
     for (const div of divRes.rows) {
       // 1) Try to fetch explicit categories configured for the division
       const catRes = await query(
-        'SELECT name, slug FROM categories WHERE division_id = $1 ORDER BY display_order ASC LIMIT 6',
+        'SELECT name, slug FROM categories WHERE division_id = $1 ORDER BY display_order ASC LIMIT 15',
         [div.id]
       );
 
@@ -302,13 +302,22 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
             )}
 
             {pageVisibility.enable_dtl && (
-              <a href="/delighttechnicallighting" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
-                <span class="flex items-center gap-3">
-                  <Cpu class="h-4.5 w-4.5 text-slate-400" />
-                  <span>Technical Lighting</span>
-                </span>
-                <ChevronDown class="h-4 w-4 text-slate-450" />
-              </a>
+              <>
+                <a href="/delighttechnicallighting" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
+                  <span class="flex items-center gap-3">
+                    <Cpu class="h-4.5 w-4.5 text-slate-400" />
+                    <span>Technical Lighting</span>
+                  </span>
+                  <ChevronDown class="h-4 w-4 text-slate-450" />
+                </a>
+                <a href="/delighttechnicallighting/cctv" class="flex items-center justify-between p-2 pl-6 rounded-lg text-xs font-bold text-amber-600 hover:bg-amber-50 transition">
+                  <span class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    <span>CCTV & Camera Department</span>
+                  </span>
+                  <span class="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-black">NEW</span>
+                </a>
+              </>
             )}
 
             {pageVisibility.enable_dgs && (
@@ -381,10 +390,10 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
                   </span>
 
                   <!-- Products Mega Menu Dropdown -->
-                  <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-3xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-6 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                  <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen ${isDTL ? 'max-w-4xl' : 'max-w-3xl'} bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-6 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
                     <!-- Transparent hover bridge: fills gap between nav and panel -->
                     <div class="absolute -top-2 inset-x-0 h-2"></div>
-                    <div class="grid grid-cols-5 gap-6">
+                    <div class={`grid ${isDTL ? 'grid-cols-6 gap-4' : 'grid-cols-5 gap-6'}`}>
                     {isDTL ? (
                       <>
                         <div>
@@ -420,6 +429,19 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
                             <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Tracklights</a></li>
                             <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Wall Lights</a></li>
                             <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Chandeliers</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-amber-600 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-amber-200 flex items-center justify-between">
+                            <span>CCTV & Cameras</span>
+                            <span class="bg-amber-100 text-amber-800 text-[8px] font-black px-1.5 py-0.5 rounded">NEW</span>
+                          </h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delighttechnicallighting/cctv-ip-dome" class="hover:text-amber-600 hover:font-bold transition">IP & Dome Cameras</a></li>
+                            <li><a href="/delighttechnicallighting/cctv-ptz-smart" class="hover:text-amber-600 hover:font-bold transition">PTZ 360° Cameras</a></li>
+                            <li><a href="/delighttechnicallighting/cctv-bullet-outdoor" class="hover:text-amber-600 hover:font-bold transition">Outdoor Bullet</a></li>
+                            <li><a href="/delighttechnicallighting/cctv-nvr-storage" class="hover:text-amber-600 hover:font-bold transition">NVR & Storage</a></li>
+                            <li><a href="/delighttechnicallighting/cctv" class="hover:text-amber-600 font-bold text-amber-600 transition flex items-center gap-1">All CCTV Systems →</a></li>
                           </ul>
                         </div>
                         <div>

@@ -17,7 +17,7 @@ try {
   // Fetch invoice details
   const invRes = await query(`
     SELECT i.*, 
-       (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list,
+       (SELECT JSON_AGG(it ORDER BY it.sort_order ASC, it.id ASC) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list,
        COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted,
        (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code,
        (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code
@@ -85,12 +85,15 @@ try {
     const legalRes = await query(`SELECT title, content, identifier, type, show_in_invoice, division FROM legal_artifacts ORDER BY CASE identifier WHEN 'general-terms' THEN 1 WHEN 'Acceptance of order' THEN 2 WHEN 'Illustrations, Description, Dimensions, Weight, Volume:' THEN 3 WHEN 'Designs:' THEN 4 WHEN 'Samples:' THEN 5 WHEN 'Delivery:' THEN 6 WHEN 'Cancellation:' THEN 7 WHEN 'Returns:' THEN 8 WHEN 'payment-terms' THEN 9 WHEN 'Installation :' THEN 10 WHEN 'Workmanship Warranty:' THEN 11 WHEN 'warranty' THEN 12 WHEN 'Liability' THEN 13 WHEN 'Others' THEN 14 WHEN 'Force Majeure:' THEN 15 ELSE 99 END ASC`);
     const allClauses = legalRes.rows;
     
-    const activeDivision = (inv.source_division || '').toLowerCase();
+    const activeDivision = (inv.source_division || '').trim().toLowerCase();
+    const isDTL = activeDivision === 'dtl' || activeDivision.includes('technical') || activeDivision.includes('lighting');
+    const isDGS = activeDivision === 'dgs' || activeDivision.includes('greenscapes') || activeDivision.includes('green');
     selectedClauses = allClauses.filter((c: any) => {
       if (!c.show_in_invoice) return false;
-      if (activeDivision === 'dgs') return c.division === 'dgs';
-      if (activeDivision === 'dtl') return c.division === 'dtl';
-      return true;
+      if (isDGS && !isDTL) return c.division === 'dgs';
+      if (isDTL && !isDGS) return c.division === 'dtl';
+      if (activeDivision === 'both' || (isDTL && isDGS)) return c.division === 'dtl' || c.division === 'dgs';
+      return c.division === 'dtl';
     });
 
     // Extract delivery note disclaimer specifically (any identifier containing 'delivery-note')
@@ -178,8 +181,19 @@ try {
   }
 }
 
+// Strictly isolate and auto-select terms for this order's division
+const divisionClauseIds = selectedClauses.map((c: any) => c.identifier);
+const matchingDivisionTerms = activeTerms.filter((t: string) => divisionClauseIds.includes(t));
+
+// If no terms for this division are present (empty array, legacy text, or different division),
+// auto-select ALL clauses strictly for this order's division.
+if (matchingDivisionTerms.length === 0) {
+  activeTerms = [...divisionClauseIds];
+} else {
+  activeTerms = matchingDivisionTerms;
+}
+
 const isTermChecked = (identifier: string): boolean => {
-  if (!inv.payment_terms) return true;
   return activeTerms.includes(identifier);
 };
 ---
@@ -1436,8 +1450,8 @@ const isTermChecked = (identifier: string): boolean => {
                 <span>Show Pricing Columns</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" id="config-show-col-units" class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
-                <span>Show Units / Qty Columns</span>
+                <input type="checkbox" id="config-show-col-units" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Quantity Column</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="config-show-col-vat" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
@@ -2051,7 +2065,6 @@ const isTermChecked = (identifier: string): boolean => {
         const toUntick = [
           'config-show-col-spec',
           'config-show-col-price',
-          'config-show-col-units',
           'config-show-col-vat',
           'config-show-subtotal',
           'config-show-vat',

@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   due_date TEXT NOT NULL,
   billing_address TEXT,
   shipping_address TEXT,
-  payment_status TEXT DEFAULT 'unpaid' NOT NULL CHECK (payment_status IN ('paid', 'unpaid', 'overdue', 'cancelled', 'draft')),
+  payment_status TEXT DEFAULT 'unpaid' NOT NULL CHECK (payment_status IN ('paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft', 'win', 'loss')),
   inventory_deducted BOOLEAN DEFAULT FALSE NOT NULL,
   subtotal DOUBLE PRECISION NOT NULL,
   gst_amount DOUBLE PRECISION NOT NULL,
@@ -175,7 +175,8 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   description TEXT NOT NULL,
   quantity INTEGER NOT NULL,
   unit_price DOUBLE PRECISION NOT NULL,
-  total_price DOUBLE PRECISION NOT NULL
+  total_price DOUBLE PRECISION NOT NULL,
+  sort_order INTEGER DEFAULT 0
 );
 
 -- 17. Downloads

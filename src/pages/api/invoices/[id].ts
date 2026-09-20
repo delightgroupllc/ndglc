@@ -30,7 +30,7 @@ const invoiceSchema = z.object({
   issue_date: z.string().min(1, 'Issue date is required'),
   due_date: z.string().optional().nullable().or(z.literal('')),
   signatory_incharge: z.string().min(1, 'Signatory Incharge is required'),
-  payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']).default('unpaid'),
+  payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft', 'win', 'loss']).default('unpaid'),
   discount_type: z.enum(['percentage', 'fixed']).default('fixed'),
   discount_value: z.number().min(0).default(0),
   internal_notes: z.string().optional(),
@@ -46,7 +46,7 @@ export const GET: APIRoute = async ({ params }) => {
 
     const res = await query(`
       SELECT i.*,
-        (SELECT JSON_AGG(it ORDER BY it.id) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+        (SELECT JSON_AGG(it ORDER BY it.sort_order ASC, it.id ASC) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
       FROM invoices i
       WHERE i.id = $1
     `, [id]);
@@ -179,7 +179,8 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
       await client.query('DELETE FROM invoice_items WHERE invoice_id = $1', [id]);
 
       const seen = new Set<string>();
-      for (const item of parsed.items) {
+      for (let itemIdx = 0; itemIdx < parsed.items.length; itemIdx++) {
+        const item = parsed.items[itemIdx];
         const key = `${item.description.toLowerCase().trim()}|${item.catalogue_ref || ''}`;
         if (seen.has(key)) {
           throw new Error(`Duplicate line item detected: "${item.description}". Please consolidate quantities.`);
@@ -308,11 +309,11 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
         }
 
         await client.query(
-          `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
           [id, productId, item.catalogue_ref || null, item.description,
             item.tech_spec || null, item.quantity, item.unit_price, item.tax_type, item.tax_value,
-            lineTax, lineTotal + lineTax, resolvedImage]
+            lineTax, lineTotal + lineTax, resolvedImage, itemIdx]
         );
       }
 
@@ -382,7 +383,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
     const data = await request.json();
     
     if (data.payment_status) {
-      const validStatuses = ['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft'];
+      const validStatuses = ['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft', 'win', 'loss'];
       if (!validStatuses.includes(data.payment_status)) {
         return new Response(JSON.stringify({ error: 'Invalid payment status' }), { status: 400 });
       }
@@ -395,7 +396,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
         const updatedInvRes = await client.query('UPDATE invoices SET payment_status = $1, updated_at = NOW() WHERE id = $2 RETURNING *', [data.payment_status, id]);
         const updatedInv = updatedInvRes.rows[0];
         
-        if (data.payment_status === 'cancelled') {
+        if (data.payment_status === 'cancelled' || data.payment_status === 'loss') {
           if (current.inventory_deducted) {
             const itemsRes = await client.query('SELECT product_id, quantity FROM invoice_items WHERE invoice_id = $1 AND product_id IS NOT NULL', [id]);
             for (const item of itemsRes.rows) {
@@ -414,7 +415,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
           }
         }
 
-        const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+        const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY sort_order ASC, id ASC', [id]);
         const snapshot = createSanitizedOrderSnapshot(updatedInv, itemsRes.rows);
 
         const detailsMsg = `Status of document ${current.invoice_number} set to ${data.payment_status}`;
@@ -454,7 +455,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
           [data.order_type, newInvoiceNumber, id]
         );
         
-        const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+        const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY sort_order ASC, id ASC', [id]);
         const snapshot = createSanitizedOrderSnapshot(updateRes.rows[0], itemsRes.rows);
 
         const detailsMsg = `Converted document ${current.invoice_number} from ${oldType} to ${data.order_type} (New Document No: ${newInvoiceNumber})`;
@@ -476,7 +477,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
       const current = currentRes.rows[0];
 
       const updateRes = await query('UPDATE invoices SET is_archived = $1, updated_at = NOW() WHERE id = $2 RETURNING *', [data.is_archived, id]);
-      const itemsRes = await query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+      const itemsRes = await query('SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY sort_order ASC, id ASC', [id]);
       const snapshot = createSanitizedOrderSnapshot(updateRes.rows[0], itemsRes.rows);
 
       const actionText = data.is_archived ? 'Archived' : 'Restored from archive';
@@ -517,7 +518,7 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
           }
         }
 
-        const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+        const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY sort_order ASC, id ASC', [id]);
         const snapshot = createSanitizedOrderSnapshot(updateRes.rows[0], itemsRes.rows);
 
         const actionText = data.is_deleted ? 'Moved to Trash' : 'Restored from Trash';
@@ -553,7 +554,7 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
         return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404 });
       }
       const invoiceData = currentRes.rows[0];
-      const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1', [id]);
+      const itemsRes = await client.query('SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY sort_order ASC, id ASC', [id]);
       const itemsData = itemsRes.rows;
       const snapshot = createSanitizedOrderSnapshot(invoiceData, itemsData);
 

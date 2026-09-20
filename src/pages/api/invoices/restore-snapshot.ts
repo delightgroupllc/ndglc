@@ -89,12 +89,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const newInv = insertRes.rows[0];
 
       const items = snapshot.items || [];
-      for (const item of items) {
+      for (let idx = 0; idx < items.length; idx++) {
+        const item = items[idx];
         await client.query(
           `INSERT INTO invoice_items (
             invoice_id, product_id, catalogue_ref, description, tech_spec, 
-            quantity, unit_price, tax_type, tax_value, tax_amount, total_price
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            quantity, unit_price, tax_type, tax_value, tax_amount, total_price, sort_order
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
           [
             newInv.id,
             item.product_id || null,
@@ -106,7 +107,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
             item.tax_type || 'percentage',
             Number(item.tax_value) || 5,
             Number(item.tax_amount) || 0,
-            Number(item.total_price) || 0
+            Number(item.total_price) || 0,
+            item.sort_order !== undefined ? item.sort_order : idx
           ]
         );
       }

@@ -18,8 +18,8 @@ let products: any[] = [];
 
 try {
   const queryStr = isAdmin
-    ? 'SELECT i.*, (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list, COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted, (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code, (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code FROM invoices i ORDER BY i.created_at DESC'
-    : 'SELECT i.*, (SELECT JSON_AGG(it) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list, COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted, (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code, (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code FROM invoices i WHERE i.customer_email = $1 ORDER BY i.created_at DESC';
+    ? 'SELECT i.*, (SELECT JSON_AGG(it ORDER BY it.sort_order ASC, it.id ASC) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list, COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted, (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code, (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code FROM invoices i ORDER BY i.created_at DESC'
+    : 'SELECT i.*, (SELECT JSON_AGG(it ORDER BY it.sort_order ASC, it.id ASC) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list, COALESCE((SELECT is_deleted FROM customers WHERE name = i.customer_name LIMIT 1), TRUE) as is_customer_deleted, (SELECT code FROM customers WHERE name = i.customer_name LIMIT 1) as customer_code, (SELECT code FROM companies WHERE name = i.company_name LIMIT 1) as company_code FROM invoices i WHERE i.customer_email = $1 ORDER BY i.created_at DESC';
   const queryParams = isAdmin ? [] : [user?.email || ''];
   const res = await query(queryStr, queryParams);
   invoices = res.rows;
@@ -43,8 +43,10 @@ try {
 
 // Pre-calculate procurement stages and button matrix configs to avoid JSX compiler parser issues with "<"
 invoices = invoices.map(inv => {
-  const isPaid = inv.payment_status === 'paid';
-  const isConfirmed = inv.payment_status === 'paid' || inv.payment_status === 'confirmed';
+  const isPaid = inv.payment_status === 'paid' || inv.payment_status === 'win';
+  const isConfirmed = isPaid || inv.payment_status === 'confirmed';
+  const isWin = inv.payment_status === 'paid' || inv.payment_status === 'win' || inv.payment_status === 'confirmed';
+  const isLoss = inv.payment_status === 'cancelled' || inv.payment_status === 'loss';
   const type = inv.order_type || 'tax_invoice';
 
   let stage = 6;
@@ -91,6 +93,8 @@ invoices = invoices.map(inv => {
     ...inv,
     isPaid,
     isConfirmed,
+    isWin,
+    isLoss,
     stage,
     showAudit,
     showUpdate,
@@ -103,6 +107,11 @@ invoices = invoices.map(inv => {
     deleteBtnClass
   };
 });
+
+const activeInvoices = invoices.filter(inv => !inv.is_deleted && !inv.is_archived);
+const winCount = activeInvoices.filter(inv => inv.isWin).length;
+const lossCount = activeInvoices.filter(inv => inv.isLoss).length;
+const allCount = activeInvoices.length;
 ---
 
 <DashboardLayout title="Billing & Invoices" activeItem="invoices">
@@ -132,8 +141,29 @@ invoices = invoices.map(inv => {
               class="w-full rounded-lg border border-slate-200 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
             />
           </div>
+
+          <!-- Win / Loss Quick Filter Pill -->
+          <div class="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0 shadow-2xs">
+            <button type="button" id="btn-outcome-all" title="Show all orders" class="outcome-filter-btn px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-white text-slate-900 shadow-xs flex items-center gap-1.5">
+              <span>All</span>
+              <span id="count-outcome-all" class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200/80 text-slate-700 font-black leading-none">{allCount}</span>
+            </button>
+            <button type="button" id="btn-outcome-win" title="Quick filter: Won Orders (Paid / Confirmed / Won)" class="outcome-filter-btn px-2.5 py-1 text-xs font-bold rounded-md transition-all text-slate-600 hover:text-emerald-700 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>Win</span>
+              <span id="count-outcome-win" class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-black leading-none">{winCount}</span>
+            </button>
+            <button type="button" id="btn-outcome-loss" title="Quick filter: Lost Orders (Cancelled / Loss)" class="outcome-filter-btn px-2.5 py-1 text-xs font-bold rounded-md transition-all text-slate-600 hover:text-rose-700 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+              <span>Loss</span>
+              <span id="count-outcome-loss" class="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-black leading-none">{lossCount}</span>
+            </button>
+          </div>
+
           <select id="filter-invoice-status" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
             <option value="">All Statuses</option>
+            <option value="win">Win (Won Orders)</option>
+            <option value="loss">Loss (Lost Orders)</option>
             <option value="paid">Paid</option>
             <option value="unpaid">Unpaid</option>
             <option value="overdue">Overdue</option>
@@ -220,6 +250,7 @@ invoices = invoices.map(inv => {
                   data-date={inv.issue_date}
                   data-archived={inv.is_archived ? 'true' : 'false'}
                   data-deleted={inv.is_deleted ? 'true' : 'false'}
+                  data-outcome={inv.isWin ? 'win' : inv.isLoss ? 'loss' : 'pending'}
                 >
                   <td class="px-6 py-5">
                     <div class="font-extrabold text-slate-900 text-sm tracking-tight">{inv.invoice_number}</div>
@@ -280,9 +311,25 @@ invoices = invoices.map(inv => {
                     <div class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Total Valuation</div>
                   </td>
                   <td class="px-6 py-5 text-center">
-                    <span class={`inline-block border rounded px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-2xs ${inv.isPaid ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500'}`}>
-                      {inv.payment_status === 'paid' ? 'CONFIRMED' : inv.payment_status.toUpperCase()}
-                    </span>
+                    <div class="flex flex-col items-center gap-1.5">
+                      <span class={`inline-block border rounded px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest shadow-2xs ${
+                        inv.payment_status === 'paid' || inv.payment_status === 'win' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
+                        inv.payment_status === 'cancelled' || inv.payment_status === 'loss' ? 'border-rose-200 bg-rose-50 text-rose-700' :
+                        inv.payment_status === 'partially_paid' ? 'border-amber-200 bg-amber-50 text-amber-700' :
+                        'border-slate-200 bg-white text-slate-600'
+                      }`}>
+                        {inv.payment_status === 'paid' ? 'CONFIRMED' : inv.payment_status.toUpperCase()}
+                      </span>
+                      {inv.isWin ? (
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-3xs" title="Order Outcome: Win">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> WIN
+                        </span>
+                      ) : inv.isLoss ? (
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300 shadow-3xs" title="Order Outcome: Loss">
+                          <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span> LOSS
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td class="px-6 py-5 text-right pr-6">
                     <div class="flex justify-end">
@@ -794,6 +841,7 @@ invoices = invoices.map(inv => {
     let itemsPerPage = 10;
     let activePreset = 'all';
     let activeLabel = 'All Time';
+    let activeOutcomeFilter: 'all' | 'win' | 'loss' = 'all';
 
     // Helper date functions
     function pad(n: number) { return String(n).padStart(2, '0'); }
@@ -850,7 +898,8 @@ invoices = invoices.map(inv => {
       const matchingBaseRows = rows.filter(row => {
         const name = row.getAttribute('data-name')?.toLowerCase() || '';
         const num = row.getAttribute('data-num')?.toLowerCase() || '';
-        const rowStatus = row.getAttribute('data-status') || '';
+        const rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
+        const rowOutcome = (row.getAttribute('data-outcome') || '').toLowerCase();
         const rowDiv = (row.getAttribute('data-div') || '').toUpperCase();
         const targetDiv = division.toUpperCase();
         const isArchived = row.getAttribute('data-archived') === 'true';
@@ -859,17 +908,56 @@ invoices = invoices.map(inv => {
         const matchesSearch = !query || name.includes(query) || num.includes(query);
         const matchesDiv = !division || rowDiv === targetDiv || (rowDiv === 'BOTH');
 
+        // Outcome filter (Win / Loss quick buttons)
+        let matchesOutcome = true;
+        if (activeOutcomeFilter === 'win') {
+          matchesOutcome = rowOutcome === 'win' || rowStatus === 'win' || rowStatus === 'paid' || rowStatus === 'confirmed';
+        } else if (activeOutcomeFilter === 'loss') {
+          matchesOutcome = rowOutcome === 'loss' || rowStatus === 'loss' || rowStatus === 'cancelled';
+        }
+
         let matchesStatus = false;
         if (status === 'archived') {
           matchesStatus = isArchived && !isDeleted;
         } else if (status === 'deleted') {
           matchesStatus = isDeleted;
+        } else if (status === 'win') {
+          matchesStatus = !isArchived && !isDeleted && (rowOutcome === 'win' || rowStatus === 'win' || rowStatus === 'paid' || rowStatus === 'confirmed');
+        } else if (status === 'loss') {
+          matchesStatus = !isArchived && !isDeleted && (rowOutcome === 'loss' || rowStatus === 'loss' || rowStatus === 'cancelled');
         } else {
           matchesStatus = !isArchived && !isDeleted && (!status || rowStatus === status);
         }
 
-        return matchesSearch && matchesStatus && matchesDiv;
+        return matchesSearch && matchesStatus && matchesDiv && matchesOutcome;
       });
+
+      // Update outcome badge counts dynamically based on active status and division scope
+      const scopeRows = rows.filter(row => {
+        const isArchived = row.getAttribute('data-archived') === 'true';
+        const isDeleted = row.getAttribute('data-deleted') === 'true';
+        let matchesStatus = false;
+        if (status === 'archived') matchesStatus = isArchived && !isDeleted;
+        else if (status === 'deleted') matchesStatus = isDeleted;
+        else matchesStatus = !isArchived && !isDeleted;
+        const rowDiv = (row.getAttribute('data-div') || '').toUpperCase();
+        const matchesDiv = !division || rowDiv === division.toUpperCase() || (rowDiv === 'BOTH');
+        return matchesStatus && matchesDiv;
+      });
+      const badgeAll = document.getElementById('count-outcome-all');
+      const badgeWin = document.getElementById('count-outcome-win');
+      const badgeLoss = document.getElementById('count-outcome-loss');
+      if (badgeAll) badgeAll.textContent = String(scopeRows.length);
+      if (badgeWin) badgeWin.textContent = String(scopeRows.filter(r => {
+        const o = r.getAttribute('data-outcome') || '';
+        const s = (r.getAttribute('data-status') || '').toLowerCase();
+        return o === 'win' || s === 'win' || s === 'paid' || s === 'confirmed';
+      }).length);
+      if (badgeLoss) badgeLoss.textContent = String(scopeRows.filter(r => {
+        const o = r.getAttribute('data-outcome') || '';
+        const s = (r.getAttribute('data-status') || '').toLowerCase();
+        return o === 'loss' || s === 'loss' || s === 'cancelled';
+      }).length);
 
       // Collect all available dates from matchingBaseRows
       const allDates = matchingBaseRows
@@ -1266,6 +1354,62 @@ invoices = invoices.map(inv => {
       });
       paginationButtons.appendChild(lastBtn);
     }
+
+    // Outcome quick filter buttons (All / Win / Loss)
+    const btnOutcomeAll = document.getElementById('btn-outcome-all');
+    const btnOutcomeWin = document.getElementById('btn-outcome-win');
+    const btnOutcomeLoss = document.getElementById('btn-outcome-loss');
+
+    function updateOutcomeButtonsUI() {
+      const allActive = 'bg-white text-slate-900 shadow-xs font-black';
+      const allInactive = 'text-slate-600 hover:text-slate-900 font-semibold';
+      const winActive = 'bg-emerald-600 text-white shadow-xs font-black';
+      const winInactive = 'text-slate-600 hover:text-emerald-700 font-semibold';
+      const lossActive = 'bg-rose-600 text-white shadow-xs font-black';
+      const lossInactive = 'text-slate-600 hover:text-rose-700 font-semibold';
+
+      const badgeAll = document.getElementById('count-outcome-all');
+      const badgeWin = document.getElementById('count-outcome-win');
+      const badgeLoss = document.getElementById('count-outcome-loss');
+
+      if (btnOutcomeAll) {
+        btnOutcomeAll.className = `outcome-filter-btn px-2.5 py-1 text-xs rounded-md transition-all flex items-center gap-1.5 ${activeOutcomeFilter === 'all' ? allActive : allInactive}`;
+      }
+      if (btnOutcomeWin) {
+        btnOutcomeWin.className = `outcome-filter-btn px-2.5 py-1 text-xs rounded-md transition-all flex items-center gap-1.5 ${activeOutcomeFilter === 'win' ? winActive : winInactive}`;
+      }
+      if (btnOutcomeLoss) {
+        btnOutcomeLoss.className = `outcome-filter-btn px-2.5 py-1 text-xs rounded-md transition-all flex items-center gap-1.5 ${activeOutcomeFilter === 'loss' ? lossActive : lossInactive}`;
+      }
+
+      if (badgeAll) {
+        badgeAll.className = `text-[10px] px-1.5 py-0.5 rounded-full font-black leading-none ${activeOutcomeFilter === 'all' ? 'bg-slate-200 text-slate-900' : 'bg-slate-200/80 text-slate-600'}`;
+      }
+      if (badgeWin) {
+        badgeWin.className = `text-[10px] px-1.5 py-0.5 rounded-full font-black leading-none ${activeOutcomeFilter === 'win' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'}`;
+      }
+      if (badgeLoss) {
+        badgeLoss.className = `text-[10px] px-1.5 py-0.5 rounded-full font-black leading-none ${activeOutcomeFilter === 'loss' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800'}`;
+      }
+    }
+
+    btnOutcomeAll?.addEventListener('click', () => {
+      activeOutcomeFilter = 'all';
+      updateOutcomeButtonsUI();
+      filterAndSortInvoices(true);
+    });
+
+    btnOutcomeWin?.addEventListener('click', () => {
+      activeOutcomeFilter = activeOutcomeFilter === 'win' ? 'all' : 'win';
+      updateOutcomeButtonsUI();
+      filterAndSortInvoices(true);
+    });
+
+    btnOutcomeLoss?.addEventListener('click', () => {
+      activeOutcomeFilter = activeOutcomeFilter === 'loss' ? 'all' : 'loss';
+      updateOutcomeButtonsUI();
+      filterAndSortInvoices(true);
+    });
 
     searchInput?.addEventListener('input', () => filterAndSortInvoices(true));
     statusFilter?.addEventListener('change', () => filterAndSortInvoices(true));

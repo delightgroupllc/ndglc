@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { query } from '../../lib/db';
-import { ArrowRight, Activity, Cpu, Shield, Database, LayoutGrid, ChevronRight, AlertTriangle, Zap, Sparkles, Users, Trophy, Calendar } from '@lucide/astro';
+import { ArrowRight, Activity, Cpu, Shield, Database, LayoutGrid, ChevronRight, AlertTriangle, Zap, Sparkles, Users, Trophy, Calendar, Video, Camera, ShieldCheck } from '@lucide/astro';
 
 const { division } = Astro.params;
 
@@ -327,8 +327,40 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </div>
       </section>
 
+      {/* DTL Department Subdivision Bar */}
+      {isDtl && (
+        <section class="bg-slate-900 text-white border-b border-slate-800 py-6 px-4">
+          <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3 text-left">
+              <span class="text-xs font-black uppercase tracking-widest text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20 flex items-center gap-1.5">
+                <ShieldCheck class="w-3.5 h-3.5" />
+                DTL Departments
+              </span>
+              <span class="text-xs text-slate-400 font-medium hidden sm:inline">Explore our engineering departments:</span>
+            </div>
+            
+            <div class="flex items-center gap-3 w-full md:w-auto">
+              <a 
+                href="#discover" 
+                class="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold uppercase tracking-wider hover:bg-amber-400 transition-colors shadow-sm"
+              >
+                <span>💡 Lighting Department</span>
+              </a>
+              <a 
+                href="/delighttechnicallighting/cctv" 
+                class="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-amber-500/20"
+              >
+                <Video class="w-4 h-4 text-slate-950" />
+                <span>CCTV & Camera Department</span>
+                <span class="bg-slate-950 text-amber-400 text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">NEW</span>
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Discover by Rooms/Categories - Category Grid with Images */}
-      <section class="py-16 bg-white border-b border-slate-100">
+      <section id="discover" class="py-16 bg-white border-b border-slate-100">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 class="text-3xl font-black font-display text-slate-900 mb-10">
             {discoverObj.title || 'Discover by Rooms'}

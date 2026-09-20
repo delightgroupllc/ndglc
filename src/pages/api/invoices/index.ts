@@ -38,7 +38,7 @@ const invoiceSchema = z.object({
   issue_date: z.string().min(1, 'Issue date is required'),
   due_date: z.string().optional().nullable().or(z.literal('')),
   signatory_incharge: z.string().min(1, 'Signatory Incharge is required'),
-  payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft']).default('unpaid'),
+  payment_status: z.enum(['paid', 'partially_paid', 'unpaid', 'overdue', 'cancelled', 'draft', 'win', 'loss']).default('unpaid'),
   discount_type: z.enum(['percentage', 'fixed']).default('fixed'),
   discount_value: z.number().min(0).default(0),
   internal_notes: z.string().optional(),
@@ -68,7 +68,7 @@ export const GET: APIRoute = async ({ url }) => {
 
     const res = await query(`
       SELECT i.*,
-        (SELECT JSON_AGG(it ORDER BY it.id) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
+        (SELECT JSON_AGG(it ORDER BY it.sort_order ASC, it.id ASC) FROM (SELECT * FROM invoice_items WHERE invoice_id = i.id) it) as items_list
       FROM invoices i
       ORDER BY i.created_at DESC
     `);
@@ -90,7 +90,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       }
       const sourceInv = invRes.rows[0];
 
-      const itemsRes = await query('SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY id ASC', [sourceId]);
+      const itemsRes = await query('SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY sort_order ASC, id ASC', [sourceId]);
       const sourceItems = itemsRes.rows;
 
       const baseInvoiceNo = sourceInv.invoice_number.split('-DUP-')[0];
@@ -133,14 +133,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
         );
         const newInv = insertRes.rows[0];
 
-        for (const item of sourceItems) {
+        for (let idx = 0; idx < sourceItems.length; idx++) {
+          const item = sourceItems[idx];
           await client.query(
-            `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+            `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image, sort_order)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
             [
               newInv.id, item.product_id || null, item.catalogue_ref || null, item.description,
               item.tech_spec || null, item.quantity, item.unit_price, item.tax_type, item.tax_value,
-              item.tax_amount, item.total_price, item.item_image
+              item.tax_amount, item.total_price, item.item_image,
+              item.sort_order !== undefined ? item.sort_order : idx
             ]
           );
         }
@@ -280,7 +282,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
       // Check for duplicate items in the same invoice
       const seen = new Set<string>();
-      for (const item of parsed.items) {
+      for (let itemIdx = 0; itemIdx < parsed.items.length; itemIdx++) {
+        const item = parsed.items[itemIdx];
         const key = `${item.description.toLowerCase().trim()}|${item.catalogue_ref || ''}`;
         if (seen.has(key)) {
           throw new Error(`Duplicate line item detected: "${item.description}". Please consolidate quantities.`);
@@ -418,11 +421,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
         }
 
         await client.query(
-          `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
           [inv.id, productId, item.catalogue_ref || null, item.description,
            item.tech_spec || null, item.quantity, item.unit_price, item.tax_type, item.tax_value,
-           lineTax, lineTotal + lineTax, resolvedImage]
+           lineTax, lineTotal + lineTax, resolvedImage, itemIdx]
         );
       }
 

@@ -10,9 +10,29 @@ let rooms: any[] = [];
 let roomCounts: Record<string, number> = {};
 let dbConnected = true;
 
-// Self-healing database migration for categories image_url column
+// Self-healing database migration for categories image_url column and SSR queries
 try {
   await query('ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_url TEXT');
+
+  const catRes = await query(`
+    SELECT c.*, d.name as division_name,
+      COALESCE((SELECT COUNT(*) FROM products p WHERE p.category_id = c.id), 0) as product_count
+    FROM categories c
+    JOIN divisions d ON c.division_id = d.id
+    ORDER BY d.name ASC, c.display_order ASC, c.name ASC
+  `);
+  categories = catRes.rows;
+
+  const divRes = await query('SELECT * FROM divisions ORDER BY name ASC');
+  divisions = divRes.rows;
+
+  const roomRes = await query("SELECT value FROM settings WHERE key = 'rooms'");
+  if (roomRes.rows.length > 0) {
+    try {
+      rooms = JSON.parse(roomRes.rows[0].value);
+      if (!Array.isArray(rooms)) rooms = [];
+    } catch {}
+  }
 } catch (err: any) {
   console.warn('Database offline:', err.message);
   dbConnected = false;
