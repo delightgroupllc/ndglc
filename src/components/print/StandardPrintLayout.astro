@@ -52,9 +52,18 @@ try {
 // Strictly isolate and auto-select terms for this order's division
 const divisionClauseIds = selectedClauses.map((c: any) => c.identifier);
 const matchingDivisionTerms = activeTerms.filter((t: string) => divisionClauseIds.includes(t));
-const finalActiveTerms = matchingDivisionTerms.length > 0 ? matchingDivisionTerms : divisionClauseIds;
+let finalActiveTerms = matchingDivisionTerms.length > 0 ? matchingDivisionTerms : divisionClauseIds;
+
+const activeDivision = (inv.source_division || '').trim().toLowerCase();
+const isDTLOnly = (activeDivision === 'dtl' || activeDivision.includes('technical') || activeDivision.includes('lighting')) && !activeDivision.includes('green') && activeDivision !== 'both';
+if (isDTLOnly) {
+  finalActiveTerms = finalActiveTerms.filter((id: string) => id !== 'dgs-term-12' && !id.toLowerCase().includes('live-plant-sizing'));
+}
 
 const isTermActive = (identifier: string): boolean => {
+  if (isDTLOnly && (identifier === 'dgs-term-12' || identifier.toLowerCase().includes('live-plant-sizing'))) {
+    return false;
+  }
   return finalActiveTerms.includes(identifier);
 };
 
@@ -95,7 +104,7 @@ const hasVat = Number(inv.gst_amount) > 0 || items.some((i: any) => Number(i.tax
               <td class="std-doc-meta">
                 <div class="std-doc-title">{documentTitle}</div>
                 <div style="font-size: 10pt; line-height: 1.5;">
-                  Document No: <span class="font-mono font-bold">{inv.invoice_number}</span><br>
+                  Document No: <span class="font-mono font-bold dynamic-doc-number">{inv.invoice_number}</span><br>
                   {inv.invoice_number && inv.invoice_number.toUpperCase().includes('DUP') && (
                     <span class="print-info-duplicate">Status: <span style="border: 1.5px solid #ef4444; color: #ef4444; padding: 1px 6px; font-size: 8pt; font-weight: 800; text-transform: uppercase; border-radius: 2px; display: inline-block; margin-bottom: 4px;">DUPLICATE</span><br/></span>
                   )}
@@ -139,6 +148,20 @@ const hasVat = Number(inv.gst_amount) > 0 || items.some((i: any) => Number(i.tax
               </td>
             </tr>
           </table>
+
+          <!-- Remittance & Bank Instructions (Header placement under Customer Details) -->
+          <div class="std-bank-block print-bank-block-header print-bank-block-p1" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 12px; margin-top: 10px; margin-bottom: 12px;">
+            <div class="std-section-label" style={`color: ${logoColor}; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 6px; font-size: 7.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;`}>
+              Remittance &amp; Bank Instructions
+            </div>
+            <div class="std-bank-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 16px; font-size: 8pt;">
+              <div><span class="font-bold text-muted">Bank Name:</span> <span id="print-bank-name-std-hdr">{settings.bank_name || 'N/A'}</span></div>
+              <div><span class="font-bold text-muted">Account Name:</span> <span id="print-bank-acc-name-std-hdr">{settings.account_name || 'N/A'}</span></div>
+              <div><span class="font-bold text-muted">Account Number:</span> <span class="font-mono font-bold" id="print-bank-acc-std-hdr">{settings.account_number || 'N/A'}</span></div>
+              <div><span class="font-bold text-muted">Swift Code:</span> <span class="font-mono font-bold" id="print-bank-swift-std-hdr">{settings.swift_code || 'N/A'}</span></div>
+              <div style="grid-column: span 2;"><span class="font-bold text-muted">IBAN:</span> <span class="font-mono font-bold" style={`color: ${logoColor}`} id="print-bank-iban-std-hdr">{settings.iban_number || 'N/A'}</span></div>
+            </div>
+          </div>
         ) : (
           <!-- Compact Continuation Header -->
           <table class="std-header-table w-full" style="margin-bottom: 20px; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">
@@ -241,7 +264,7 @@ const hasVat = Number(inv.gst_amount) > 0 || items.some((i: any) => Number(i.tax
           </div>
           <div class="print-footer-sigs" style="page-break-inside: avoid; break-inside: avoid;">
 
-            <div class="std-bank-block print-bank-block-p1">
+            <div class="std-bank-block print-bank-block-footer">
               <div class="std-section-label" style={`color: ${logoColor}; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px;`}>Remittance & Bank Instructions</div>
               <div class="std-bank-grid">
                 <div><span class="font-bold text-muted">Bank Name:</span> <span id="print-bank-name">{settings.bank_name || 'N/A'}</span></div>

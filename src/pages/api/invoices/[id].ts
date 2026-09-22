@@ -96,14 +96,19 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
       }
       const current = currentRes.rows[0];
 
+      let prefix = 'INV';
+      if (parsed.order_type === 'quotation' || parsed.order_type === 'inquiry') prefix = 'EST';
+      else if (parsed.order_type === 'lpo' || parsed.order_type === 'proforma') prefix = 'PRO';
+      else if (parsed.order_type === 'delivery_note') prefix = 'DLN';
+      else if (parsed.order_type === 'sample_order') prefix = 'SMP';
+
       let newInvoiceNumber = current.invoice_number;
-      if (parsed.order_type !== current.order_type) {
+      if (newInvoiceNumber && /^(INV|EST|PRO|DLN|SMP)-/i.test(newInvoiceNumber)) {
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/i, `${prefix}-`);
+      } else if (newInvoiceNumber) {
+        newInvoiceNumber = `${prefix}-${newInvoiceNumber}`;
+      } else {
         const rand = Math.floor(1000 + Math.random() * 9000);
-        let prefix = 'INV';
-        if (parsed.order_type === 'quotation') prefix = 'EST';
-        else if (parsed.order_type === 'lpo' || parsed.order_type === 'proforma') prefix = 'PRO';
-        else if (parsed.order_type === 'delivery_note') prefix = 'DLN';
-        else if (parsed.order_type === 'sample_order') prefix = 'SMP';
         newInvoiceNumber = `${prefix}-${new Date().getFullYear()}-${rand}`;
       }
 
@@ -344,25 +349,38 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
         res.rows[0].inventory_deducted = true;
       }
 
-      // Add audit log record for this edit
-      let detailsMsg = `Updated details of document ${current.invoice_number}`;
-      let actionType = 'INVOICE_UPDATE';
+      // Add audit log records for this edit
+      const snapshot = createSanitizedOrderSnapshot(res.rows[0], parsed.items);
+      let didLog = false;
 
       if (parsed.order_type !== current.order_type) {
-        detailsMsg = `Converted document ${current.invoice_number} from ${current.order_type} to ${parsed.order_type} (New Document No: ${newInvoiceNumber})`;
-        actionType = 'INVOICE_CONVERT';
-      } else if (parsed.payment_status !== current.payment_status) {
-        detailsMsg = `Status of document ${current.invoice_number} set to ${parsed.payment_status}`;
-        actionType = 'STATUS_CHANGE';
+        const convertMsg = `Converted document ${current.invoice_number} from ${current.order_type} to ${parsed.order_type} (New Document No: ${newInvoiceNumber})`;
+        await client.query(
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+           VALUES ('INVOICE_CONVERT', 'invoices', $1, $2, $3, $4)`,
+          [id, convertMsg, locals.user?.id || null, JSON.stringify(snapshot)]
+        );
+        didLog = true;
       }
 
-      const snapshot = createSanitizedOrderSnapshot(res.rows[0], parsed.items);
+      if (parsed.payment_status !== current.payment_status) {
+        const statusMsg = `Status of document ${newInvoiceNumber} set to ${parsed.payment_status}`;
+        await client.query(
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+           VALUES ('STATUS_CHANGE', 'invoices', $1, $2, $3, $4)`,
+          [id, statusMsg, locals.user?.id || null, JSON.stringify(snapshot)]
+        );
+        didLog = true;
+      }
 
-      await client.query(
-        `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
-         VALUES ($1, 'invoices', $2, $3, $4, $5)`,
-        [actionType, id, detailsMsg, locals.user?.id || null, JSON.stringify(snapshot)]
-      );
+      if (!didLog) {
+        const updateMsg = `Updated details of document ${newInvoiceNumber}`;
+        await client.query(
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id, snapshot)
+           VALUES ('INVOICE_UPDATE', 'invoices', $1, $2, $3, $4)`,
+          [id, updateMsg, locals.user?.id || null, JSON.stringify(snapshot)]
+        );
+      }
 
       return res.rows[0];
     });
@@ -437,16 +455,16 @@ export const PATCH: APIRoute = async ({ params, request, locals }) => {
       const oldType = current.order_type;
       let newInvoiceNumber = current.invoice_number;
 
-      if (data.order_type === 'quotation') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'EST-');
+      if (data.order_type === 'quotation' || data.order_type === 'inquiry') {
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/i, 'EST-');
       } else if (data.order_type === 'lpo' || data.order_type === 'proforma') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'PRO-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/i, 'PRO-');
       } else if (data.order_type === 'delivery_note') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'DLN-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/i, 'DLN-');
       } else if (data.order_type === 'sample_order') {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'SMP-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/i, 'SMP-');
       } else {
-        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/, 'INV-');
+        newInvoiceNumber = newInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/i, 'INV-');
       }
 
       await withTransaction(async (client) => {

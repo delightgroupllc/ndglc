@@ -1,0 +1,20 @@
+---
+interface Props {
+  disclaimerClauses: any[];
+  fontSize?: string;
+}
+const { disclaimerClauses, fontSize = '7.8pt' } = Astro.props;
+---
+
+{disclaimerClauses.map((clause: any) => (
+  <div style="margin-bottom: 4px;">
+    <strong>{clause.title}:</strong>
+    <div set:html={clause.content}></div>
+  </div>
+))}
+{disclaimerClauses.length === 0 && (
+  <div>
+    <strong>Disclaimer:</strong>
+    By submitting payment, the Customer acknowledges and agrees that he/she has read, understood, and accepted the terms of sale. Payment shall constitute full acceptance of these terms without limitation or qualification.
+  </div>
+)}

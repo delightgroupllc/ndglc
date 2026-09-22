@@ -25,7 +25,7 @@ export const GET: APIRoute = async ({ params }) => {
   }
 };
 
-export const POST: APIRoute = async ({ params, request }) => {
+export const POST: APIRoute = async ({ params, request, locals }) => {
   try {
     const { id } = params;
     if (!id) return new Response(JSON.stringify({ error: 'Invoice ID required' }), { status: 400 });
@@ -63,6 +63,14 @@ export const POST: APIRoute = async ({ params, request }) => {
 
       // 5. Update invoice status
       await client.query('UPDATE invoices SET payment_status = $1, updated_at = NOW() WHERE id = $2', [newStatus, id]);
+
+      if (newStatus !== invoice.payment_status) {
+        await client.query(
+          `INSERT INTO audit_logs (action, entity_type, entity_id, details, user_id)
+           VALUES ('STATUS_CHANGE', 'invoices', $1, $2, $3)`,
+          [id, `Status of document ${invoice.invoice_number} set to ${newStatus} (Payment received: AED ${parsed.amount.toLocaleString()})`, locals?.user?.id || null]
+        );
+      }
 
       // 6. Handle Inventory Deduction if moving to paid (and not already deducted)
       const shouldDeduct = newStatus === 'paid' || invoice.order_type === 'delivery_note' || invoice.order_type === 'sample_order';

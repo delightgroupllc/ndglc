@@ -636,7 +636,7 @@ const companiesJson = JSON.stringify(companiesList);
                       <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/50 cursor-pointer transition-all hover:border-slate-300 disclaimer-item">
                         <input
                           type="checkbox"
-                          checked
+                          checked={d.identifier !== "dgs-term-12" && !d.title?.toLowerCase().includes("live plant sizing")}
                           data-identifier={d.identifier}
                           class="disclaimer-toggle-checkbox rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 mt-0.5"
                         />
@@ -842,6 +842,35 @@ const companiesJson = JSON.stringify(companiesList);
         id="invoice-form-companies-data"
         set:html={companiesJson}
       />
+
+      <!-- Global Division Mismatch Alert Banner -->
+      <div
+        id="division-mismatch-global-alert"
+        class="hidden mb-3 p-4 bg-amber-50 border-2 border-amber-400 rounded-xl text-amber-950 text-xs shadow-sm transition-all"
+      >
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-start gap-2.5">
+            <span class="text-amber-600 font-black text-lg shrink-0 leading-none mt-0.5">⚠️</span>
+            <div>
+              <p class="font-extrabold uppercase tracking-wide text-xs text-amber-900">
+                Source Division Conflict Detected
+              </p>
+              <p class="text-xs text-amber-800 mt-0.5 leading-relaxed" id="division-mismatch-global-msg">
+                Some line items belong to a different division than the selected Source Division. To bill these items, please change the Source Division to <strong>Both Divisions</strong>, or remove the mismatched items.
+              </p>
+            </div>
+          </div>
+          <div class="shrink-0 flex items-center gap-2">
+            <button
+              type="button"
+              id="global-btn-switch-to-both"
+              class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold rounded-lg text-xs transition-colors shadow-sm whitespace-nowrap cursor-pointer"
+            >
+              Switch to Both Divisions
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div id="invoice-items-container" class="space-y-3 pt-2">
         <!-- Rows injected by JS -->
@@ -1095,6 +1124,209 @@ const companiesJson = JSON.stringify(companiesList);
   );
 
   // =============================================
+  // DIVISION & CATEGORY HELPERS
+  // =============================================
+  function getCategoryDivision(cat: any): "DTL" | "DGS" | "BOTH" {
+    if (!cat) return "BOTH";
+    const dName = (cat.division_name || "").toLowerCase();
+    const cName = (cat.name || "").toLowerCase();
+    if (dName.includes("technical") || dName.includes("dtl") || dName.includes("lighting") || cName.includes("cctv") || cName.includes("camera") || cName.includes("lighting")) return "DTL";
+    if (dName.includes("greenscapes") || dName.includes("dgs") || dName.includes("green") || cName.includes("plant") || cName.includes("pot") || cName.includes("soil")) return "DGS";
+    return "BOTH";
+  }
+
+  function getProductDivision(prod: any): "DTL" | "DGS" | "BOTH" {
+    if (!prod) return "BOTH";
+    const dName = (prod.division_name || "").toLowerCase();
+    if (dName.includes("technical") || dName.includes("dtl") || dName.includes("lighting")) return "DTL";
+    if (dName.includes("greenscapes") || dName.includes("dgs") || dName.includes("green") || dName.includes("plant")) return "DGS";
+    if (prod.category_id) {
+      const cat = allCategories.find((c: any) => String(c.id) === String(prod.category_id));
+      if (cat) return getCategoryDivision(cat);
+    }
+    return "BOTH";
+  }
+
+  function getRowDivision(row: HTMLElement): "DTL" | "DGS" | "BOTH" {
+    const prodIdInput = row.querySelector('input[name="item_product_id"]') as HTMLInputElement;
+    const prodId = prodIdInput?.value;
+    if (prodId) {
+      const prod = allProducts.find((p: any) => String(p.id) === String(prodId));
+      if (prod) return getProductDivision(prod);
+    }
+    const catSelect = row.querySelector(".item-category-select") as HTMLSelectElement;
+    if (catSelect?.value) {
+      const cat = allCategories.find((c: any) => String(c.id) === String(catSelect.value));
+      if (cat) return getCategoryDivision(cat);
+    }
+    const descInput = row.querySelector(".item-desc-input") as HTMLInputElement;
+    const refInput = row.querySelector(".item-ref-input") as HTMLInputElement;
+    const nameVal = descInput?.value.trim().toLowerCase();
+    const skuVal = refInput?.value.trim().toLowerCase();
+    if (nameVal || skuVal) {
+      const prod = allProducts.find((p: any) => 
+        (nameVal && p.name && p.name.trim().toLowerCase() === nameVal) ||
+        (skuVal && p.sku && p.sku.trim().toLowerCase() === skuVal)
+      );
+      if (prod) return getProductDivision(prod);
+    }
+    return "BOTH";
+  }
+
+  function updateCategorySelectOptions(selectEl: HTMLSelectElement, preferredCatId?: string) {
+    const currentVal = preferredCatId !== undefined ? preferredCatId : selectEl.value;
+    const divisionSelect = document.getElementById("inv-source-division") as HTMLSelectElement | null;
+    const currentDivision = (divisionSelect?.value || "").trim().toUpperCase();
+
+    let filteredCategories = allCategories;
+    if (currentDivision === "DTL") {
+      filteredCategories = allCategories.filter((c: any) => getCategoryDivision(c) === "DTL" || getCategoryDivision(c) === "BOTH");
+    } else if (currentDivision === "DGS") {
+      filteredCategories = allCategories.filter((c: any) => getCategoryDivision(c) === "DGS" || getCategoryDivision(c) === "BOTH");
+    }
+
+    const hasCurrentInFiltered = filteredCategories.some((c: any) => String(c.id) === String(currentVal));
+    const currentCatObj = currentVal ? allCategories.find((c: any) => String(c.id) === String(currentVal)) : null;
+
+    let optionsHtml = `<option value="">-- All Categories --</option>`;
+    optionsHtml += filteredCategories
+      .map(
+        (c: any) => `<option value="${c.id}" ${String(c.id) === String(currentVal) ? "selected" : ""}>${c.name}</option>`
+      )
+      .join("");
+
+    if (currentCatObj && !hasCurrentInFiltered) {
+      const catDiv = getCategoryDivision(currentCatObj);
+      optionsHtml += `<option value="${currentCatObj.id}" selected style="color: #b91c1c; font-weight: bold; background-color: #fef2f2;">⚠️ ${currentCatObj.name} (Other Division: ${catDiv})</option>`;
+    }
+
+    selectEl.innerHTML = optionsHtml;
+  }
+
+  function updateAllCategoryDropdowns() {
+    const allCategorySelects = document.querySelectorAll(".invoice-item-row .item-category-select") as NodeListOf<HTMLSelectElement>;
+    allCategorySelects.forEach((selectEl) => {
+      updateCategorySelectOptions(selectEl);
+    });
+  }
+
+  function updateAllRowDatalists() {
+    const rows = document.querySelectorAll(".invoice-item-row");
+    rows.forEach((row) => {
+      const catSelect = row.querySelector(".item-category-select") as HTMLSelectElement;
+      const catId = catSelect?.value || "";
+      const rowFilterFn = (row as any).__filterDatalistOptions;
+      if (typeof rowFilterFn === "function") {
+        rowFilterFn(catId);
+      }
+    });
+  }
+
+  function validateAndHighlightRowDivisions(): number {
+    const divisionSelect = document.getElementById("inv-source-division") as HTMLSelectElement | null;
+    const currentDiv = (divisionSelect?.value || "").trim().toUpperCase();
+    const rows = document.querySelectorAll(".invoice-item-row") as NodeListOf<HTMLElement>;
+    const globalAlert = document.getElementById("division-mismatch-global-alert");
+    const globalAlertMsg = document.getElementById("division-mismatch-global-msg");
+
+    let mismatchCount = 0;
+
+    rows.forEach((row) => {
+      let rowBanner = row.querySelector(".row-division-mismatch-banner") as HTMLElement | null;
+
+      const descInput = row.querySelector(".item-desc-input") as HTMLInputElement;
+      const refInput = row.querySelector(".item-ref-input") as HTMLInputElement;
+      const prodIdInput = row.querySelector('input[name="item_product_id"]') as HTMLInputElement;
+      const catSelect = row.querySelector(".item-category-select") as HTMLSelectElement;
+
+      const hasAnyContent = Boolean(descInput?.value.trim() || refInput?.value.trim() || prodIdInput?.value.trim() || catSelect?.value);
+      if (!hasAnyContent) {
+        row.classList.remove("division-mismatch-row");
+        rowBanner?.remove();
+        return;
+      }
+
+      const rowDiv = getRowDivision(row);
+
+      let isMismatch = false;
+      let targetDivisionName = "";
+      let itemDivisionName = "";
+
+      if (currentDiv === "DTL" && rowDiv === "DGS") {
+        isMismatch = true;
+        targetDivisionName = "Delight Technical Lighting (DTL)";
+        itemDivisionName = "Delight Greenscapes (DGS)";
+      } else if (currentDiv === "DGS" && rowDiv === "DTL") {
+        isMismatch = true;
+        targetDivisionName = "Delight Greenscapes (DGS)";
+        itemDivisionName = "Delight Technical Lighting (DTL)";
+      }
+
+      if (isMismatch) {
+        mismatchCount++;
+        row.classList.add("division-mismatch-row");
+
+        if (!rowBanner) {
+          rowBanner = document.createElement("div");
+          rowBanner.className = "row-division-mismatch-banner mb-3 p-3 bg-amber-50 border-2 border-amber-400 rounded-xl text-amber-950 text-xs shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3";
+          row.prepend(rowBanner);
+        }
+
+        rowBanner.innerHTML = `
+          <div class="flex items-start gap-2.5">
+            <span class="text-amber-600 font-bold text-base shrink-0 leading-none mt-0.5">⚠️</span>
+            <div>
+              <div class="font-extrabold text-amber-900 tracking-wide">Division Mismatch: Item belongs to ${itemDivisionName}</div>
+              <div class="text-[11px] text-amber-800 mt-0.5 leading-normal">
+                This item cannot be billed under <strong>${targetDivisionName}</strong>. To bill this item, switch the Source Division to <strong>Both Divisions</strong>, or remove this item.
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" class="btn-row-switch-both px-3 py-1.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold rounded-lg text-xs shadow-sm transition-colors cursor-pointer whitespace-nowrap">
+              Switch to Both Divisions
+            </button>
+            <button type="button" class="btn-row-remove-mismatch px-2.5 py-1.5 bg-rose-100 hover:bg-rose-200 active:bg-rose-300 text-rose-700 font-bold rounded-lg text-xs transition-colors cursor-pointer whitespace-nowrap">
+              Remove Item
+            </button>
+          </div>
+        `;
+
+        rowBanner.querySelector(".btn-row-switch-both")?.addEventListener("click", () => {
+          if (divisionSelect) {
+            divisionSelect.value = "both";
+            divisionSelect.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        });
+
+        rowBanner.querySelector(".btn-row-remove-mismatch")?.addEventListener("click", () => {
+          row.remove();
+          recalcSummary();
+          validateAndHighlightRowDivisions();
+        });
+
+      } else {
+        row.classList.remove("division-mismatch-row");
+        rowBanner?.remove();
+      }
+    });
+
+    if (globalAlert) {
+      if (mismatchCount > 0) {
+        globalAlert.classList.remove("hidden");
+        if (globalAlertMsg) {
+          const divLabel = currentDiv === "DTL" ? "Delight Technical Lighting (DTL)" : currentDiv === "DGS" ? "Delight Greenscapes (DGS)" : currentDiv;
+          globalAlertMsg.innerHTML = `You have <strong>${mismatchCount} item(s)</strong> that do not belong to <strong>${divLabel}</strong>. Please switch the Source Division to <strong>Both Divisions</strong> or remove the highlighted items before submitting.`;
+        }
+      } else {
+        globalAlert.classList.add("hidden");
+      }
+    }
+
+    return mismatchCount;
+  }
+
+  // =============================================
   // ITEM ROW TEMPLATE
   // =============================================
   function buildItemRow(data: any = {}): HTMLElement {
@@ -1109,14 +1341,6 @@ const companiesJson = JSON.stringify(companiesList);
       const match = allProducts.find((p) => p.id === data.product_id);
       if (match) initialCategoryId = match.category_id || "";
     }
-
-    // Build category select options
-    const categoryOptionsHtml = allCategories
-      .map(
-        (c) =>
-          `<option value="${c.id}" ${c.id === initialCategoryId ? "selected" : ""}>${c.name}</option>`,
-      )
-      .join("");
 
     div.innerHTML = `
       <input type="hidden" name="item_product_id" value="${data.product_id || ""}" />
@@ -1147,7 +1371,6 @@ const companiesJson = JSON.stringify(companiesList);
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Category</label>
               <select class="item-category-select w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none font-semibold text-slate-700 h-9">
                 <option value="">-- All Categories --</option>
-                ${categoryOptionsHtml}
               </select>
             </div>
             <!-- Reference / Catalogue -->
@@ -1251,42 +1474,6 @@ const companiesJson = JSON.stringify(companiesList);
       </div>
     `;
 
-    // Global helper for auto-selecting source division based on ALL rows
-    const updateGlobalSourceDivision = () => {
-      const sourceDivisionSelect = document.getElementById(
-        "inv-source-division",
-      ) as HTMLSelectElement;
-      if (!sourceDivisionSelect) return;
-
-      const allRowInputs = document.querySelectorAll(
-        'input[name="item_product_id"]',
-      );
-      const divisions = new Set<string>();
-
-      allRowInputs.forEach((input) => {
-        const prodId = (input as HTMLInputElement).value;
-        if (prodId) {
-          const match = allProducts.find(
-            (p) => String(p.id) === String(prodId),
-          );
-          if (match && match.division_name) {
-            const dName = match.division_name.toLowerCase();
-            if (dName.includes("technical") || dName.includes("dtl"))
-              divisions.add("DTL");
-            if (dName.includes("greenscapes") || dName.includes("dgs"))
-              divisions.add("DGS");
-          }
-        }
-      });
-
-      if (divisions.has("DTL") && divisions.has("DGS")) {
-        sourceDivisionSelect.value = "both";
-      } else if (divisions.has("DTL")) {
-        sourceDivisionSelect.value = "DTL";
-      } else if (divisions.has("DGS")) {
-        sourceDivisionSelect.value = "DGS";
-      }
-    };
     const categorySelect = div.querySelector(
       ".item-category-select",
     ) as HTMLSelectElement;
@@ -1304,9 +1491,19 @@ const companiesJson = JSON.stringify(companiesList);
 
     // Helper to dynamically filter the datalists
     const filterDatalistOptions = (selectedCatId: string) => {
-      const filtered = selectedCatId
-        ? allProducts.filter((p) => p.category_id === selectedCatId)
-        : allProducts;
+      const divisionSelect = document.getElementById("inv-source-division") as HTMLSelectElement | null;
+      const currentDivision = (divisionSelect?.value || "").trim().toUpperCase();
+
+      let filtered = allProducts;
+      if (currentDivision === "DTL") {
+        filtered = filtered.filter((p) => getProductDivision(p) === "DTL" || getProductDivision(p) === "BOTH");
+      } else if (currentDivision === "DGS") {
+        filtered = filtered.filter((p) => getProductDivision(p) === "DGS" || getProductDivision(p) === "BOTH");
+      }
+
+      if (selectedCatId) {
+        filtered = filtered.filter((p) => p.category_id === selectedCatId);
+      }
 
       nameDatalist.innerHTML = filtered
         .map((p) => {
@@ -1325,15 +1522,18 @@ const companiesJson = JSON.stringify(companiesList);
         .join("");
     };
 
-    // Initialize datalists
+    (div as any).__filterDatalistOptions = filterDatalistOptions;
+
+    // Initialize category options and datalists
+    updateCategorySelectOptions(categorySelect, initialCategoryId);
     filterDatalistOptions(initialCategoryId);
 
     // Bind Category change handler
     categorySelect.addEventListener("change", () => {
       filterDatalistOptions(categorySelect.value);
 
-      // Auto-select Source Division based on all rows
-      updateGlobalSourceDivision();
+      // Validate division mismatch on row
+      validateAndHighlightRowDivisions();
 
       // If Category selected doesn't match current inputs, clear inputs
       const currentVal = descInput.value.trim();
@@ -1345,6 +1545,7 @@ const companiesJson = JSON.stringify(companiesList);
           descInput.value = "";
           refInput.value = "";
           prodIdInput.value = "";
+          validateAndHighlightRowDivisions();
         }
       }
     });
@@ -1387,12 +1588,14 @@ const companiesJson = JSON.stringify(companiesList);
 
         // Auto-select category
         if (match.category_id) {
+          updateCategorySelectOptions(categorySelect, match.category_id);
           categorySelect.value = match.category_id;
           filterDatalistOptions(match.category_id);
         }
 
-        // Auto-select Source Division across all rows
+        // Auto-select Source Division across all rows if empty & validate mismatches
         updateGlobalSourceDivision();
+        validateAndHighlightRowDivisions();
 
         // Show existing image preview
         const previewDiv = div.querySelector(".existing-image-preview");
@@ -1435,12 +1638,14 @@ const companiesJson = JSON.stringify(companiesList);
 
         // Auto-select category
         if (match.category_id) {
+          updateCategorySelectOptions(categorySelect, match.category_id);
           categorySelect.value = match.category_id;
           filterDatalistOptions(match.category_id);
         }
 
-        // Auto-select Source Division across all rows
+        // Auto-select Source Division across all rows if empty & validate mismatches
         updateGlobalSourceDivision();
+        validateAndHighlightRowDivisions();
 
         // Show existing image preview
         const previewDiv = div.querySelector(".existing-image-preview");
@@ -1486,6 +1691,7 @@ const companiesJson = JSON.stringify(companiesList);
       div.remove();
       recalcSummary();
       updateGlobalSourceDivision();
+      validateAndHighlightRowDivisions();
     });
 
     // Image file upload base64 converter
@@ -1557,52 +1763,38 @@ const companiesJson = JSON.stringify(companiesList);
     ) as HTMLSelectElement;
     if (!divisionSelect) return;
 
-    let hasDTL = false;
-    let hasDGS = false;
+    // Only auto-select division if the user hasn't chosen one yet
+    if (!divisionSelect.value) {
+      let hasDTL = false;
+      let hasDGS = false;
 
-    rows.forEach((row) => {
-      const prodId = (
-        row.querySelector('input[name="item_product_id"]') as HTMLInputElement
-      )?.value;
-      if (prodId) {
-        const prod = allProducts.find((p) => p.id === prodId);
-        if (prod) {
-          // Check division name on the product directly
-          const divName = (prod.division_name || "").toLowerCase();
-          if (divName.includes("dtl") || divName.includes("technical lighting"))
-            hasDTL = true;
-          if (divName.includes("dgs") || divName.includes("greenscapes"))
-            hasDGS = true;
-
-          const cat = allCategories.find((c) => c.id === prod.category_id);
-          if (cat) {
-            const catDiv = (cat.division_name || "").toLowerCase();
-            if (
-              cat.name?.toLowerCase().includes("dtl") ||
-              cat.division_id === "DTL" ||
-              catDiv.includes("dtl")
-            )
-              hasDTL = true;
-            if (
-              cat.name?.toLowerCase().includes("dgs") ||
-              cat.division_id === "DGS" ||
-              catDiv.includes("dgs")
-            )
-              hasDGS = true;
+      rows.forEach((row) => {
+        const prodId = (
+          row.querySelector('input[name="item_product_id"]') as HTMLInputElement
+        )?.value;
+        if (prodId) {
+          const prod = allProducts.find((p) => p.id === prodId);
+          if (prod) {
+            const pDiv = getProductDivision(prod);
+            if (pDiv === "DTL") hasDTL = true;
+            if (pDiv === "DGS") hasDGS = true;
           }
         }
+      });
+
+      let newDiv = "";
+      if (hasDTL && hasDGS) newDiv = "both";
+      else if (hasDTL) newDiv = "DTL";
+      else if (hasDGS) newDiv = "DGS";
+
+      if (newDiv && divisionSelect.value !== newDiv) {
+        divisionSelect.value = newDiv;
+        divisionSelect.dispatchEvent(new Event("change"));
+        return;
       }
-    });
-
-    let newDiv = "";
-    if (hasDTL && hasDGS) newDiv = "both";
-    else if (hasDTL) newDiv = "DTL";
-    else if (hasDGS) newDiv = "DGS";
-
-    if (newDiv && divisionSelect.value !== newDiv) {
-      divisionSelect.value = newDiv;
-      divisionSelect.dispatchEvent(new Event("change"));
     }
+
+    validateAndHighlightRowDivisions();
   }
 
   function addRow(data: any = {}, afterNode?: HTMLElement) {
@@ -1618,6 +1810,7 @@ const companiesJson = JSON.stringify(companiesList);
       }
       recalcSummary();
       updateGlobalSourceDivision();
+      validateAndHighlightRowDivisions();
     }
   }
 
@@ -2031,6 +2224,15 @@ const companiesJson = JSON.stringify(companiesList);
       itemsError?.classList.add("hidden");
     }
 
+    // Check for division mismatches
+    const divisionMismatches = validateAndHighlightRowDivisions();
+    if (divisionMismatches > 0) {
+      const globalAlert = document.getElementById("division-mismatch-global-alert");
+      globalAlert?.classList.remove("hidden");
+      globalAlert?.scrollIntoView({ behavior: "smooth", block: "center" });
+      valid = false;
+    }
+
     return valid;
   }
 
@@ -2105,7 +2307,14 @@ const companiesJson = JSON.stringify(companiesList);
           if (!dtlChecked || lastSelectedDiv !== "DTL") {
             dtlTermsGroup
               ?.querySelectorAll(".disclaimer-toggle-checkbox")
-              .forEach((cb) => ((cb as HTMLInputElement).checked = true));
+              .forEach((cb) => {
+                const ident = (cb as HTMLElement).getAttribute("data-identifier") || "";
+                if (ident === "dgs-term-12" || cb.closest(".disclaimer-item")?.textContent?.toLowerCase().includes("live plant sizing")) {
+                  (cb as HTMLInputElement).checked = false;
+                } else {
+                  (cb as HTMLInputElement).checked = true;
+                }
+              });
           }
         }
       } else if (selectedDiv === "DGS") {
@@ -2145,9 +2354,19 @@ const companiesJson = JSON.stringify(companiesList);
       lastSelectedDiv = selectedDiv;
       updatePaymentTermsHiddenInput();
     };
-    divisionSelect?.addEventListener("change", () =>
-      toggleTOSVisibility(false),
-    );
+    divisionSelect?.addEventListener("change", () => {
+      toggleTOSVisibility(false);
+      updateAllCategoryDropdowns();
+      updateAllRowDatalists();
+      validateAndHighlightRowDivisions();
+    });
+
+    document.getElementById("global-btn-switch-to-both")?.addEventListener("click", () => {
+      if (divisionSelect) {
+        divisionSelect.value = "both";
+        divisionSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
 
     // Customer autocomplete fill
     const custInput = document.getElementById(
@@ -2499,7 +2718,12 @@ const companiesJson = JSON.stringify(companiesList);
               targetGroup
                 .querySelectorAll(".disclaimer-toggle-checkbox")
                 .forEach((cb) => {
-                  (cb as HTMLInputElement).checked = true;
+                  const ident = cb.getAttribute("data-identifier") || "";
+                  if (currentDiv === "DTL" && (ident === "dgs-term-12" || cb.closest(".disclaimer-item")?.textContent?.toLowerCase().includes("live plant sizing"))) {
+                    (cb as HTMLInputElement).checked = false;
+                  } else {
+                    (cb as HTMLInputElement).checked = true;
+                  }
                 });
             }
           } else if (currentDiv === "BOTH") {
@@ -2530,12 +2754,12 @@ const companiesJson = JSON.stringify(companiesList);
             document.getElementById(
               "invoice-payment-status",
             ) as HTMLSelectElement
-          ).value = inv.payment_status || "unpaid";
+          ).value = inv.payment_status || "pending";
           (
             document.getElementById(
               "invoice-signatory-incharge",
             ) as HTMLSelectElement
-          ).value = inv.signatory_incharge || "";
+          ).value = inv.signatory_incharge || "any";
 
           const typeSelect = document.getElementById(
             "inv-order-type",
@@ -2592,8 +2816,12 @@ const companiesJson = JSON.stringify(companiesList);
           }
 
           recalcSummary();
+          updateAllCategoryDropdowns();
+          updateAllRowDatalists();
           if (!inv.source_division) {
             updateGlobalSourceDivision();
+          } else {
+            validateAndHighlightRowDivisions();
           }
         })
         .catch((err) => {
@@ -2759,7 +2987,10 @@ const companiesJson = JSON.stringify(companiesList);
       }
 
       recalcSummary();
+      updateAllCategoryDropdowns();
+      updateAllRowDatalists();
       updateGlobalSourceDivision();
+      validateAndHighlightRowDivisions();
     }
 
     // Submit
@@ -2773,9 +3004,14 @@ const companiesJson = JSON.stringify(companiesList);
       ) as HTMLButtonElement;
 
       if (!validateForm()) {
+        const divisionMismatches = validateAndHighlightRowDivisions();
         msg.className =
           "p-4 rounded-xl text-sm font-semibold bg-rose-50 text-rose-700 border border-rose-200";
-        msg.textContent = "Please fix the errors above before submitting.";
+        if (divisionMismatches > 0) {
+          msg.textContent = "Cannot save: Line items contain products from another division. Switch to 'Both Divisions' or remove mismatched items.";
+        } else {
+          msg.textContent = "Please fix the errors above before submitting.";
+        }
         msg.classList.remove("hidden");
         msg.scrollIntoView({ behavior: "smooth", block: "nearest" });
         return;
@@ -3093,3 +3329,16 @@ const companiesJson = JSON.stringify(companiesList);
   setupInvoiceForm();
   document.addEventListener("astro:page-load", setupInvoiceForm);
 </script>
+
+<style is:global>
+  .division-mismatch-row {
+    border-color: #f59e0b !important;
+    background-color: #fffbeb !important;
+    box-shadow: 0 0 0 1px #f59e0b, 0 4px 6px -1px rgba(245, 158, 11, 0.1) !important;
+  }
+  .division-mismatch-row input,
+  .division-mismatch-row select {
+    background-color: #fefce8 !important;
+    border-color: #fcd34d !important;
+  }
+</style>

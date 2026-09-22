@@ -55,9 +55,18 @@ try {
 // Strictly isolate and auto-select terms for this order's division
 const divisionClauseIds = selectedClauses.map((c: any) => c.identifier);
 const matchingDivisionTerms = activeTerms.filter((t: string) => divisionClauseIds.includes(t));
-const finalActiveTerms = matchingDivisionTerms.length > 0 ? matchingDivisionTerms : divisionClauseIds;
+let finalActiveTerms = matchingDivisionTerms.length > 0 ? matchingDivisionTerms : divisionClauseIds;
+
+const activeDivision = (inv.source_division || '').trim().toLowerCase();
+const isDTLOnly = (activeDivision === 'dtl' || activeDivision.includes('technical') || activeDivision.includes('lighting')) && !activeDivision.includes('green') && activeDivision !== 'both';
+if (isDTLOnly) {
+  finalActiveTerms = finalActiveTerms.filter((id: string) => id !== 'dgs-term-12' && !id.toLowerCase().includes('live-plant-sizing'));
+}
 
 const isTermActive = (identifier: string): boolean => {
+  if (isDTLOnly && (identifier === 'dgs-term-12' || identifier.toLowerCase().includes('live-plant-sizing'))) {
+    return false;
+  }
   return finalActiveTerms.includes(identifier);
 };
 
@@ -146,8 +155,8 @@ const docSalesPersonContactClass = isDeliveryOrSample ? 'print-info-due' : 'prin
               <td class="delightgroupllc-grid-td">
                 <table class="delightgroupllc-field-table">
                   <tr>
-                    <td class="delightgroupllc-field-label">{docNumberLabel}</td>
-                    <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
+                    <td class="delightgroupllc-field-label dynamic-doc-label">{docNumberLabel}</td>
+                    <td class="delightgroupllc-field-value font-mono dynamic-doc-number">{inv.invoice_number}</td>
                   </tr>
                   <tr class="print-info-date">
                     <td class="delightgroupllc-field-label">{docDateLabel}</td>
@@ -167,7 +176,7 @@ const docSalesPersonContactClass = isDeliveryOrSample ? 'print-info-due' : 'prin
                   </tr>
                   <tr class="print-info-due">
                     <td class="delightgroupllc-field-label">Invoice Reference:</td>
-                    <td class="delightgroupllc-field-value font-mono">{inv.invoice_number}</td>
+                    <td class="delightgroupllc-field-value font-mono dynamic-doc-number">{inv.invoice_number}</td>
                   </tr>
                   {inv.invoice_number && inv.invoice_number.toUpperCase().includes('DUP') && (
                     <tr class="print-info-duplicate">

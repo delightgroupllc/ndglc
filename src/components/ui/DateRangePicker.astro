@@ -100,7 +100,12 @@ const { id = 'date-range-picker', class: className = '' } = Astro.props;
     });
 
     // ── Helpers ───────────────────────────────────────────────────────────
-    function toISO(d: Date) { return d.toISOString().split('T')[0]; }
+    function toISO(d: Date) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
     function todayDate() { const n = new Date(); n.setHours(0,0,0,0); return n; }
     function fmtDate(s: string) {
       return new Date(s + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -152,12 +157,16 @@ const { id = 'date-range-picker', class: className = '' } = Astro.props;
         start = end = toISO(d);
         lbl = 'Yesterday';
       } else if (preset === 'week') {
-        const d = new Date(today); d.setDate(today.getDate() - today.getDay());
-        start = toISO(d); end = toISO(today);
+        const d = new Date(today);
+        const dayOfWeek = (today.getDay() + 6) % 7;
+        d.setDate(today.getDate() - dayOfWeek);
+        const endWeek = new Date(d);
+        endWeek.setDate(d.getDate() + 6);
+        start = toISO(d); end = toISO(endWeek);
         lbl = 'This Week';
       } else if (preset === 'month') {
         start = toISO(new Date(today.getFullYear(), today.getMonth(), 1));
-        end = toISO(today);
+        end = toISO(new Date(today.getFullYear(), today.getMonth() + 1, 0));
         lbl = 'This Month';
       } else if (preset === 'last_month') {
         start = toISO(new Date(today.getFullYear(), today.getMonth() - 1, 1));

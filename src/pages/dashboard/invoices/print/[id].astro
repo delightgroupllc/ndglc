@@ -1,6 +1,7 @@
 ---
 import { query } from '../../../../lib/db';
 import StandardPrintLayout from '../../../../components/print/StandardPrintLayout.astro';
+import Standard2PrintLayout from '../../../../components/print/Standard2PrintLayout.astro';
 import ModernGridPrintLayout from '../../../../components/print/ModernGridPrintLayout.astro';
 import '../../../../styles/global.css';
 
@@ -12,6 +13,9 @@ let items: any[] = [];
 let settings: Record<string, string> = {};
 let selectedClauses: any[] = [];
 let dnNote: string = 'DELIVERY NOTE : Customer must check good\'s condition and quantity at the time of delivery of the material';
+var banksList: any[] = [];
+var signaturesList: any[] = [];
+var addressesList: any[] = [];
 
 try {
   // Fetch invoice details
@@ -37,7 +41,7 @@ try {
   }, {});
 
   // Parse list configurations
-  var banksList = [];
+  banksList = [];
   try {
     banksList = settings.banks ? JSON.parse(settings.banks) : [];
   } catch (e) {}
@@ -52,7 +56,7 @@ try {
     }];
   }
 
-  var signaturesList = [];
+  signaturesList = [];
   try {
     signaturesList = settings.signatures ? JSON.parse(settings.signatures) : [];
   } catch (e) {}
@@ -64,7 +68,7 @@ try {
     }];
   }
 
-  var addressesList = [];
+  addressesList = [];
   try {
     addressesList = settings.addresses ? JSON.parse(settings.addresses) : [];
   } catch (e) {}
@@ -90,6 +94,7 @@ try {
     const isDGS = activeDivision === 'dgs' || activeDivision.includes('greenscapes') || activeDivision.includes('green');
     selectedClauses = allClauses.filter((c: any) => {
       if (!c.show_in_invoice) return false;
+      if (isDTL && !isDGS && (c.identifier === 'dgs-term-12' || (c.title && c.title.toLowerCase().includes('live plant sizing')))) return false;
       if (isDGS && !isDTL) return c.division === 'dgs';
       if (isDTL && !isDGS) return c.division === 'dtl';
       if (activeDivision === 'both' || (isDTL && isDGS)) return c.division === 'dtl' || c.division === 'dgs';
@@ -125,6 +130,22 @@ const documentTitle = inv.order_type === 'sample_order' ? 'SAMPLE ORDER' :
                       inv.order_type === 'inquiry' ? 'INQUIRY' :
                       'INVOICE';
 
+// Ensure the order code prefix strictly matches the order type
+function getPrefixForOrderType(type: string): string {
+  if (type === 'delivery_note') return 'DLN-';
+  if (type === 'sample_order') return 'SMP-';
+  if (type === 'quotation' || type === 'inquiry') return 'EST-';
+  if (type === 'lpo' || type === 'proforma') return 'PRO-';
+  return 'INV-';
+}
+
+const expectedPrefix = getPrefixForOrderType(inv.order_type || 'standard');
+const matchedInvoiceNumber = (inv.invoice_number || '').replace(/^(INV|EST|PRO|DLN|SMP)-/i, expectedPrefix);
+const invForPrint = {
+  ...inv,
+  invoice_number: matchedInvoiceNumber
+};
+
 // Number to Words converter (compliant with AED Dirhams and Fils)
 function numberToWords(num: number): string {
   const a = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
@@ -135,37 +156,35 @@ function numberToWords(num: number): string {
     if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? ' ' + a[n % 10] : '');
     if (n < 1000) return a[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' and ' + convert(n % 100) : '');
     if (n < 1000000) return convert(Math.floor(n / 1000)) + ' thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
-    return '';
+    return convert(Math.floor(n / 1000000)) + ' million' + (n % 1000000 ? ' ' + convert(n % 1000000) : '');
   }
 
   const parts = num.toFixed(2).split('.');
-  const dirhams = parseInt(parts[0]);
-  const fils = parseInt(parts[1]);
+  const integerPart = parseInt(parts[0], 10);
+  const decimalPart = parseInt(parts[1], 10);
 
   let result = '';
-  if (dirhams > 0) {
-    result += convert(dirhams) + ' Dirham';
-    if (dirhams > 1) result += 's';
+  if (integerPart === 0) {
+    result = 'zero Dirhams';
   } else {
-    result += 'Zero Dirhams';
+    result = convert(integerPart) + ' Dirham' + (integerPart > 1 ? 's' : '');
   }
 
-  if (fils > 0) {
-    result += ' and ' + convert(fils) + ' fils';
+  if (decimalPart > 0) {
+    result += ' and ' + convert(decimalPart) + ' Fil' + (decimalPart > 1 ? 's' : '');
   }
-  result += ' Only';
-  
-  return result.charAt(0).toUpperCase() + result.slice(1);
+
+  return result.toUpperCase();
 }
 
-const amountInWords = numberToWords(inv.total_amount);
-const totalQty = items.reduce((sum, item) => sum + Number(item.quantity), 0);
-const totalQtyInWords = numberToWords(totalQty).replace(/Dirham.*/i, 'Only');
+const totalQty = items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
+const totalQtyInWords = numberToWords(totalQty).replace(/\s*(DIRHAM|FIL)S?\s*/gi, '').trim();
+const amountInWords = numberToWords(Number(inv.total_amount) || 0);
 
 // Division branding
 const isDGS = (inv.source_division || '').toUpperCase() === 'DGS';
-const companyNameEN = isDGS ? 'Delight Greenscapes' : 'Delight Technical Lighting';
-const companyNameAR = isDGS ? 'ديلايت جرين سكيبس' : 'ديلايت للاضاءة الفنية';
+const companyNameEN: string = isDGS ? 'Delight Greenscapes' : 'Delight Technical Lighting';
+const companyNameAR: string = isDGS ? 'ديلايت جرين سكيبس' : 'ديلايت للاضاءة الفنية';
 const websiteURL = 'www.delightgroupllc.com';
 const logoColor = isDGS ? '#15803d' : '#0891b2'; // Green for DGS, Cyan for DTL/Group
 
@@ -193,7 +212,16 @@ if (matchingDivisionTerms.length === 0) {
   activeTerms = matchingDivisionTerms;
 }
 
+const activeDivLower = (inv.source_division || '').trim().toLowerCase();
+const isDTLOrder = (activeDivLower === 'dtl' || activeDivLower.includes('technical') || activeDivLower.includes('lighting')) && !activeDivLower.includes('green') && activeDivLower !== 'both';
+if (isDTLOrder) {
+  activeTerms = activeTerms.filter((t: string) => t !== 'dgs-term-12' && !t.toLowerCase().includes('live-plant-sizing'));
+}
+
 const isTermChecked = (identifier: string): boolean => {
+  if (isDTLOrder && (identifier === 'dgs-term-12' || identifier.toLowerCase().includes('live-plant-sizing'))) {
+    return false;
+  }
   return activeTerms.includes(identifier);
 };
 ---
@@ -203,7 +231,7 @@ const isTermChecked = (identifier: string): boolean => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{documentTitle} - {inv.invoice_number}</title>
+  <title>{documentTitle} - {matchedInvoiceNumber}</title>
   <style is:global>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
     
@@ -986,6 +1014,16 @@ const isTermChecked = (identifier: string): boolean => {
       page-break-inside: avoid;
       text-align: justify;
     }
+    #layout-standard2-wrapper .terms-section {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+    #layout-standard2-wrapper .terms-section-title {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+    }
     .terms-section:not(.hidden) {
       counter-increment: term-counter;
     }
@@ -1111,7 +1149,7 @@ const isTermChecked = (identifier: string): boolean => {
 </head>
 <body>
   
-  <div id="print-root-container" data-grand-total={inv.total_amount} data-division={inv.source_division || 'DTL'} data-order-type={inv.order_type} data-id={inv.id} data-invoice-number={inv.invoice_number} class="flex h-screen overflow-hidden print:h-auto print:overflow-visible print:block">
+  <div id="print-root-container" data-grand-total={inv.total_amount} data-division={inv.source_division || 'DTL'} data-order-type={inv.order_type} data-id={inv.id} data-invoice-number={matchedInvoiceNumber} class="flex h-screen overflow-hidden print:h-auto print:overflow-visible print:block">
     <input type="hidden" id="company-stamp-data" value={settings.company_stamp || ''} />
     
     <!-- LEFT: Document Canvas (Simulated A4 Pages) -->
@@ -1144,7 +1182,25 @@ const isTermChecked = (identifier: string): boolean => {
       <!-- Render Standard Layout component -->
       <div id="layout-standard-wrapper" class="w-full" style="display: block;">
         <StandardPrintLayout 
-          inv={inv} 
+          inv={invForPrint} 
+          items={items} 
+          settings={settings} 
+          documentTitle={documentTitle} 
+          logoColor={logoColor}
+          companyNameEN={companyNameEN}
+          selectedClauses={selectedClauses}
+          signatureImage={signatureImage}
+          isCustomerDeleted={inv.is_customer_deleted}
+          dnNote={dnNote}
+          totalQtyInWords={totalQtyInWords}
+          amountInWords={amountInWords}
+        />
+      </div>
+
+      <!-- Render Standard Layout 2.0 (Continuous Flow) component -->
+      <div id="layout-standard2-wrapper" class="w-full" style="display: none;">
+        <Standard2PrintLayout 
+          inv={invForPrint} 
           items={items} 
           settings={settings} 
           documentTitle={documentTitle} 
@@ -1162,7 +1218,7 @@ const isTermChecked = (identifier: string): boolean => {
       <!-- Render Modern Grid Layout component -->
       <div id="layout-delightgroupllc-wrapper" class="w-full" style="display: none;">
         <ModernGridPrintLayout 
-          inv={inv} 
+          inv={invForPrint} 
           items={items} 
           settings={settings} 
           logoColor={logoColor}
@@ -1209,6 +1265,7 @@ const isTermChecked = (identifier: string): boolean => {
               <label class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Print Template Layout</label>
               <select id="layoutSelector" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
                 <option value="standard">Standard Template (Delight Group)</option>
+                <option value="standard2">Standard Layout 2.0 (Continuous Flow)</option>
                 <option value="delightgroupllc">Modern Grid Layout (Delight Group)</option>
               </select>
             </div>
@@ -1515,7 +1572,9 @@ const isTermChecked = (identifier: string): boolean => {
             <div>
               <label class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Bank Remittance Placement</label>
               <select id="config-remittance-placement" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
-                <option value="both" selected>Show on Last Page & TOS Page</option>
+                <option value="under-customer-both" selected>Below Customer Details (Page 1) & TOS Page</option>
+                <option value="under-customer">Below Customer Details (Page 1) Only</option>
+                <option value="both">Show on Last Page & TOS Page</option>
                 <option value="page1">Show on Last Page Only</option>
                 <option value="tos">Show on TOS Page Only</option>
                 <option value="none">Hide Remittance Entirely</option>
@@ -1603,13 +1662,13 @@ const isTermChecked = (identifier: string): boolean => {
               <select id="config-sig-company-name" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0">
                 {isDGS ? (
                   <>
-                    <option value="Delight Greenscapes" selected={companyNameEN === 'Delight Greenscapes' || companyNameEN === 'Delight Global Solutions'}>Delight Greenscapes</option>
-                    <option value="Delight Group LLC" selected={companyNameEN === 'Delight Group LLC'}>Delight Group LLC</option>
+                    <option value="Delight Greenscapes" selected={companyNameEN === 'Delight Greenscapes' || (companyNameEN as string) === 'Delight Global Solutions'}>Delight Greenscapes</option>
+                    <option value="Delight Group LLC" selected={(companyNameEN as string) === 'Delight Group LLC'}>Delight Group LLC</option>
                   </>
                 ) : (
                   <>
                     <option value="Delight Technical Lighting" selected={companyNameEN === 'Delight Technical Lighting'}>Delight Technical Lighting</option>
-                    <option value="Delight Group LLC" selected={companyNameEN === 'Delight Group LLC'}>Delight Group LLC</option>
+                    <option value="Delight Group LLC" selected={(companyNameEN as string) === 'Delight Group LLC'}>Delight Group LLC</option>
                   </>
                 )}
               </select>
@@ -1863,7 +1922,10 @@ const isTermChecked = (identifier: string): boolean => {
       });
     };
     
-    onlySelectedTOSCheckbox?.addEventListener('change', applySelectedTOSFilter);
+    onlySelectedTOSCheckbox?.addEventListener('change', () => {
+      applySelectedTOSFilter();
+      repaginate();
+    });
 
     // When in locked mode and user tries to check a non-invoice item — show banner
     listContainer?.addEventListener('click', (e) => {
@@ -1905,6 +1967,7 @@ const isTermChecked = (identifier: string): boolean => {
               el.classList.add('hidden');
             }
           });
+          repaginate();
         }
       }
     });
@@ -1912,15 +1975,25 @@ const isTermChecked = (identifier: string): boolean => {
     // Toggle templates based on layout selector
     const layoutSelector = document.getElementById('layoutSelector');
     const stdLayoutWrapper = document.getElementById('layout-standard-wrapper');
+    const std2LayoutWrapper = document.getElementById('layout-standard2-wrapper');
     const delightgroupllcLayoutWrapper = document.getElementById('layout-delightgroupllc-wrapper');
 
     const updateLayout = (layout) => {
-      if (layout === 'delightgroupllc') {
-        stdLayoutWrapper.style.display = 'none';
-        delightgroupllcLayoutWrapper.style.display = 'block';
+      let active = layout;
+      if (active === '2.0') active = 'standard2';
+
+      if (active === 'delightgroupllc') {
+        if (stdLayoutWrapper) stdLayoutWrapper.style.display = 'none';
+        if (std2LayoutWrapper) std2LayoutWrapper.style.display = 'none';
+        if (delightgroupllcLayoutWrapper) delightgroupllcLayoutWrapper.style.display = 'block';
+      } else if (active === 'standard2') {
+        if (stdLayoutWrapper) stdLayoutWrapper.style.display = 'none';
+        if (std2LayoutWrapper) std2LayoutWrapper.style.display = 'block';
+        if (delightgroupllcLayoutWrapper) delightgroupllcLayoutWrapper.style.display = 'none';
       } else {
-        stdLayoutWrapper.style.display = 'block';
-        delightgroupllcLayoutWrapper.style.display = 'none';
+        if (stdLayoutWrapper) stdLayoutWrapper.style.display = 'block';
+        if (std2LayoutWrapper) std2LayoutWrapper.style.display = 'none';
+        if (delightgroupllcLayoutWrapper) delightgroupllcLayoutWrapper.style.display = 'none';
       }
     };
 
@@ -1932,11 +2005,14 @@ const isTermChecked = (identifier: string): boolean => {
       const url = new URL(window.location.href);
       url.searchParams.set('layout', selected);
       window.history.replaceState({}, '', url.toString());
+      setTimeout(repaginate, 50);
+      setTimeout(updateTotalPagesCount, 70);
     });
 
     // Read initial layout from URL params
     const urlParams = new URLSearchParams(window.location.search);
-    const initialLayout = urlParams.get('layout') || 'standard';
+    let initialLayout = urlParams.get('layout') || 'standard';
+    if (initialLayout === '2.0') initialLayout = 'standard2';
     if (layoutSelector) {
       layoutSelector.value = initialLayout;
       updateLayout(initialLayout);
@@ -1973,6 +2049,39 @@ const isTermChecked = (identifier: string): boolean => {
       });
     }
 
+    function getTargetPrefix(val) {
+      const v = (val || '').toUpperCase().trim();
+      if (v === 'DELIVERY NOTE') return 'DLN-';
+      if (v === 'SAMPLE ORDER') return 'SMP-';
+      if (v === 'ESTIMATION / QUOTE' || v === 'QUOTATION' || v === 'QUOTATION / ESTIMATE' || v === 'ESTIMATION' || v === 'INQUIRY') return 'EST-';
+      if (v === 'PRO FORMA INVOICE' || v === 'PRO FORMA' || v === 'PURCHASE ORDER' || v === 'LPO') return 'PRO-';
+      return 'INV-';
+    }
+
+    function updateDisplayedDocNumber(docTitle) {
+      const root = document.getElementById('print-root-container');
+      const rawInvoiceNumber = root?.getAttribute('data-invoice-number') || '';
+      const targetPrefix = getTargetPrefix(docTitle);
+      const matchedDocNo = rawInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/i, targetPrefix);
+
+      document.querySelectorAll('.dynamic-doc-number').forEach(el => {
+        el.textContent = matchedDocNo;
+      });
+
+      // Update ModernGrid doc label if applicable
+      const isDLN = docTitle === 'DELIVERY NOTE';
+      const isSMP = docTitle === 'SAMPLE ORDER';
+      const labelText = isSMP ? 'Sample Order Number:' : (isDLN ? 'Delivery Note Number:' : 'Invoice Number:');
+      document.querySelectorAll('.dynamic-doc-label').forEach(el => {
+        el.textContent = labelText;
+      });
+
+      const titleEl = document.querySelector('title');
+      if (titleEl && docTitle) {
+        titleEl.textContent = `${docTitle} - ${matchedDocNo}`;
+      }
+    }
+
     // Dynamic document title override
     document.getElementById('config-doc-type')?.addEventListener('change', async (e) => {
       const val = e.target.value;
@@ -1989,23 +2098,23 @@ const isTermChecked = (identifier: string): boolean => {
       if (val === 'ESTIMATION / QUOTE') {
          targetOrderType = 'quotation';
          targetPrefix = 'EST-';
-         promptMsg = 'Would you like to convert this order to an Estimation/Quotation (EST)?';
+         promptMsg = 'Would you like to permanently convert this order in the database to an Estimation/Quotation (EST)? (Cancel to only update print layout)';
       } else if (val === 'PRO FORMA INVOICE') {
          targetOrderType = 'lpo';
          targetPrefix = 'PRO-';
-         promptMsg = 'Would you like to convert this order to a Pro Forma Invoice (PRO)?';
+         promptMsg = 'Would you like to permanently convert this order in the database to a Pro Forma Invoice (PRO)? (Cancel to only update print layout)';
       } else if (val === 'TAX INVOICE') {
          targetOrderType = 'standard';
          targetPrefix = 'INV-';
-         promptMsg = 'Would you like to convert this order to a Tax Invoice (INV)?';
+         promptMsg = 'Would you like to permanently convert this order in the database to a Tax Invoice (INV)? (Cancel to only update print layout)';
       } else if (val === 'DELIVERY NOTE') {
          targetOrderType = 'delivery_note';
          targetPrefix = 'DLN-';
-         promptMsg = 'Would you like to convert this order to a Delivery Note (DLN)?';
+         promptMsg = 'Would you like to permanently convert this order in the database to a Delivery Note (DLN)? (Cancel to only update print layout)';
       } else if (val === 'SAMPLE ORDER') {
          targetOrderType = 'sample_order';
          targetPrefix = 'SMP-';
-         promptMsg = 'Would you like to convert this order to a Sample Order (SMP)?';
+         promptMsg = 'Would you like to permanently convert this order in the database to a Sample Order (SMP)? (Cancel to only update print layout)';
       }
 
       const needsConversion = targetOrderType && (orderType !== targetOrderType || (currentInvoiceNumber && !currentInvoiceNumber.startsWith(targetPrefix)));
@@ -2033,22 +2142,15 @@ const isTermChecked = (identifier: string): boolean => {
             alert(`Error: ${err.message}`);
           }
         }
-        // If we reach here, user either cancelled or there was an error.
-        // Revert dropdown
-        const oldValMapping = {
-          'quotation': 'ESTIMATION / QUOTE',
-          'lpo': 'PRO FORMA INVOICE',
-          'delivery_note': 'DELIVERY NOTE',
-          'sample_order': 'SAMPLE ORDER',
-          'standard': 'TAX INVOICE'
-        };
-        e.target.value = oldValMapping[orderType || 'standard'] || 'TAX INVOICE';
-        return;
+        // If user cancelled, proceed without converting in the database so user can preview and print
       }
 
       document.querySelectorAll('.delightgroupllc-doc-title, .std-doc-title').forEach(el => {
         el.textContent = val;
       });
+
+      // Synchronize document number prefix with selected document title
+      updateDisplayedDocNumber(val);
 
       const layoutWrapper = document.getElementById('layout-delightgroupllc');
       if (layoutWrapper) {
@@ -2205,9 +2307,444 @@ const isTermChecked = (identifier: string): boolean => {
     setupToggle('config-show-company-card-tos', 'company-card-tos-wrapper');
     setupToggle('config-show-disclaimer', 'print-disclaimer-text');
 
+    ['config-show-words', 'config-show-page-2', 'config-show-company-card-tos', 'config-show-disclaimer', 'config-show-product-images', 'config-show-sig-image', 'config-show-logo'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', () => {
+        repaginate();
+      });
+    });
+
+    // Dynamic Client-side Continuous Flow A4 Slicing Engine for Standard 2.0
+    const repaginateStandard2 = () => {
+      const wrapper = document.getElementById('layout-standard2-wrapper');
+      if (!wrapper || wrapper.style.display === 'none') return;
+
+      const FOOTER_RESERVE_PX = 55;
+
+      const page1 = wrapper.querySelector('.std2-page[data-page-index="0"]') || wrapper.querySelector('.std2-page');
+      if (!page1) return;
+
+      page1.style.display = 'block';
+
+      // 1. Restore any detached clauses back into main termsWrapper before clearing dynamic continuation pages
+      const termsWrapperMain = wrapper.querySelector('.std2-terms-wrapper');
+      if (termsWrapperMain) {
+        const mainCols = termsWrapperMain.querySelector('.terms-columns');
+        if (mainCols) {
+          wrapper.querySelectorAll('.terms-section').forEach(c => {
+            if (c.parentElement !== mainCols) {
+              mainCols.appendChild(c);
+            }
+          });
+        }
+      }
+
+      // 2. Collect all rendered item rows across all std2 pages before removing dynamic pages
+      const allRows = Array.from(wrapper.querySelectorAll('.std2-page tbody tr.item-row-render'));
+      
+      // 3. Extract atomic closing blocks and closing wrapper
+      let closingWrapper = wrapper.querySelector('.std2-closing-wrapper');
+      let mathBlock = wrapper.querySelector('.print-footer-math');
+      let bankBlockHeader = wrapper.querySelector('.std-bank-block.print-bank-block-header');
+      let bankBlockFooter = wrapper.querySelector('.std-bank-block.print-bank-block-footer');
+      let disclaimerBlock = wrapper.querySelector('.std-disclaimer-block.print-disclaimer-text');
+      let termsWrapper = wrapper.querySelector('.std2-terms-wrapper');
+      let sigsBlock = wrapper.querySelector('.std-signatures-table.print-signature-section');
+      let electronicBadge = wrapper.querySelector('.print-electronic-badge');
+      let bottomCards = wrapper.querySelector('.std2-bottom-cards');
+      let companyCard = wrapper.querySelector('.company-card-tos-wrapper');
+
+      // Detach closing blocks temporarily (bankBlockHeader stays in std2-master-header on Page 1)
+      if (mathBlock) mathBlock.remove();
+      if (bankBlockFooter) bankBlockFooter.remove();
+      if (disclaimerBlock) disclaimerBlock.remove();
+      if (termsWrapper) termsWrapper.remove();
+      if (sigsBlock) sigsBlock.remove();
+      if (electronicBadge) electronicBadge.remove();
+      if (bottomCards) bottomCards.remove();
+      else if (companyCard) companyCard.remove();
+      if (closingWrapper) closingWrapper.remove();
+
+      // Remove all item rows from all tables
+      allRows.forEach(r => r.remove());
+
+      // Remove all dynamically created overflow pages
+      wrapper.querySelectorAll('.std2-page.dynamic-overflow-page').forEach(p => p.remove());
+
+      // Ensure page 1 has a clean items table ready
+      let p1Table = page1.querySelector('.std2-items-table');
+      if (!p1Table) {
+        p1Table = document.createElement('table');
+        p1Table.className = 'std-items-table std2-items-table w-full';
+        p1Table.style.cssText = 'border-collapse: collapse; margin-bottom: 12px;';
+        p1Table.innerHTML = `
+          <thead>
+            <tr style="background: #f1f5f9; border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
+              <th style="text-align: left; width: 5%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;">#</th>
+              <th class="product-image-column" style="text-align: left; width: 10%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;">Image</th>
+              <th style="text-align: left; width: 42%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;" class="print-col-desc">Item Description / Spec</th>
+              <th class="print-col-qty" style="text-align: center; width: 10%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;">Qty</th>
+              <th style="text-align: right; width: 15%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;" class="print-col-price">Unit Price (<span class="dirham-symbol inline-block text-[1em]"></span>)</th>
+              <th style="text-align: right; width: 0%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;" class="print-col-vat">VAT</th>
+              <th style="text-align: right; width: 17%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;" class="print-col-price">Total (<span class="dirham-symbol inline-block text-[1em]"></span>)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+        page1.appendChild(p1Table);
+      }
+      let p1Tbody = p1Table.querySelector('tbody');
+      if (p1Tbody) p1Tbody.innerHTML = '';
+
+      const currentPages = [page1];
+
+      // Helper to check if an element overflows the given page
+      // Uses the PHYSICAL A4 height relative to the page top as a hard limit
+      const doesElementOverflow = (page, el) => {
+        const pageRect = page.getBoundingClientRect();
+        if (pageRect.height === 0) {
+          // If page hasn't rendered yet, force a reflow and try again
+          void page.offsetHeight;
+          const retryRect = page.getBoundingClientRect();
+          if (retryRect.height === 0) return false; // Still 0, cannot measure
+        }
+        const finalPageRect = page.getBoundingClientRect();
+        // Use page.offsetWidth to compute strict A4 aspect-ratio pixel height
+        // Fallback to 1122.5px (A4 at 96dpi: 297mm) if offsetWidth is unavailable
+        const a4PixelHeight = page.offsetWidth > 0
+          ? (page.offsetWidth * 297 / 210)
+          : 1122.5;
+        const safeHeight = Math.min(finalPageRect.height || a4PixelHeight, a4PixelHeight) - FOOTER_RESERVE_PX;
+        const elRect = el.getBoundingClientRect();
+        return (elRect.bottom - finalPageRect.top) > safeHeight;
+      };
+
+      // Helper to create a new A4 continuation page
+      const createContinuationPage = () => {
+        const pageIdx = currentPages.length;
+        const newPage = document.createElement('div');
+        newPage.className = 'print-page std2-page dynamic-overflow-page bg-white shadow-xl border border-slate-250 p-10 relative print:border-none print:shadow-none mb-8';
+        newPage.setAttribute('data-page-index', pageIdx.toString());
+        // Explicitly set A4 dimensions inline so getBoundingClientRect measurements are immediate and correct
+        newPage.style.cssText = 'width: 210mm; min-height: 297mm; height: 297mm; max-height: 297mm; box-sizing: border-box; overflow: hidden; position: relative; padding: 40px;';
+
+        // Watermark with active sidebar settings
+        const wmDiv = document.createElement('div');
+        wmDiv.className = 'std-watermark print-watermark';
+        const wmOpInput = document.getElementById('config-watermark-opacity');
+        const wmSzInput = document.getElementById('config-watermark-size');
+        const wmSrcInput = document.getElementById('config-watermark-source');
+        const wmShowInput = document.getElementById('config-show-watermark');
+        
+        const wmOp = wmOpInput ? (Number(wmOpInput.value) / 100).toString() : '0.06';
+        const wmSz = wmSzInput ? wmSzInput.value + 'px' : '380px';
+        let wmSrc = '/dgllclogolarge.png';
+        if (wmSrcInput?.value === 'dtl') wmSrc = '/dtllogo.jpg';
+        else if (wmSrcInput?.value === 'dgs') wmSrc = '/dgslogo.jpg';
+        const isWmHidden = wmShowInput && !wmShowInput.checked;
+
+        wmDiv.style.cssText = `position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: ${wmSz}; height: ${wmSz}; opacity: 1; pointer-events: none; z-index: 0;`;
+        wmDiv.innerHTML = `<img src="${wmSrc}" style="width: 100%; height: auto; object-fit: contain; opacity: ${wmOp};" class="${isWmHidden ? 'hidden' : ''}" />`;
+        newPage.appendChild(wmDiv);
+
+        // Continuation Header
+        const division = document.getElementById('print-root-container')?.getAttribute('data-division') || 'DTL';
+        const mainLogoImg = document.getElementById('print-company-logo-std2');
+        const activeLogoSrc = mainLogoImg?.getAttribute('src') || (division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg');
+        const docTitle = document.getElementById('config-doc-type')?.value || 'TAX INVOICE';
+        const rawInvoiceNumber = document.getElementById('print-root-container')?.getAttribute('data-invoice-number') || '';
+        const targetPrefix = getTargetPrefix(docTitle);
+        const matchedDocNo = rawInvoiceNumber.replace(/^(INV|EST|PRO|DLN|SMP)-/i, targetPrefix);
+
+        const headerTable = document.createElement('table');
+        headerTable.className = 'std-header-table w-full std2-continuation-header';
+        headerTable.style.cssText = 'margin-bottom: 12px; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;';
+        headerTable.innerHTML = `
+          <tr>
+            <td style="vertical-align: middle;">
+              <img src="${activeLogoSrc}" class="h-9 w-auto object-contain print-company-logo-subsequent" />
+            </td>
+            <td class="text-right" style="vertical-align: middle; font-size: 9.5pt; font-weight: 750; color: #334155;">
+              <span class="delightgroupllc-doc-title std-doc-title">${docTitle}</span> (Continuation Page <span class="dynamic-page-num">${pageIdx + 1}</span> of <span class="dynamic-total-pages">#</span>)
+              <div style="font-size: 8pt; font-weight: normal; color: #64748b; margin-top: 1px;">Document No: <span class="font-mono font-bold dynamic-doc-number">${matchedDocNo}</span></div>
+            </td>
+          </tr>
+        `;
+        newPage.appendChild(headerTable);
+
+        // Page Footer
+        const footer = document.createElement('div');
+        footer.className = 'text-center text-muted print-page-footer-num';
+        footer.style.cssText = 'position: absolute; bottom: 25px; left: 0; right: 0; font-size: 7.5pt; font-weight: 500;';
+        footer.innerHTML = `Page <span class="dynamic-page-num">${pageIdx + 1}</span> of <span class="dynamic-total-pages">#</span>`;
+        newPage.appendChild(footer);
+
+        const container = wrapper.firstElementChild || wrapper;
+        container.appendChild(newPage);
+        currentPages.push(newPage);
+        return newPage;
+      };
+
+      let curPage = currentPages[0];
+      let curTable = p1Table;
+      let curTbody = p1Tbody;
+
+      for (let rIdx = 0; rIdx < allRows.length; rIdx++) {
+        const row = allRows[rIdx];
+        if (row.firstElementChild) {
+          row.firstElementChild.textContent = (rIdx + 1).toString();
+        }
+        curTbody.appendChild(row);
+
+        if (doesElementOverflow(curPage, row) && curTbody.children.length > 1) {
+          row.remove();
+          curPage = createContinuationPage();
+          
+          curTable = document.createElement('table');
+          curTable.className = 'std-items-table std2-items-table w-full';
+          curTable.style.cssText = 'border-collapse: collapse; margin-bottom: 12px;';
+          curTable.innerHTML = p1Table.querySelector('thead') ? p1Table.querySelector('thead').outerHTML : '';
+          curTbody = document.createElement('tbody');
+          curTable.appendChild(curTbody);
+          curPage.appendChild(curTable);
+
+          curTbody.appendChild(row);
+        }
+      }
+
+      currentPages.forEach(p => {
+        const t = p.querySelector('.std2-items-table');
+        if (t && (!t.querySelector('tbody') || t.querySelector('tbody').children.length === 0)) {
+          t.style.display = 'none';
+        }
+      });
+
+      // Helper to append atomic block to current page with auto page-break
+      const appendBlockWithOverflowCheck = (block) => {
+        if (!block) return;
+        let activePage = currentPages[currentPages.length - 1];
+        activePage.appendChild(block);
+        if (doesElementOverflow(activePage, block)) {
+          block.remove();
+          activePage = createContinuationPage();
+          activePage.appendChild(block);
+          // If it still overflows on a fresh page (block is just very tall), keep it anyway
+        }
+      };
+
+      if (mathBlock) {
+        mathBlock.style.display = 'block';
+        appendBlockWithOverflowCheck(mathBlock);
+      }
+
+      const remittanceSelect = document.getElementById('config-remittance-placement');
+      const remittanceMode = remittanceSelect ? remittanceSelect.value : 'under-customer-both';
+      const isHeaderBankVisible = remittanceMode === 'under-customer-both' || remittanceMode === 'under-customer';
+      const isFooterBankVisible = remittanceMode === 'both' || remittanceMode === 'page1';
+      const isTosBankVisible = remittanceMode === 'under-customer-both' || remittanceMode === 'both' || remittanceMode === 'tos';
+
+      if (bankBlockHeader) {
+        if (isHeaderBankVisible) {
+          bankBlockHeader.classList.remove('hidden');
+          bankBlockHeader.style.display = 'block';
+          const detailsTable = page1.querySelector('.std2-details-table');
+          if (detailsTable) {
+            detailsTable.after(bankBlockHeader);
+          }
+        } else {
+          bankBlockHeader.classList.add('hidden');
+          bankBlockHeader.style.display = 'none';
+        }
+      }
+
+      if (bankBlockFooter) {
+        if (isFooterBankVisible) {
+          bankBlockFooter.classList.remove('hidden');
+          bankBlockFooter.style.display = 'block';
+          appendBlockWithOverflowCheck(bankBlockFooter);
+        } else {
+          bankBlockFooter.classList.add('hidden');
+          bankBlockFooter.style.display = 'none';
+          page1.appendChild(bankBlockFooter);
+        }
+      }
+
+      const showDisclaimerCb = document.getElementById('config-show-disclaimer');
+      const isDisclaimerVisible = showDisclaimerCb ? showDisclaimerCb.checked : true;
+      if (disclaimerBlock) {
+        if (isDisclaimerVisible) {
+          disclaimerBlock.classList.remove('hidden');
+          disclaimerBlock.style.display = 'block';
+          appendBlockWithOverflowCheck(disclaimerBlock);
+        } else {
+          disclaimerBlock.classList.add('hidden');
+          disclaimerBlock.style.display = 'none';
+          page1.appendChild(disclaimerBlock);
+        }
+      }
+
+      const sigPlacement = document.getElementById('config-sig-placement')?.value || 'bottom-fixed';
+      const electronicSigCb = document.getElementById('config-electronic-sig');
+      const isElectronicSig = electronicSigCb ? electronicSigCb.checked : false;
+      const showCompCardCb = document.getElementById('config-show-company-card-tos');
+      const isCompCardVisible = showCompCardCb ? showCompCardCb.checked : true;
+
+      const showPage2Cb = document.getElementById('config-show-page-2');
+      const isTermsVisible = showPage2Cb ? showPage2Cb.checked : true;
+      if (termsWrapper) {
+        if (isTermsVisible) {
+          termsWrapper.classList.remove('hidden');
+          termsWrapper.style.display = 'block';
+
+          // First try placing the whole terms wrapper on the current last page
+          let termsPage = currentPages[currentPages.length - 1];
+          termsPage.appendChild(termsWrapper);
+
+          if (doesElementOverflow(termsPage, termsWrapper)) {
+            termsWrapper.remove();
+            termsPage = createContinuationPage();
+            termsPage.appendChild(termsWrapper);
+
+            // Calculate space required by subsequent blocks (signatures and company card)
+            // so they don't get kicked onto an empty trailing page all by themselves
+            const trailingBlocksReserve = (sigsBlock && sigPlacement !== 'none' && !isElectronicSig ? (sigsBlock.offsetHeight || 100) : 0)
+              + (companyCard && isCompCardVisible ? (companyCard.offsetHeight || 50) : 0)
+              + 25;
+
+            // If even on a fresh continuation page the terms together with trailing blocks overflow,
+            // redistribute individual clauses across pages without clipping text
+            const clauses = Array.from(termsWrapper.querySelectorAll('.terms-section')).filter(c => !c.classList.contains('hidden'));
+            const termsNeedSplit = clauses.length > 2 && (
+              doesElementOverflow(termsPage, termsWrapper) ||
+              ((termsWrapper.getBoundingClientRect().bottom - termsPage.getBoundingClientRect().top + trailingBlocksReserve) > ((termsPage.offsetWidth * 297 / 210 || 1122.5) - FOOTER_RESERVE_PX))
+            );
+
+            if (termsNeedSplit) {
+              const overflowClauses = [];
+              // Detach clauses from end until remainder fits cleanly WITH room for signatures if possible
+              // Keep roughly balanced between pages rather than leaving 1 orphan clause
+              const targetP1Max = Math.max(3, Math.ceil(clauses.length / 2));
+              while (clauses.length > 1 && (
+                doesElementOverflow(termsPage, termsWrapper) ||
+                ((termsWrapper.getBoundingClientRect().bottom - termsPage.getBoundingClientRect().top + trailingBlocksReserve) > ((termsPage.offsetWidth * 297 / 210 || 1122.5) - FOOTER_RESERVE_PX) && clauses.length > targetP1Max)
+              )) {
+                const lastClause = clauses.pop();
+                lastClause.remove();
+                overflowClauses.unshift(lastClause);
+              }
+              if (overflowClauses.length > 0) {
+                const nextTermsPage = createContinuationPage();
+                const continuationTermsWrapper = document.createElement('div');
+                continuationTermsWrapper.className = 'std2-terms-wrapper print-page-2-container std2-block-atomic';
+                // Count visible clauses remaining on termsPage to continue numbering seamlessly
+                const visibleOnTermsPage = Array.from(termsWrapper.querySelectorAll('.terms-section')).filter(c => !c.classList.contains('hidden') && c.style.display !== 'none').length;
+                continuationTermsWrapper.innerHTML = `
+                  <h2 class="terms-title" style="font-size: 8.5pt; font-weight: 800; color: #1e293b; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Terms of Sale (Continued)</h2>
+                  <div class="terms-columns" style="column-count: 2; column-gap: 16px; display: block; counter-reset: term-counter ${visibleOnTermsPage};"></div>
+                `;
+                const nextColumns = continuationTermsWrapper.querySelector('.terms-columns');
+                overflowClauses.forEach(c => nextColumns.appendChild(c));
+                nextTermsPage.appendChild(continuationTermsWrapper);
+              }
+            }
+          }
+        } else {
+          termsWrapper.classList.add('hidden');
+          termsWrapper.style.display = 'none';
+          page1.appendChild(termsWrapper);
+        }
+      }
+
+      if (sigsBlock) {
+        if (sigPlacement !== 'none' && !isElectronicSig) {
+          sigsBlock.classList.remove('hidden');
+          sigsBlock.style.display = 'block';
+          appendBlockWithOverflowCheck(sigsBlock);
+        } else {
+          sigsBlock.classList.add('hidden');
+          sigsBlock.style.display = 'none';
+          page1.appendChild(sigsBlock);
+        }
+      }
+
+      if (electronicBadge) {
+        if (isElectronicSig) {
+          electronicBadge.classList.remove('hidden');
+          electronicBadge.style.display = 'block';
+          appendBlockWithOverflowCheck(electronicBadge);
+        } else {
+          electronicBadge.classList.add('hidden');
+          electronicBadge.style.display = 'none';
+          page1.appendChild(electronicBadge);
+        }
+      }
+
+      const tosBankCards = wrapper.querySelectorAll('.print-bank-block-p2');
+      tosBankCards.forEach(b => {
+        if (isTosBankVisible) {
+          b.classList.remove('hidden');
+          b.style.display = 'block';
+        } else {
+          b.classList.add('hidden');
+          b.style.display = 'none';
+        }
+      });
+
+      if (bottomCards) {
+        if (isCompCardVisible || isTosBankVisible) {
+          bottomCards.classList.remove('hidden');
+          bottomCards.style.display = 'flex';
+          appendBlockWithOverflowCheck(bottomCards);
+        } else {
+          bottomCards.classList.add('hidden');
+          bottomCards.style.display = 'none';
+          page1.appendChild(bottomCards);
+        }
+      } else if (companyCard) {
+        if (isCompCardVisible) {
+          companyCard.classList.remove('hidden');
+          companyCard.style.display = 'block';
+          appendBlockWithOverflowCheck(companyCard);
+        } else {
+          companyCard.classList.add('hidden');
+          companyCard.style.display = 'none';
+          page1.appendChild(companyCard);
+        }
+      }
+
+      const totalPages = currentPages.length;
+      currentPages.forEach((page, idx) => {
+        page.style.display = 'block';
+        const pageNum = idx + 1;
+        const footerNum = page.querySelector('.print-page-footer-num');
+        if (footerNum) {
+          footerNum.innerHTML = `Page <span class="dynamic-page-num">${pageNum}</span> of <span class="dynamic-total-pages">${totalPages}</span>`;
+        }
+        page.querySelectorAll('.dynamic-page-num').forEach(el => {
+          el.textContent = pageNum.toString();
+        });
+        page.querySelectorAll('.dynamic-total-pages').forEach(el => {
+          el.textContent = totalPages.toString();
+        });
+      });
+
+      const currentDocTitle = document.getElementById('config-doc-type')?.value;
+      if (currentDocTitle) {
+        updateDisplayedDocNumber(currentDocTitle);
+      }
+
+      updateTotalPagesCount();
+    };
+
     // Dynamic Client-side Repagination to utilize page space and avoid footer overflows
     const repaginate = () => {
-      const layout = document.getElementById('layoutSelector')?.value || 'standard';
+      let layout = document.getElementById('layoutSelector')?.value || 'standard';
+      if (layout === '2.0') layout = 'standard2';
+
+      if (layout === 'standard2') {
+        repaginateStandard2();
+        return;
+      }
+
       const wrapperId = layout === 'delightgroupllc' ? 'layout-delightgroupllc-wrapper' : 'layout-standard-wrapper';
       const wrapper = document.getElementById(wrapperId);
       if (!wrapper) return;
@@ -2277,6 +2814,51 @@ const isTermChecked = (identifier: string): boolean => {
           maxItemsPage1 = 8;
           maxItemsSubsequent = 14;
         }
+      }
+
+      const remittanceSelect = document.getElementById('config-remittance-placement');
+      const remittanceMode = remittanceSelect ? remittanceSelect.value : 'under-customer-both';
+      const isHeaderBankVisible = remittanceMode === 'under-customer-both' || remittanceMode === 'under-customer';
+      const isFooterBankVisible = remittanceMode === 'both' || remittanceMode === 'page1';
+      const isTosBankVisible = remittanceMode === 'under-customer-both' || remittanceMode === 'both' || remittanceMode === 'tos';
+
+      wrapper.querySelectorAll('.print-bank-block-header').forEach(el => {
+        if (isHeaderBankVisible) {
+          el.classList.remove('hidden');
+          el.style.display = 'block';
+          const p = el.closest('.print-page');
+          const dt = p?.querySelector('.std-details-table');
+          if (dt) {
+            dt.after(el);
+          }
+        } else {
+          el.classList.add('hidden');
+          el.style.display = 'none';
+        }
+      });
+
+      wrapper.querySelectorAll('.print-bank-block-footer').forEach(el => {
+        if (isFooterBankVisible) {
+          el.classList.remove('hidden');
+          el.style.display = 'block';
+        } else {
+          el.classList.add('hidden');
+          el.style.display = 'none';
+        }
+      });
+
+      wrapper.querySelectorAll('.print-bank-block-p2').forEach(el => {
+        if (isTosBankVisible) {
+          el.classList.remove('hidden');
+          el.style.display = 'block';
+        } else {
+          el.classList.add('hidden');
+          el.style.display = 'none';
+        }
+      });
+
+      if (isHeaderBankVisible) {
+        maxItemsPage1 = Math.max(3, maxItemsPage1 - 2);
       }
 
       // Footer reserve as a fraction of page height — this is SCALE-INDEPENDENT.
@@ -2483,15 +3065,31 @@ const isTermChecked = (identifier: string): boolean => {
       repaginate();
     });
 
-    // Run repagination on template load
+    // Run repagination on template load — use longer delay to ensure images have loaded
     setTimeout(() => {
       const unitsCheckbox = document.getElementById('config-show-col-units');
-      if (unitsCheckbox) {
+      const currentLayout = document.getElementById('layoutSelector')?.value || 'standard';
+      const isStd2 = currentLayout === 'standard2' || currentLayout === '2.0';
+      
+      if (isStd2) {
+        // For Layout 2.0, run immediately then again after images settle
+        repaginateStandard2();
+        // Schedule a second run after a longer delay to catch late-loading images
+        setTimeout(() => repaginateStandard2(), 400);
+      } else if (unitsCheckbox) {
         unitsCheckbox.dispatchEvent(new Event('change'));
       } else {
         repaginate();
       }
-    }, 200);
+    }, 300);
+
+    // Also re-run repaginateStandard2 when all resources (images) have fully loaded
+    window.addEventListener('load', () => {
+      const currentLayout = document.getElementById('layoutSelector')?.value || 'standard';
+      if (currentLayout === 'standard2' || currentLayout === '2.0') {
+        setTimeout(() => repaginateStandard2(), 100);
+      }
+    });
 
     // Repaginate whenever layout changes
     layoutSelector?.addEventListener('change', () => {
@@ -2571,7 +3169,7 @@ const isTermChecked = (identifier: string): boolean => {
         }
       }
 
-      document.querySelectorAll('#print-company-logo, #print-company-logo-p2, #print-company-logo-std, #print-company-logo-std-p2, .company-card-tos-logo, .print-company-logo-subsequent').forEach(img => {
+      document.querySelectorAll('#print-company-logo, #print-company-logo-p2, #print-company-logo-std, #print-company-logo-std-p2, #print-company-logo-std2, #print-company-logo-std2-p2, .company-card-tos-logo, .print-company-logo-subsequent').forEach(img => {
         img.src = logoUrl;
       });
 
@@ -2622,12 +3220,22 @@ const isTermChecked = (identifier: string): boolean => {
       const showPage2Checkbox = document.getElementById('config-show-page-2');
       const isPage2Visible = showPage2Checkbox ? showPage2Checkbox.checked : true;
       
-      const layout = document.getElementById('layoutSelector')?.value || 'standard';
+      let layout = document.getElementById('layoutSelector')?.value || 'standard';
+      if (layout === '2.0') layout = 'standard2';
+
       let itemsPagesCount = 1;
       if (layout === 'delightgroupllc') {
         const pages = document.querySelectorAll('#layout-delightgroupllc-wrapper .print-page');
         const itemsPages = Array.from(pages).filter(p => !p.classList.contains('print-page-2-container') && p.style.display !== 'none');
         itemsPagesCount = itemsPages.length || 1;
+      } else if (layout === 'standard2') {
+        const pages = document.querySelectorAll('#layout-standard2-wrapper .std2-page');
+        const activePages = Array.from(pages).filter(p => p.style.display !== 'none');
+        const count = activePages.length || 1;
+        document.querySelectorAll('#layout-standard2-wrapper .dynamic-total-pages').forEach(el => {
+          el.textContent = count.toString();
+        });
+        return;
       } else {
         const pages = document.querySelectorAll('#layout-standard-wrapper .print-page');
         const itemsPages = Array.from(pages).filter(p => !p.classList.contains('print-page-2-container') && p.style.display !== 'none');
@@ -2654,7 +3262,7 @@ const isTermChecked = (identifier: string): boolean => {
     // Header Logo size adjustment
     document.getElementById('config-header-logo-size')?.addEventListener('change', (e) => {
       const val = e.target.value;
-      document.querySelectorAll('#print-company-logo, #print-company-logo-std').forEach(img => {
+      document.querySelectorAll('#print-company-logo, #print-company-logo-std, #print-company-logo-std2').forEach(img => {
         img.style.height = val + 'px';
         img.style.maxHeight = val + 'px';
       });
@@ -2663,7 +3271,7 @@ const isTermChecked = (identifier: string): boolean => {
     // Terms Logo size adjustment
     document.getElementById('config-terms-logo-size')?.addEventListener('change', (e) => {
       const val = e.target.value;
-      document.querySelectorAll('#print-company-logo-p2, #print-company-logo-std-p2').forEach(img => {
+      document.querySelectorAll('#print-company-logo-p2, #print-company-logo-std-p2, #print-company-logo-std2-p2').forEach(img => {
         img.style.height = val + 'px';
         img.style.maxHeight = val + 'px';
       });
@@ -2679,6 +3287,7 @@ const isTermChecked = (identifier: string): boolean => {
           el.classList.remove('hidden');
         }
       });
+      repaginate();
     });
 
     // Signatures detail toggles — smart receiver positioning
@@ -2715,8 +3324,14 @@ const isTermChecked = (identifier: string): boolean => {
       });
     });
 
-    document.getElementById('sig-client')?.addEventListener('change', updateReceiverPosition);
-    document.getElementById('sig-receiver')?.addEventListener('change', updateReceiverPosition);
+    document.getElementById('sig-client')?.addEventListener('change', () => {
+      updateReceiverPosition();
+      repaginate();
+    });
+    document.getElementById('sig-receiver')?.addEventListener('change', () => {
+      updateReceiverPosition();
+      repaginate();
+    });
 
     document.getElementById('sig-company')?.addEventListener('change', (e) => {
       const checked = e.target.checked;
@@ -2724,6 +3339,7 @@ const isTermChecked = (identifier: string): boolean => {
         if (checked) el.classList.remove('hidden');
         else el.classList.add('hidden');
       });
+      repaginate();
     });
 
     document.getElementById('config-show-stamp-box')?.addEventListener('change', (e) => {
@@ -2739,6 +3355,7 @@ const isTermChecked = (identifier: string): boolean => {
           el.style.height = '60px';
         }
       });
+      repaginate();
     });
 
     document.getElementById('config-show-dn-note')?.addEventListener('change', (e) => {
@@ -2747,6 +3364,7 @@ const isTermChecked = (identifier: string): boolean => {
         if (checked) el.classList.remove('hidden');
         else el.classList.add('hidden');
       });
+      repaginate();
     });
 
     // Electronic Signature toggle handler
@@ -2772,6 +3390,7 @@ const isTermChecked = (identifier: string): boolean => {
         updateReceiverPosition();
         document.getElementById('sig-company')?.dispatchEvent(new Event('change'));
       }
+      repaginate();
     });
 
     // Bank Details customizer inputs real-time sync
@@ -2782,38 +3401,53 @@ const isTermChecked = (identifier: string): boolean => {
       const iban = document.getElementById('config-bank-iban')?.value || '';
       const swift = document.getElementById('config-bank-swift')?.value || '';
       
-      document.querySelectorAll('#print-bank-name, #print-bank-name-p1-arr, #print-bank-name-std-p2, #print-bank-name-p2').forEach(el => el.textContent = name);
-      document.querySelectorAll('#print-bank-acc-name, #print-bank-acc-name-p1-arr, #print-bank-acc-name-std-p2, #print-bank-acc-name-p2').forEach(el => el.textContent = accName);
-      document.querySelectorAll('#print-bank-acc, #print-bank-acc-p1-arr, #print-bank-acc-std-p2, #print-bank-acc-p2').forEach(el => el.textContent = acc);
-      document.querySelectorAll('#print-bank-iban, #print-bank-iban-p1-arr, #print-bank-iban-std-p2, #print-bank-iban-p2').forEach(el => el.textContent = iban);
-      document.querySelectorAll('#print-bank-swift, #print-bank-swift-p1-arr, #print-bank-swift-std-p2, #print-bank-swift-p2').forEach(el => el.textContent = swift);
+      document.querySelectorAll('#print-bank-name, #print-bank-name-std2, #print-bank-name-std2-ftr, #print-bank-name-std-hdr, #print-bank-name-p1-arr, #print-bank-name-std-p2, #print-bank-name-std2-p2, #print-bank-name-p2').forEach(el => el.textContent = name);
+      document.querySelectorAll('#print-bank-acc-name, #print-bank-acc-name-std2, #print-bank-acc-name-std2-ftr, #print-bank-acc-name-std-hdr, #print-bank-acc-name-p1-arr, #print-bank-acc-name-std-p2, #print-bank-acc-name-std2-p2, #print-bank-acc-name-p2').forEach(el => el.textContent = accName);
+      document.querySelectorAll('#print-bank-acc, #print-bank-acc-std2, #print-bank-acc-std2-ftr, #print-bank-acc-std-hdr, #print-bank-acc-p1-arr, #print-bank-acc-std-p2, #print-bank-acc-std2-p2, #print-bank-acc-p2').forEach(el => el.textContent = acc);
+      document.querySelectorAll('#print-bank-iban, #print-bank-iban-std2, #print-bank-iban-std2-ftr, #print-bank-iban-std-hdr, #print-bank-iban-p1-arr, #print-bank-iban-std-p2, #print-bank-iban-std2-p2, #print-bank-iban-p2').forEach(el => el.textContent = iban);
+      document.querySelectorAll('#print-bank-swift, #print-bank-swift-std2, #print-bank-swift-std2-ftr, #print-bank-swift-std-hdr, #print-bank-swift-p1-arr, #print-bank-swift-std-p2, #print-bank-swift-std2-p2, #print-bank-swift-p2').forEach(el => el.textContent = swift);
     };
 
     // Remittance block placement selector
     document.getElementById('config-remittance-placement')?.addEventListener('change', (e) => {
       const val = e.target.value;
-      const p1Blocks = document.querySelectorAll('.print-bank-block-p1');
+      const headerBlocks = document.querySelectorAll('.print-bank-block-header');
+      const footerBlocks = document.querySelectorAll('.print-bank-block-footer');
       const p2Blocks = document.querySelectorAll('.print-bank-block-p2');
       const inputs = document.getElementById('bank-customization-inputs');
 
-      if (val === 'both') {
-        p1Blocks.forEach(el => el.classList.remove('hidden'));
-        p2Blocks.forEach(el => el.classList.remove('hidden'));
-        inputs?.classList.remove('hidden');
-      } else if (val === 'page1') {
-        p1Blocks.forEach(el => el.classList.remove('hidden'));
-        p2Blocks.forEach(el => el.classList.add('hidden'));
-        inputs?.classList.remove('hidden');
-      } else if (val === 'tos') {
-        p1Blocks.forEach(el => el.classList.add('hidden'));
-        p2Blocks.forEach(el => el.classList.remove('hidden'));
-        inputs?.classList.remove('hidden');
-      } else {
-        // none
-        p1Blocks.forEach(el => el.classList.add('hidden'));
-        p2Blocks.forEach(el => el.classList.add('hidden'));
+      const isHeader = val === 'under-customer-both' || val === 'under-customer';
+      const isFooter = val === 'both' || val === 'page1';
+      const isTos = val === 'under-customer-both' || val === 'both' || val === 'tos';
+
+      headerBlocks.forEach(el => {
+        if (isHeader) { 
+          el.classList.remove('hidden'); 
+          el.style.display = 'block'; 
+          const detailsTable = el.closest('.std2-page, #layout-standard2-wrapper, .print-page, #layout-standard-wrapper')?.querySelector('.std2-details-table, .std-details-table');
+          if (detailsTable) {
+            detailsTable.after(el);
+          }
+        }
+        else { el.classList.add('hidden'); el.style.display = 'none'; }
+      });
+
+      footerBlocks.forEach(el => {
+        if (isFooter) { el.classList.remove('hidden'); el.style.display = 'block'; }
+        else { el.classList.add('hidden'); el.style.display = 'none'; }
+      });
+
+      p2Blocks.forEach(el => {
+        if (isTos) { el.classList.remove('hidden'); el.style.display = 'block'; }
+        else { el.classList.add('hidden'); el.style.display = 'none'; }
+      });
+
+      if (val === 'none') {
         inputs?.classList.add('hidden');
+      } else {
+        inputs?.classList.remove('hidden');
       }
+      repaginate();
     });
 
     // Bank detail event listeners
@@ -3117,6 +3751,11 @@ const isTermChecked = (identifier: string): boolean => {
           localStorage.setItem(key, JSON.stringify(placedStampsList));
         }
 
+        const currentDocType = document.getElementById('config-doc-type')?.value;
+        if (currentDocType) {
+          updateDisplayedDocNumber(currentDocType);
+        }
+
         setTimeout(repaginate, 50);
       } catch (err) {
         console.error('Error loading print config:', err);
@@ -3168,7 +3807,17 @@ const isTermChecked = (identifier: string): boolean => {
     // Helper to get active layout ID
     const getActiveLayout = () => {
       const layoutSelector = document.getElementById('layoutSelector');
-      return layoutSelector?.value || 'standard';
+      let val = layoutSelector?.value || 'standard';
+      if (val === '2.0') val = 'standard2';
+      return val;
+    };
+
+    // Helper to get active wrapper ID
+    const getWrapperId = () => {
+      const l = getActiveLayout();
+      if (l === 'delightgroupllc') return 'layout-delightgroupllc-wrapper';
+      if (l === 'standard2') return 'layout-standard2-wrapper';
+      return 'layout-standard-wrapper';
     };
 
     // Helper to get localStorage key
@@ -3201,7 +3850,7 @@ const isTermChecked = (identifier: string): boolean => {
 
     // Render a single stamp element into the DOM
     const renderStampElement = (stampDataUrl, stampObj, idx) => {
-      const wrapperId = getActiveLayout() === 'standard' ? 'layout-standard-wrapper' : 'layout-delightgroupllc-wrapper';
+      const wrapperId = getWrapperId();
       const wrapper = document.getElementById(wrapperId);
       if (!wrapper) return;
 
@@ -3397,7 +4046,7 @@ const isTermChecked = (identifier: string): boolean => {
       const topPct = (clickY / rect.height) * 100;
 
       // Determine page index
-      const wrapperId = getActiveLayout() === 'standard' ? 'layout-standard-wrapper' : 'layout-delightgroupllc-wrapper';
+      const wrapperId = getWrapperId();
       const wrapper = document.getElementById(wrapperId);
       if (!wrapper) return;
       const pages = Array.from(wrapper.querySelectorAll('.print-page'));
@@ -3440,6 +4089,12 @@ const isTermChecked = (identifier: string): boolean => {
     const docTypeSelector = document.getElementById('config-doc-type');
     if (docTypeSelector) {
       docTypeSelector.dispatchEvent(new Event('change'));
+      updateDisplayedDocNumber(docTypeSelector.value);
+    }
+
+    const remittanceSelector = document.getElementById('config-remittance-placement');
+    if (remittanceSelector) {
+      remittanceSelector.dispatchEvent(new Event('change'));
     }
 
     // Set initialization complete flag

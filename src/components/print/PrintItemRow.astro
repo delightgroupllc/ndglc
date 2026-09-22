@@ -1,0 +1,29 @@
+---
+interface Props {
+  item: any;
+  globalIdx: number;
+  showImages: boolean;
+  hasVat: boolean;
+  logoColor: string;
+}
+const { item, globalIdx, showImages, hasVat, logoColor } = Astro.props;
+const lineTotal = item.quantity * item.unit_price;
+const taxAmt = item.tax_type === 'percentage' ? lineTotal * (item.tax_value / 100) : Number(item.tax_value);
+const vatDisplay = item.tax_type === 'percentage' ? `${item.tax_value}%` : `AED ${taxAmt.toFixed(2)}`;
+---
+
+<tr class="item-row-render std2-item-row" style="border-bottom: 1px solid #e2e8f0; page-break-inside: avoid; break-inside: avoid;">
+  <td style="padding: 6px 8px; font-size: 8.5pt; vertical-align: top; color: #64748b; font-weight: 600;">{globalIdx}</td>
+  <td class={`product-image-column ${showImages ? '' : 'hidden'}`} style="text-align: center; vertical-align: middle; padding: 4px;">
+    <img src={item.item_image || '/no-image.svg'} style="max-width: 40px; max-height: 40px; object-fit: contain; border-radius: 4px;" />
+  </td>
+  <td style="padding: 6px 8px; vertical-align: top;">
+    <span class="font-semibold text-slate-900" style="font-size: 8.5pt; display: block; line-height: 1.35;">{item.description}</span>
+    {item.catalogue_ref && <span class="text-muted font-mono print-item-cat-ref" style="font-size: 7.5pt; display: block; margin-top: 2px;">Cat Ref: {item.catalogue_ref}</span>}
+    {item.tech_spec && <span class="text-muted print-item-tech-spec" style="font-size: 7.5pt; display: block; margin-top: 2px; line-height: 1.3;">Specs: {item.tech_spec}</span>}
+  </td>
+  <td class="text-center print-col-qty" style="padding: 6px 8px; font-size: 8.5pt; vertical-align: top; font-weight: 700;">{item.quantity}</td>
+  <td class="text-right font-mono print-col-price" style="padding: 6px 8px; font-size: 8.5pt; vertical-align: top;"><span class="dirham-symbol inline-block text-[1em] mr-1"></span>{Number(item.unit_price).toFixed(2)}</td>
+  <td class={`text-right font-mono print-col-vat ${hasVat ? '' : 'hidden'}`} style="padding: 6px 8px; font-size: 8.5pt; vertical-align: top;">{vatDisplay}</td>
+  <td class="text-right font-mono font-bold print-col-price" style="padding: 6px 8px; font-size: 8.5pt; vertical-align: top; color: #0f172a;"><span class="dirham-symbol inline-block text-[1em] mr-1"></span>{Number(lineTotal + taxAmt).toFixed(2)}</td>
+</tr>

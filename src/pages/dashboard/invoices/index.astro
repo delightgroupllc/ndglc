@@ -342,7 +342,7 @@ const allCount = activeInvoices.length;
                           
                           {/* AUDIT button - from Stage 4 onwards */}
                           {inv.showAudit ? (
-                            <button type="button" class="audit-invoice-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs" data-num={inv.invoice_number} data-status={inv.payment_status} data-date={inv.issue_date}>
+                            <button type="button" class="audit-invoice-btn px-2 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-[9px] font-black text-slate-600 rounded transition-colors uppercase tracking-wider shadow-3xs" data-id={inv.id} data-num={inv.invoice_number} data-status={inv.payment_status} data-date={inv.issue_date}>
                               Audit
                             </button>
                           ) : (
@@ -796,22 +796,46 @@ const allCount = activeInvoices.length;
         confirmCancelBtn.addEventListener('click', onCancel);
       });
     };
-    const showAuditModal = (num, status, date, timeline) => {
-      document.getElementById('audit-num').textContent = `REF: ${num}`;
+    const showAuditModal = (num: string, status: string, date: string, timeline: string[], events: any[] = []) => {
+      const numEl = document.getElementById('audit-num');
+      if (numEl) numEl.textContent = `REF: ${num}`;
       const tContainer = document.getElementById('audit-timeline');
+      if (!tContainer) return;
       tContainer.innerHTML = '';
+
       timeline.forEach((t, i) => {
+        const ev = events[i] || {};
+        const isCurrent = i === timeline.length - 1 || ev.type === 'current';
+        
+        let dotColor = 'bg-slate-300';
+        if (isCurrent) {
+          dotColor = 'bg-cyan-500 border-2 border-cyan-100 ring-2 ring-cyan-400/20';
+        } else if (ev.type === 'origin') {
+          dotColor = 'bg-purple-500 border-2 border-purple-100';
+        } else if (ev.type === 'source') {
+          dotColor = 'bg-blue-500 border-2 border-blue-100';
+        } else if (ev.type === 'convert') {
+          dotColor = 'bg-amber-500 border-2 border-amber-100';
+        } else if (ev.type === 'status') {
+          dotColor = 'bg-emerald-500 border-2 border-emerald-100';
+        } else if (ev.type === 'payment') {
+          dotColor = 'bg-teal-500 border-2 border-teal-100';
+        }
+
         const item = document.createElement('div');
         item.className = 'relative';
         item.innerHTML = `
-          <div class="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full ${i === timeline.length - 1 ? 'bg-cyan-500 border-2 border-cyan-100' : 'bg-slate-300'}"></div>
+          <div class="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full ${dotColor}"></div>
           <p class="font-bold text-slate-800 text-xs">${t}</p>
+          ${ev.user && !isCurrent ? `<p class="text-[10px] text-slate-400 font-medium mt-0.5">Recorded by ${ev.user}</p>` : ''}
         `;
         tContainer.appendChild(item);
       });
       const modal = document.getElementById('audit-modal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
     };
   
     // Elements
@@ -1507,16 +1531,24 @@ const allCount = activeInvoices.length;
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const toISO = (d: Date) => d.toISOString().split('T')[0];
+      const toISO = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
 
       const todayISO = toISO(today);
 
       const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - today.getDay());
+      const dayOfWeek = (today.getDay() + 6) % 7;
+      weekStart.setDate(today.getDate() - dayOfWeek);
       const weekStartISO = toISO(weekStart);
 
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       const monthStartISO = toISO(monthStart);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      const monthEndISO = toISO(monthEnd);
 
       // Helper to count active orders in a date range [startISO, endISO]
       const countInRange = (start: string, end: string) => {
@@ -1542,7 +1574,7 @@ const allCount = activeInvoices.length;
       }
 
       // Step 3: Check This Month
-      if (countInRange(monthStartISO, todayISO) >= 10) {
+      if (countInRange(monthStartISO, monthEndISO) >= 10) {
         pickerEl.dispatchEvent(new CustomEvent('daterange-set', { detail: { preset: 'month' } }));
         return;
       }
@@ -1753,21 +1785,51 @@ const allCount = activeInvoices.length;
     });
 
     // Audit trace functionality
-    document.querySelectorAll('.audit-invoice-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const num = (e.currentTarget as HTMLElement).getAttribute('data-num');
-        const status = (e.currentTarget as HTMLElement).getAttribute('data-status') || '';
-        const date = (e.currentTarget as HTMLElement).getAttribute('data-date');
+    document.addEventListener('click', async (e) => {
+      const btn = (e.target as HTMLElement).closest('.audit-invoice-btn');
+      if (!btn) return;
+
+      const id = btn.getAttribute('data-id') || '';
+      const num = btn.getAttribute('data-num') || '';
+      const status = btn.getAttribute('data-status') || '';
+      const date = btn.getAttribute('data-date') || '';
+
+      const modal = document.getElementById('audit-modal');
+      const numEl = document.getElementById('audit-num');
+      const tContainer = document.getElementById('audit-timeline');
+
+      if (numEl) numEl.textContent = `REF: ${num}`;
+      if (tContainer) {
+        tContainer.innerHTML = `
+          <div class="py-6 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs italic">
+            <svg class="animate-spin h-5 w-5 text-cyan-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            <span>Retrieving live audit trail...</span>
+          </div>
+        `;
+      }
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+
+      try {
+        const queryTarget = id || num;
+        const res = await fetch(`/api/invoices/${encodeURIComponent(queryTarget)}/audit`);
+        if (!res.ok) throw new Error('Failed to load audit records');
+        const data = await res.json();
         
-        const timeline = [
-          `✦ [${date} 09:00] - Order Generated: ${num} created as DRAFT`,
-          `✦ [${date} 10:15] - Validation check passed (0 errors)`,
-          `✦ [${date} 14:30] - Category filtering scoping validated`,
-          `✦ [Current Status] - ${status.toUpperCase()}`
+        showAuditModal(data.invoice_number || num, data.current_status || status, date || '', data.timeline || [], data.events || []);
+      } catch (err: any) {
+        console.warn('Audit fetch error:', err);
+        const fallbackTimeline = [
+          `✦ [${date || 'N/A'}] - Order Generated: ${num} created as DRAFT`,
+          `✦ [Current Status] - ${(status || 'DRAFT').toUpperCase()}`
         ];
-        
-        showAuditModal(num, status, date, timeline);
-      });
+        showAuditModal(num, status, date || '', fallbackTimeline);
+      }
     });
 
     // Print button hook

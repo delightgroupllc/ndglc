@@ -1,0 +1,417 @@
+---
+interface Props {
+  inv: any;
+  items: any[];
+  settings: Record<string, string>;
+  documentTitle: string;
+  logoColor: string;
+  companyNameEN: string;
+  selectedClauses?: any[];
+  signatureImage?: string;
+  isCustomerDeleted?: boolean;
+  dnNote?: string;
+  totalQtyInWords?: string;
+  amountInWords?: string;
+}
+import 'dirham/css';
+import PrintItemRow from './PrintItemRow.astro';
+import PrintDisclaimer from './PrintDisclaimer.astro';
+
+const { 
+  inv, 
+  items, 
+  settings, 
+  documentTitle, 
+  logoColor, 
+  companyNameEN, 
+  selectedClauses = [], 
+  signatureImage, 
+  isCustomerDeleted = false, 
+  dnNote = "DELIVERY NOTE : Customer must check good's condition and quantity at the time of delivery of the material", 
+  totalQtyInWords = '', 
+  amountInWords = '' 
+} = Astro.props;
+
+const showImages = Boolean(inv.show_images);
+const hasVat = Number(inv.gst_amount) > 0 || items.some((i: any) => Number(i.tax_value) > 0);
+
+let activeTerms: string[] = [];
+try {
+  activeTerms = inv.payment_terms ? JSON.parse(inv.payment_terms) : [];
+} catch (e) {
+  if (typeof inv.payment_terms === 'string') {
+    activeTerms = inv.payment_terms.split(',').map((t: string) => t.trim());
+  }
+}
+
+// Strictly isolate and auto-select terms for this order's division
+const divisionClauseIds = selectedClauses.map((c: any) => c.identifier);
+const matchingDivisionTerms = activeTerms.filter((t: string) => divisionClauseIds.includes(t));
+let finalActiveTerms = matchingDivisionTerms.length > 0 ? matchingDivisionTerms : divisionClauseIds;
+
+const activeDivision = (inv.source_division || '').trim().toLowerCase();
+const isDTLOnly = (activeDivision === 'dtl' || activeDivision.includes('technical') || activeDivision.includes('lighting')) && !activeDivision.includes('green') && activeDivision !== 'both';
+if (isDTLOnly) {
+  finalActiveTerms = finalActiveTerms.filter((id: string) => id !== 'dgs-term-12' && !id.toLowerCase().includes('live-plant-sizing'));
+}
+
+const isTermActive = (identifier: string): boolean => {
+  if (isDTLOnly && (identifier === 'dgs-term-12' || identifier.toLowerCase().includes('live-plant-sizing'))) {
+    return false;
+  }
+  return finalActiveTerms.includes(identifier);
+};
+
+// Disclaimer clauses
+const disclaimerClauses = selectedClauses.filter((clause: any) => clause.identifier === 'disclaimer' || (clause.title && clause.title.toLowerCase().includes('disclaimer')));
+---
+
+<div id="layout-standard2" class="std-container std2-container w-full flex flex-col items-center gap-8" data-layout="standard2">
+
+  {/* ════ PAGE 1 / CONTINUOUS FLOW ROOT CONTAINER ════ */}
+  <div class="print-page std2-page bg-white shadow-xl border border-slate-250 p-10 relative print:border-none print:shadow-none mb-8" data-page-index="0">
+
+    {/* Brand Watermark */}
+    <div class="std-watermark print-watermark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 380px; height: 380px; opacity: 1; pointer-events: none; z-index: 0;">
+      <img src="/dgllclogolarge.png" id="watermark-img-std2" style="width: 100%; height: auto; object-fit: contain; opacity: 0.05;" />
+    </div>
+
+    {/* ════ MASTER PAGE HEADER ════ */}
+    <div class="std2-master-header">
+      <table class="std-header-table std2-header-table w-full">
+        <tr>
+          <td class="std-company-info">
+            <div class="print-logo-container" style="margin-bottom: 8px;">
+              <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="h-20 w-auto object-contain" id="print-company-logo-std2" />
+            </div>
+            <div class="std-company-title" style={`color: ${logoColor}`}><span class="dynamic-company-name-en">{companyNameEN}</span></div>
+            <div class="text-muted" style="font-size: 8.5pt; margin-top: 4px; line-height: 1.4;">
+              <span id="print-company-address-std2">{settings.business_address || settings.company_address || 'Delight Group Building, Al Quoz Industrial Area 3, Dubai, UAE'}</span><br>
+              TRN: <span class="font-mono font-bold text-slate-900" id="print-company-trn-std2">{settings.trn_number || '100380541100003'}</span>
+              <span id="print-company-reg-std2-wrapper" class={settings.business_registration ? "" : "hidden"}> | Reg: <span class="font-mono font-bold text-slate-900" id="print-company-reg-std2">{settings.business_registration || ''}</span></span>
+              <br>
+              <span id="print-company-permits-std2-wrapper" class={settings.permits_info ? "block text-[8pt] text-slate-500" : "hidden"}>Permits/Info: <span id="print-company-permits-std2" class="italic">{settings.permits_info || ''}</span><br></span>
+              Email: {settings.contact_email || 'sales@delightgroupllc.com'} | <span id="print-company-phone-std2-type">{settings.phone_type || 'Phone'}</span>: <span id="print-company-phone-std2">{settings.phone_number || settings.contact_phone || '+971 (4) 555-0100'}</span>
+            </div>
+          </td>
+          <td class="std-doc-meta">
+            <div class="std-doc-title">{documentTitle}</div>
+            <div style="font-size: 9.5pt; line-height: 1.5; margin-top: 4px;">
+              Document No: <span class="font-mono font-bold dynamic-doc-number">{inv.invoice_number}</span><br>
+              {inv.invoice_number && inv.invoice_number.toUpperCase().includes('DUP') && (
+                <span class="print-info-duplicate">Status: <span style="border: 1.5px solid #ef4444; color: #ef4444; padding: 1px 6px; font-size: 8pt; font-weight: 800; text-transform: uppercase; border-radius: 2px; display: inline-block; margin-bottom: 4px;">DUPLICATE</span><br/></span>
+              )}
+              <span class="print-info-date">Issue Date: <span class="font-bold">{inv.issue_date}</span><br></span>
+              {inv.due_date && <span class={`print-info-due ${inv.order_type !== 'delivery_note' && inv.order_type !== 'sample_order' ? 'hidden' : ''}`}>Due Date: <span class="font-bold">{inv.due_date}</span><br></span>}
+              {inv.lpo_number && <span class="print-info-status">Ref LPO No: <span class="font-mono font-bold">{inv.lpo_number}</span><br></span>}
+              <span class="print-info-status">Division: <span class="font-bold">{inv.source_division || 'DTL'}</span></span>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <table class="std-details-table std2-details-table w-full" style="margin-bottom: 12px; margin-top: 10px;">
+        <tr>
+          <td class="std-details-col" style="padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; width: 50%;">
+            <div class="std-section-label" style="font-size: 7pt; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Remit / Bill To</div>
+            <div class="font-bold print-cust-company" style="font-size: 10.5pt; color: #0f172a;">{inv.customer_name}{isCustomerDeleted ? '*' : ''}<span class="print-cust-id">{inv.customer_code ? ` (ID: ${inv.customer_code})` : ''}</span></div>
+            {inv.company_name && <div class="font-semibold text-muted print-cust-company" style="font-size: 9pt;">{inv.company_name}<span class="print-comp-id">{inv.company_code ? ` (ID: ${inv.company_code})` : ''}</span></div>}
+            <div class="text-muted print-cust-address" style="font-size: 8.5pt; margin-top: 3px; white-space: pre-line; line-height: 1.35;">{inv.billing_address || 'N/A'}</div>
+            {inv.customer_email && <div class="text-muted print-cust-contact" style="font-size: 8.5pt; margin-top: 3px;">Email: {inv.customer_email}</div>}
+            {inv.customer_phone && <div class="text-muted print-cust-contact" style="font-size: 8.5pt;">Phone: {inv.customer_phone}</div>}
+          </td>
+          <td class="std-details-col" style="padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; width: 50%; margin-left: 12px;">
+            <div class="std-section-label" style="font-size: 7pt; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Deliver To / Shipping Address</div>
+            {inv.shipping_address ? (
+              <div class="text-muted print-cust-address" style="font-size: 8.5pt; white-space: pre-line; line-height: 1.35;">{inv.shipping_address}</div>
+            ) : (
+              <div class="text-muted print-cust-address" style="font-size: 8.5pt; font-style: italic;">Same as Billing Address</div>
+            )}
+            {inv.company_vat && (
+              <div class="print-cust-trn" style="margin-top: 8px; font-size: 8.5pt;">
+                <span class="font-bold text-muted uppercase tracking-wider" style="font-size: 7pt; display: block;">Client TRN / Tax Reg</span>
+                <span class="font-mono font-bold" style="color: #0f172a;">{inv.company_vat}</span>
+              </div>
+            )}
+          </td>
+        </tr>
+      </table>
+
+      <!-- Remittance & Bank Instructions Card (Placed directly below Remit / Deliver To) -->
+      <div class="std-bank-block print-bank-block-header std2-block-atomic" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 12px; margin-bottom: 16px; page-break-inside: avoid; break-inside: avoid;">
+        <div class="std-section-label" style={`color: ${logoColor}; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 6px; font-size: 7.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;`}>
+          Remittance &amp; Bank Instructions
+        </div>
+        <div class="std-bank-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 16px; font-size: 8pt;">
+          <div><span class="font-bold text-muted">Bank Name:</span> <span id="print-bank-name-std2">{settings.bank_name || 'N/A'}</span></div>
+          <div><span class="font-bold text-muted">Account Name:</span> <span id="print-bank-acc-name-std2">{settings.account_name || 'N/A'}</span></div>
+          <div><span class="font-bold text-muted">Account Number:</span> <span class="font-mono font-bold" id="print-bank-acc-std2">{settings.account_number || 'N/A'}</span></div>
+          <div><span class="font-bold text-muted">Swift Code:</span> <span class="font-mono font-bold" id="print-bank-swift-std2">{settings.swift_code || 'N/A'}</span></div>
+          <div style="grid-column: span 2;"><span class="font-bold text-muted">IBAN:</span> <span class="font-mono font-bold" style={`color: ${logoColor}`} id="print-bank-iban-std2">{settings.iban_number || 'N/A'}</span></div>
+        </div>
+      </div>
+    </div>
+
+    {/* ════ ITEMS TABLE ════ */}
+    <table class="std-items-table std2-items-table w-full" style="border-collapse: collapse; margin-bottom: 12px;">
+      <thead>
+        <tr style="background: #f1f5f9; border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
+          <th style="text-align: left; width: 5%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;">#</th>
+          <th class={`product-image-column ${showImages ? '' : 'hidden'}`} style="text-align: left; width: 10%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;">Image</th>
+          <th style="text-align: left; width: 42%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;" class="print-col-desc">Item Description / Spec</th>
+          <th class="print-col-qty" style="text-align: center; width: 10%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;">Qty</th>
+          <th style="text-align: right; width: 15%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;" class="print-col-price">Unit Price (<span class="dirham-symbol inline-block text-[1em]"></span>)</th>
+          <th style="text-align: right; width: 0%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;" class={`print-col-vat ${hasVat ? '' : 'hidden'}`}>VAT</th>
+          <th style="text-align: right; width: 17%; padding: 6px 8px; font-size: 8pt; font-weight: 800; color: #475569;" class="print-col-price">Total (<span class="dirham-symbol inline-block text-[1em]"></span>)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item, itemIdx) => (
+          <PrintItemRow item={item} globalIdx={itemIdx + 1} showImages={showImages} hasVat={hasVat} logoColor={logoColor} />
+        ))}
+      </tbody>
+    </table>
+
+    {/* ════ CONTINUOUS FLOW CLOSING COMPONENTS ════ */}
+    <div class="std2-closing-wrapper">
+      
+      {/* 1. Math Totals Summary Block */}
+      <div class="print-footer-math std-totals-sigs-block std2-block-atomic" style="page-break-inside: avoid; break-inside: avoid; margin-top: 10px;">
+        <div class="std-summary-wrapper w-full">
+          <table class="std-summary-table m-0" style="width: 100%; border-collapse: collapse;">
+            <tr class="print-total-subtotal" style="border-top: 1px solid #cbd5e1;">
+              <td style="width: 50%;"></td>
+              <td class="text-muted" style="width: 30%; padding: 4px 8px; font-size: 8.5pt;">Subtotal (Excl. VAT):</td>
+              <td class="text-right font-mono" style="width: 20%; padding: 4px 8px; font-size: 8.5pt;"><span class="dirham-symbol inline-block text-[1em] mr-1"></span>{Number(inv.subtotal).toFixed(2)}</td>
+            </tr>
+            <tr class={`print-total-vat ${hasVat ? '' : 'hidden'}`}>
+              <td></td>
+              <td class="text-muted" style="padding: 4px 8px; font-size: 8.5pt;">Total VAT amount:</td>
+              <td class="text-right font-mono" style="color: #c2410c; padding: 4px 8px; font-size: 8.5pt;"><span class="dirham-symbol inline-block text-[1em] mr-1"></span>{Number(inv.gst_amount).toFixed(2)}</td>
+            </tr>
+            {Number(inv.discount_amount) > 0 && (
+              <tr class="print-total-discount">
+                <td></td>
+                <td class="text-muted" style="padding: 4px 8px; font-size: 8.5pt;">Discount:</td>
+                <td class="text-right font-mono" style="color: #15803d; padding: 4px 8px; font-size: 8.5pt;">- <span class="dirham-symbol inline-block text-[1em] mr-1"></span>{Number(inv.discount_amount).toFixed(2)}</td>
+              </tr>
+            )}
+            <tr class="print-total-quantity">
+              <td class="font-normal text-slate-500 text-xs text-left" style="vertical-align: middle; padding: 4px 8px;">
+                <div class="print-qty-words-panel" style="font-size: 8pt;">Quantity in words: <span class="font-bold text-slate-900">{totalQtyInWords}</span></div>
+              </td>
+              <td class="text-muted" style="vertical-align: middle; padding: 4px 8px; font-size: 8.5pt;">Total Quantity:</td>
+              <td class="text-right font-mono font-bold" style="vertical-align: middle; padding: 4px 8px; font-size: 8.5pt;">{items.reduce((s: number, i: any) => s + Number(i.quantity), 0)}</td>
+            </tr>
+            <tr class="std-summary-table grand-total print-total-due-row" style="background: #f8fafc; border-top: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1;">
+              <td class="font-normal text-slate-500 text-xs text-left" style="vertical-align: middle; padding: 6px 8px;">
+                <div class="print-words-panel" style="font-size: 8pt;">Amount in words: <span class="font-bold text-slate-900">{amountInWords}</span></div>
+              </td>
+              <td style="vertical-align: middle; padding: 6px 8px; font-size: 9.5pt; font-weight: 800; color: #0f172a;">Total:</td>
+              <td class="text-right font-mono" style={`color: ${logoColor}; vertical-align: middle; padding: 6px 8px; font-size: 11pt; font-weight: 900;`}><span class="dirham-symbol inline-block text-[1em] mr-1"></span>{Number(inv.total_amount).toFixed(2)}</td>
+            </tr>
+          </table>
+          <div class="print-dn-material-condition-disclaimer text-center font-bold uppercase tracking-wide text-slate-600 w-full" style="font-size: 7pt; margin-top: 10px; margin-bottom: 6px;">{dnNote}</div>
+        </div>
+      </div>
+
+
+      {/* 2. Bank Instructions (Footer placement) */}
+      <div class="std-bank-block print-bank-block-footer std2-block-atomic hidden" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 12px; margin-top: 10px; margin-bottom: 10px; page-break-inside: avoid; break-inside: avoid;">
+        <div class="std-section-label" style={`color: ${logoColor}; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 6px; font-size: 7.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;`}>
+          Remittance &amp; Bank Instructions
+        </div>
+        <div class="std-bank-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 16px; font-size: 8pt;">
+          <div><span class="font-bold text-muted">Bank Name:</span> <span id="print-bank-name-std2-ftr">{settings.bank_name || 'N/A'}</span></div>
+          <div><span class="font-bold text-muted">Account Name:</span> <span id="print-bank-acc-name-std2-ftr">{settings.account_name || 'N/A'}</span></div>
+          <div><span class="font-bold text-muted">Account Number:</span> <span class="font-mono font-bold" id="print-bank-acc-std2-ftr">{settings.account_number || 'N/A'}</span></div>
+          <div><span class="font-bold text-muted">Swift Code:</span> <span class="font-mono font-bold" id="print-bank-swift-std2-ftr">{settings.swift_code || 'N/A'}</span></div>
+          <div style="grid-column: span 2;"><span class="font-bold text-muted">IBAN:</span> <span class="font-mono font-bold" style={`color: ${logoColor}`} id="print-bank-iban-std2-ftr">{settings.iban_number || 'N/A'}</span></div>
+        </div>
+      </div>
+
+      {/* 3. Disclaimer Notes */}
+      <div class="std-disclaimer-block print-disclaimer-text std2-block-atomic" style="font-size: 7.8pt; color: #475569; line-height: 1.4; margin-top: 8px; margin-bottom: 10px; page-break-inside: avoid; break-inside: avoid;">
+        <PrintDisclaimer disclaimerClauses={disclaimerClauses} />
+      </div>
+
+      {/* 4. Terms of Sale / Clauses */}
+      <div class="std2-terms-wrapper print-page-2-container std2-block-atomic" style="margin-top: 10px; margin-bottom: 10px;">
+        <h2 class="terms-title" style="font-size: 9pt; font-weight: 800; color: #1e293b; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Terms of Sale</h2>
+        <div class="terms-columns" style="column-count: 2; column-gap: 16px; display: block; counter-reset: term-counter;">
+          {selectedClauses.map((clause: any) => {
+            const sanitizedIdent = clause.identifier.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+            return (
+              <div class={`terms-section terms-sec-${sanitizedIdent} std2-clause-item ${isTermActive(clause.identifier) ? '' : 'hidden'}`} style="font-size: 6.8pt; line-height: 1.35; color: #475569; margin-bottom: 6px; padding: 0;">
+                <h3 class="terms-section-title" style="font-size: 7.2pt; font-weight: 800; color: #1e293b; margin-bottom: 1.5px; break-inside: avoid; page-break-inside: avoid; break-after: avoid; page-break-after: avoid;">{clause.title}:</h3>
+                <div set:html={clause.content}></div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 5. Signatures & Stamp Block */}
+      <div class="std-signatures-table print-signature-section std2-block-atomic" style="page-break-inside: avoid; break-inside: avoid; margin-top: 12px; margin-bottom: 10px;">
+        <table style="width: 100%;">
+          <tr>
+            <td class="std-signature-col print-sig-client-col" id="print-sig-client-col" style="width: 42%; vertical-align: bottom;">
+              <div class="std-signature-line" style="border-top: 1px solid #94a3b8; padding-top: 4px; font-size: 8pt; font-weight: 700; color: #475569;">Customer Signature &amp; Stamp</div>
+            </td>
+            <td class="std-signature-col print-sig-receiver-left hidden" id="print-sig-receiver-left" style="position: relative; width: 42%; vertical-align: bottom;">
+              <div class="std-signature-line" style="border-top: 1px solid #94a3b8; padding-top: 4px; font-size: 8pt; font-weight: 700; color: #475569;">Receiver Signature</div>
+              <div style="position: absolute; top: 100%; left: 0; font-size: 7pt; color: #475569; text-align: left; margin-top: 4px; line-height: 1.7;">
+                Name: ________________________<br/>Contact: ______________________<br/>Date: ________________________
+              </div>
+            </td>
+            <td style="width: 16%;"></td>
+            <td class="std-signature-col print-sig-company-col" id="print-sig-company-col" style="width: 42%; vertical-align: bottom;">
+              <div style="font-size: 8.5pt; font-weight: 700; color: #475569;">For <span class="dynamic-sig-company-name-en">{companyNameEN}</span></div>
+              <div class="print-stamp-box hidden" style="height: 50px;"></div>
+              <div class="signature-image-container relative flex justify-center items-end h-12 z-10 w-full" style="margin-bottom: -28px; margin-top: 6px;">
+                <img class={"signature-image-render h-12 w-auto object-contain " + (signatureImage ? "" : "hidden")} src={signatureImage || ""} />
+              </div>
+              <div class="std-signature-line" style="border-top: 1px solid #94a3b8; padding-top: 4px; font-size: 8pt; font-weight: 700; color: #475569;">
+                Authorized Signatory<span class="print-sig-paren-std"> (</span><span id="print-sig-name-std">{settings.signatory_name || 'Management'}</span><span class="print-sig-paren-std">)</span>
+              </div>
+            </td>
+          </tr>
+        </table>
+        <div class="std-signature-col print-sig-receiver-col hidden" id="print-sig-receiver-col" style="width: 42%; vertical-align: bottom; margin-left: auto; margin-right: auto; padding-left: 10px; margin-top: 50px;">
+          <div class="std-signature-line" style="border-top: 1px solid #94a3b8; padding-top: 4px; font-size: 8pt; font-weight: 700; color: #475569;">Receiver Signature</div>
+          <div style="font-size: 7pt; color: #475569; text-align: left; margin-top: 4px; line-height: 1.7;">
+            Name: ________________________<br/>Contact: ______________________<br/>Date: ________________________
+          </div>
+        </div>
+
+        <div class="electronic-doc-badge print-electronic-badge hidden" style="border: 1px dashed #cbd5e1; border-radius: 4px; padding: 8px; text-align: center; font-size: 8pt; color: #475569; font-weight: 600; margin-top: 10px; background-color: #f8fafc; page-break-inside: avoid; break-inside: avoid;">
+          This is a computer-generated document. No signature or stamp is required.
+        </div>
+      </div>
+
+      {/* 6. Bank Details Card & Company Card Section */}
+      <div class="std2-bottom-cards flex gap-3 w-full justify-between items-stretch std2-block-atomic" style="margin-top: 10px; page-break-inside: avoid; break-inside: avoid; box-sizing: border-box;">
+        <!-- Bank Details Card -->
+        <div class="terms-section print-bank-block-p2 flex-1 hidden" style="border: 1px solid #cbd5e1; border-radius: 2px; padding: 6px 10px; background: #f8fafc; font-size: 5.8pt; box-sizing: border-box;">
+          <h3 class="terms-section-title" style="margin-bottom: 2px; font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; font-size: 7.2pt; color: #1e293b;">Delight Bank Details:</h3>
+          <p style="font-weight: 700; color: #000000; line-height: 1.35; margin: 0; font-size: 6.2pt;">
+            <span class="dynamic-company-name-en">{companyNameEN}</span><br>
+            Bank Name: <span id="print-bank-name-std2-p2">{settings.bank_name || 'N/A'}</span><br>
+            A/C Name: <span id="print-bank-acc-name-std2-p2" class={!settings.account_name ? "dynamic-company-name-en" : ""}>{settings.account_name || companyNameEN}</span><br>
+            A/C No: <span id="print-bank-acc-std2-p2">{settings.account_number || 'N/A'}</span><br>
+            Bank Swift Code: <span id="print-bank-swift-std2-p2">{settings.swift_code || 'N/A'}</span><br>
+            IBAN: <span id="print-bank-iban-std2-p2">{settings.iban_number || 'N/A'}</span>
+          </p>
+        </div>
+
+        <!-- Company Stamp/Details Card -->
+        <div class="company-card-tos-wrapper flex-1" style="box-sizing: border-box;">
+          <div class="company-card-tos" style="border: 1px solid #cbd5e1; border-radius: 2px; padding: 6px 10px; background: #f8fafc; display: flex; align-items: center; justify-content: space-between; height: 100%; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; gap: 10px; text-align: left;">
+              <img src={inv.source_division === 'DGS' ? '/dgslogo.jpg' : '/dtllogo.jpg'} class="company-card-tos-logo" style="height: 28px; width: auto; object-fit: contain;" />
+              <div>
+                <div style="font-weight: bold; font-size: 7.5pt; color: #0f172a;">For <span class="dynamic-company-name-en">{companyNameEN}</span></div>
+                <div style="font-size: 5.8pt; color: #475569; line-height: 1.3; margin-top: 1px;">
+                  <span id="print-company-address-std2-p2">{settings.business_address || settings.company_address || 'Dubai, United Arab Emirates'}</span><br>
+                  TRN: <span class="font-mono font-bold" style="color:#0f172a;" id="print-company-trn-std2-p2">{settings.trn_number || '100380541100003'}</span>
+                  <span id="print-company-reg-std2-p2-wrapper" class={settings.business_registration ? "" : "hidden"}> | Reg: <span id="print-company-reg-std2-p2">{settings.business_registration || ''}</span></span>
+                  <span id="print-company-permits-std2-p2-wrapper" class={settings.permits_info ? "block" : "hidden"} style="font-size: 5pt; margin-top: 1px;">Permits: <span id="print-company-permits-std2-p2" class="italic">{settings.permits_info || ''}</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {/* Page Footer */}
+    <div class="text-center text-muted print-page-footer-num" style="position: absolute; bottom: 25px; left: 0; right: 0; font-size: 7.5pt; font-weight: 500;">
+      Page <span class="dynamic-page-num">1</span> of <span class="dynamic-total-pages">1</span>
+    </div>
+
+  </div>
+
+</div>
+
+<style is:global>
+  .std2-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  .std2-page {
+    width: 210mm;
+    height: 297mm;
+    max-height: 297mm;
+    box-sizing: border-box;
+    background: #ffffff;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Table styling */
+  .std2-items-table th {
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .std2-items-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .std2-block-atomic {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Print Media Optimization */
+  @media print {
+    .std2-container {
+      width: 100% !important;
+      gap: 0 !important;
+      padding: 0 !important;
+    }
+    .std2-page {
+      width: 210mm !important;
+      height: 297mm !important;
+      min-height: 297mm !important;
+      max-height: 297mm !important;
+      padding: 10mm 12mm !important;
+      margin: 0 !important;
+      box-sizing: border-box !important;
+      box-shadow: none !important;
+      border: none !important;
+      page-break-after: always !important;
+      break-after: always !important;
+      overflow: hidden !important;
+      position: relative !important;
+    }
+    .std2-page:last-child {
+      page-break-after: avoid !important;
+      break-after: avoid !important;
+    }
+    .std2-items-table thead {
+      display: table-header-group !important;
+    }
+    .std2-block-atomic,
+    .std2-closing-wrapper,
+    .std-totals-sigs-block,
+    .std-bank-block,
+    .std-disclaimer-block,
+    .std-signatures-table,
+    .company-card-tos-wrapper {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .terms-section-title {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+    }
+  }
+</style>

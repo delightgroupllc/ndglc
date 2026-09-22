@@ -204,7 +204,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     const rand = Math.floor(1000 + Math.random() * 9000);
     let prefix = 'INV';
-    if (parsed.order_type === 'quotation') prefix = 'EST';
+    if (parsed.order_type === 'quotation' || parsed.order_type === 'inquiry') prefix = 'EST';
     else if (parsed.order_type === 'lpo' || parsed.order_type === 'proforma') prefix = 'PRO';
     else if (parsed.order_type === 'delivery_note') prefix = 'DLN';
     else if (parsed.order_type === 'sample_order') prefix = 'SMP';

@@ -2,6 +2,7 @@
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 import DirhamIcon from '../../../components/ui/DirhamIcon.astro';
 import { query } from '../../../lib/db';
+import { getInvoiceAuditTrail } from '../../../lib/audit';
 import { 
   ArrowLeft, Printer, FileDown, Plus, CreditCard, Banknote, Calendar, Tag, CheckCircle2, AlertCircle, Copy, Archive, RefreshCw, Trash2, ShieldAlert, ShieldCheck
 } from '@lucide/astro';
@@ -74,31 +75,28 @@ try {
   }
 
   // Get true order audit logs from the database
-  const logsRes = await query(`
-    SELECT al.action, al.details, al.timestamp as date, COALESCE(u.name, 'System') as user
-    FROM audit_logs al
-    LEFT JOIN users u ON u.id = al.user_id
-    WHERE al.entity_id = $1 AND al.entity_type = 'invoices'
-    ORDER BY al.timestamp ASC
-  `, [id]);
-  
-  if (logsRes.rows.length > 0) {
-    logs = logsRes.rows.map(row => ({
-      action: row.details || row.action.replace(/_/g, ' '),
-      date: row.date,
-      user: row.user
-    }));
-  } else {
-    // Fallback if no audit logs exist yet
-    logs = [
-      { action: 'Invoice Generated', date: inv?.created_at || inv?.issue_date, user: 'System' },
-      ...transactions.map(t => ({
-        action: `Payment of DH ${Number(t.amount).toLocaleString()} (${t.payment_method.replace('_', ' ')}) recorded`,
-        date: t.transaction_date,
-        user: 'System'
-      })),
-      { action: `Status set to ${inv?.payment_status}`, date: inv?.updated_at || inv?.created_at, user: 'System' }
-    ];
+  if (inv && id) {
+    try {
+      const auditRes = await getInvoiceAuditTrail(id);
+      logs = auditRes.events.map(ev => ({
+        action: `${ev.title}: ${ev.description}`,
+        date: ev.timestamp,
+        user: ev.user || 'System',
+        type: ev.type,
+        badgeColor: ev.badgeColor
+      }));
+    } catch (e) {
+      logs = [
+        { action: `Order Generated: ${inv?.invoice_number} created`, date: inv?.created_at || inv?.issue_date, user: 'System', type: 'source' },
+        ...transactions.map(t => ({
+          action: `Payment of DH ${Number(t.amount).toLocaleString()} (${t.payment_method.replace('_', ' ')}) recorded`,
+          date: t.transaction_date,
+          user: 'System',
+          type: 'payment'
+        })),
+        { action: `Status set to ${inv?.payment_status}`, date: inv?.updated_at || inv?.created_at, user: 'System', type: 'status' }
+      ];
+    }
   }
 
 } catch (err: any) {
@@ -645,7 +643,7 @@ const showArchiveAction = !isDraftOrUnconfirmed;
           <div class="relative pl-4 space-y-4 border-l-2 border-slate-100 text-xs">
             {logs.map((log, i) => (
               <div class="relative">
-                <div class={`absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full ${i === 0 ? 'bg-cyan-500 border-2 border-cyan-100' : 'bg-slate-300'}`}></div>
+                <div class={`absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full ${i === logs.length - 1 ? 'bg-cyan-500 border-2 border-cyan-100 ring-2 ring-cyan-400/20' : (log.type === 'origin' ? 'bg-purple-500 border-2 border-purple-100' : (log.type === 'source' ? 'bg-blue-500 border-2 border-blue-100' : (log.type === 'convert' ? 'bg-amber-500 border-2 border-amber-100' : (log.type === 'status' ? 'bg-emerald-500 border-2 border-emerald-100' : 'bg-slate-300'))))}`}></div>
                 <p class="font-bold text-slate-800">{log.action}</p>
                 <p class="text-slate-500 mt-0.5">{log.date ? new Date(log.date).toLocaleString('en-AE') : ''} • {log.user}</p>
               </div>
