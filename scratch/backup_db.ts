@@ -1,3 +1,4 @@
+/** Database export and snapshot helper module */
 import { query } from '../src/lib/db';
 import fs from 'fs';
 import path from 'path';
