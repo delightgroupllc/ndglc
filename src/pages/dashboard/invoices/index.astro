@@ -158,6 +158,7 @@ const allCount = activeInvoices.length;
               <span>Loss</span>
               <span id="count-outcome-loss" class="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-black leading-none">{lossCount}</span>
             </button>
+            </button>
           </div>
 
           <select id="filter-invoice-status" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 focus:outline-none">
@@ -899,6 +900,28 @@ const allCount = activeInvoices.length;
         });
 
         filterAndSortInvoices(false);
+      });
+    });
+
+    // Quick status pill buttons (All, Win, Loss)
+    document.querySelectorAll<HTMLButtonElement>('.status-pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-status-val') || '';
+        if (statusFilter) {
+          statusFilter.value = val;
+        }
+
+        // Highlight active pill
+        document.querySelectorAll<HTMLButtonElement>('.status-pill-btn').forEach(b => {
+          const isSelected = (b.getAttribute('data-status-val') || '') === val;
+          if (isSelected) {
+            b.className = 'status-pill-btn px-3 py-1 text-xs font-black text-cyan-700 bg-white rounded-md shadow-xs transition-all focus:outline-none flex items-center gap-1.5';
+          } else {
+            b.className = 'status-pill-btn px-3 py-1 text-xs font-black text-slate-600 hover:text-slate-900 rounded-md transition-all focus:outline-none flex items-center gap-1.5';
+          }
+        });
+
+        filterAndSortInvoices(true);
       });
     });
 

@@ -1392,15 +1392,23 @@ const companiesJson = JSON.stringify(companiesList);
             </div>
           </div>
 
-          <!-- Row 2: Specs & Pricing -->
+          <!-- Row 2: Specs, Placement & Pricing -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
             <!-- Technical Spec -->
-            <div class="space-y-1.5 md:col-span-2">
+            <div class="space-y-1.5">
               <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap">Technical Spec</label>
               <input type="text" name="item_tech_spec"
                 value="${data.tech_spec || ""}"
                 placeholder="e.g. DN50, PN16, ANSI…"
                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-cyan-500 focus:outline-none h-9" />
+            </div>
+            <!-- Ideal Placement / Room -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block whitespace-nowrap text-emerald-700">Ideal Placement / Room</label>
+              <input type="text" name="item_ideal_room"
+                value="${data.ideal_room || ''}"
+                placeholder="e.g. Living Room, Outdoor…"
+                class="item-ideal-room-input w-full rounded-lg border border-emerald-200 bg-emerald-50/30 px-3 py-2 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none h-9 font-semibold" />
             </div>
             <!-- Quantity -->
             <div class="space-y-1.5">
@@ -1585,7 +1593,10 @@ const companiesJson = JSON.stringify(companiesList);
       if (match) {
         descInput.value = match.name || "";
         prodIdInput.value = match.id || "";
-
+        const idealRoomInput = div.querySelector('input[name="item_ideal_room"]') as HTMLInputElement;
+        if (idealRoomInput && match.ideal_room) {
+          idealRoomInput.value = match.ideal_room;
+        }
         // Auto-select category
         if (match.category_id) {
           updateCategorySelectOptions(categorySelect, match.category_id);
@@ -1635,7 +1646,10 @@ const companiesJson = JSON.stringify(companiesList);
       if (match) {
         refInput.value = match.sku || "";
         prodIdInput.value = match.id || "";
-
+        const idealRoomInput = div.querySelector('input[name="item_ideal_room"]') as HTMLInputElement;
+        if (idealRoomInput && match.ideal_room) {
+          idealRoomInput.value = match.ideal_room;
+        }
         // Auto-select category
         if (match.category_id) {
           updateCategorySelectOptions(categorySelect, match.category_id);
@@ -2801,6 +2815,7 @@ const companiesJson = JSON.stringify(companiesList);
               catalogue_ref: item.catalogue_ref,
               description: item.description,
               tech_spec: item.tech_spec,
+              ideal_room: item.ideal_room,
               quantity: item.quantity,
               unit_price: item.unit_price,
               tax_type: item.tax_type || "percentage",
@@ -2962,6 +2977,7 @@ const companiesJson = JSON.stringify(companiesList);
               catalogue_ref: item.catalogue_ref,
               description: item.description,
               tech_spec: item.tech_spec,
+              ideal_room: item.ideal_room,
               quantity: item.quantity,
               unit_price: item.unit_price,
               tax_type: item.tax_type || "percentage",
@@ -3048,6 +3064,9 @@ const companiesJson = JSON.stringify(companiesList);
         const techSpec = (
           row.querySelector('input[name="item_tech_spec"]') as HTMLInputElement
         )?.value?.trim();
+        const idealRoom = (
+          row.querySelector('input[name="item_ideal_room"]') as HTMLInputElement
+        )?.value?.trim();
         const productId = (
           row.querySelector('input[name="item_product_id"]') as HTMLInputElement
         )?.value;
@@ -3061,6 +3080,7 @@ const companiesJson = JSON.stringify(companiesList);
             tax_type: taxType,
             catalogue_ref: ref || null,
             tech_spec: techSpec || null,
+            ideal_room: idealRoom || null,
             product_id: productId || null,
             image_base64: imageBase64 || null,
           });

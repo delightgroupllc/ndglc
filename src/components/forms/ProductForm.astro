@@ -6,7 +6,18 @@ interface Props {
   rooms?: any[];
 }
 const { product, categories, divisions } = Astro.props;
-const rooms = Astro.props.rooms || [];
+const rooms = (Astro.props.rooms && Astro.props.rooms.length > 0) ? Astro.props.rooms : [
+  'Living Room',
+  'Bedroom',
+  'Bathroom',
+  'Outdoor Patio',
+  'Executive Office',
+  'Entrance & Hallway',
+  'Dining Room',
+  'Kitchen',
+  'Hotel Lobby',
+  'Retail Display'
+];
 const isEdit = !!product;
 
 const specs = product?.specifications ? (typeof product.specifications === 'string' ? JSON.parse(product.specifications) : product.specifications) : [];

@@ -237,6 +237,7 @@ const docSalesPersonContactClass = isDeliveryOrSample ? 'print-info-due' : 'prin
                   <td class="font-bold uppercase">
                     <span class="block">{item.description}</span>
                     {item.tech_spec && <span class="print-item-tech-spec block text-slate-500 font-normal mt-0.5" style="font-size: 7.5pt; text-transform: none;">Specs: {item.tech_spec}</span>}
+                    {item.ideal_room && <span class="print-item-ideal-room block text-emerald-700 font-medium mt-0.5" style="font-size: 7.5pt; text-transform: none;">📍 Ideal Placement: {item.ideal_room}</span>}
                   </td>
                   <td class="text-center print-col-units">{item.unit || 'PCS'}</td>
                   <td class="text-center font-bold print-col-qty">{item.quantity}</td>

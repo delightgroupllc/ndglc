@@ -1704,6 +1704,10 @@ const isTermChecked = (identifier: string): boolean => {
                 <span>Show Product Images</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="config-show-ideal-places" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                <span>Show Ideal Places / Locations</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="config-show-duplicate-tag" checked class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
                 <span>Show "Duplicate" Status</span>
               </label>
@@ -2239,6 +2243,10 @@ const isTermChecked = (identifier: string): boolean => {
     // Register simple class visibility toggles
     setupToggle('config-show-logo', 'print-logo-container');
     setupToggle('config-show-product-images', 'product-image-column');
+    setupToggle('config-show-ideal-places', 'print-item-ideal-room');
+    document.getElementById('config-show-ideal-places')?.addEventListener('change', () => {
+      repaginate();
+    });
     setupToggle('config-show-sig-image', 'signature-image-render');
     setupToggle('config-show-logo-p2', 'print-logo-container-p2');
     setupToggle('config-show-watermark', 'print-watermark');

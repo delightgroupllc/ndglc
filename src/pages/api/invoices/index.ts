@@ -9,6 +9,7 @@ const itemSchema = z.object({
   product_id: z.string().optional().nullable(),
   catalogue_ref: z.string().optional().nullable(),
   tech_spec: z.string().optional().nullable(),
+  ideal_room: z.string().optional().nullable(),
   quantity: z.number({ 
     required_error: 'Quantity is required',
     invalid_type_error: 'Quantity must be a valid number' 
@@ -136,13 +137,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
         for (let idx = 0; idx < sourceItems.length; idx++) {
           const item = sourceItems[idx];
           await client.query(
-            `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image, sort_order)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+            `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, ideal_room, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image, sort_order)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
             [
               newInv.id, item.product_id || null, item.catalogue_ref || null, item.description,
-              item.tech_spec || null, item.quantity, item.unit_price, item.tax_type, item.tax_value,
+              item.tech_spec || null, item.ideal_room || null, item.quantity, item.unit_price, item.tax_type, item.tax_value,
               item.tax_amount, item.total_price, item.item_image,
               item.sort_order !== undefined ? item.sort_order : idx
+            ]
             ]
           );
         }
@@ -421,10 +423,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
         }
 
         await client.query(
-          `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+          `INSERT INTO invoice_items (invoice_id, product_id, catalogue_ref, description, tech_spec, ideal_room, quantity, unit_price, tax_type, tax_value, tax_amount, total_price, item_image, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
           [inv.id, productId, item.catalogue_ref || null, item.description,
-           item.tech_spec || null, item.quantity, item.unit_price, item.tax_type, item.tax_value,
+           item.tech_spec || null, item.ideal_room || null, item.quantity, item.unit_price, item.tax_type, item.tax_value,
            lineTax, lineTotal + lineTax, resolvedImage, itemIdx]
         );
       }
