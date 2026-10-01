@@ -145,7 +145,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
               item.tax_amount, item.total_price, item.item_image,
               item.sort_order !== undefined ? item.sort_order : idx
             ]
-            ]
           );
         }
 
