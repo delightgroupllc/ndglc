@@ -202,9 +202,9 @@ const hasVat = Number(inv.gst_amount) > 0 || items.some((i: any) => Number(i.tax
                   </td>
                   <td>
                     <span class="font-semibold" style="color: #0f172a;">{item.description}</span>
-                    {item.catalogue_ref && <span class="text-muted font-mono print-item-cat-ref" style="font-size: 8pt; display: block;">Cat Ref: {item.catalogue_ref}</span>}
-                    {item.tech_spec && <span class="text-muted print-item-tech-spec" style="font-size: 8pt; display: block; margin-top: 2px;">Specs: {item.tech_spec}</span>}
-                    {item.ideal_room && <span class="print-item-ideal-room text-emerald-700 font-medium" style="font-size: 8pt; display: block; margin-top: 2px;">📍 Ideal Placement: {item.ideal_room}</span>}
+                    {item.catalogue_ref && <span class="text-muted font-mono print-item-cat-ref block" style="font-size: 8pt;">Cat Ref: {item.catalogue_ref}</span>}
+                    {item.tech_spec && <span class="text-muted print-item-tech-spec block" style="font-size: 8pt; margin-top: 2px;">Specs: {item.tech_spec}</span>}
+                    {item.ideal_room && <span class="print-item-ideal-room block text-emerald-700 font-medium" style="font-size: 8pt; margin-top: 2px;">📍 Ideal Placement: {item.ideal_room}</span>}
                   </td>
                   <td class="text-center print-col-qty">{item.quantity}</td>
                   <td class="text-right font-mono print-col-price"><span class="dirham-symbol inline-block text-[1em] mr-1"></span>{Number(item.unit_price).toFixed(2)}</td>

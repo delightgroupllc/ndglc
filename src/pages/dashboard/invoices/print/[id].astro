@@ -2237,24 +2237,35 @@ const isTermChecked = (identifier: string): boolean => {
         document.querySelectorAll(`.${targetClass}`).forEach(el => {
           if (checked) {
             el.classList.remove('hidden');
+            el.style.display = '';
           } else {
             el.classList.add('hidden');
+            el.style.display = 'none';
           }
         });
       });
     };
 
-    // Register simple class visibility toggles
-    setupToggle('config-show-ideal-places', 'print-item-ideal-room');
-    setupToggle('config-show-ideal-places-col', 'print-item-ideal-room');
+    // Ideal Places / Locations visibility toggle handler
     const toggleIdealPlaces = (e) => {
-      const checked = e.target.checked;
-      const cb1 = document.getElementById('config-show-ideal-places') as HTMLInputElement;
-      const cb2 = document.getElementById('config-show-ideal-places-col') as HTMLInputElement;
-      if (cb1) cb1.checked = checked;
-      if (cb2) cb2.checked = checked;
+      const checked = e && e.target ? e.target.checked : Boolean(e);
+      const cb1 = document.getElementById('config-show-ideal-places');
+      const cb2 = document.getElementById('config-show-ideal-places-col');
+      if (cb1 && cb1.checked !== checked) cb1.checked = checked;
+      if (cb2 && cb2.checked !== checked) cb2.checked = checked;
+
+      document.querySelectorAll('.print-item-ideal-room').forEach(el => {
+        if (checked) {
+          el.classList.remove('hidden');
+          el.style.display = '';
+        } else {
+          el.classList.add('hidden');
+          el.style.display = 'none';
+        }
+      });
       repaginate();
     };
+
     document.getElementById('config-show-ideal-places')?.addEventListener('change', toggleIdealPlaces);
     document.getElementById('config-show-ideal-places-col')?.addEventListener('change', toggleIdealPlaces);
     setupToggle('config-show-sig-image', 'signature-image-render');
@@ -2807,6 +2818,8 @@ const isTermChecked = (identifier: string): boolean => {
       let currentRowIndex = 0;
 
       const specsChecked = document.getElementById('config-show-col-spec')?.checked;
+      const idealPlacesChecked = document.getElementById('config-show-ideal-places')?.checked || document.getElementById('config-show-ideal-places-col')?.checked;
+      const hasExtraLine = specsChecked || idealPlacesChecked;
       const docType = document.getElementById('config-doc-type')?.value;
       const isDeliveryNote = docType === 'DELIVERY NOTE' || docType === 'SAMPLE ORDER';
       
@@ -2817,7 +2830,7 @@ const isTermChecked = (identifier: string): boolean => {
         if (isDeliveryNote) {
           maxItemsPage1 = 8;
           maxItemsSubsequent = 8;
-        } else if (specsChecked) {
+        } else if (hasExtraLine) {
           maxItemsPage1 = 6;
           maxItemsSubsequent = 5;
         } else {
@@ -2825,7 +2838,7 @@ const isTermChecked = (identifier: string): boolean => {
           maxItemsSubsequent = 10;
         }
       } else {
-        if (specsChecked) {
+        if (hasExtraLine) {
           maxItemsPage1 = 5;
           maxItemsSubsequent = 14;
         } else {
@@ -3635,12 +3648,12 @@ const isTermChecked = (identifier: string): boolean => {
         'config-show-watermark', 'config-watermark-source', 'config-watermark-opacity', 'config-watermark-size',
         'config-show-cust-company', 'config-show-cust-address', 'config-show-cust-contact', 'config-show-cust-trn',
         'config-show-info-status', 'config-show-info-date', 'config-show-info-due',
-        'config-show-col-ref', 'config-show-col-spec', 'config-show-col-price', 'config-use-aed-fallback',
-        'config-show-subtotal', 'config-show-vat', 'config-show-discount', 'config-show-total', 'config-show-total-qty', 'config-show-qty-words', 'config-show-dn-condition-note', 'config-show-page-2',
+        'config-show-col-ref', 'config-show-col-spec', 'config-show-ideal-places-col', 'config-show-col-price', 'config-show-col-units', 'config-show-col-vat', 'config-use-aed-fallback',
+        'config-show-subtotal', 'config-show-vat', 'config-show-discount', 'config-show-total', 'config-show-total-qty', 'config-show-qty-words', 'config-show-words', 'config-show-dn-condition-note', 'config-show-page-2',
         'config-show-company-card-tos', 'config-sig-placement', 'sig-client', 'sig-receiver', 'sig-company', 
-        'config-show-sig-image', 'config-show-stamp-box', 'config-show-disclaimer', 'config-show-dn-note', 'config-electronic-sig',
+        'config-show-sig-image', 'config-show-stamp-box', 'config-show-disclaimer', 'config-show-product-images', 'config-show-ideal-places', 'config-show-duplicate-tag', 'config-show-cust-id', 'config-show-comp-id', 'config-show-dn-note', 'config-electronic-sig',
         'config-remittance-placement', 'config-bank-name', 'config-bank-acc-name', 'config-bank-acc', 'config-bank-iban', 'config-bank-swift',
-        'config-bank-selector', 'config-signature-selector', 'config-address-selector', 'config-only-selected-tos'
+        'config-bank-selector', 'config-signature-selector', 'config-custom-signature-name', 'config-sig-company-name', 'config-address-selector', 'config-only-selected-tos'
       ];
       inputs.forEach(id => {
         const el = document.getElementById(id);
@@ -3747,6 +3760,12 @@ const isTermChecked = (identifier: string): boolean => {
         }
 
         if (!config) return;
+
+        if (config['config-show-ideal-places'] !== undefined && config['config-show-ideal-places-col'] === undefined) {
+          config['config-show-ideal-places-col'] = config['config-show-ideal-places'];
+        } else if (config['config-show-ideal-places-col'] !== undefined && config['config-show-ideal-places'] === undefined) {
+          config['config-show-ideal-places'] = config['config-show-ideal-places-col'];
+        }
 
         // Apply config options
         Object.keys(config).forEach(id => {
