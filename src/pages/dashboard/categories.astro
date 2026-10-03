@@ -91,14 +91,25 @@ const normalizedRooms = rooms.map((r, idx) => {
       
       <!-- Action Filters Header -->
       <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-50 border border-slate-200 p-3 rounded-xl shadow-3xs">
-        <div class="relative flex-grow max-w-md">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            id="admin-search-categories"
-            placeholder="Filter categories by name, slug or division..."
-            class="w-full rounded-lg border border-slate-250 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-semibold"
-          />
+        <div class="flex flex-col sm:flex-row gap-2 flex-grow">
+          <div class="relative flex-grow max-w-md">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              id="admin-search-categories"
+              placeholder="Filter categories by name, slug or division..."
+              class="w-full rounded-lg border border-slate-250 bg-white text-slate-900 placeholder-slate-400 px-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-semibold"
+            />
+          </div>
+          <select
+            id="cat-division-filter"
+            class="rounded-lg border border-slate-250 bg-white text-slate-700 px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500/50 min-w-[160px]"
+          >
+            <option value="">All Divisions</option>
+            {divisions.map(d => (
+              <option value={d.name}>{d.name}</option>
+            ))}
+          </select>
         </div>
         <div class="flex gap-2 shrink-0 flex-wrap">
           <button
@@ -129,11 +140,19 @@ const normalizedRooms = rooms.map((r, idx) => {
                 <input type="checkbox" id="select-all-categories" class="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" title="Select all" />
               </th>
               <th class="px-4 py-4 font-semibold">Image</th>
-              <th class="px-4 py-4 font-semibold">Category Name</th>
+              <th class="px-4 py-4 font-semibold">
+                <button class="cat-sort-btn flex items-center gap-1 hover:text-cyan-600 transition-colors" data-col="name">Category Name <span class="cat-sort-icon" data-col="name">&#8597;</span></button>
+              </th>
               <th class="px-4 py-4 font-semibold">Slug</th>
-              <th class="px-4 py-4 font-semibold">Division</th>
-              <th class="px-4 py-4 font-semibold text-center">Products Contained</th>
-              <th class="px-4 py-4 font-semibold text-center">Order</th>
+              <th class="px-4 py-4 font-semibold">
+                <button class="cat-sort-btn flex items-center gap-1 hover:text-cyan-600 transition-colors" data-col="division">Division <span class="cat-sort-icon" data-col="division">&#8597;</span></button>
+              </th>
+              <th class="px-4 py-4 font-semibold text-center">
+                <button class="cat-sort-btn flex items-center gap-1 hover:text-cyan-600 transition-colors mx-auto" data-col="products">Products <span class="cat-sort-icon" data-col="products">&#8597;</span></button>
+              </th>
+              <th class="px-4 py-4 font-semibold text-center">
+                <button class="cat-sort-btn flex items-center gap-1 hover:text-cyan-600 transition-colors mx-auto" data-col="order">Order <span class="cat-sort-icon" data-col="order">&#8597;</span></button>
+              </th>
               <th class="px-4 py-4 font-semibold text-right">Actions</th>
             </tr>
           </thead>
@@ -472,14 +491,67 @@ const normalizedRooms = rooms.map((r, idx) => {
     catModal?.addEventListener('click', (e) => { if (e.target === catModal) closeCategoryModal(); });
 
     // ============================================================
-    // SEARCH CATEGORIES & ROOMS
+    // SEARCH & DIVISION FILTER FOR CATEGORIES
     // ============================================================
-    document.getElementById('admin-search-categories')?.addEventListener('input', (e) => {
-      const q = (e.target as HTMLInputElement).value.toLowerCase();
+    const applyCategoryFilters = () => {
+      const q = ((document.getElementById('admin-search-categories') as HTMLInputElement)?.value || '').toLowerCase();
+      const divVal = ((document.getElementById('cat-division-filter') as HTMLSelectElement)?.value || '').toLowerCase();
       document.querySelectorAll('.admin-category-row').forEach(row => {
         const catStr = row.getAttribute('data-category') || '';
         const cat = JSON.parse(catStr);
-        (row as HTMLElement).style.display = (cat.name.toLowerCase().includes(q) || cat.slug.toLowerCase().includes(q) || cat.division_name?.toLowerCase().includes(q)) ? '' : 'none';
+        const matchesSearch = !q || cat.name.toLowerCase().includes(q) || cat.slug.toLowerCase().includes(q) || cat.division_name?.toLowerCase().includes(q);
+        const matchesDivision = !divVal || cat.division_name?.toLowerCase() === divVal;
+        (row as HTMLElement).style.display = (matchesSearch && matchesDivision) ? '' : 'none';
+      });
+    };
+
+    document.getElementById('admin-search-categories')?.addEventListener('input', applyCategoryFilters);
+    document.getElementById('cat-division-filter')?.addEventListener('change', applyCategoryFilters);
+
+    // ============================================================
+    // SORTABLE COLUMN HEADERS
+    // ============================================================
+    let catSortCol = '';
+    let catSortDir: 'asc' | 'desc' = 'asc';
+
+    const sortCategories = (col: string) => {
+      if (catSortCol === col) {
+        catSortDir = catSortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        catSortCol = col;
+        catSortDir = 'asc';
+      }
+      document.querySelectorAll('.cat-sort-icon').forEach(icon => {
+        (icon as HTMLElement).textContent = '\u2195';
+        (icon as HTMLElement).style.color = '';
+      });
+      const activeIcon = document.querySelector('.cat-sort-icon[data-col="' + col + '"]') as HTMLElement;
+      if (activeIcon) {
+        activeIcon.textContent = catSortDir === 'asc' ? '\u2191' : '\u2193';
+        activeIcon.style.color = '#0891b2';
+      }
+      const tbody = document.getElementById('admin-categories-table');
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll('.admin-category-row')) as HTMLElement[];
+      rows.sort((a, b) => {
+        const catA = JSON.parse(a.getAttribute('data-category') || '{}');
+        const catB = JSON.parse(b.getAttribute('data-category') || '{}');
+        let valA: any, valB: any;
+        if (col === 'name') { valA = catA.name?.toLowerCase(); valB = catB.name?.toLowerCase(); }
+        else if (col === 'division') { valA = catA.division_name?.toLowerCase(); valB = catB.division_name?.toLowerCase(); }
+        else if (col === 'products') { valA = parseInt(catA.product_count) || 0; valB = parseInt(catB.product_count) || 0; }
+        else if (col === 'order') { valA = parseInt(catA.display_order) || 0; valB = parseInt(catB.display_order) || 0; }
+        if (valA < valB) return catSortDir === 'asc' ? -1 : 1;
+        if (valA > valB) return catSortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+      rows.forEach(row => tbody.appendChild(row));
+    };
+
+    document.querySelectorAll('.cat-sort-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const col = (btn as HTMLElement).getAttribute('data-col') || '';
+        sortCategories(col);
       });
     });
 
