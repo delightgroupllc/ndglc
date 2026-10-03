@@ -3,6 +3,7 @@ import { query } from '../../../../lib/db';
 import StandardPrintLayout from '../../../../components/print/StandardPrintLayout.astro';
 import Standard2PrintLayout from '../../../../components/print/Standard2PrintLayout.astro';
 import ModernGridPrintLayout from '../../../../components/print/ModernGridPrintLayout.astro';
+import ProformaPrintLayout from '../../../../components/print/ProformaPrintLayout.astro';
 import '../../../../styles/global.css';
 
 
@@ -1236,6 +1237,24 @@ const isTermChecked = (identifier: string): boolean => {
           dnNote={dnNote}
         />
       </div>
+
+      <!-- Render Proforma Invoice Layout component -->
+      <div id="layout-proforma-wrapper" class="w-full" style="display: none;">
+        <ProformaPrintLayout 
+          inv={invForPrint} 
+          items={items} 
+          settings={settings} 
+          documentTitle={documentTitle} 
+          logoColor={logoColor}
+          companyNameEN={companyNameEN}
+          selectedClauses={selectedClauses}
+          signatureImage={signatureImage}
+          isCustomerDeleted={inv.is_customer_deleted}
+          dnNote={dnNote}
+          totalQtyInWords={totalQtyInWords}
+          amountInWords={amountInWords}
+        />
+      </div>
     </div>
 
     <!-- RIGHT: Configuration Sidebar -->
@@ -1267,7 +1286,33 @@ const isTermChecked = (identifier: string): boolean => {
                 <option value="standard">Standard Template (Delight Group)</option>
                 <option value="standard2">Standard Layout 2.0 (Continuous Flow)</option>
                 <option value="delightgroupllc">Modern Grid Layout (Delight Group)</option>
+                <option value="proforma">Proforma Invoice Layout (Blue Banner)</option>
               </select>
+            </div>
+
+            <!-- Proforma Specific Controls (Auto-shown when Proforma layout is selected) -->
+            <div id="proforma-specific-controls" class="space-y-2.5 p-2.5 rounded-lg bg-blue-950/40 border border-blue-800/60 hidden">
+              <div class="text-[9px] font-extrabold text-blue-400 uppercase tracking-wider">Proforma Parameters</div>
+              <div>
+                <label class="text-[8px] text-slate-400 uppercase font-bold block mb-0.5">Project Name</label>
+                <input type="text" id="config-proforma-project" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" placeholder="e.g. DCT GYM" />
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-[8px] text-slate-400 uppercase font-bold block mb-0.5">Advance %</label>
+                  <input type="number" id="config-proforma-advance-pct" min="0" max="100" value="50" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" />
+                </div>
+                <div>
+                  <label class="text-[8px] text-slate-400 uppercase font-bold block mb-0.5">VAT %</label>
+                  <input type="number" id="config-proforma-vat-pct" min="0" max="100" value="5" class="w-full rounded border border-slate-700 bg-slate-800 text-white px-2.5 py-1 text-xs focus:ring-0" />
+                </div>
+              </div>
+              <div class="pt-1.5 border-t border-blue-900/50">
+                <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                  <input type="checkbox" id="config-proforma-show-images" checked={inv.show_images} class="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0" />
+                  <span class="text-[10px] font-bold">Show Product Images</span>
+                </label>
+              </div>
             </div>
 
             <!-- 2. Document Title Override -->
@@ -1985,23 +2030,30 @@ const isTermChecked = (identifier: string): boolean => {
     const stdLayoutWrapper = document.getElementById('layout-standard-wrapper');
     const std2LayoutWrapper = document.getElementById('layout-standard2-wrapper');
     const delightgroupllcLayoutWrapper = document.getElementById('layout-delightgroupllc-wrapper');
+    const proformaLayoutWrapper = document.getElementById('layout-proforma-wrapper');
+    const proformaControls = document.getElementById('proforma-specific-controls');
 
     const updateLayout = (layout) => {
       let active = layout;
       if (active === '2.0') active = 'standard2';
 
-      if (active === 'delightgroupllc') {
-        if (stdLayoutWrapper) stdLayoutWrapper.style.display = 'none';
-        if (std2LayoutWrapper) std2LayoutWrapper.style.display = 'none';
+      if (stdLayoutWrapper) stdLayoutWrapper.style.display = 'none';
+      if (std2LayoutWrapper) std2LayoutWrapper.style.display = 'none';
+      if (delightgroupllcLayoutWrapper) delightgroupllcLayoutWrapper.style.display = 'none';
+      if (proformaLayoutWrapper) proformaLayoutWrapper.style.display = 'none';
+
+      if (active === 'proforma') {
+        if (proformaLayoutWrapper) proformaLayoutWrapper.style.display = 'block';
+        if (proformaControls) proformaControls.classList.remove('hidden');
+      } else if (active === 'delightgroupllc') {
         if (delightgroupllcLayoutWrapper) delightgroupllcLayoutWrapper.style.display = 'block';
+        if (proformaControls) proformaControls.classList.add('hidden');
       } else if (active === 'standard2') {
-        if (stdLayoutWrapper) stdLayoutWrapper.style.display = 'none';
         if (std2LayoutWrapper) std2LayoutWrapper.style.display = 'block';
-        if (delightgroupllcLayoutWrapper) delightgroupllcLayoutWrapper.style.display = 'none';
+        if (proformaControls) proformaControls.classList.add('hidden');
       } else {
         if (stdLayoutWrapper) stdLayoutWrapper.style.display = 'block';
-        if (std2LayoutWrapper) std2LayoutWrapper.style.display = 'none';
-        if (delightgroupllcLayoutWrapper) delightgroupllcLayoutWrapper.style.display = 'none';
+        if (proformaControls) proformaControls.classList.add('hidden');
       }
     };
 
@@ -2019,7 +2071,8 @@ const isTermChecked = (identifier: string): boolean => {
 
     // Read initial layout from URL params
     const urlParams = new URLSearchParams(window.location.search);
-    let initialLayout = urlParams.get('layout') || 'standard';
+    const initialOrderType = document.getElementById('print-root-container')?.getAttribute('data-order-type');
+    let initialLayout = urlParams.get('layout') || (initialOrderType === 'proforma' ? 'proforma' : 'standard');
     if (initialLayout === '2.0') initialLayout = 'standard2';
     if (layoutSelector) {
       layoutSelector.value = initialLayout;
@@ -2268,6 +2321,39 @@ const isTermChecked = (identifier: string): boolean => {
 
     document.getElementById('config-show-ideal-places')?.addEventListener('change', toggleIdealPlaces);
     document.getElementById('config-show-ideal-places-col')?.addEventListener('change', toggleIdealPlaces);
+
+    // Synchronize both Product Images checkboxes and toggle all matching elements
+    const toggleProductImages = (checked) => {
+      const cb1 = document.getElementById('config-show-product-images');
+      const cb2 = document.getElementById('config-proforma-show-images');
+      if (cb1 && cb1.checked !== checked) cb1.checked = checked;
+      if (cb2 && cb2.checked !== checked) cb2.checked = checked;
+
+      document.querySelectorAll('.product-image-column').forEach(el => {
+        if (checked) {
+          el.classList.remove('hidden');
+          el.style.display = '';
+        } else {
+          el.classList.add('hidden');
+          el.style.display = 'none';
+        }
+      });
+
+      // Update proforma math table colspan (5 when image is visible, 4 when hidden)
+      document.querySelectorAll('.proforma-math-label-col').forEach(el => {
+        el.setAttribute('colspan', checked ? '5' : '4');
+      });
+
+      repaginate();
+    };
+
+    document.getElementById('config-show-product-images')?.addEventListener('change', (e) => {
+      toggleProductImages(e.target.checked);
+    });
+    document.getElementById('config-proforma-show-images')?.addEventListener('change', (e) => {
+      toggleProductImages(e.target.checked);
+    });
+
     setupToggle('config-show-sig-image', 'signature-image-render');
     setupToggle('config-show-logo-p2', 'print-logo-container-p2');
     setupToggle('config-show-watermark', 'print-watermark');
@@ -2336,7 +2422,7 @@ const isTermChecked = (identifier: string): boolean => {
     setupToggle('config-show-company-card-tos', 'company-card-tos-wrapper');
     setupToggle('config-show-disclaimer', 'print-disclaimer-text');
 
-    ['config-show-words', 'config-show-page-2', 'config-show-company-card-tos', 'config-show-disclaimer', 'config-show-product-images', 'config-show-sig-image', 'config-show-logo'].forEach(id => {
+    ['config-show-words', 'config-show-page-2', 'config-show-company-card-tos', 'config-show-disclaimer', 'config-show-sig-image', 'config-show-logo'].forEach(id => {
       document.getElementById(id)?.addEventListener('change', () => {
         repaginate();
       });
@@ -2771,6 +2857,11 @@ const isTermChecked = (identifier: string): boolean => {
 
       if (layout === 'standard2') {
         repaginateStandard2();
+        return;
+      }
+
+      if (layout === 'proforma') {
+        updateProformaCalculations();
         return;
       }
 
@@ -3432,12 +3523,59 @@ const isTermChecked = (identifier: string): boolean => {
       const iban = document.getElementById('config-bank-iban')?.value || '';
       const swift = document.getElementById('config-bank-swift')?.value || '';
       
-      document.querySelectorAll('#print-bank-name, #print-bank-name-std2, #print-bank-name-std2-ftr, #print-bank-name-std-hdr, #print-bank-name-p1-arr, #print-bank-name-std-p2, #print-bank-name-std2-p2, #print-bank-name-p2').forEach(el => el.textContent = name);
-      document.querySelectorAll('#print-bank-acc-name, #print-bank-acc-name-std2, #print-bank-acc-name-std2-ftr, #print-bank-acc-name-std-hdr, #print-bank-acc-name-p1-arr, #print-bank-acc-name-std-p2, #print-bank-acc-name-std2-p2, #print-bank-acc-name-p2').forEach(el => el.textContent = accName);
-      document.querySelectorAll('#print-bank-acc, #print-bank-acc-std2, #print-bank-acc-std2-ftr, #print-bank-acc-std-hdr, #print-bank-acc-p1-arr, #print-bank-acc-std-p2, #print-bank-acc-std2-p2, #print-bank-acc-p2').forEach(el => el.textContent = acc);
-      document.querySelectorAll('#print-bank-iban, #print-bank-iban-std2, #print-bank-iban-std2-ftr, #print-bank-iban-std-hdr, #print-bank-iban-p1-arr, #print-bank-iban-std-p2, #print-bank-iban-std2-p2, #print-bank-iban-p2').forEach(el => el.textContent = iban);
-      document.querySelectorAll('#print-bank-swift, #print-bank-swift-std2, #print-bank-swift-std2-ftr, #print-bank-swift-std-hdr, #print-bank-swift-p1-arr, #print-bank-swift-std-p2, #print-bank-swift-std2-p2, #print-bank-swift-p2').forEach(el => el.textContent = swift);
+      document.querySelectorAll('#print-bank-name, #print-bank-name-std2, #print-bank-name-std2-ftr, #print-bank-name-std-hdr, #print-bank-name-p1-arr, #print-bank-name-std-p2, #print-bank-name-std2-p2, #print-bank-name-p2, #proforma-bank-name').forEach(el => el.textContent = name);
+      document.querySelectorAll('#print-bank-acc-name, #print-bank-acc-name-std2, #print-bank-acc-name-std2-ftr, #print-bank-acc-name-std-hdr, #print-bank-acc-name-p1-arr, #print-bank-acc-name-std-p2, #print-bank-acc-name-std2-p2, #print-bank-acc-name-p2, #proforma-bank-acc-name').forEach(el => el.textContent = accName);
+      document.querySelectorAll('#print-bank-acc, #print-bank-acc-std2, #print-bank-acc-std2-ftr, #print-bank-acc-std-hdr, #print-bank-acc-p1-arr, #print-bank-acc-std-p2, #print-bank-acc-std2-p2, #print-bank-acc-p2, #proforma-bank-acc').forEach(el => el.textContent = acc);
+      document.querySelectorAll('#print-bank-iban, #print-bank-iban-std2, #print-bank-iban-std2-ftr, #print-bank-iban-std-hdr, #print-bank-iban-p1-arr, #print-bank-iban-std-p2, #print-bank-iban-std2-p2, #print-bank-iban-p2, #proforma-bank-iban').forEach(el => el.textContent = iban);
+      document.querySelectorAll('#print-bank-swift, #print-bank-swift-std2, #print-bank-swift-std2-ftr, #print-bank-swift-std-hdr, #print-bank-swift-p1-arr, #print-bank-swift-std-p2, #print-bank-swift-std2-p2, #print-bank-swift-p2, #proforma-bank-swift').forEach(el => el.textContent = swift);
     };
+
+    // Proforma Calculations & Live Sync
+    const updateProformaCalculations = () => {
+      const advInput = document.getElementById('config-proforma-advance-pct');
+      const vatInput = document.getElementById('config-proforma-vat-pct');
+      const projectInput = document.getElementById('config-proforma-project');
+
+      const advPct = advInput ? (parseFloat(advInput.value) || 0) : 50;
+      const vatPct = vatInput ? (parseFloat(vatInput.value) || 0) : 5;
+      const projectName = projectInput?.value?.trim() || 'DCT GYM';
+
+      // Update project name in document
+      document.querySelectorAll('#proforma-project-title').forEach(el => {
+        el.textContent = projectName;
+      });
+
+      // Calculate totals based on rendered items or invoice subtotal
+      const wrapper = document.getElementById('layout-proforma-wrapper');
+      if (!wrapper) return;
+
+      let subtotal = 0;
+      wrapper.querySelectorAll('.proforma-items-table tbody tr.item-row-render').forEach(row => {
+        const textTotal = row.querySelector('td:last-child')?.textContent?.replace(/,/g, '') || '0';
+        subtotal += parseFloat(textTotal) || 0;
+      });
+
+      if (subtotal === 0) {
+        subtotal = parseFloat(document.getElementById('print-root-container')?.getAttribute('data-subtotal') || '0');
+      }
+
+      const advAmount = subtotal * (advPct / 100);
+      const vatAmount = advAmount * (vatPct / 100);
+      const grandTotal = advAmount + vatAmount;
+
+      const formatNum = (n) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      document.querySelectorAll('#proforma-advance-text').forEach(el => el.textContent = `${advPct}% Advance`);
+      document.querySelectorAll('#proforma-field-terms-val').forEach(el => el.textContent = `${advPct}% Advance`);
+      document.querySelectorAll('#proforma-advance-amount-cell').forEach(el => el.textContent = formatNum(advAmount));
+      document.querySelectorAll('#proforma-vat-rate').forEach(el => el.textContent = `${vatPct}%`);
+      document.querySelectorAll('#proforma-vat-amount-cell').forEach(el => el.textContent = formatNum(vatAmount));
+      document.querySelectorAll('#proforma-grand-total-cell').forEach(el => el.textContent = formatNum(grandTotal));
+    };
+
+    document.getElementById('config-proforma-advance-pct')?.addEventListener('input', updateProformaCalculations);
+    document.getElementById('config-proforma-vat-pct')?.addEventListener('input', updateProformaCalculations);
+    document.getElementById('config-proforma-project')?.addEventListener('input', updateProformaCalculations);
 
     // Remittance block placement selector
     document.getElementById('config-remittance-placement')?.addEventListener('change', (e) => {
@@ -3653,7 +3791,8 @@ const isTermChecked = (identifier: string): boolean => {
         'config-show-company-card-tos', 'config-sig-placement', 'sig-client', 'sig-receiver', 'sig-company', 
         'config-show-sig-image', 'config-show-stamp-box', 'config-show-disclaimer', 'config-show-product-images', 'config-show-ideal-places', 'config-show-duplicate-tag', 'config-show-cust-id', 'config-show-comp-id', 'config-show-dn-note', 'config-electronic-sig',
         'config-remittance-placement', 'config-bank-name', 'config-bank-acc-name', 'config-bank-acc', 'config-bank-iban', 'config-bank-swift',
-        'config-bank-selector', 'config-signature-selector', 'config-custom-signature-name', 'config-sig-company-name', 'config-address-selector', 'config-only-selected-tos'
+        'config-bank-selector', 'config-signature-selector', 'config-custom-signature-name', 'config-sig-company-name', 'config-address-selector', 'config-only-selected-tos',
+        'config-proforma-project', 'config-proforma-advance-pct', 'config-proforma-vat-pct', 'config-proforma-show-images'
       ];
       inputs.forEach(id => {
         const el = document.getElementById(id);
@@ -3767,6 +3906,12 @@ const isTermChecked = (identifier: string): boolean => {
           config['config-show-ideal-places'] = config['config-show-ideal-places-col'];
         }
 
+        if (config['config-show-product-images'] !== undefined && config['config-proforma-show-images'] === undefined) {
+          config['config-proforma-show-images'] = config['config-show-product-images'];
+        } else if (config['config-proforma-show-images'] !== undefined && config['config-show-product-images'] === undefined) {
+          config['config-show-product-images'] = config['config-proforma-show-images'];
+        }
+
         // Apply config options
         Object.keys(config).forEach(id => {
           if (id === 'placedStamps') return; // Handled separately
@@ -3852,6 +3997,7 @@ const isTermChecked = (identifier: string): boolean => {
     // Helper to get active wrapper ID
     const getWrapperId = () => {
       const l = getActiveLayout();
+      if (l === 'proforma') return 'layout-proforma-wrapper';
       if (l === 'delightgroupllc') return 'layout-delightgroupllc-wrapper';
       if (l === 'standard2') return 'layout-standard2-wrapper';
       return 'layout-standard-wrapper';

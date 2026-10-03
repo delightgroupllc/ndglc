@@ -1,0 +1,387 @@
+---
+interface Props {
+  inv: any;
+  items: any[];
+  settings: Record<string, string>;
+  documentTitle: string;
+  logoColor?: string;
+  companyNameEN?: string;
+  selectedClauses?: any[];
+  signatureImage?: string;
+  isCustomerDeleted?: boolean;
+  dnNote?: string;
+  totalQtyInWords?: string;
+  amountInWords?: string;
+}
+
+const {
+  inv,
+  items,
+  settings,
+  documentTitle = 'Proforma Invoice',
+  companyNameEN = 'DELIGHT GROUP LLC',
+  signatureImage,
+  isCustomerDeleted = false,
+  amountInWords = ''
+} = Astro.props;
+
+const showImages = Boolean(inv?.show_images);
+
+// Compute subtotal, advance, and VAT
+const rawSubtotal = items.reduce((sum: number, it: any) => sum + (Number(it.quantity || 0) * Number(it.unit_price || 0)), 0);
+const subtotal = rawSubtotal > 0 ? rawSubtotal : Number(inv.subtotal || 0);
+
+// Determine items fit limits
+const maxItemsPage1 = 8;
+const maxItemsSubsequent = 12;
+
+const pagesOfItems: any[][] = [];
+if (items.length <= maxItemsPage1) {
+  pagesOfItems.push(items);
+} else {
+  pagesOfItems.push(items.slice(0, maxItemsPage1));
+  let index = maxItemsPage1;
+  while (index < items.length) {
+    pagesOfItems.push(items.slice(index, index + maxItemsSubsequent));
+    index += maxItemsSubsequent;
+  }
+}
+
+const totalPages = pagesOfItems.length;
+
+// Ref No: prioritize quotation_ref or formatted invoice_number
+const refNo = inv.quotation_ref || inv.invoice_number || 'EST-2026-4924';
+
+// Format Issue Date to DD/MM/YYYY
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '01/10/2026';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch {
+    return dateStr;
+  }
+};
+
+const invDate = formatDate(inv.issue_date);
+const lpoNo = inv.lpo_number || '2026-0519';
+
+// Default project name from internal notes or project name field
+let initialProjectName = 'DCT GYM';
+if (inv.internal_notes) {
+  const match = inv.internal_notes.match(/project(?:\s*name)?\s*[:=-]\s*([^\n\r,]+)/i);
+  if (match && match[1]) {
+    initialProjectName = match[1].trim();
+  }
+}
+---
+
+<div id="layout-proforma" class="proforma-container w-full flex flex-col items-center gap-8">
+  {pagesOfItems.map((pageItems, pageIdx) => {
+    const isFirstPage = pageIdx === 0;
+    const isLastPage = pageIdx === pagesOfItems.length - 1;
+    const pageNumber = pageIdx + 1;
+
+    return (
+      <div 
+        class="print-page proforma-page bg-white shadow-xl border border-slate-300 p-8 relative print:p-0 print:border-none print:shadow-none mb-8"
+        data-page-index={pageIdx}
+      >
+        {isFirstPage ? (
+          <>
+            <!-- Top Header Row: Company Info Left, Proforma Invoice Title Right -->
+            <div class="proforma-top-header flex justify-between items-start mb-2">
+              <!-- Left: Logo & Company Address -->
+              <div class="proforma-company-block" style="width: 52%;">
+                <div class="proforma-logo-box mb-2">
+                  <img 
+                    id="proforma-main-logo" 
+                    src="/dgllclogosmall.png" 
+                    alt="Delight Group LLC" 
+                    class="h-20 w-auto object-contain"
+                  />
+                </div>
+                <div class="proforma-company-name font-bold text-lg text-blue-700 tracking-tight uppercase dynamic-company-name-en">
+                  {companyNameEN || 'DELIGHT GROUP LLC'}
+                </div>
+                <div class="proforma-company-details text-[11px] text-slate-800 leading-snug mt-1">
+                  <div id="proforma-company-addr">{settings.business_address || 'Shams Business Center,'}</div>
+                  <div id="proforma-company-city">Sharjah, UAE</div>
+                  <div class="mt-0.5">Phone: <span id="proforma-company-phone">{settings.phone_number || settings.contact_phone || '+971 56 661 8040'}</span></div>
+                  <div><a href={`mailto:${settings.contact_email || 'sales@delightgroupllc.com'}`} class="text-blue-600 hover:underline" id="proforma-company-email">{settings.contact_email || 'sales@delightgroupllc.com'}</a></div>
+                  <div class="font-bold text-slate-900 mt-0.5">TRN : <span class="font-mono" id="proforma-company-trn">{settings.trn_number || '105441325500003'}</span></div>
+                </div>
+              </div>
+
+              <!-- Right: Large Document Title -->
+              <div class="proforma-title-block text-right pt-6" style="width: 45%;">
+                <h1 class="proforma-doc-title text-3xl font-extrabold text-[#2563eb] tracking-tight delightgroupllc-doc-title std-doc-title">
+                  {documentTitle || 'Proforma Invoice'}
+                </h1>
+              </div>
+            </div>
+
+            <!-- Header Grid: Bill To (Left) & Metadata Fields (Right) -->
+            <div class="proforma-meta-grid flex justify-between items-start gap-4 mb-4">
+              <!-- Left: Bill To Block -->
+              <div class="proforma-bill-to-container flex-1">
+                <div class="proforma-blue-bar bg-[#2563eb] text-white font-extrabold text-[11px] px-2.5 py-1 tracking-wider uppercase">
+                  BILL TO
+                </div>
+                <div class="proforma-bill-to-content pt-2 text-[11px] text-slate-900 leading-relaxed font-medium">
+                  <div class="font-bold uppercase text-[12px] text-slate-950 print-cust-company" id="proforma-cust-name">
+                    {inv.company_name || inv.customer_name || 'AL TOUFEEQ CONTRACTING & GENERAL MAINTENANCE COMPANY W L L'}
+                    {isCustomerDeleted ? '*' : ''}
+                  </div>
+                  {inv.company_name && inv.customer_name && inv.company_name !== inv.customer_name && (
+                    <div class="text-slate-700 text-[11px] font-semibold print-cust-contact">
+                      Attn: {inv.customer_name}
+                    </div>
+                  )}
+                  <div class="proforma-cust-address uppercase text-slate-800 mt-1 whitespace-pre-line print-cust-address" id="proforma-cust-addr">
+                    {inv.billing_address || 'OFFICE 201, EREC Building, No 20, Al Falah Street ABU DHABI,\nUAE'}
+                  </div>
+                  <div class="font-bold text-slate-950 mt-1.5 print-cust-trn">
+                    TRN: <span class="font-mono text-[12px] font-extrabold" id="proforma-cust-trn">{inv.company_vat || '100235723200003'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Two-Column Metadata Table (Ref No, Inv-Date, Payment Terms, LPO No) -->
+              <div class="proforma-fields-container" style="width: 46%;">
+                <table class="w-full border-collapse proforma-fields-table">
+                  <!-- Row 1 Header -->
+                  <thead>
+                    <tr class="bg-[#2563eb] text-white text-[10px] font-extrabold uppercase">
+                      <th class="border border-[#1d4ed8] px-2.5 py-1 text-left w-1/2">REF . NO</th>
+                      <th class="border border-[#1d4ed8] px-2.5 py-1 text-right w-1/2">INV - DATE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="text-[11px] text-slate-900 font-semibold bg-white">
+                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5 font-mono dynamic-doc-number">{refNo}</td>
+                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5 text-right font-mono">{invDate}</td>
+                    </tr>
+                  </tbody>
+                  <!-- Row 2 Header -->
+                  <thead>
+                    <tr class="bg-[#2563eb] text-white text-[10px] font-extrabold uppercase">
+                      <th class="border border-[#1d4ed8] px-2.5 py-1 text-left w-1/2">PAYMENT TERMS</th>
+                      <th class="border border-[#1d4ed8] px-2.5 py-1 text-right w-1/2">LPO .NO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="text-[11px] text-slate-900 font-semibold bg-white">
+                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5" id="proforma-field-terms-val">50% Advance</td>
+                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5 text-right font-mono" id="proforma-field-lpo-val">{lpoNo}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Project Name Bar (Enclosed in bold borders) -->
+            <div class="proforma-project-bar border-t-2 border-b-2 border-slate-900 py-1.5 my-3 text-center">
+              <span class="font-extrabold text-[12px] uppercase text-slate-950 underline tracking-wide">
+                PROJECT NAME: <span id="proforma-project-title" class="proforma-editable-project">{initialProjectName}</span>
+              </span>
+            </div>
+          </>
+        ) : (
+          <!-- Continuation Header for Page 2+ -->
+          <div class="proforma-continuation-header flex justify-between items-center pb-3 mb-4 border-b-2 border-slate-800">
+            <div class="flex items-center gap-3">
+              <img src="/dgllclogosmall.png" alt="Delight Group LLC" class="h-10 w-auto object-contain" />
+              <div class="font-bold text-sm text-blue-700 uppercase dynamic-company-name-en">{companyNameEN}</div>
+            </div>
+            <div class="text-right text-xs">
+              <div class="font-bold text-blue-700 uppercase delightgroupllc-doc-title">{documentTitle}</div>
+              <div class="text-slate-500 text-[10px]">Continuation Page {pageNumber} of {totalPages} | Ref: <span class="font-mono font-bold dynamic-doc-number">{refNo}</span></div>
+            </div>
+          </div>
+        )}
+
+        <!-- Main Items Table -->
+        <table class="w-full border-collapse proforma-items-table border-2 border-slate-900 mb-0">
+          <thead>
+            <tr class="bg-[#2563eb] text-white text-[11px] font-extrabold uppercase">
+              <th class={`border border-slate-900 py-1.5 px-2 text-center product-image-column ${showImages ? '' : 'hidden'}`} style="width: 10%;">Image</th>
+              <th class="border border-slate-900 py-1.5 px-3 text-center print-col-desc">Description</th>
+              <th class="border border-slate-900 py-1.5 px-2 text-center print-col-units" style="width: 8%;">Unit</th>
+              <th class="border border-slate-900 py-1.5 px-2 text-center print-col-qty" style="width: 18%;">QTY</th>
+              <th class="border border-slate-900 py-1.5 px-3 text-center print-col-price" style="width: 17%;">Rate</th>
+              <th class="border border-slate-900 py-1.5 px-3 text-center print-col-price" style="width: 18%;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((item, idx) => {
+              const lineTotal = Number(item.quantity || 0) * Number(item.unit_price || 0);
+              const unitLabel = item.unit || 'LS';
+              const formattedQty = String(item.quantity || 1).padStart(2, '0');
+              const formattedRate = Number(item.unit_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              const formattedTotal = Number(lineTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              const itemImg = item.item_image || item.image;
+
+              return (
+                <tr class="item-row-render border-b border-slate-900 text-[11px] text-slate-900">
+                  <td class={`border-r border-slate-900 p-2 align-middle text-center product-image-column ${showImages ? '' : 'hidden'}`} style="width: 10%;">
+                    {itemImg ? (
+                      <img 
+                        src={itemImg} 
+                        alt={item.description || 'Product'} 
+                        class="max-w-[45px] max-h-[45px] object-contain mx-auto rounded border border-slate-200" 
+                        onerror="this.src='/no-image.svg'"
+                      />
+                    ) : (
+                      <img 
+                        src="/no-image.svg" 
+                        alt="No Image" 
+                        class="max-w-[36px] max-h-[36px] object-contain mx-auto opacity-30" 
+                      />
+                    )}
+                  </td>
+                  <td class="border-r border-slate-900 p-3 align-middle text-left font-medium print-col-desc">
+                    <div class="text-[11px] text-slate-900 font-semibold">{item.description}</div>
+                    {item.catalogue_ref && (
+                      <div class="text-[10px] text-slate-500 font-mono mt-0.5 print-item-cat-ref">Ref: {item.catalogue_ref}</div>
+                    )}
+                  </td>
+                  <td class="border-r border-slate-900 p-3 align-middle text-center uppercase font-bold text-slate-800 print-col-units">
+                    {unitLabel}
+                  </td>
+                  <td class="border-r border-slate-900 p-3 align-middle text-center font-mono font-bold text-slate-900 print-col-qty">
+                    {formattedQty}
+                  </td>
+                  <td class="border-r border-slate-900 p-3 align-middle text-right font-mono font-medium text-slate-900 print-col-price">
+                    {formattedRate}
+                  </td>
+                  <td class="p-3 align-middle text-right font-mono font-bold text-slate-950 print-col-price">
+                    {formattedTotal}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <!-- Totals, Bank Details & Signatures (Shown on Last Page) -->
+        {isLastPage && (
+          <div class="proforma-bottom-section mt-0">
+            <!-- Math Breakdown Table (Advance, VAT, Subtotal) -->
+            <table class="w-full border-collapse border-x-2 border-b-2 border-slate-900 proforma-math-table">
+              <!-- Advance Row (e.g. 50% Advance) -->
+              <tr class="border-b border-slate-900 text-[11px] font-semibold text-slate-900">
+                <td colspan={showImages ? 5 : 4} class="proforma-math-label-col p-1.5 text-center border-r border-slate-900 bg-white" id="proforma-advance-label-cell">
+                  <span id="proforma-advance-text">50% Advance</span>
+                </td>
+                <td class="p-1.5 text-right font-mono font-bold border-none w-[18%] bg-white" id="proforma-advance-amount-cell">
+                  {(subtotal * 0.5).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+              </tr>
+              <!-- VAT Row -->
+              <tr class="border-b border-slate-900 text-[11px] font-semibold text-slate-900">
+                <td colspan={showImages ? 5 : 4} class="proforma-math-label-col p-1.5 text-center border-r border-slate-900 bg-white">
+                  ADD VAT @<span id="proforma-vat-rate">5%</span>
+                </td>
+                <td class="p-1.5 text-right font-mono font-bold border-none w-[18%] bg-white" id="proforma-vat-amount-cell">
+                  {(subtotal * 0.5 * 0.05).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+              </tr>
+              <!-- Sub Total AED Blue Banner Row -->
+              <tr class="bg-[#2563eb] text-white font-extrabold text-[12px] uppercase">
+                <td colspan={showImages ? 5 : 4} class="proforma-math-label-col p-2 text-right tracking-wider pr-4 border-r border-[#1d4ed8]">
+                  SUB TOTAL AED
+                </td>
+                <td class="p-2 text-right font-mono font-black border-none w-[18%]" id="proforma-grand-total-cell">
+                  {(subtotal * 0.5 * 1.05).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+              </tr>
+            </table>
+
+            <!-- Bank Details Block -->
+            <div class="proforma-bank-section mt-8 text-[11px] text-slate-900 leading-snug">
+              <div class="font-extrabold italic text-red-600 underline tracking-wide mb-1 text-[12px]">
+                BANK DETAILS
+              </div>
+              <div class="font-bold space-y-0.5 text-slate-950">
+                <div>A/C Name : <span id="proforma-bank-acc-name">{settings.account_name || 'DELIGHT GROUP LLC'}</span></div>
+                <div>Bank Name: <span id="proforma-bank-name">{settings.bank_name || 'National Bank of Ras Al Khaimah'}</span></div>
+                <div>A/C Number: <span class="font-mono" id="proforma-bank-acc">{settings.account_number || '0373697522001'}</span></div>
+                <div>Branch - <span id="proforma-bank-branch">Dubai - UAE</span></div>
+                <div>IBAN: <span class="font-mono" id="proforma-bank-iban">{settings.iban_number || 'AE750400000373697522001'}</span></div>
+                <div>SWIFT CODE: <span class="font-mono" id="proforma-bank-swift">{settings.swift_code || 'NRAKAEAK'}</span></div>
+              </div>
+            </div>
+
+            <!-- Signatures Section: Customer Left, Company Signature Right -->
+            <div class="proforma-signatures-section print-signature-section flex justify-between items-end mt-16 pt-4">
+              <!-- Customer Signature Left -->
+              <div class="proforma-cust-sig-col print-sig-client-col w-5/12 text-left">
+                <div class="font-bold text-[11px] text-slate-900 mb-10">
+                  Customer Signature
+                </div>
+                <div class="border-b border-dashed border-slate-900 w-full"></div>
+              </div>
+
+              <!-- Company Signature Right -->
+              <div class="proforma-comp-sig-col print-sig-company-col w-5/12 text-left relative">
+                <div class="font-bold text-[11px] text-slate-900 mb-10">
+                  For <span class="dynamic-sig-company-name-en uppercase">{companyNameEN || 'Delight GROUP LLC'}</span>
+                </div>
+
+                <!-- Dynamic Stamp Space if user enables "Leave Space for Stamp" -->
+                <div class="print-stamp-box hidden" style="height: 60px;"></div>
+
+                <!-- Signature Image (if configured) -->
+                {signatureImage && (
+                  <div class="absolute -bottom-3 left-6 z-20 pointer-events-none">
+                    <img src={signatureImage} alt="Authorized Signature" class="h-14 w-auto object-contain signature-image-render" />
+                  </div>
+                )}
+
+                <div class="border-b border-dashed border-slate-900 w-full relative z-0"></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <!-- Bottom Page Number -->
+        <div class="text-center text-slate-400 print-page-footer-num absolute bottom-4 left-0 right-0 text-[10px] font-medium">
+          Page <span class="dynamic-page-num">{pageNumber}</span> of <span class="dynamic-total-pages">{totalPages}</span>
+        </div>
+      </div>
+    );
+  })}
+</div>
+
+<style is:global>
+  .proforma-page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #ffffff;
+    box-sizing: border-box;
+    padding: 12mm 14mm 14mm 14mm;
+    color: #0f172a;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  @media print {
+    .proforma-page {
+      width: 210mm;
+      height: 297mm;
+      padding: 10mm 12mm 12mm 12mm;
+      page-break-after: always;
+      break-after: page;
+    }
+  }
+
+  .proforma-items-table th,
+  .proforma-items-table td {
+    border-color: #0f172a !important;
+  }
+</style>
