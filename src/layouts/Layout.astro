@@ -35,7 +35,7 @@ if (isDTL) {
   logoSrc = '/dgslogo.jpg';
   logoAlt = 'DGS Logo';
 } else if (isDV) {
-  logoSrc = '/dgllclogosmall.png';
+  logoSrc = '/dvs.png';
   logoAlt = 'Delight Vision Logo';
 }
 
@@ -211,10 +211,10 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
       <div class={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative ${(isDTL || isDGS) ? 'border-b border-slate-100' : ''}`}>
         <div class="flex h-16 md:h-20 items-center justify-between">
           <!-- Logo Section -->
-          <div class="flex-none w-64 text-left relative h-full flex items-center">
+          <div class="flex-none w-44 xl:w-56 text-left relative h-full flex items-center">
             <a href={isDTL ? "/delighttechnicallighting" : (isDGS ? "/delightgreenscapes" : (isDV ? "/delightvision" : "/"))} class="inline-flex md:absolute md:top-0.5 md:left-0 z-45 group">
               <img 
-                id="main-logo-img"
+                id="main-logo-img" 
                 src={logoSrc} 
                 alt={logoAlt} 
                 class="h-12 md:h-32 w-auto group-hover:scale-103 transition-all duration-300 object-contain bg-white px-3 py-3 rounded-b-xl border-x border-b border-slate-200/80 shadow-md" 
@@ -223,7 +223,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
           </div>
 
           <!-- Main Desktop Navigation (Centered) -->
-          <nav class="hidden md:flex items-center justify-center gap-8 flex-grow">
+          <nav class="hidden xl:flex items-center justify-center gap-6 2xl:gap-8 flex-grow whitespace-nowrap lg:flex lg:gap-4.5">
             {!isHome && (
               <a href="/" class="text-sm font-bold font-display tracking-tight text-slate-650 hover:text-slate-950 transition-colors duration-200">Home</a>
             )}
@@ -237,7 +237,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               <a href="/delightgreenscapes" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Delight Greenscapes</a>
             )}
             {pageVisibility.enable_dvision && (
-              <a href="/delightvision" class="text-sm font-bold font-display tracking-tight text-violet-700 hover:text-violet-900 transition-colors duration-200 flex items-center gap-1">Delight Vision <span class="text-[9px] font-black bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded uppercase">New</span></a>
+              <a href="/delightvision" class="text-sm font-bold font-display tracking-tight text-violet-700 hover:text-violet-900 transition-colors duration-200 flex items-center gap-1.5">Delight Vision <span class="text-[9px] font-black bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded uppercase">New</span></a>
             )}
             {pageVisibility.enable_downloads && (!isDTL && !isDGS) && (
               <a href="/downloads" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Downloads</a>
@@ -248,13 +248,13 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
           </nav>
 
           <!-- Action Buttons / Auth (Right-aligned) -->
-          <div class="hidden md:flex items-center justify-end gap-4 w-64">
+          <div class="hidden lg:flex items-center justify-end gap-3 w-44 xl:w-56 flex-shrink-0">
             {userId ? (
               <div class="flex items-center gap-3">
                 {hasDashboardAccess && (
                   <a 
                     href="/dashboard" 
-                    class="flex items-center gap-2 border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-bold text-slate-700 transition shadow-sm bg-white"
+                    class="flex items-center gap-2 border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-3.5 py-2 rounded-lg text-sm font-bold text-slate-700 transition shadow-sm bg-white whitespace-nowrap"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -266,13 +266,13 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               </div>
             ) : (
               <div class="flex items-center gap-3">
-                <a href="/login" class="flex items-center gap-2 border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-5 py-2 rounded-lg text-sm font-bold text-slate-700 transition shadow-sm bg-white">Sign In</a>
+                <a href="/login" class="flex items-center gap-2 border border-slate-200 hover:border-slate-350 hover:bg-slate-50 px-5 py-2 rounded-lg text-sm font-bold text-slate-700 transition shadow-sm bg-white whitespace-nowrap">Sign In</a>
               </div>
             )}
           </div>
 
           <!-- Mobile Actions (Row 1 Right) -->
-          <div class="flex md:hidden items-center gap-2.5">
+          <div class="flex lg:hidden items-center gap-2.5">
             <!-- Search Trigger -->
             <button class="p-2 text-slate-550 hover:text-slate-900" aria-label="Search">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -295,7 +295,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
       </div>
 
       <!-- Mobile Navigation Drawer -->
-      <div id="mobile-drawer" class="md:hidden hidden border-b border-slate-200 bg-white p-5 transition-all duration-300">
+      <div id="mobile-drawer" class="lg:hidden hidden border-b border-slate-200 bg-white p-5 transition-all duration-300">
         <nav class="flex flex-col gap-1.5 text-left">
           <!-- Drawer Links with Icons -->
           <div class="space-y-0.5">
