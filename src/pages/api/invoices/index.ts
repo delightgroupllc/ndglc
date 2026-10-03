@@ -281,15 +281,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
       );
       const inv = invRes.rows[0];
 
-      // Check for duplicate items in the same invoice
-      const seen = new Set<string>();
       for (let itemIdx = 0; itemIdx < parsed.items.length; itemIdx++) {
         const item = parsed.items[itemIdx];
-        const key = `${item.description.toLowerCase().trim()}|${item.catalogue_ref || ''}|${(item.ideal_room || '').toLowerCase().trim()}`;
-        if (seen.has(key)) {
-          throw new Error(`Duplicate line item detected: "${item.description}" in the same room. Please consolidate quantities or use a different room placement.`);
-        }
-        seen.add(key);
 
         const lineTotal = item.quantity * item.unit_price;
         let lineTax = 0;
