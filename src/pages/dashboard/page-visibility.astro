@@ -11,7 +11,8 @@ let settingsMap: Record<string, string> = {
   enable_about: 'true',
   enable_contact: 'true',
   enable_portfolio: 'true',
-  enable_articles: 'true'
+  enable_articles: 'true',
+  enable_dvision: 'true'
 };
 
 try {
@@ -82,10 +83,10 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
               <p class="text-[11px] text-slate-500">Global enable/disable switches for primary divisions (DTL & DGS)</p>
             </div>
           </div>
-          <span class="text-[11px] font-semibold text-slate-400">2 Divisions</span>
+          <span class="text-[11px] font-semibold text-slate-400">3 Divisions</span>
         </div>
 
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           
           <!-- DTL Toggle Card -->
           <div id="card-dtl" class={`p-5 rounded-xl border transition-all ${isEnabled('enable_dtl') ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
@@ -151,6 +152,40 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
               <span class="text-slate-500 font-medium">Status in Navigation & Footer</span>
               <span id="badge-enable_dgs" class={`font-bold px-2 py-0.5 rounded-md ${isEnabled('enable_dgs') ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
                 {isEnabled('enable_dgs') ? 'Active (Public)' : 'Disabled'}
+              </span>
+            </div>
+          </div>
+
+          <!-- DV Toggle Card -->
+          <div id="card-dvision" class={`p-5 rounded-xl border transition-all ${isEnabled('enable_dvision') ? 'border-violet-200 bg-violet-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div class="h-10 w-10 rounded-lg bg-violet-100 border border-violet-200 flex items-center justify-center text-violet-800 font-black text-sm shrink-0">
+                  DV
+                </div>
+                <div>
+                  <h3 class="font-bold text-slate-900 text-sm">Delight Vision</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Visual tech, surveillance & smart systems. <span class="text-violet-600 font-bold">Coming Soon</span></p>
+                </div>
+              </div>
+
+              <!-- Toggle Switch -->
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  name="enable_dvision"
+                  id="input-enable_dvision"
+                  class="sr-only peer"
+                  checked={isEnabled('enable_dvision')}
+                />
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+              </label>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500 font-medium">Status in Navigation & Footer</span>
+              <span id="badge-enable_dvision" class={`font-bold px-2 py-0.5 rounded-md ${isEnabled('enable_dvision') ? 'bg-violet-100 text-violet-800' : 'bg-slate-200 text-slate-600'}`}>
+                {isEnabled('enable_dvision') ? 'Active (Public)' : 'Disabled'}
               </span>
             </div>
           </div>
@@ -246,10 +281,13 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
 
     const dtlInput = document.querySelector('input[name="enable_dtl"]') as HTMLInputElement;
     const dgsInput = document.querySelector('input[name="enable_dgs"]') as HTMLInputElement;
+    const dvInput = document.querySelector('input[name="enable_dvision"]') as HTMLInputElement;
     const cardDtl = document.getElementById('card-dtl');
     const badgeDtl = document.getElementById('badge-enable_dtl');
     const cardDgs = document.getElementById('card-dgs');
     const badgeDgs = document.getElementById('badge-enable_dgs');
+    const cardDv = document.getElementById('card-dvision');
+    const badgeDv = document.getElementById('badge-enable_dvision');
 
     const updateCardUI = () => {
       if (dtlInput && cardDtl && badgeDtl) {
@@ -275,6 +313,18 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
           badgeDgs.textContent = 'Disabled';
         }
       }
+
+      if (dvInput && cardDv && badgeDv) {
+        if (dvInput.checked) {
+          cardDv.className = 'p-5 rounded-xl border transition-all border-violet-200 bg-violet-50/30';
+          badgeDv.className = 'font-bold px-2 py-0.5 rounded-md bg-violet-100 text-violet-800';
+          badgeDv.textContent = 'Active (Public)';
+        } else {
+          cardDv.className = 'p-5 rounded-xl border transition-all border-slate-200 bg-slate-50/50';
+          badgeDv.className = 'font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600';
+          badgeDv.textContent = 'Disabled';
+        }
+      }
     };
 
     // Enforce at least one division active rule and update UI
@@ -294,6 +344,10 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
       updateCardUI();
     });
 
+    dvInput?.addEventListener('change', () => {
+      updateCardUI();
+    });
+
     // Run initial sync on page load
     updateCardUI();
 
@@ -302,7 +356,7 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
       if (!form) return;
 
       const formData = new FormData(form);
-      const keys = ['enable_dtl', 'enable_dgs', 'enable_downloads', 'enable_about', 'enable_contact', 'enable_portfolio', 'enable_articles'];
+      const keys = ['enable_dtl', 'enable_dgs', 'enable_dvision', 'enable_downloads', 'enable_about', 'enable_contact', 'enable_portfolio', 'enable_articles'];
       
       const payload: Record<string, string> = {};
       keys.forEach(k => {

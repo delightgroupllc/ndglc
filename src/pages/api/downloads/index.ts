@@ -9,7 +9,7 @@ const downloadSchema = z.object({
   category_id: z.string().uuid().nullable().optional(),
   file_size: z.string().nullable().optional(),          // manual text e.g. "19 MB" — auto-filled if uploaded
   status: z.enum(['active', 'hidden', 'archived']).default('active'),
-  division: z.enum(['dtl', 'dgs']).default('dtl'),
+  division: z.enum(['dtl', 'dgs', 'dv']).default('dtl'),
   visibility_rules: z.record(z.any()).nullable().optional(),
   permission_required: z.string().nullable().optional(),
 });

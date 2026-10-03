@@ -23,6 +23,7 @@ const currentPath = Astro.url.pathname;
 const isHome = currentPath === '/';
 const isDTL = currentPath.startsWith('/delighttechnicallighting');
 const isDGS = currentPath.startsWith('/delightgreenscapes');
+const isDV = currentPath.startsWith('/delightvision');
 
 // Determine logo to show
 let logoSrc = '/dgllclogosmall.png';
@@ -33,6 +34,9 @@ if (isDTL) {
 } else if (isDGS) {
   logoSrc = '/dgslogo.jpg';
   logoAlt = 'DGS Logo';
+} else if (isDV) {
+  logoSrc = '/dgllclogosmall.png';
+  logoAlt = 'Delight Vision Logo';
 }
 
 // Fetch global page & division visibility settings
@@ -43,7 +47,8 @@ let pageVisibility = {
   enable_about: true,
   enable_contact: true,
   enable_portfolio: true,
-  enable_articles: true
+  enable_articles: true,
+  enable_dvision: true
 };
 
 try {
@@ -207,7 +212,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
         <div class="flex h-16 md:h-20 items-center justify-between">
           <!-- Logo Section -->
           <div class="flex-none w-64 text-left relative h-full flex items-center">
-            <a href={isDTL ? "/delighttechnicallighting" : (isDGS ? "/delightgreenscapes" : "/")} class="inline-flex md:absolute md:top-0.5 md:left-0 z-45 group">
+            <a href={isDTL ? "/delighttechnicallighting" : (isDGS ? "/delightgreenscapes" : (isDV ? "/delightvision" : "/"))} class="inline-flex md:absolute md:top-0.5 md:left-0 z-45 group">
               <img 
                 id="main-logo-img"
                 src={logoSrc} 
@@ -230,6 +235,9 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
             )}
             {pageVisibility.enable_dgs && (
               <a href="/delightgreenscapes" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Delight Greenscapes</a>
+            )}
+            {pageVisibility.enable_dvision && (
+              <a href="/delightvision" class="text-sm font-bold font-display tracking-tight text-violet-700 hover:text-violet-900 transition-colors duration-200 flex items-center gap-1">Delight Vision <span class="text-[9px] font-black bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded uppercase">New</span></a>
             )}
             {pageVisibility.enable_downloads && (!isDTL && !isDGS) && (
               <a href="/downloads" class="text-sm font-bold font-display tracking-tight text-slate-655 hover:text-slate-950 transition-colors duration-200">Downloads</a>
@@ -330,6 +338,16 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               </a>
             )}
 
+            {pageVisibility.enable_dvision && (
+              <a href="/delightvision" class="flex items-center justify-between p-2.5 rounded-lg text-sm font-bold text-violet-700 hover:bg-violet-50 hover:text-violet-900 transition">
+                <span class="flex items-center gap-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                  <span>Delight Vision</span>
+                </span>
+                <span class="text-[9px] font-black bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded uppercase">New</span>
+              </a>
+            )}
+
             {pageVisibility.enable_downloads && (
               <a href="/downloads" class="flex items-center p-2.5 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition">
                 <span class="flex items-center gap-3">
@@ -373,7 +391,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
       </div>
       
       <!-- Secondary Category Navigation (DTL/DGS only) - Mega Menu -->
-      {(isDTL || isDGS) && (
+      {(isDTL || isDGS || isDV) && (
         <div id="secondary-nav-container" class="hidden md:block bg-white">
           <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
             <nav class="flex h-10 items-center justify-between w-full">
@@ -382,7 +400,28 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               
               <!-- Center navigation items (Centered) -->
               <div class="relative flex items-center justify-center gap-6 flex-grow">
-                
+                {isDV ? (
+                  <>
+                    <!-- Products (Coming Soon) -->
+                    <div class="group h-10 flex items-center cursor-default">
+                      <span class="text-[11px] font-bold uppercase tracking-widest text-slate-700 flex items-center gap-2 select-none">
+                        Products
+                        <span class="bg-violet-100 text-violet-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Coming Soon</span>
+                      </span>
+                    </div>
+
+                    <!-- Vertical Divider -->
+                    <div class="h-5 w-px bg-slate-200/80"></div>
+
+                    <!-- Downloads Link -->
+                    <a href="/downloads" class="group py-2 flex items-center cursor-pointer">
+                      <span class="text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none group-hover:text-violet-600">
+                        Downloads
+                      </span>
+                    </a>
+                  </>
+                ) : (
+                  <>
                 <!-- 1) Products Dropdown -->
                 <div class="group h-10 flex items-center cursor-pointer">
                   <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
@@ -588,8 +627,10 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
                   </div>
                 </div>
               </div>
+                  </>
+                )}
 
-            </div>
+              </div>
 
             <!-- Right spacer matching action buttons width -->
             <div class="flex-none w-64"></div>
@@ -597,7 +638,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
         </div>
 
           <!-- Mobile Row 2 Navigation (Horizontal Scrolling Grid with Top Icons and Small Down Chevrons) -->
-          <div class="block md:hidden overflow-x-auto py-2 bg-slate-50/50 border-t border-slate-100 scrollbar-none">
+          {!isDV && <div class="block md:hidden overflow-x-auto py-2 bg-slate-50/50 border-t border-slate-100 scrollbar-none">
             <div class="flex items-center justify-between min-w-[480px] px-4 gap-2">
               
               <!-- Products -->
@@ -639,7 +680,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               </a>
 
               <!-- All -->
-              <a href={`/${isDTL ? 'delighttechnicallighting' : 'delightgreenscapes'}`} class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
+              <a href={`/${isDTL ? 'delighttechnicallighting' : (isDGS ? 'delightgreenscapes' : 'delightvision')}`} class="flex flex-col items-center justify-center flex-1 py-1 px-2 text-center group">
                 <div class="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-slate-150 text-slate-500 shadow-sm">
                   <LayoutGrid class="h-4.5 w-4.5" />
                 </div>
@@ -647,7 +688,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               </a>
 
             </div>
-          </div>
+          </div>}
         </div>
       )}
     </header>
@@ -688,6 +729,14 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
                   <a href="/delightgreenscapes" class="text-sm text-slate-600 hover:text-slate-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
                     <span class="w-1 h-1 rounded-full bg-emerald-400 group-hover:w-2 transition-all"></span>
                     Delight Greenscapes
+                  </a>
+                </li>
+              )}
+              {pageVisibility.enable_dvision && (
+                <li>
+                  <a href="/delightvision" class="text-sm text-violet-600 hover:text-violet-900 hover:font-semibold transition-all duration-150 flex items-center gap-2 group">
+                    <span class="w-1 h-1 rounded-full bg-violet-400 group-hover:w-2 transition-all"></span>
+                    Delight Vision <span class="text-[9px] font-black bg-violet-100 text-violet-700 px-1 py-0.5 rounded ml-1">New</span>
                   </a>
                 </li>
               )}
