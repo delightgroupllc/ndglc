@@ -1,4 +1,6 @@
 ---
+import { toWords } from 'to-words';
+
 interface Props {
   inv: any;
   items: any[];
@@ -49,8 +51,9 @@ if (items.length <= maxItemsPage1) {
 
 const totalPages = pagesOfItems.length;
 
-// Ref No: prioritize quotation_ref or formatted invoice_number
-const refNo = inv.quotation_ref || inv.invoice_number || 'EST-2026-4924';
+// Document & Reference numbers matching existing types
+const docNumber = inv.invoice_number || 'PRO-2026-4924';
+const refNo = inv.quotation_ref || inv.lpo_number || '—';
 
 // Format Issue Date to DD/MM/YYYY
 const formatDate = (dateStr?: string) => {
@@ -78,6 +81,28 @@ if (inv.internal_notes) {
     initialProjectName = match[1].trim();
   }
 }
+
+// Convert amount to words in AED format using to-words package
+const formatAEDInWords = (amount: number): string => {
+  const num = Math.abs(Number(amount) || 0);
+  const parts = num.toFixed(2).split('.');
+  const intPart = parseInt(parts[0], 10);
+  const decPart = parseInt(parts[1], 10);
+
+  if (intPart === 0 && decPart === 0) return 'AED Zero Only';
+
+  const intWords = toWords(intPart, { localeCode: 'en-AE' });
+  if (decPart > 0) {
+    const decWords = toWords(decPart, { localeCode: 'en-AE' });
+    return `AED ${intWords} and ${decWords} ${decPart === 1 ? 'Fill' : 'Fills'}`;
+  }
+  return `AED ${intWords} Only`;
+};
+
+const initialAdvAmount = subtotal * 0.5;
+const initialVatAmount = initialAdvAmount * 0.05;
+const chargableAmountInWords = formatAEDInWords(initialAdvAmount);
+const vatAmountInWords = formatAEDInWords(initialVatAmount);
 ---
 
 <div id="layout-proforma" class="proforma-container w-full flex flex-col items-center gap-8">
@@ -157,13 +182,13 @@ if (inv.internal_notes) {
                   <!-- Row 1 Header -->
                   <thead>
                     <tr class="bg-[#2563eb] text-white text-[10px] font-extrabold uppercase">
-                      <th class="border border-[#1d4ed8] px-2.5 py-1 text-left w-1/2">REF . NO</th>
+                      <th class="border border-[#1d4ed8] px-2.5 py-1 text-left w-1/2">INV. NO</th>
                       <th class="border border-[#1d4ed8] px-2.5 py-1 text-right w-1/2">INV - DATE</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr class="text-[11px] text-slate-900 font-semibold bg-white">
-                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5 font-mono dynamic-doc-number">{refNo}</td>
+                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5 font-mono dynamic-doc-number">{docNumber}</td>
                       <td class="border-x border-b border-slate-300 px-2.5 py-1.5 text-right font-mono">{invDate}</td>
                     </tr>
                   </tbody>
@@ -171,13 +196,13 @@ if (inv.internal_notes) {
                   <thead>
                     <tr class="bg-[#2563eb] text-white text-[10px] font-extrabold uppercase">
                       <th class="border border-[#1d4ed8] px-2.5 py-1 text-left w-1/2">PAYMENT TERMS</th>
-                      <th class="border border-[#1d4ed8] px-2.5 py-1 text-right w-1/2">LPO .NO</th>
+                      <th class="border border-[#1d4ed8] px-2.5 py-1 text-right w-1/2">REF - NO</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr class="text-[11px] text-slate-900 font-semibold bg-white">
-                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5" id="proforma-field-terms-val">50% Advance</td>
-                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5 text-right font-mono" id="proforma-field-lpo-val">{lpoNo}</td>
+                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5" id="proforma-field-terms-val">{inv.payment_terms || '50% Advance'}</td>
+                      <td class="border-x border-b border-slate-300 px-2.5 py-1.5 text-right font-mono" id="proforma-field-ref-val">{refNo}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -200,7 +225,7 @@ if (inv.internal_notes) {
             </div>
             <div class="text-right text-xs">
               <div class="font-bold text-blue-700 uppercase delightgroupllc-doc-title">{documentTitle}</div>
-              <div class="text-slate-500 text-[10px]">Continuation Page {pageNumber} of {totalPages} | Ref: <span class="font-mono font-bold dynamic-doc-number">{refNo}</span></div>
+              <div class="text-slate-500 text-[10px]">Continuation Page {pageNumber} of {totalPages} | Ref: <span class="font-mono font-bold dynamic-doc-number">{docNumber}</span></div>
             </div>
           </div>
         )}
@@ -298,6 +323,42 @@ if (inv.internal_notes) {
                 </td>
                 <td class="p-2 text-right font-mono font-black border-none w-[18%]" id="proforma-grand-total-cell">
                   {(subtotal * 0.5 * 1.05).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+              </tr>
+              <!-- Chargable Amount in Words & Assessable Value Row -->
+              <tr class="border-b border-slate-900 text-[11px] text-slate-900 bg-white">
+                <td colspan={showImages ? 4 : 3} class="proforma-words-label-col p-2.5 text-left border-r border-slate-900 align-middle">
+                  <span class="font-bold text-slate-950">Chargable Amount in words:</span> 
+                  <span id="proforma-chargable-words" class="font-medium text-slate-900 ml-1">{chargableAmountInWords}</span>
+                </td>
+                <td colspan="2" class="p-2.5 align-middle bg-white w-[35%]">
+                  <div class="flex justify-between items-center text-[11px]">
+                    <span class="font-bold text-slate-900">Assesable Value</span>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-slate-700 text-[10px]">AED</span>
+                      <span class="font-mono font-bold text-slate-950" id="proforma-assessable-val">
+                        {initialAdvAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <!-- VAT Amount in Words & Tax Amount Row -->
+              <tr class="text-[11px] text-slate-900 bg-white">
+                <td colspan={showImages ? 4 : 3} class="proforma-words-label-col p-2.5 text-left border-r border-slate-900 align-middle">
+                  <span class="font-bold text-slate-950">Vat Amount in Words:</span> 
+                  <span id="proforma-vat-words" class="font-medium text-slate-900 ml-1">{vatAmountInWords}</span>
+                </td>
+                <td colspan="2" class="p-2.5 align-middle bg-white w-[35%]">
+                  <div class="flex justify-between items-center text-[11px]">
+                    <span class="font-bold text-slate-900">Tax Amount</span>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-slate-700 text-[10px]">AED</span>
+                      <span class="font-mono font-bold text-slate-950" id="proforma-tax-val">
+                        {initialVatAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
                 </td>
               </tr>
             </table>

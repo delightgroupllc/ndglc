@@ -2343,6 +2343,9 @@ const isTermChecked = (identifier: string): boolean => {
       document.querySelectorAll('.proforma-math-label-col').forEach(el => {
         el.setAttribute('colspan', checked ? '5' : '4');
       });
+      document.querySelectorAll('.proforma-words-label-col').forEach(el => {
+        el.setAttribute('colspan', checked ? '4' : '3');
+      });
 
       repaginate();
     };
@@ -3565,12 +3568,39 @@ const isTermChecked = (identifier: string): boolean => {
 
       const formatNum = (n) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+      const formatAEDInWordsClient = (amount) => {
+        const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        const convertNum = (n) => {
+          if (n < 20) return a[n];
+          if (n < 100) return b[Math.floor(n / 10)] + (n % 10 ? ' ' + a[n % 10] : '');
+          if (n < 1000) return a[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convertNum(n % 100) : '');
+          if (n < 1000000) return convertNum(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convertNum(n % 1000) : '');
+          return convertNum(Math.floor(n / 1000000)) + ' Million' + (n % 1000000 ? ' ' + convertNum(n % 1000000) : '');
+        };
+        const num = Math.abs(Number(amount) || 0);
+        const parts = num.toFixed(2).split('.');
+        const intPart = parseInt(parts[0], 10);
+        const decPart = parseInt(parts[1], 10);
+        if (intPart === 0 && decPart === 0) return 'AED Zero Only';
+        const intWords = convertNum(intPart);
+        if (decPart > 0) {
+          const decWords = convertNum(decPart);
+          return `AED ${intWords} and ${decWords} ${decPart === 1 ? 'Fill' : 'Fills'}`;
+        }
+        return `AED ${intWords} Only`;
+      };
+
       document.querySelectorAll('#proforma-advance-text').forEach(el => el.textContent = `${advPct}% Advance`);
       document.querySelectorAll('#proforma-field-terms-val').forEach(el => el.textContent = `${advPct}% Advance`);
       document.querySelectorAll('#proforma-advance-amount-cell').forEach(el => el.textContent = formatNum(advAmount));
       document.querySelectorAll('#proforma-vat-rate').forEach(el => el.textContent = `${vatPct}%`);
       document.querySelectorAll('#proforma-vat-amount-cell').forEach(el => el.textContent = formatNum(vatAmount));
       document.querySelectorAll('#proforma-grand-total-cell').forEach(el => el.textContent = formatNum(grandTotal));
+      document.querySelectorAll('#proforma-assessable-val').forEach(el => el.textContent = formatNum(advAmount));
+      document.querySelectorAll('#proforma-tax-val').forEach(el => el.textContent = formatNum(vatAmount));
+      document.querySelectorAll('#proforma-chargable-words').forEach(el => el.textContent = formatAEDInWordsClient(advAmount));
+      document.querySelectorAll('#proforma-vat-words').forEach(el => el.textContent = formatAEDInWordsClient(vatAmount));
     };
 
     document.getElementById('config-proforma-advance-pct')?.addEventListener('input', updateProformaCalculations);
