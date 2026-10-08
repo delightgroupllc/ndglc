@@ -12,5 +12,14 @@
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  "exclude": [
+    "dist",
+    ".vercel",
+    "node_modules",
+    "scratch",
+    "test",
+    "scratch_*.ts",
+    "test_*.ts"
+  ]
 }

@@ -280,7 +280,8 @@ const totalCount = articles.length;
           <option value="all">All Divisions</option>
           <option value="dtl">DTL (Technical Lighting)</option>
           <option value="dgs">DGS (Greenscapes)</option>
-          <option value="both">Both Divisions</option>
+          <option value="dv">DV (Delight Vision)</option>
+          <option value="both">Both DTL & DGS</option>
         </select>
 
         <select id="filter-type" class="bg-white border border-slate-200 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 font-medium">
@@ -333,6 +334,8 @@ const totalCount = articles.length;
                 
                 <span class={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded shadow-sm text-white ${
                   art.division === 'dgs' ? 'bg-cyan-600' :
+                  art.division === 'dtl' ? 'bg-amber-600' :
+                  art.division === 'dv' ? 'bg-violet-600' :
                   art.division === 'both' ? 'bg-indigo-650' :
                   'bg-emerald-650'
                 }`}>
@@ -468,9 +471,10 @@ const totalCount = articles.length;
                       id="form-division"
                       class="w-full mt-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-700 cursor-pointer"
                     >
-                      <option value="both">Both DTL & DGS</option>
+                      <option value="both">All Divisions</option>
                       <option value="dtl">DTL (Technical Lighting)</option>
                       <option value="dgs">DGS (Greenscapes)</option>
+                      <option value="dv">DV (Delight Vision)</option>
                     </select>
                   </div>
 

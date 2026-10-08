@@ -1,0 +1,464 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { query } from '../../lib/db';
+import { 
+  ShieldCheck, Video, Monitor, Tablet, Smartphone, 
+  ExternalLink, RotateCcw, Save, CheckCircle2, Sparkles, 
+  Layers, Lock, Cpu, Image, FolderGit2, Phone, Mail, MapPin
+} from '@lucide/astro';
+
+let dvSetup: any = {
+  hero: {
+    badge: 'Delight Vision • SIRA-Compliant ELV Integration',
+    title: 'Next-Gen Vision, AI Surveillance & Smart ELV',
+    subtitle: 'Intelligent SIRA-compliant CCTV, advanced biometric access control, automated gate barriers, and future-ready network infrastructure engineered across the UAE.',
+    imageUrl: '/images/delightvision/smart-security.jpg',
+    ctaPrimaryText: 'Explore 8 Core Systems',
+    ctaPrimaryUrl: '#systems',
+    ctaSecondaryText: 'Browse SIRA Datasheets',
+    ctaSecondaryUrl: '/downloads?division=delightvision'
+  },
+  facts: [
+    { value: '100%', label: 'SIRA Certified' },
+    { value: '8 Core', label: 'ELV Disciplines' },
+    { value: '24/7 SLA', label: 'Emergency Support' },
+    { value: '50+ Sites', label: 'UAE Deployments' }
+  ],
+  hotline: {
+    phone: '+971 55 776 6952',
+    email: 'info@quantasec.ae',
+    address: 'QuantaSec Solutions, Office A-17 - First Floor, Al Hilal Bank Building, Al Qusais 2, Dubai, UAE'
+  }
+};
+
+let allDvProjects: any[] = [];
+let homepageProjectIds: string[] = [];
+
+try {
+  const [settingsRes, projRes] = await Promise.all([
+    query("SELECT key, value FROM settings WHERE key IN ('dv_setup', 'dv_homepage_projects')"),
+    query("SELECT id, title, client_name, featured_image, description FROM projects WHERE division = 'dv' AND status = 'active' ORDER BY created_at DESC")
+  ]);
+
+  for (const row of settingsRes.rows) {
+    if (row.key === 'dv_setup') {
+      try {
+        const parsed = JSON.parse(row.value);
+        dvSetup = {
+          ...dvSetup,
+          ...parsed,
+          hero: { ...dvSetup.hero, ...(parsed.hero || {}) },
+          facts: Array.isArray(parsed.facts) && parsed.facts.length > 0 ? parsed.facts : dvSetup.facts,
+          hotline: { ...dvSetup.hotline, ...(parsed.hotline || {}) }
+        };
+      } catch {}
+    }
+    if (row.key === 'dv_homepage_projects') {
+      try { homepageProjectIds = JSON.parse(row.value); } catch {}
+    }
+  }
+
+  allDvProjects = projRes.rows;
+} catch (err: any) {
+  console.warn('DB offline or dv_setup missing:', err?.message || err);
+}
+
+const selectedProjects = homepageProjectIds
+  .map(id => allDvProjects.find(p => p.id === id))
+  .filter(Boolean);
+---
+
+<DashboardLayout title="Delight Vision Setup | Delight Group LLC" activeItem="dv-setup">
+
+  <!-- Mobile Viewport Tabs Switcher -->
+  <div class="flex border-b border-slate-200 bg-white p-1 rounded-xl shadow-3xs lg:hidden shrink-0 mb-4 select-none">
+    <button type="button" id="tab-toggle-form" class="flex-1 text-center py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all bg-violet-50 text-violet-700">
+      Configuration
+    </button>
+    <button type="button" id="tab-toggle-preview" class="flex-1 text-center py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all text-slate-500 hover:text-slate-800">
+      Live Preview
+    </button>
+  </div>
+
+  <div class="min-h-[calc(100vh-120px)] lg:h-[calc(100vh-120px)] flex flex-col lg:flex-row gap-6 lg:overflow-hidden w-full">
+    
+    <!-- LEFT: Configuration Form Column -->
+    <div id="dv-form-column" class="w-full lg:w-2/5 flex flex-col min-h-0 bg-white border border-slate-200 rounded-2xl shadow-sm">
+      
+      <!-- Header Banner -->
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-violet-100 border border-violet-200 flex items-center justify-center text-violet-700 shrink-0">
+            <Video class="w-5 h-5" />
+          </div>
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 font-display">Delight Vision Portal CMS</h2>
+            <p class="text-[11px] text-slate-500">Configure visual security, SIRA specs & facts</p>
+          </div>
+        </div>
+
+        <button 
+          type="button" 
+          id="btn-save-dv" 
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm cursor-pointer"
+        >
+          <Save class="w-3.5 h-3.5" />
+          <span>Save Changes</span>
+        </button>
+      </div>
+
+      <!-- Scrollable Form Area -->
+      <div class="flex-grow overflow-y-auto p-5 space-y-6 text-left">
+        
+        <!-- SECTION 1: HERO CONFIGURATION -->
+        <div class="space-y-4 border-b border-slate-100 pb-6">
+          <div class="flex items-center gap-2 text-violet-700 font-bold text-xs uppercase tracking-wider">
+            <Sparkles class="w-4 h-4" />
+            <span>Hero Header Settings</span>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Division Badge</label>
+              <input 
+                type="text" 
+                id="dv-hero-badge" 
+                value={dvSetup.hero.badge} 
+                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-violet-500" 
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Headline Title</label>
+              <input 
+                type="text" 
+                id="dv-hero-title" 
+                value={dvSetup.hero.title} 
+                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-violet-500" 
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Subtitle Description</label>
+              <textarea 
+                id="dv-hero-subtitle" 
+                rows="3" 
+                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-violet-500"
+              >{dvSetup.hero.subtitle}</textarea>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Hero Background Image</label>
+              <div class="flex gap-2">
+                <input 
+                  type="text" 
+                  id="dv-hero-image" 
+                  value={dvSetup.hero.imageUrl} 
+                  class="flex-grow rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-mono text-slate-700 focus:outline-none focus:ring-1 focus:ring-violet-500" 
+                />
+                <button 
+                  type="button" 
+                  onclick="window.dispatchEvent(new CustomEvent('open-resource-picker', { detail: { targetInputId: 'dv-hero-image' } }))"
+                  class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition shrink-0"
+                >
+                  Browse
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Primary Button Text</label>
+                <input 
+                  type="text" 
+                  id="dv-hero-cta1-text" 
+                  value={dvSetup.hero.ctaPrimaryText} 
+                  class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800" 
+                />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Primary Button Link</label>
+                <input 
+                  type="text" 
+                  id="dv-hero-cta1-url" 
+                  value={dvSetup.hero.ctaPrimaryUrl} 
+                  class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-mono text-slate-700" 
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: METRICS FACTS COUNTERS -->
+        <div class="space-y-4 border-b border-slate-100 pb-6">
+          <div class="flex items-center gap-2 text-violet-700 font-bold text-xs uppercase tracking-wider">
+            <Cpu class="w-4 h-4" />
+            <span>Facts & Achievements Counters (4 Badges)</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3" id="dv-facts-container">
+            {dvSetup.facts.map((fact: any, idx: number) => (
+              <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase">Value {idx + 1}</label>
+                  <input 
+                    type="text" 
+                    class="dv-fact-val w-full rounded border border-slate-250 bg-white px-2 py-1 text-xs font-mono font-bold text-violet-700" 
+                    value={fact.value} 
+                  />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase">Label {idx + 1}</label>
+                  <input 
+                    type="text" 
+                    class="dv-fact-lbl w-full rounded border border-slate-250 bg-white px-2 py-1 text-xs font-medium text-slate-700" 
+                    value={fact.label} 
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- SECTION 3: EMERGENCY HOTLINE & SUPPORT CONTACT -->
+        <div class="space-y-4 border-b border-slate-100 pb-6">
+          <div class="flex items-center gap-2 text-violet-700 font-bold text-xs uppercase tracking-wider">
+            <Phone class="w-4 h-4" />
+            <span>Emergency Hotline & Operations Center</span>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Direct Phone Hotline</label>
+              <input 
+                type="text" 
+                id="dv-hotline-phone" 
+                value={dvSetup.hotline.phone} 
+                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-800" 
+              />
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Support Email</label>
+              <input 
+                type="email" 
+                id="dv-hotline-email" 
+                value={dvSetup.hotline.email} 
+                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-mono text-slate-800" 
+              />
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Operations Physical Address</label>
+              <input 
+                type="text" 
+                id="dv-hotline-address" 
+                value={dvSetup.hotline.address} 
+                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800" 
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 4: HOMEPAGE PROJECT PICKER -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-violet-700 font-bold text-xs uppercase tracking-wider">
+              <FolderGit2 class="w-4 h-4" />
+              <span>Delight Vision Homepage Projects</span>
+            </div>
+            <span class="text-[10px] text-slate-400 font-bold">{selectedProjects.length} Selected</span>
+          </div>
+
+          <p class="text-xs text-slate-500">
+            Select the hallmark security deployments to highlight in the division showcase.
+          </p>
+
+          <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+            {allDvProjects.map((proj) => {
+              const isSelected = homepageProjectIds.includes(proj.id);
+              return (
+                <label class={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${isSelected ? 'border-violet-300 bg-violet-50/40' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                  <div class="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      class="dv-proj-checkbox rounded border-slate-300 text-violet-600 focus:ring-violet-500" 
+                      value={proj.id} 
+                      checked={isSelected} 
+                    />
+                    <div>
+                      <div class="text-xs font-bold text-slate-800">{proj.title}</div>
+                      <div class="text-[10px] text-slate-400 font-medium">{proj.client_name}</div>
+                    </div>
+                  </div>
+                  {proj.featured_image && (
+                    <img src={proj.featured_image} alt="" class="w-10 h-8 rounded object-cover border border-slate-200" />
+                  )}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: Live Preview Column -->
+    <div id="dv-preview-column" class="w-full lg:w-3/5 hidden lg:flex flex-col min-h-0 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+      <!-- Toolbar -->
+      <div class="p-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-white">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          <span class="text-xs font-mono text-slate-300">Live Preview: /delightvision</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Viewport Switcher -->
+          <button type="button" class="viewport-btn p-1.5 rounded hover:bg-slate-800 text-violet-400 active" data-viewport="desktop" title="Desktop">
+            <Monitor class="w-4 h-4" />
+          </button>
+          <button type="button" class="viewport-btn p-1.5 rounded hover:bg-slate-800 text-slate-500" data-viewport="tablet" title="Tablet">
+            <Tablet class="w-4 h-4" />
+          </button>
+          <button type="button" class="viewport-btn p-1.5 rounded hover:bg-slate-800 text-slate-500" data-viewport="mobile" title="Mobile">
+            <Smartphone class="w-4 h-4" />
+          </button>
+          <div class="h-4 w-px bg-slate-800 mx-1"></div>
+          <button type="button" id="btn-refresh-preview" class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white" title="Refresh">
+            <RotateCcw class="w-4 h-4" />
+          </button>
+          <a href="/delightvision" target="_blank" class="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white" title="Open in Tab">
+            <ExternalLink class="w-4 h-4" />
+          </a>
+        </div>
+      </div>
+
+      <!-- Iframe Container -->
+      <div class="flex-grow bg-slate-950/70 p-4 flex items-center justify-center overflow-hidden">
+        <div id="iframe-wrapper" class="w-full h-full mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-0">
+          <iframe 
+            id="dv-preview-iframe" 
+            src="/delightvision" 
+            class="w-full h-full rounded-xl bg-white border border-slate-800"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ── SAVE HANDLER ─────────────────────────────────────────────
+    const saveBtn = document.getElementById('btn-save-dv') as HTMLButtonElement;
+    const previewIframe = document.getElementById('dv-preview-iframe') as HTMLIFrameElement;
+
+    saveBtn?.addEventListener('click', async () => {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span>Saving...</span>';
+
+      try {
+        const factValues = Array.from(document.querySelectorAll('.dv-fact-val')).map((el: any) => el.value);
+        const factLabels = Array.from(document.querySelectorAll('.dv-fact-lbl')).map((el: any) => el.value);
+        const facts = factValues.map((v, i) => ({ value: v, label: factLabels[i] || '' }));
+
+        const dvData = {
+          hero: {
+            badge: (document.getElementById('dv-hero-badge') as HTMLInputElement)?.value || '',
+            title: (document.getElementById('dv-hero-title') as HTMLInputElement)?.value || '',
+            subtitle: (document.getElementById('dv-hero-subtitle') as HTMLTextAreaElement)?.value || '',
+            imageUrl: (document.getElementById('dv-hero-image') as HTMLInputElement)?.value || '',
+            ctaPrimaryText: (document.getElementById('dv-hero-cta1-text') as HTMLInputElement)?.value || '',
+            ctaPrimaryUrl: (document.getElementById('dv-hero-cta1-url') as HTMLInputElement)?.value || '',
+          },
+          facts,
+          hotline: {
+            phone: (document.getElementById('dv-hotline-phone') as HTMLInputElement)?.value || '',
+            email: (document.getElementById('dv-hotline-email') as HTMLInputElement)?.value || '',
+            address: (document.getElementById('dv-hotline-address') as HTMLInputElement)?.value || '',
+          }
+        };
+
+        const selectedProjectCheckboxes = Array.from(document.querySelectorAll('.dv-proj-checkbox:checked')) as HTMLInputElement[];
+        const selectedProjectIds = selectedProjectCheckboxes.map(cb => cb.value);
+
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dv_setup: JSON.stringify(dvData),
+            dv_homepage_projects: JSON.stringify(selectedProjectIds)
+          })
+        });
+
+        if (!res.ok) throw new Error('Failed to save settings');
+
+        saveBtn.className = saveBtn.className.replace('bg-violet-600', 'bg-emerald-600').replace('hover:bg-violet-700', 'hover:bg-emerald-700');
+        saveBtn.innerHTML = '<span>✓ Saved!</span>';
+
+        if (previewIframe) {
+          previewIframe.src = previewIframe.src;
+        }
+
+        setTimeout(() => {
+          saveBtn.className = saveBtn.className.replace('bg-emerald-600', 'bg-violet-600').replace('hover:bg-emerald-700', 'hover:bg-violet-700');
+          saveBtn.innerHTML = '<span>Save Changes</span>';
+        }, 2000);
+      } catch (err: any) {
+        alert(err.message || 'Error saving settings');
+        saveBtn.innerHTML = '<span>Save Changes</span>';
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    // ── REFRESH PREVIEW ──────────────────────────────────────────
+    document.getElementById('btn-refresh-preview')?.addEventListener('click', () => {
+      if (previewIframe) previewIframe.src = previewIframe.src;
+    });
+
+    // ── VIEWPORT SIMULATOR ───────────────────────────────────────
+    const viewportBtns = document.querySelectorAll('.viewport-btn');
+    const iframeWrapper = document.getElementById('iframe-wrapper');
+
+    viewportBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        viewportBtns.forEach(b => {
+          b.classList.remove('active', 'text-violet-400');
+          b.classList.add('text-slate-500');
+        });
+        
+        const target = e.currentTarget as HTMLButtonElement;
+        target.classList.add('active', 'text-violet-400');
+        target.classList.remove('text-slate-500');
+        
+        const mode = target.getAttribute('data-viewport');
+        if (iframeWrapper) {
+          if (mode === 'desktop') {
+            iframeWrapper.className = 'w-full h-full mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-0';
+          } else if (mode === 'tablet') {
+            iframeWrapper.className = 'w-[768px] max-w-full h-[95%] mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-x border-y border-slate-700 rounded-lg';
+          } else if (mode === 'mobile') {
+            iframeWrapper.className = 'w-[375px] max-w-full h-[85%] mx-auto transition-all duration-300 ease-in-out shadow-2xl relative border-x border-y border-slate-700 rounded-2xl';
+          }
+        }
+      });
+    });
+
+    // ── MOBILE TABS TOGGLE ───────────────────────────────────────
+    const formColumn = document.getElementById('dv-form-column');
+    const previewColumn = document.getElementById('dv-preview-column');
+    const tabFormBtn = document.getElementById('tab-toggle-form');
+    const tabPreviewBtn = document.getElementById('tab-toggle-preview');
+
+    tabFormBtn?.addEventListener('click', () => {
+      formColumn?.classList.remove('hidden');
+      previewColumn?.classList.add('hidden');
+      previewColumn?.classList.remove('flex');
+    });
+
+    tabPreviewBtn?.addEventListener('click', () => {
+      formColumn?.classList.add('hidden');
+      previewColumn?.classList.remove('hidden');
+      previewColumn?.classList.add('flex');
+    });
+  </script>
+
+</DashboardLayout>

@@ -91,7 +91,7 @@ try {
      LIMIT 8`,
     [dbDivisionFullName, dbDivSlug]
   );
-  featuredProducts = prodRes.rows.map(r => ({ ...r, image_url: r.image_url || r.direct_image }));
+  featuredProducts = prodRes.rows.map((r: any) => ({ ...r, image_url: r.image_url || r.direct_image }));
 } catch (err: any) {
   console.warn('Database offline for featured products:', err.message);
 }
@@ -99,6 +99,7 @@ try {
 // ─── Load ALL settings in one query ──────────────────────────────────────────
 let dtlSetup: any = null;
 let dgsSetup: any = null;
+let dvSetup: any = null;
 let homepageProjectIds: string[] = [];
 
 if (isDtl) {
@@ -123,7 +124,7 @@ if (isDtl) {
         try { rooms = JSON.parse(row.value); } catch {}
       }
     }
-  } catch (e) {
+  } catch (e: any) {
     console.warn('Unable to load DTL settings:', e?.message || e);
   }
 
@@ -135,7 +136,7 @@ if (isDtl) {
        ORDER BY display_order ASC`
     );
     discoverSectionImages = imgRes.rows;
-  } catch (e) {
+  } catch (e: any) {
     console.warn('Unable to load discover section images:', e?.message || e);
   }
 
@@ -150,7 +151,7 @@ if (isDtl) {
       // Preserve admin-defined order from DTL Setup
       const projMap = new Map(projRes.rows.map((p: any) => [p.id, p]));
       projects = homepageProjectIds.map((id: string) => projMap.get(id)).filter(Boolean);
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Unable to load homepage projects by ID:', e?.message || e);
     }
   }
@@ -176,7 +177,7 @@ if (isDtl) {
 
       const fallback = await query(queryStr, queryParams);
       projects.push(...fallback.rows);
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Unable to load fallback projects to make up 3:', e?.message || e);
     }
   }
@@ -211,8 +212,57 @@ if (isDtl) {
       console.warn('Unable to load DGS homepage projects by ID:', e?.message || e);
     }
   }
+} else if (isDv) {
+  try {
+    const settingsRes = await query(
+      `SELECT key, value FROM settings WHERE key IN ('dv_setup', 'dv_homepage_projects')`
+    );
+    for (const row of settingsRes.rows) {
+      if (row.key === 'dv_setup') {
+        try { dvSetup = JSON.parse(row.value); } catch {}
+      }
+      if (row.key === 'dv_homepage_projects') {
+        try { homepageProjectIds = JSON.parse(row.value); } catch {}
+      }
+    }
+  } catch (e: any) {
+    console.warn('Unable to load DV settings:', e?.message || e);
+  }
 
-  // Fallback: if no projects selected, show 3 most recent active DGS projects
+  // Fetch DV Homepage Projects
+  if (homepageProjectIds.length > 0) {
+    try {
+      const placeholders = homepageProjectIds.map((_: any, i: number) => `${i + 1}`).join(',');
+      const projRes = await query(
+        `SELECT id, title, description, featured_image, client_name FROM projects WHERE id IN (${placeholders})`,
+        homepageProjectIds
+      );
+      const projMap = new Map(projRes.rows.map((p: any) => [p.id, p]));
+      projects = homepageProjectIds.map((id: string) => projMap.get(id)).filter(Boolean);
+    } catch (e: any) {
+      console.warn('Unable to load DV homepage projects by ID:', e?.message || e);
+    }
+  }
+
+  if (projects.length === 0) {
+    try {
+      const fallback = await query(
+        `SELECT id, title, description, featured_image, client_name FROM projects WHERE division = 'dv' AND status = 'active' ORDER BY created_at DESC LIMIT 4`
+      );
+      projects = fallback.rows;
+    } catch (e) {}
+  }
+
+  // Fetch DV Articles
+  try {
+    const artRes = await query(
+      `SELECT id, title, slug, summary, content, featured_image, published_at, type 
+       FROM articles 
+       WHERE status = 'published' AND (division = 'dv' OR division = 'both')
+       ORDER BY published_at DESC LIMIT 4`
+    );
+    articles = artRes.rows;
+  } catch (e) {}
 }
 
 // ─── Derive all layout values ────────────────────────────────────────────────
@@ -329,9 +379,12 @@ const discoverRoomItems = isDtl && rooms.length > 0
     </div>
   ) : isDv ? (
     <DelightVisionSection 
+      setup={dvSetup}
       categories={categories}
       featuredProducts={featuredProducts}
       partners={partners}
+      projects={projects}
+      articles={articles}
     />
   ) : isDtl ? (
     <>
@@ -505,7 +558,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 class="text-3xl font-black font-display text-slate-900 mb-10">Facts</h2>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {factsArr.map(f => (
+            {factsArr.map((f: any) => (
               <div class="text-center">
                 <div class="text-4xl md:text-5xl font-black text-slate-900 mb-2">{f.value}</div>
                 <p class="text-slate-700 font-semibold text-sm">{f.label}</p>
@@ -627,8 +680,6 @@ const discoverRoomItems = isDtl && rooms.length > 0
               ))}
             </div>
 
-            </div>
-
             <div class="mt-8 text-center sm:hidden">
               <a href="/projects?division=dtl" class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors uppercase tracking-wider">
                 View all Projects
@@ -716,13 +767,12 @@ const discoverRoomItems = isDtl && rooms.length > 0
                     <div class="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none"></div>
                     <div class="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none"></div>
                     <div class="animate-partners-ticker flex items-center">
-                      {[...partners, ...partners].map((p, idx) => (
+                      {[...partners, ...partners].map((p: any) => (
                         <a 
                           href={p.website_url || '#'} 
                           target={p.website_url ? "_blank" : undefined}
                           class={`flex items-center justify-center max-h-16 max-w-[200px] shrink-0 transition-all duration-300 mx-8 ${grayscaleClass}`}
                           title={p.name}
-                          key={`dtl-partner-scroll-${idx}`}
                         >
                           {p.logo_url ? (
                             <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
@@ -796,7 +846,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
               </div>
             ) : (
               <div class="grid grid-cols-3 md:grid-cols-6 gap-4">
-                {instagramObj.posts.map((p) => (
+                {instagramObj.posts.map((p: any) => (
                   <div class="h-28 bg-slate-100 rounded-lg flex items-center justify-center text-sm text-slate-700">{p}</div>
                 ))}
               </div>
@@ -895,7 +945,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {servicesArr.slice(0, dgsServicesLimit).map((svc) => (
+            {servicesArr.slice(0, dgsServicesLimit).map((svc: any) => (
               <div class="group relative rounded-xl overflow-hidden bg-[#001705] min-h-[300px] flex flex-col justify-end p-6 border border-emerald-950/10 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                 {/* Background Image */}
                 {svc.imageUrl ? (
@@ -1136,7 +1186,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
       <section class="py-16 bg-[#004712] text-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {factsArr.map(f => (
+            {factsArr.map((f: any) => (
               <div class="text-center space-y-2">
                 <div class="text-4xl md:text-5xl font-black text-[#BE854C]">{f.value}</div>
                 <div class="h-0.5 w-8 bg-white/20 mx-auto"></div>
@@ -1168,13 +1218,12 @@ const discoverRoomItems = isDtl && rooms.length > 0
                     <div class="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
                     <div class="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
                     <div class="animate-partners-ticker flex items-center">
-                      {[...partners, ...partners].map((p, idx) => (
+                      {[...partners, ...partners].map((p: any) => (
                         <a 
                           href={p.website_url || '#'} 
                           target={p.website_url ? "_blank" : undefined}
                           class={`flex items-center justify-center max-h-16 max-w-[200px] shrink-0 transition-all duration-300 mx-8 ${grayscaleClass}`}
                           title={p.name}
-                          key={`dgs-partner-scroll-${idx}`}
                         >
                           {p.logo_url ? (
                             <img src={p.logo_url} alt={p.name} class="max-h-14 object-contain" />
