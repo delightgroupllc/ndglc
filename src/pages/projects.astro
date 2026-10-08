@@ -1,7 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { query } from '../lib/db';
-import { Briefcase, LayoutGrid, Calendar, ArrowRight, Award, Layers } from '@lucide/astro';
+import { Briefcase, LayoutGrid, Calendar, ArrowRight, Award, Layers, ShieldCheck } from '@lucide/astro';
 
 let allProjects: any[] = [];
 let dbConnected = true;
@@ -21,7 +21,7 @@ try {
 
 // Server-side query parameter inspection to determine default selection
 const initialDivision = Astro.url.searchParams.get('division')?.toLowerCase() || 'all';
-const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initialDivision : 'all';
+const isValidInitial = ['all', 'dtl', 'dgs', 'dv'].includes(initialDivision) ? initialDivision : 'all';
 ---
 
 <Layout title="Project Showcase" description="Explore Delight Group's premium engineering feats, architectural lighting landmarks, and automated greenscape installations.">
@@ -31,6 +31,7 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
     <div class="absolute top-10 left-10 w-[450px] h-[450px] rounded-full bg-blue-300/10 blur-[130px] pointer-events-none select-none z-0"></div>
     <div class="absolute top-1/3 right-1/4 w-[400px] h-[400px] rounded-full bg-amber-250/10 blur-[140px] pointer-events-none select-none z-0"></div>
     <div class="absolute bottom-10 left-1/3 w-[500px] h-[500px] rounded-full bg-emerald-250/10 blur-[150px] pointer-events-none select-none z-0"></div>
+    <div class="absolute top-2/3 right-10 w-[450px] h-[450px] rounded-full bg-violet-400/10 blur-[150px] pointer-events-none select-none z-0"></div>
 
     <div class="absolute inset-0 z-0 opacity-[0.25]" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 32px 32px;"></div>
     
@@ -44,7 +45,7 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
             Project Archive
           </span>
           <h1 class="text-4xl sm:text-6xl font-extrabold font-display text-slate-900 tracking-tight leading-none">
-            Hallmark <span class="bg-gradient-to-r from-blue-650 via-amber-600 to-emerald-600 bg-clip-text text-transparent">Achievements</span>
+            Hallmark <span class="bg-gradient-to-r from-blue-650 via-amber-600 via-emerald-600 to-violet-600 bg-clip-text text-transparent">Achievements</span>
           </h1>
           <p class="text-sm sm:text-base text-slate-500 font-medium leading-relaxed max-w-xl mx-auto">
             Discover our engineering feats and sustainable installations. Use the interactive filters to explore division-specific contract deployments across the UAE.
@@ -52,14 +53,14 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
         </div>
 
         <!-- Sliding Navigation Filter Tabs (Glassmorphic) -->
-        <div class="max-w-md mx-auto mb-16 relative z-20">
-          <div class="bg-white/80 backdrop-blur-xl border border-slate-200/60 p-1.5 rounded-2xl shadow-xl shadow-slate-200/5 flex items-center justify-between">
+        <div class="max-w-lg mx-auto mb-16 relative z-20">
+          <div class="bg-white/80 backdrop-blur-xl border border-slate-200/60 p-1.5 rounded-2xl shadow-xl shadow-slate-200/5 flex items-center justify-between gap-1">
             
             <!-- All Tab -->
             <button 
               id="tab-all"
               data-target="all"
-              class={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 select-none cursor-pointer ${isValidInitial === 'all' ? 'bg-gradient-to-r from-blue-600 to-indigo-650 text-white shadow-md shadow-blue-500/15' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'}`}
+              class={`flex-1 py-3 px-3 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 select-none cursor-pointer ${isValidInitial === 'all' ? 'bg-gradient-to-r from-blue-600 to-indigo-650 text-white shadow-md shadow-blue-500/15' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'}`}
             >
               <LayoutGrid class="w-3.5 h-3.5 shrink-0" />
               <span>All</span>
@@ -69,7 +70,7 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
             <button 
               id="tab-dtl"
               data-target="dtl"
-              class={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 select-none cursor-pointer ${isValidInitial === 'dtl' ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/15' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'}`}
+              class={`flex-1 py-3 px-3 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 select-none cursor-pointer ${isValidInitial === 'dtl' ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/15' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'}`}
             >
               <Award class="w-3.5 h-3.5 shrink-0" />
               <span>Lighting</span>
@@ -79,10 +80,20 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
             <button 
               id="tab-dgs"
               data-target="dgs"
-              class={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 select-none cursor-pointer ${isValidInitial === 'dgs' ? 'bg-gradient-to-r from-emerald-550 to-emerald-650 text-white shadow-md shadow-emerald-500/15' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'}`}
+              class={`flex-1 py-3 px-3 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 select-none cursor-pointer ${isValidInitial === 'dgs' ? 'bg-gradient-to-r from-emerald-550 to-emerald-650 text-white shadow-md shadow-emerald-500/15' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'}`}
             >
               <Layers class="w-3.5 h-3.5 shrink-0" />
               <span>Greenscapes</span>
+            </button>
+
+            <!-- DV Tab -->
+            <button 
+              id="tab-dv"
+              data-target="dv"
+              class={`flex-1 py-3 px-3 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 select-none cursor-pointer ${isValidInitial === 'dv' ? 'bg-gradient-to-r from-violet-600 to-indigo-650 text-white shadow-md shadow-violet-500/15' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'}`}
+            >
+              <ShieldCheck class="w-3.5 h-3.5 shrink-0" />
+              <span>Vision</span>
             </button>
 
           </div>
@@ -92,6 +103,8 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
         <div id="projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-all duration-500">
           {allProjects.map((project) => {
             const isDtlProj = project.division === 'dtl';
+            const isDgsProj = project.division === 'dgs';
+            const isDvProj = project.division === 'dv';
             const yearStr = project.completion_date ? new Date(project.completion_date).getFullYear() : 'Ongoing';
             
             return (
@@ -110,17 +123,21 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
                         loading="lazy"
                       />
                     ) : (
-                      <div class={`absolute inset-0 bg-gradient-to-br flex items-center justify-center select-none ${isDtlProj ? 'from-amber-500/10 to-amber-600/5' : 'from-emerald-500/10 to-emerald-600/5'}`}>
-                        <span class={`font-display font-black text-4xl tracking-widest opacity-25 ${isDtlProj ? 'text-amber-650' : 'text-emerald-700'}`}>
-                          {isDtlProj ? 'DTL' : 'DGS'}
+                      <div class={`absolute inset-0 bg-gradient-to-br flex items-center justify-center select-none ${isDtlProj ? 'from-amber-500/10 to-amber-600/5' : isDgsProj ? 'from-emerald-500/10 to-emerald-600/5' : 'from-violet-500/10 to-indigo-600/5'}`}>
+                        <span class={`font-display font-black text-4xl tracking-widest opacity-25 ${isDtlProj ? 'text-amber-650' : isDgsProj ? 'text-emerald-700' : 'text-violet-700'}`}>
+                          {isDtlProj ? 'DTL' : isDgsProj ? 'DGS' : 'DV'}
                         </span>
                       </div>
                     )}
                     
                     <!-- Division Badge (Left) -->
                     <div class="absolute top-4 left-4 z-10">
-                      <span class={`inline-flex items-center px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider shadow-sm border ${isDtlProj ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200/50'}`}>
-                        {isDtlProj ? 'Technical Lighting' : 'Greenscapes'}
+                      <span class={`inline-flex items-center px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider shadow-sm border ${
+                        isDtlProj ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
+                        isDgsProj ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' :
+                        'bg-violet-50 text-violet-700 border-violet-200/50'
+                      }`}>
+                        {isDtlProj ? 'Technical Lighting' : isDgsProj ? 'Greenscapes' : 'Delight Vision'}
                       </span>
                     </div>
 
@@ -135,7 +152,11 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
 
                   <!-- Details Area -->
                   <div class="p-8 text-left space-y-3">
-                    <span class={`text-[10px] font-black uppercase tracking-widest ${isDtlProj ? 'text-amber-650' : 'text-emerald-700'}`}>
+                    <span class={`text-[10px] font-black uppercase tracking-widest ${
+                      isDtlProj ? 'text-amber-650' :
+                      isDgsProj ? 'text-emerald-700' :
+                      'text-violet-700'
+                    }`}>
                       {project.client_name || 'Enterprise Deployment'}
                     </span>
                     <h3 class="text-lg font-bold text-slate-900 leading-snug group-hover:text-slate-950 transition-colors">
@@ -148,7 +169,11 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
                 </div>
 
                 <!-- Glow Hover Border Highlight -->
-                <div class={`h-1.5 w-full mt-auto bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${isDtlProj ? 'from-amber-400 to-amber-500' : 'from-emerald-550 to-emerald-650'}`}></div>
+                <div class={`h-1.5 w-full mt-auto bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                  isDtlProj ? 'from-amber-400 to-amber-500' :
+                  isDgsProj ? 'from-emerald-550 to-emerald-650' :
+                  'from-violet-500 to-indigo-600'
+                }`}></div>
               </div>
             );
           })}
@@ -181,7 +206,7 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
       const dataVal = btn.getAttribute('data-target');
       const isActive = dataVal === target;
 
-      btn.className = 'flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 select-none cursor-pointer ';
+      btn.className = 'flex-1 py-3 px-3 sm:px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 select-none cursor-pointer ';
 
       if (isActive) {
         if (target === 'all') {
@@ -190,6 +215,8 @@ const isValidInitial = ['all', 'dtl', 'dgs'].includes(initialDivision) ? initial
           btn.classList.add('bg-gradient-to-r', 'from-amber-500', 'to-amber-600', 'text-white', 'shadow-md', 'shadow-amber-500/15');
         } else if (target === 'dgs') {
           btn.classList.add('bg-gradient-to-r', 'from-emerald-550', 'to-emerald-650', 'text-white', 'shadow-md', 'shadow-emerald-500/15');
+        } else if (target === 'dv') {
+          btn.classList.add('bg-gradient-to-r', 'from-violet-600', 'to-indigo-650', 'text-white', 'shadow-md', 'shadow-violet-500/15');
         }
       } else {
         btn.classList.add('text-slate-500', 'hover:text-slate-800', 'hover:bg-slate-50/50');

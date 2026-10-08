@@ -11,12 +11,13 @@ const prodSlug = product!.toLowerCase();
 
 const isDtl = divSlug === 'dtl' || divSlug === 'delighttechnicallighting';
 const isDgs = divSlug === 'dgs' || divSlug === 'delightgreenscapes' || divSlug === 'delightscreenscape';
+const isDv = divSlug === 'dv' || divSlug === 'delightvision';
 
-if (!isDtl && !isDgs) {
+if (!isDtl && !isDgs && !isDv) {
   return Astro.redirect('/');
 }
 
-const dbDivSlug = isDtl ? 'delighttechnicallighting' : 'delightgreenscapes';
+const dbDivSlug = isDtl ? 'delighttechnicallighting' : (isDv ? 'delightvision' : 'delightgreenscapes');
 
 let categoryDetails: any = null;
 let productDetails: any = null;
@@ -40,13 +41,15 @@ try {
   // 2. Get Product details
   const isPreview = Astro.url.searchParams.get('preview') === 'true' || Astro.url.searchParams.has('preview');
   const prodQuery = isPreview
-    ? `SELECT p.*, i.stock_level, i.warehouse_location
+    ? `SELECT p.*, i.stock_level, COALESCE(w.name, 'Dubai Central Hub') as warehouse_location
        FROM products p
        LEFT JOIN inventory i ON i.product_id = p.id
+       LEFT JOIN warehouses w ON w.id = i.warehouse_id
        WHERE p.slug = $1 AND p.category_id = $2`
-    : `SELECT p.*, i.stock_level, i.warehouse_location
+    : `SELECT p.*, i.stock_level, COALESCE(w.name, 'Dubai Central Hub') as warehouse_location
        FROM products p
        LEFT JOIN inventory i ON i.product_id = p.id
+       LEFT JOIN warehouses w ON w.id = i.warehouse_id
        WHERE p.slug = $1 AND p.category_id = $2 AND p.status = 'active'`;
 
   const prodRes = await query(prodQuery, [prodSlug, categoryDetails.id]);
@@ -77,13 +80,13 @@ try {
   if (productDetails.images.length === 0) {
     productDetails.images = ['/noimage.jpg'];
   }
-
-  if (!productDetails) {
-    return Astro.redirect(`/${divSlug}/${catSlug}`);
-  }
 } catch (err: any) {
   console.warn('Database offline:', err.message);
   dbConnected = false;
+}
+
+if (!productDetails) {
+  return Astro.redirect(`/${divSlug}/${catSlug}`);
 }
 
 // Convert specifications if they are stored as JSONB string or object
@@ -203,7 +206,9 @@ if (Array.isArray(productDetails.specifications)) {
                 {productDetails.sku}
               </span>
               <span class={`rounded-full px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider shadow-sm ${
-                isDtl ? 'bg-amber-50 text-amber-600 border border-amber-200' : 'bg-cyan-50 text-cyan-600 border border-cyan-200'
+                isDtl 
+                  ? 'bg-amber-50 text-amber-600 border border-amber-200' 
+                  : (isDv ? 'bg-violet-50 text-violet-700 border border-violet-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200')
               }`}>
                 {divSlug.toUpperCase()}
               </span>

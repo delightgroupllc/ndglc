@@ -1,0 +1,738 @@
+---
+import { 
+  ShieldCheck, Video, Cpu, Zap, Sparkles, Calendar, ChevronRight, 
+  CheckCircle2, Building2, Users, ArrowRight, Shield, Activity, 
+  Layers, Lock, Server, Wifi, Phone, Mail, MapPin, Award
+} from '@lucide/astro';
+
+interface Props {
+  categories: any[];
+  featuredProducts: any[];
+  partners: any[];
+}
+
+const { categories, featuredProducts, partners } = Astro.props;
+
+// Scraped services and system details mapped to categories
+const coreSystems = [
+  {
+    slug: 'cctv-surveillance-systems',
+    title: 'CCTV Surveillance Systems',
+    image: '/images/delightvision/cctv.jpg',
+    badge: 'SIRA Compliant',
+    desc: 'High-definition IP & hybrid CCTV engineering with integrated deep learning analytics, automatic license plate recognition (ANPR), and 24/7 central monitoring.',
+    features: [
+      'HD IP & Hybrid Cameras',
+      'AI Video Analytics & Alerts',
+      'ANPR Number Plate Capture',
+      'Facial Recognition Setup',
+      'SIRA-Compliant Architecture',
+      'Central Monitoring Integration'
+    ]
+  },
+  {
+    slug: 'access-control',
+    title: 'Access Control & Time Attendance',
+    image: '/images/delightvision/accesscontrol.jpg',
+    badge: 'Touchless Biometrics',
+    desc: 'State-of-the-art access management supporting facial recognition, biometric fingerprint, RFID cards, and mobile Bluetooth/NFC entry synced with HRMS & payroll.',
+    features: [
+      'Biometric & RFID Readers',
+      'Mobile BLE / NFC Entry',
+      'Time & Attendance Sync',
+      'HRMS & Payroll Integration',
+      'Turnstiles & Speed Gates',
+      'Visitor Management Modules'
+    ]
+  },
+  {
+    slug: 'gate-barrier',
+    title: 'Gate Barrier & Turnstile Solutions',
+    image: '/images/delightvision/turnstile-gate.webp',
+    badge: 'High Speed DC',
+    desc: 'Heavy-duty automatic boom barriers, optical speed gates, flap turnstiles, and long-range UHF RFID readers engineered for communities and commercial facilities.',
+    features: [
+      '1.2s Fast Boom Barriers',
+      'Optical & Flap Turnstiles',
+      'Full-Height Security Gates',
+      'UHF Long-Range Vehicle RFID',
+      'Anti-Collision Loop Sensors',
+      'ANPR Parking Integration'
+    ]
+  },
+  {
+    slug: 'structured-cabling',
+    title: 'Structured Cabling & Networks',
+    image: '/images/delightvision/structured-cabling-michigan.jpg',
+    badge: 'Fluke Certified',
+    desc: 'Certified Cat6/Cat6A copper networking, single & multi-mode fiber optic backbone splicing, server rack dressing, and cable management for enterprise infrastructure.',
+    features: [
+      'Cat6 / Cat6A Copper Cabling',
+      'Fiber Optic Backbone & Splicing',
+      'Server Rack & Cabinet Dressing',
+      'Patch Panel Management',
+      'Fluke Channel Certification',
+      'Zero-Loss Data Cabling'
+    ]
+  },
+  {
+    slug: 'intercom-video-doorph',
+    title: 'Intercom & Video Door Phones',
+    image: '/images/delightvision/videocam.jpg',
+    badge: 'Smart IP / SIP',
+    desc: 'Multi-tenant residential video intercoms, luxury villa entry stations, remote mobile door release, and digital IP-PBX communication systems.',
+    features: [
+      'Multi-Tenant IP Intercoms',
+      'Luxury Villa Video Stations',
+      'Mobile App Remote Unlock',
+      'SIP 2.0 PBX Integration',
+      'Touchscreen Master Stations',
+      'CCTV Stream Cross-Linking'
+    ]
+  },
+  {
+    slug: 'annual-maintenance-contracts',
+    title: 'Annual Maintenance Contracts (AMC)',
+    image: '/images/delightvision/amc.jpg',
+    badge: '24/7 SLA Guarantee',
+    desc: 'SIRA-approved preventive and comprehensive annual maintenance contracts, periodic health audits, certification renewals, and round-the-clock emergency dispatch.',
+    features: [
+      'SIRA Audit Certificate Renewals',
+      'Quarterly Preventive Servicing',
+      '24/7 Emergency Dispatch',
+      'Comprehensive & Non-Comp AMC',
+      'Detailed Audit Health Reports',
+      'Guaranteed Response SLAs'
+    ]
+  },
+  {
+    slug: 'system-upgrade-retrofits',
+    title: 'System Upgrade & Retrofits',
+    image: '/images/delightvision/retrofit.jpeg',
+    badge: 'Zero Downtime',
+    desc: 'Seamless migration of legacy analog CCTV networks and outdated access systems to modern high-definition IP infrastructures with zero business disruption.',
+    features: [
+      'Analog-to-IP CCTV Migration',
+      'Legacy Access Reader Upgrades',
+      'Cabling Re-Certification',
+      'Storage & Bandwidth Expansion',
+      'Zero Operational Downtime',
+      'Cost-Effective Phased Rollout'
+    ]
+  },
+  {
+    slug: 'integration-central-monitoring',
+    title: 'Integration & Central Monitoring',
+    image: '/images/delightvision/centralmonitoring.jpg',
+    badge: 'Unified PSIM',
+    desc: 'Centralized command center integration, enterprise Video Management Software (VMS), and multi-site security aggregation onto a single pane of glass.',
+    features: [
+      'Unified PSIM Command Center',
+      'Enterprise VMS Dashboards',
+      'Multi-Site Alarm Aggregation',
+      'Automated Incident Escalation',
+      'Cloud & Hybrid Archiving',
+      'Real-Time Health Diagnostics'
+    ]
+  }
+];
+
+// Solutions by Industry
+const industrySectors = [
+  {
+    title: 'Commercial & Office Towers',
+    icon: Building2,
+    desc: 'Touchless facial turnstiles, elevator dispatch access, visitor management, and multi-tenant CCTV systems compliant with local authority regulations.',
+    metric: '99.9% Uptime'
+  },
+  {
+    title: 'Retail Malls & Luxury Stores',
+    icon: Lock,
+    desc: 'High-loss prevention cameras, customer footfall heatmaps, queue analytics, and discrete dome installations for premier retail environments.',
+    metric: 'Zero Loss Focus'
+  },
+  {
+    title: 'Residential & Gated Communities',
+    icon: Wifi,
+    desc: 'Perimeter SIRA surveillance, UHF vehicle boom barriers, IP video intercoms, and unified resident access management across sprawling developments.',
+    metric: '24/7 Protection'
+  },
+  {
+    title: 'Logistics & Industrial Facilities',
+    icon: Server,
+    desc: 'Explosion-proof cameras, thermal perimeter boundary intrusion detection, long-range ANPR weighbridge logs, and ruggedized fiber backbones.',
+    metric: 'Rugged Grade'
+  }
+];
+
+// Blog articles scraped from QuantaSec
+const technicalBlogs = [
+  {
+    title: 'Smart Security: Why Your Business Needs AI-Driven CCTV in 2025',
+    category: 'CCTV Analytics',
+    date: 'Oct 2025',
+    summary: 'Explore how deep-learning video analytics, automatic license plate recognition, and real-time behavioral alerts transform traditional passive monitoring into active threat prevention.',
+    image: '/images/delightvision/smart-security.jpg'
+  },
+  {
+    title: 'Technical Strength: The Backbone of Reliable ELV Systems',
+    category: 'Infrastructure',
+    date: 'Sep 2025',
+    summary: 'A deep dive into why robust structured cabling, Fluke-certified fiber backbones, and clean rack architecture are vital for preventing intermittent signal drops and system failures.',
+    image: '/images/delightvision/structured-cabling-michigan.jpg'
+  },
+  {
+    title: 'Smart ELV Solutions for Modern Real Estate Developments',
+    category: 'Real Estate',
+    date: 'Aug 2025',
+    summary: 'How unified ELV integrations—combining video intercoms, gate barriers, and smart access control—elevate resident satisfaction and enhance long-term property valuation.',
+    image: '/images/delightvision/elvsolutions.jpg'
+  },
+  {
+    title: 'Security Trends: Integrating Access Control with Cloud & Mobile',
+    category: 'Access Control',
+    date: 'Jul 2025',
+    summary: 'The shift from physical plastic cards to touchless mobile credentials (BLE/NFC) and cloud dashboards, simplifying multi-site HR and visitor workflows.',
+    image: '/images/delightvision/accesscontrol.jpg'
+  }
+];
+
+// FAQs scraped & refined for Delight Vision
+const faqs = [
+  {
+    q: 'Are Delight Vision installations fully compliant with SIRA guidelines?',
+    a: 'Yes. Every CCTV and ELV system installed by Delight Vision is engineered and documented strictly in accordance with SIRA (Security Industry Regulatory Agency) and UAE municipal standards, ensuring seamless audit sign-offs and operating licenses.'
+  },
+  {
+    q: 'Do you offer Annual Maintenance Contracts (AMC) for SIRA certificate renewals?',
+    a: 'Yes. We provide comprehensive and non-comprehensive SIRA-approved AMCs. Our contracts include scheduled quarterly preventative inspections, emergency response support, and all official maintenance documentation needed for annual trade license renewals.'
+  },
+  {
+    q: 'Can security feeds and access permissions be managed remotely from mobile devices?',
+    a: 'Absolutely. All our high-definition IP systems feature secure end-to-end encrypted remote viewing, instant push notifications, and administrative credential management accessible from iOS, Android, and web dashboards.'
+  },
+  {
+    q: 'Can you retrofit existing analog CCTV systems without rewiring the building?',
+    a: 'Yes. We specialize in non-disruptive system upgrades using hybrid IP encoders and high-speed PoE-over-coax converters, enabling 4K video quality across existing copper cabling with zero operational downtime.'
+  }
+];
+---
+
+<div class="bg-slate-950 text-slate-100 selection:bg-violet-500/30 selection:text-violet-200">
+
+  {/* =========================================================================
+      1. HERO SECTION: High-Tech Visual, Ambient Glow, SIRA Callouts
+      ========================================================================= */}
+  <section class="relative min-h-[90vh] flex items-center justify-center overflow-hidden pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+    <!-- Ambient Background Lighting -->
+    <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-violet-600/25 rounded-full blur-[160px] pointer-events-none"></div>
+    <div class="absolute bottom-10 right-10 w-[500px] h-[400px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none"></div>
+    <div class="absolute inset-0 bg-[radial-gradient(#1e1b4b_1px,transparent_1px)] [background-size:24px_24px] opacity-25"></div>
+
+    <!-- Background Hero Image with Deep Vignette -->
+    <div class="absolute inset-0 opacity-20 bg-cover bg-center mix-blend-luminosity pointer-events-none" style="background-image: url('/images/delightvision/smart-security.jpg');"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent"></div>
+
+    <div class="relative z-10 max-w-5xl mx-auto text-center space-y-8">
+      <!-- SIRA & Division Badge -->
+      <div class="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-300 text-xs font-mono font-bold tracking-widest uppercase backdrop-blur-md shadow-lg shadow-violet-950/50">
+        <span class="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></span>
+        <span>Delight Vision</span>
+        <span class="text-slate-600">•</span>
+        <span class="text-violet-400 font-black">SIRA-Compliant ELV Integration</span>
+      </div>
+
+      <!-- Main Headline -->
+      <div class="space-y-4">
+        <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black font-display tracking-tight text-white leading-tight sm:leading-none">
+          Next-Gen Vision, <br />
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-300 to-indigo-300">
+            AI Surveillance & Smart ELV
+          </span>
+        </h1>
+        <p class="text-base sm:text-lg md:text-xl text-slate-350 max-w-3xl mx-auto font-normal leading-relaxed">
+          Intelligent SIRA-compliant CCTV, advanced biometric access control, automated gate barriers, and future-ready network infrastructure engineered across the UAE.
+        </p>
+      </div>
+
+      <!-- Hero Action Buttons -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+        <a 
+          href="#systems" 
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xl shadow-violet-600/25 hover:shadow-violet-600/40 hover:-translate-y-0.5"
+        >
+          <span>Explore 8 Core Systems</span>
+          <ArrowRight class="w-4 h-4" />
+        </a>
+        <a 
+          href="/downloads?division=delightvision" 
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 font-bold text-xs uppercase tracking-wider transition-all backdrop-blur-sm"
+        >
+          <span>Browse SIRA Datasheets</span>
+        </a>
+        <a 
+          href="/contact" 
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl bg-transparent hover:bg-violet-950/40 border border-violet-800/40 text-violet-300 font-bold text-xs uppercase tracking-wider transition-all"
+        >
+          <span>Request Quote</span>
+        </a>
+      </div>
+
+      <!-- Quick Metrics Counter Bar -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-12 border-t border-white/10 max-w-4xl mx-auto text-center">
+        <div class="p-3">
+          <div class="text-2xl sm:text-3xl font-black text-white font-mono">100%</div>
+          <div class="text-[11px] text-violet-400 uppercase tracking-widest mt-1 font-bold">SIRA Certified</div>
+        </div>
+        <div class="p-3">
+          <div class="text-2xl sm:text-3xl font-black text-white font-mono">8 Core</div>
+          <div class="text-[11px] text-violet-400 uppercase tracking-widest mt-1 font-bold">ELV Disciplines</div>
+        </div>
+        <div class="p-3">
+          <div class="text-2xl sm:text-3xl font-black text-white font-mono">24/7 SLA</div>
+          <div class="text-[11px] text-violet-400 uppercase tracking-widest mt-1 font-bold">Emergency Support</div>
+        </div>
+        <div class="p-3">
+          <div class="text-2xl sm:text-3xl font-black text-white font-mono">50+ Sites</div>
+          <div class="text-[11px] text-violet-400 uppercase tracking-widest mt-1 font-bold">UAE Deployments</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* =========================================================================
+      2. 8 CORE SYSTEMS & SERVICES (The Scraped QuantaSec Disciplines)
+      ========================================================================= */}
+  <section id="systems" class="py-24 bg-slate-900/60 border-y border-white/5 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+        <div class="space-y-3 max-w-2xl">
+          <div class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-violet-400">
+            <Cpu class="w-4 h-4" />
+            <span>Turnkey Engineering</span>
+          </div>
+          <h2 class="text-3xl sm:text-4xl md:text-5xl font-black font-display text-white tracking-tight">
+            Comprehensive Security & ELV Portfolio
+          </h2>
+          <p class="text-sm sm:text-base text-slate-400 leading-relaxed">
+            From regulatory surveillance compliance to multi-site access control and fiber infrastructure, explore our 8 dedicated divisions.
+          </p>
+        </div>
+        <div>
+          <a 
+            href="/downloads?division=delightvision" 
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 uppercase tracking-wider transition"
+          >
+            <span>Download All Catalogues</span>
+            <ArrowRight class="w-3.5 h-3.5" />
+          </a>
+        </div>
+      </div>
+
+      <!-- 8 Systems Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {coreSystems.map((sys) => (
+          <div class="group relative bg-slate-950/80 border border-white/10 hover:border-violet-500/50 rounded-2xl overflow-hidden flex flex-col justify-between transition-all duration-300 hover:shadow-2xl hover:shadow-violet-900/20 hover:-translate-y-1">
+            <!-- Card Image -->
+            <div class="relative h-48 overflow-hidden bg-slate-900">
+              <img 
+                src={sys.image} 
+                alt={sys.title} 
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                loading="lazy"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+              <span class="absolute top-3 left-3 bg-violet-600/90 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded backdrop-blur-sm shadow-md">
+                {sys.badge}
+              </span>
+            </div>
+
+            <!-- Card Content -->
+            <div class="p-6 space-y-4 flex-grow flex flex-col justify-between">
+              <div class="space-y-3">
+                <h3 class="text-lg font-bold font-display text-white group-hover:text-violet-300 transition-colors">
+                  {sys.title}
+                </h3>
+                <p class="text-xs text-slate-400 leading-relaxed line-clamp-3">
+                  {sys.desc}
+                </p>
+
+                <!-- Bullet tags -->
+                <ul class="space-y-1.5 pt-2 border-t border-white/5">
+                  {sys.features.slice(0, 3).map((f) => (
+                    <li class="flex items-center gap-2 text-[11px] text-slate-350">
+                      <CheckCircle2 class="w-3 h-3 text-violet-400 shrink-0" />
+                      <span class="truncate">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <!-- Button Link -->
+              <div class="pt-4 border-t border-white/5">
+                <a 
+                  href={`/delightvision/${sys.slug}`} 
+                  class="inline-flex items-center justify-between w-full text-xs font-bold text-violet-400 hover:text-violet-300 transition-colors uppercase tracking-wider"
+                >
+                  <span>View Specifications</span>
+                  <ArrowRight class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </a>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* =========================================================================
+      3. FEATURED HARDWARE & EQUIPMENT LINEUP (From Products Database)
+      ========================================================================= */}
+  {featuredProducts && featuredProducts.length > 0 && (
+    <section class="py-24 bg-slate-950 border-b border-white/5 relative">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-12 gap-4">
+          <div class="space-y-2">
+            <span class="text-xs uppercase tracking-widest text-violet-400 font-extrabold flex items-center gap-1.5">
+              <Sparkles class="w-3.5 h-3.5" />
+              <span>Engineered Hardware</span>
+            </span>
+            <h2 class="text-3xl sm:text-4xl font-black font-display text-white">
+              Featured Surveillance & Security Lineup
+            </h2>
+          </div>
+          <a 
+            href="/delightvision/cctv-surveillance-systems" 
+            class="text-xs font-bold text-violet-400 hover:text-violet-300 transition uppercase tracking-wider inline-flex items-center gap-1"
+          >
+            <span>View All Products</span>
+            <ArrowRight class="w-3.5 h-3.5" />
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {featuredProducts.slice(0, 4).map((p) => (
+            <div class="rounded-xl border border-white/10 bg-white/[0.02] p-5 flex flex-col justify-between hover:bg-white/[0.04] transition group hover:border-violet-500/30">
+              <div class="space-y-4">
+                <div class="relative aspect-square rounded-lg overflow-hidden bg-slate-900">
+                  <img 
+                    src={p.image_url || '/images/delightvision/cctv.jpg'} 
+                    alt={p.name} 
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <span class="absolute top-2 left-2 bg-slate-950/80 text-[10px] font-mono text-slate-300 px-2 py-0.5 rounded border border-white/10">
+                    {p.sku}
+                  </span>
+                </div>
+
+                <div class="space-y-1">
+                  <h4 class="text-sm font-bold text-white group-hover:text-violet-300 transition-colors line-clamp-1">
+                    {p.name}
+                  </h4>
+                  <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                    {p.description}
+                  </p>
+                </div>
+              </div>
+
+              <div class="pt-4 mt-4 border-t border-white/5 flex items-center justify-between">
+                <a 
+                  href={`/delightvision/${p.category_slug || 'cctv-surveillance-systems'}/${p.product_slug || p.id}`}
+                  class="text-xs font-bold text-violet-400 hover:text-violet-200 transition"
+                >
+                  Technical Details →
+                </a>
+                <a 
+                  href="/contact" 
+                  class="px-2.5 py-1 rounded bg-violet-600/30 hover:bg-violet-600 text-violet-300 hover:text-white text-[10px] font-black uppercase tracking-wider transition"
+                >
+                  Quote
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  {/* =========================================================================
+      4. SOLUTIONS BY INDUSTRY & SECTOR
+      ========================================================================= */}
+  <section id="solutions" class="py-24 bg-slate-900/40 border-b border-white/5 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+        <span class="text-xs uppercase tracking-widest text-violet-400 font-extrabold">Sector Engineering</span>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black font-display text-white">
+          Solutions Tailored for Every UAE Industry
+        </h2>
+        <p class="text-sm sm:text-base text-slate-400">
+          Precision security architectures customized for unique compliance, high-density traffic, and critical asset protection.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {industrySectors.map((sec) => {
+          const IconComp = sec.icon;
+          return (
+            <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-violet-500/40 transition-all duration-300 space-y-4">
+              <div class="w-12 h-12 rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30 flex items-center justify-center">
+                <IconComp class="w-6 h-6" />
+              </div>
+              <div class="space-y-2">
+                <div class="text-[10px] font-mono font-bold uppercase tracking-wider text-violet-400">{sec.metric}</div>
+                <h3 class="text-base font-bold text-white font-display">{sec.title}</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">{sec.desc}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+
+  {/* =========================================================================
+      5. PROVEN TRACK RECORD: ENTERPRISE CLIENTS & SIRA CREDIBILITY
+      ========================================================================= */}
+  <section id="projects" class="py-20 bg-slate-950 border-b border-white/5 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto mb-12 space-y-2">
+        <span class="text-xs uppercase tracking-widest text-violet-400 font-extrabold">Proven Deployments</span>
+        <h2 class="text-2xl sm:text-3xl font-black font-display text-white">
+          Trusted by Premier UAE Organizations
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-400">
+          Projects and infrastructure executed across retail flagships, luxury residential towers, and mission-critical logistics hubs.
+        </p>
+      </div>
+
+      <!-- Partner Badges Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-5xl mx-auto">
+        {(partners && partners.length > 0 ? partners : [
+          { name: 'Al Tayer Real Estate' },
+          { name: 'Bloomingdale’s UAE' },
+          { name: 'Harvey Nichols Dubai' },
+          { name: 'Amazon UAE' },
+          { name: 'Reel Cinemas' },
+          { name: 'GymNation UAE' },
+          { name: 'Dubai Harbour Cruise Terminal' },
+          { name: 'Provis Real Estate' }
+        ]).map((p) => (
+          <div class="p-4 rounded-xl border border-white/10 bg-white/[0.02] flex items-center justify-center text-center hover:bg-white/[0.05] transition group">
+            <span class="text-xs sm:text-sm font-bold text-slate-300 group-hover:text-white transition-colors">
+              {p.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* =========================================================================
+      6. WHY CHOOSE DELIGHT VISION (4 Core Pillars)
+      ========================================================================= */}
+  <section class="py-24 bg-slate-900/50 border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div class="space-y-6">
+          <div class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-violet-400">
+            <Award class="w-4 h-4" />
+            <span>Engineering Excellence</span>
+          </div>
+          <h2 class="text-3xl sm:text-4xl md:text-5xl font-black font-display text-white tracking-tight">
+            Why Leading UAE Properties Choose Delight Vision
+          </h2>
+          <p class="text-sm sm:text-base text-slate-400 leading-relaxed">
+            We bridge the gap between regulatory compliance and cutting-edge visual intelligence, ensuring zero compliance risk, high aesthetic standards, and reliable operation.
+          </p>
+
+          <div class="space-y-4 pt-4">
+            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+              <div class="w-8 h-8 rounded-lg bg-violet-600/20 text-violet-400 flex items-center justify-center shrink-0">
+                <ShieldCheck class="w-5 h-5" />
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white">Full SIRA & Civil Defense Compliance</h4>
+                <p class="text-xs text-slate-400 mt-1">Guaranteed approval from security authorities with zero audit delay.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+              <div class="w-8 h-8 rounded-lg bg-violet-600/20 text-violet-400 flex items-center justify-center shrink-0">
+                <Zap class="w-5 h-5" />
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white">Deep-Learning AI Analytics</h4>
+                <p class="text-xs text-slate-400 mt-1">Real-time automatic license plate recognition (ANPR), intrusion detection, and crowd analytics.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+              <div class="w-8 h-8 rounded-lg bg-violet-600/20 text-violet-400 flex items-center justify-center shrink-0">
+                <Activity class="w-5 h-5" />
+              </div>
+              <div>
+                <h4 class="text-sm font-bold text-white">24/7 Dedicated AMC & SLA Response</h4>
+                <p class="text-xs text-slate-400 mt-1">Immediate on-site technical resolution and periodic preventive health audits.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="relative">
+          <div class="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+            <img 
+              src="/images/delightvision/about-img-1.webp" 
+              alt="Delight Vision Technical Operations" 
+              class="w-full h-full object-cover"
+              loading="lazy"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+            <div class="absolute bottom-6 left-6 right-6 p-4 rounded-xl bg-slate-900/90 border border-white/10 backdrop-blur-md">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-xs font-bold text-white">Central Operations Center</div>
+                  <div class="text-[10px] text-violet-400 font-mono">UAE-Wide Monitoring & Dispatch</div>
+                </div>
+                <span class="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  Active
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* =========================================================================
+      7. TECHNICAL INSIGHTS & ARTICLES (The 4 Scraped Blogs)
+      ========================================================================= */}
+  <section class="py-24 bg-slate-950 border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+        <span class="text-xs uppercase tracking-widest text-violet-400 font-extrabold">Knowledge Center</span>
+        <h2 class="text-3xl sm:text-4xl font-black font-display text-white">
+          Technical Insights & Security Trends
+        </h2>
+        <p class="text-sm text-slate-400">
+          In-depth technical guides authored by our ELV system engineers on AI surveillance and network resilience.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {technicalBlogs.map((b) => (
+          <div class="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden flex flex-col justify-between hover:border-violet-500/40 transition group">
+            <div>
+              <div class="relative h-44 overflow-hidden bg-slate-900">
+                <img 
+                  src={b.image} 
+                  alt={b.title} 
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                />
+                <span class="absolute top-3 left-3 bg-slate-950/80 text-violet-300 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border border-white/10">
+                  {b.category}
+                </span>
+              </div>
+              <div class="p-5 space-y-3">
+                <div class="text-[10px] text-slate-500 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                  <Calendar class="w-3 h-3 text-violet-400" />
+                  <span>{b.date}</span>
+                </div>
+                <h3 class="text-sm font-bold text-white group-hover:text-violet-300 transition-colors line-clamp-2">
+                  {b.title}
+                </h3>
+                <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                  {b.summary}
+                </p>
+              </div>
+            </div>
+
+            <div class="p-5 pt-0">
+              <a 
+                href="/downloads" 
+                class="inline-flex items-center gap-1.5 text-xs font-bold text-violet-400 hover:text-violet-300 transition uppercase tracking-wider"
+              >
+                <span>Read Whitepaper</span>
+                <ArrowRight class="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* =========================================================================
+      8. FREQUENTLY ASKED QUESTIONS (FAQs)
+      ========================================================================= */}
+  <section class="py-24 bg-slate-900/60 border-b border-white/5">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      <div class="text-center space-y-3">
+        <span class="text-xs uppercase tracking-widest text-violet-400 font-extrabold">Answers & Compliance</span>
+        <h2 class="text-3xl sm:text-4xl font-black font-display text-white">
+          Frequently Asked Questions
+        </h2>
+        <p class="text-sm text-slate-400">
+          Everything you need to know about SIRA guidelines, AMC coverage, and system retrofits.
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        {faqs.map((faq) => (
+          <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/10 space-y-2">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0"></span>
+              <span>{faq.q}</span>
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed pl-3.5 border-l border-white/10">
+              {faq.a}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* =========================================================================
+      9. BOTTOM CTA: Consultation & Hotline Banner
+      ========================================================================= */}
+  <section class="py-20 bg-gradient-to-b from-slate-900 to-slate-950 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(#6d28d9_1px,transparent_1px)] [background-size:20px_20px] opacity-15 pointer-events-none"></div>
+
+    <div class="relative z-10 max-w-4xl mx-auto px-4 text-center space-y-6">
+      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 text-xs font-mono font-bold uppercase tracking-widest">
+        <span>Ready for SIRA Approval?</span>
+      </span>
+
+      <h2 class="text-3xl sm:text-5xl font-black font-display text-white tracking-tight">
+        Protect Your Facilities With Precision Intelligence
+      </h2>
+
+      <p class="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+        Speak directly with our certified security and ELV engineering team for a customized site survey and quotation.
+      </p>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+        <a 
+          href="tel:+971557766952" 
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-violet-600/30"
+        >
+          <Phone class="w-4 h-4" />
+          <span>Call: +971 55 776 6952</span>
+        </a>
+        <a 
+          href="/contact" 
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition"
+        >
+          <Mail class="w-4 h-4" />
+          <span>Request Site Inspection</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+</div>

@@ -1,0 +1,25 @@
+{
+  "url": "https://www.quantasec.ae/service-single.html",
+  "slug": "service-single",
+  "rawHtmlFile": "raw_html/service-single.html",
+  "title": "",
+  "meta": {
+    "description": "",
+    "keywords": "",
+    "ogTitle": "",
+    "ogImage": ""
+  },
+  "headings": [],
+  "breadcrumbs": [],
+  "navLinks": [],
+  "footerLinks": [],
+  "contactInfo": {
+    "phones": [],
+    "emails": []
+  },
+  "images": [],
+  "docs": [],
+  "sections": [],
+  "bodyTextSnippet": "This XML file does not appear to have any style information associated with it. The document tree is shown below. <Error> <Code>AccessDenied</Code> <Message>Access Denied</Message> </Error>",
+  "fullBodyTextLength": 189
+}

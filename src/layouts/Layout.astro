@@ -65,8 +65,8 @@ try {
 let secondaryNavCategories: any[] = [];
 try {
   const divRes = await query(
-    'SELECT id, slug, name FROM divisions WHERE slug IN ($1, $2)',
-    ['delighttechnicallighting', 'delightgreenscapes']
+    'SELECT id, slug, name FROM divisions WHERE slug IN ($1, $2, $3)',
+    ['delighttechnicallighting', 'delightgreenscapes', 'delightvision']
   );
 
   if (divRes.rows.length > 0) {
@@ -208,7 +208,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
   <body class="bg-[#fcfdfd] text-slate-900 min-h-screen flex flex-col antialiased selection:bg-blue-500/30 selection:text-blue-900">
     <!-- Sticky Glassmorphism Header -->
     <header class="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-all duration-300">
-      <div class={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative ${(isDTL || isDGS) ? 'border-b border-slate-100' : ''}`}>
+      <div class={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative ${(isDTL || isDGS || isDV) ? 'border-b border-slate-100' : ''}`}>
         <div class="flex h-16 md:h-20 items-center justify-between">
           <!-- Logo Section -->
           <div class="flex-none w-44 xl:w-56 text-left relative h-full flex items-center">
@@ -400,39 +400,17 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               
               <!-- Center navigation items (Centered) -->
               <div class="relative flex items-center justify-center gap-6 flex-grow">
-                {isDV ? (
-                  <>
-                    <!-- Products (Coming Soon) -->
-                    <div class="group h-10 flex items-center cursor-default">
-                      <span class="text-[11px] font-bold uppercase tracking-widest text-slate-700 flex items-center gap-2 select-none">
-                        Products
-                        <span class="bg-violet-100 text-violet-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Coming Soon</span>
-                      </span>
-                    </div>
-
-                    <!-- Vertical Divider -->
-                    <div class="h-5 w-px bg-slate-200/80"></div>
-
-                    <!-- Downloads Link -->
-                    <a href="/downloads" class="group py-2 flex items-center cursor-pointer">
-                      <span class="text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none group-hover:text-violet-600">
-                        Downloads
-                      </span>
-                    </a>
-                  </>
-                ) : (
-                  <>
                 <!-- 1) Products Dropdown -->
                 <div class="group h-10 flex items-center cursor-pointer">
-                  <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+                  <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : (isDV ? 'group-hover:text-violet-650' : 'group-hover:text-emerald-700')}`}>
                     Products
                   </span>
 
                   <!-- Products Mega Menu Dropdown -->
-                  <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen ${isDTL ? 'max-w-4xl' : 'max-w-3xl'} bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-6 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                  <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen ${isDTL || isDV ? 'max-w-4xl' : 'max-w-3xl'} bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-6 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : (isDV ? 'border-t-violet-600' : 'border-t-emerald-600')}`}>
                     <!-- Transparent hover bridge: fills gap between nav and panel -->
                     <div class="absolute -top-2 inset-x-0 h-2"></div>
-                    <div class={`grid ${isDTL ? 'grid-cols-6 gap-4' : 'grid-cols-5 gap-6'}`}>
+                    <div class={`grid ${isDTL || isDV ? 'grid-cols-6 gap-4' : 'grid-cols-5 gap-6'}`}>
                     {isDTL ? (
                       <>
                         <div>
@@ -500,6 +478,69 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
                           </ul>
                         </div>
                       </>
+                    ) : isDV ? (
+                      <>
+                        <div>
+                          <h4 class="font-black text-violet-700 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-violet-100">CCTV Systems</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightvision/cctv-surveillance-systems" class="hover:text-violet-600 hover:font-bold transition">IP & Dome Cameras</a></li>
+                            <li><a href="/delightvision/cctv-surveillance-systems" class="hover:text-violet-600 hover:font-bold transition">PTZ 360° Tracking</a></li>
+                            <li><a href="/delightvision/cctv-surveillance-systems" class="hover:text-violet-600 hover:font-bold transition">Outdoor Bullet</a></li>
+                            <li><a href="/delightvision/cctv-surveillance-systems" class="hover:text-violet-600 hover:font-bold transition">ANPR Plate Cameras</a></li>
+                            <li><a href="/delightvision/cctv-surveillance-systems" class="hover:text-violet-600 hover:font-bold transition">NVR Video Servers</a></li>
+                            <li><a href="/delightvision/cctv-surveillance-systems" class="hover:text-violet-600 hover:font-bold transition">AI Video Analytics</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-violet-700 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-violet-100">Access Control</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightvision/access-control" class="hover:text-violet-600 hover:font-bold transition">Facial Recognition</a></li>
+                            <li><a href="/delightvision/access-control" class="hover:text-violet-600 hover:font-bold transition">Biometric Readers</a></li>
+                            <li><a href="/delightvision/access-control" class="hover:text-violet-600 hover:font-bold transition">RFID & Cards</a></li>
+                            <li><a href="/delightvision/access-control" class="hover:text-violet-600 hover:font-bold transition">Mobile BLE Access</a></li>
+                            <li><a href="/delightvision/access-control" class="hover:text-violet-600 hover:font-bold transition">Time & Attendance</a></li>
+                            <li><a href="/delightvision/access-control" class="hover:text-violet-600 hover:font-bold transition">Visitor Management</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-violet-700 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-violet-100">Gate Barriers</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightvision/gate-barrier" class="hover:text-violet-600 hover:font-bold transition">Speed Boom Barriers</a></li>
+                            <li><a href="/delightvision/gate-barrier" class="hover:text-violet-600 hover:font-bold transition">Optical Turnstiles</a></li>
+                            <li><a href="/delightvision/gate-barrier" class="hover:text-violet-600 hover:font-bold transition">Flap Barrier Gates</a></li>
+                            <li><a href="/delightvision/gate-barrier" class="hover:text-violet-600 hover:font-bold transition">UHF Long-Range</a></li>
+                            <li><a href="/delightvision/gate-barrier" class="hover:text-violet-600 hover:font-bold transition">Automatic Bollards</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-violet-700 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-violet-100">Networking</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightvision/structured-cabling" class="hover:text-violet-600 hover:font-bold transition">Cat6/6A Cabling</a></li>
+                            <li><a href="/delightvision/structured-cabling" class="hover:text-violet-600 hover:font-bold transition">Fiber Optic Backbone</a></li>
+                            <li><a href="/delightvision/structured-cabling" class="hover:text-violet-600 hover:font-bold transition">Server Racks</a></li>
+                            <li><a href="/delightvision/structured-cabling" class="hover:text-violet-600 hover:font-bold transition">Patch Panels</a></li>
+                            <li><a href="/delightvision/structured-cabling" class="hover:text-violet-600 hover:font-bold transition">Cable Testing</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-violet-700 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-violet-100">Intercoms</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightvision/intercom-video-doorph" class="hover:text-violet-600 hover:font-bold transition">IP Multi-Tenant</a></li>
+                            <li><a href="/delightvision/intercom-video-doorph" class="hover:text-violet-600 hover:font-bold transition">Villa Door Phones</a></li>
+                            <li><a href="/delightvision/intercom-video-doorph" class="hover:text-violet-600 hover:font-bold transition">App Remote Unlock</a></li>
+                            <li><a href="/delightvision/intercom-video-doorph" class="hover:text-violet-600 hover:font-bold transition">SIP PBX Connect</a></li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 class="font-black text-violet-700 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-violet-100">AMC & Retrofits</h4>
+                          <ul class="space-y-2 text-xs text-slate-650 text-left">
+                            <li><a href="/delightvision/annual-maintenance-contracts" class="hover:text-violet-600 hover:font-bold transition">SIRA AMC Contracts</a></li>
+                            <li><a href="/delightvision/annual-maintenance-contracts" class="hover:text-violet-600 hover:font-bold transition">Preventive Audits</a></li>
+                            <li><a href="/delightvision/system-upgrade-retrofits" class="hover:text-violet-600 hover:font-bold transition">Analog-to-IP Retrofit</a></li>
+                            <li><a href="/delightvision/integration-central-monitoring" class="hover:text-violet-600 hover:font-bold transition">Central Monitoring</a></li>
+                          </ul>
+                        </div>
+                      </>
                     ) : (
                       <>
                         <div>
@@ -555,28 +596,44 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
 
               <!-- 2) Solutions Dropdown -->
               <div class="group h-10 flex items-center cursor-pointer">
-                <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+                <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition flex items-center gap-1 select-none ${isDTL ? 'group-hover:text-amber-650' : (isDV ? 'group-hover:text-violet-650' : 'group-hover:text-emerald-700')}`}>
                   Solutions
                 </span>
 
                 <!-- Solutions Dropdown Menu -->
-                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-3xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'}`}>
+                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-3xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : (isDV ? 'border-t-violet-600' : 'border-t-emerald-600')}`}>
                   <!-- Transparent hover bridge -->
                   <div class="absolute -top-2 inset-x-0 h-2"></div>
                   <div class="grid grid-cols-2">
                     <div class="border-r border-slate-100 p-4 space-y-1.5 text-left">
-                      <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Retail Solutions</a>
-                      <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Industrial Spaces</a>
-                      <a href={isDTL ? "/delighttechnicallighting/indoor-lighting" : "/delightgreenscapes/indoor-plants"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Residential Luxury</a>
-                      <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/indoor-plants"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Corporate Offices</a>
-                      <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Hotels & Resorts</a>
+                      {isDV ? (
+                        <>
+                          <a href="/delightvision#solutions" class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Commercial & Office Towers</a>
+                          <a href="/delightvision#solutions" class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Retail Malls & Luxury Stores</a>
+                          <a href="/delightvision#solutions" class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Residential Luxury & Gated Communities</a>
+                          <a href="/delightvision#solutions" class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Hotels, Resorts & Leisure</a>
+                          <a href="/delightvision#solutions" class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Industrial, Warehouses & Logistics</a>
+                          <a href="/delightvision#compliance" class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-violet-700 transition">SIRA Compliance Integration →</a>
+                        </>
+                      ) : (
+                        <>
+                          <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Retail Solutions</a>
+                          <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Industrial Spaces</a>
+                          <a href={isDTL ? "/delighttechnicallighting/indoor-lighting" : "/delightgreenscapes/indoor-plants"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Residential Luxury</a>
+                          <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/indoor-plants"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Corporate Offices</a>
+                          <a href={isDTL ? "/delighttechnicallighting/commercial-lighting" : "/delightgreenscapes/outdoor-landscaping"} class="block px-3 py-1.5 hover:bg-slate-50 rounded-md text-xs font-bold text-slate-700 transition">Hotels & Resorts</a>
+                        </>
+                      )}
                     </div>
                     <div class="p-4 flex flex-col justify-between text-left">
                       <p class="text-[10px] text-slate-500 leading-relaxed font-semibold">
-                        Premium architectural landscaping and smart digital lighting configurations mapped precisely for GCC requirements.
+                        {isDV
+                          ? "SIRA-compliant intelligent CCTV, biometric access, and integrated ELV solutions engineered for modern UAE commercial and residential developments."
+                          : "Premium architectural landscaping and smart digital lighting configurations mapped precisely for GCC requirements."
+                        }
                       </p>
                       <div class="h-20 bg-slate-50 rounded border border-slate-100 flex items-center justify-center text-slate-350 text-xs font-bold font-display select-none uppercase tracking-widest">
-                        Delight Group
+                        {isDV ? "Delight Vision" : "Delight Group"}
                       </div>
                     </div>
                   </div>
@@ -587,8 +644,8 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               <div class="h-5 w-px bg-slate-200/80"></div>
 
               <!-- 3) Projects Link -->
-              <a href={isDTL ? "/projects?division=dtl" : (isDGS ? "/projects?division=dgs" : "/projects")} class="group py-2 flex items-center cursor-pointer">
-                <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+              <a href={isDTL ? "/projects?division=dtl" : (isDV ? "/projects?division=dv" : "/projects?division=dgs")} class="group py-2 flex items-center cursor-pointer">
+                <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : (isDV ? 'group-hover:text-violet-650' : 'group-hover:text-emerald-700')}`}>
                   Projects
                 </span>
               </a>
@@ -597,8 +654,8 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
               <div class="h-5 w-px bg-slate-200/80"></div>
 
               <!-- 4) Downloads Link -->
-              <a href="/downloads" class="group py-2 flex items-center cursor-pointer">
-                <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+              <a href={isDTL ? "/downloads?division=dtl" : (isDV ? "/downloads?division=dv" : "/downloads?division=dgs")} class="group py-2 flex items-center cursor-pointer">
+                <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : (isDV ? 'group-hover:text-violet-650' : 'group-hover:text-emerald-700')}`}>
                   Downloads
                 </span>
               </a>
@@ -608,27 +665,25 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
 
               <!-- 5) All Categories / Grid Link -->
               <div class="group h-10 flex items-center cursor-pointer">
-                <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : 'group-hover:text-emerald-700'}`}>
+                <span class={`text-[11px] font-bold uppercase tracking-widest text-slate-700 transition select-none ${isDTL ? 'group-hover:text-amber-650' : (isDV ? 'group-hover:text-violet-650' : 'group-hover:text-emerald-700')}`}>
                   All Categories
                 </span>
 
                 <!-- Categories Quick Links Menu -->
-                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-2xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : 'border-t-emerald-600'} p-6`}>
+                <div class={`absolute left-1/2 -translate-x-1/2 top-full w-screen max-w-2xl bg-white border border-slate-200 rounded-b-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 mt-0 border-t-4 ${isDTL ? 'border-t-amber-500' : (isDV ? 'border-t-violet-600' : 'border-t-emerald-600')} p-6`}>
                   <!-- Transparent hover bridge -->
                   <div class="absolute -top-2 inset-x-0 h-2"></div>
                   <div class="text-left font-extrabold text-[10px] uppercase tracking-wider text-slate-400 mb-4 px-2">Quick Navigation</div>
                   <div class="grid grid-cols-3 gap-2 text-left">
-                    {secondaryNavCategories.filter(cat => cat.divSlug === (isDTL ? 'delighttechnicallighting' : 'delightgreenscapes')).map(cat => (
-                      <a href={`/${cat.divSlug}/${cat.slug}`} class={`flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 transition group/cat ${isDTL ? 'hover:text-amber-650' : 'hover:text-emerald-700'}`}>
-                        <span class={`w-1.5 h-1.5 rounded-full shrink-0 ${isDTL ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                    {secondaryNavCategories.filter(cat => cat.divSlug === (isDTL ? 'delighttechnicallighting' : (isDV ? 'delightvision' : 'delightgreenscapes'))).map(cat => (
+                      <a href={`/${cat.divSlug}/${cat.slug}`} class={`flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 transition group/cat ${isDTL ? 'hover:text-amber-650' : (isDV ? 'hover:text-violet-650' : 'hover:text-emerald-700')}`}>
+                        <span class={`w-1.5 h-1.5 rounded-full shrink-0 ${isDTL ? 'bg-amber-400' : (isDV ? 'bg-violet-500' : 'bg-emerald-400')}`}></span>
                         {cat.name}
                       </a>
                     ))}
                   </div>
                 </div>
               </div>
-                  </>
-                )}
 
               </div>
 

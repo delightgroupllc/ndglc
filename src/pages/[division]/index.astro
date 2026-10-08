@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { query } from '../../lib/db';
 import { ArrowRight, Activity, Cpu, Shield, Database, LayoutGrid, ChevronRight, AlertTriangle, Zap, Sparkles, Users, Trophy, Calendar, Video, Camera, ShieldCheck } from '@lucide/astro';
+import DelightVisionSection from '../../components/division/DelightVisionSection.astro';
 
 const { division } = Astro.params;
 
@@ -28,6 +29,7 @@ try {
 
 const divSlug = division!.toLowerCase();
 const dbDivSlug = isDtl ? 'dtl' : (isDv ? 'dv' : 'dgs');
+const dbDivisionFullName = isDtl ? 'delighttechnicallighting' : (isDv ? 'delightvision' : 'delightgreenscapes');
 const divName = isDtl ? 'Delight Technical Lighting' : (isDv ? 'Delight Vision' : 'Delight Greenscapes');
 const divLogo = isDtl ? '/dtllogo.jpg' : (isDv ? '/dvs.png' : '/dgslogo.jpg');
 const divSubTitle = isDtl 
@@ -35,7 +37,7 @@ const divSubTitle = isDtl
   : (isDv ? 'Vision, AI Surveillance & Smart Tech 👁️' : 'Curated Landscape & Indoor Greenscapes 🌿');
 const divDescription = isDtl
   ? 'Indoor and outdoor technical architectural lighting fixtures sourced from premium brands, supplied UAE-wide.'
-  : (isDv ? 'Next-generation visual technology, smart systems, and intelligent surveillance solutions.' : 'Indoor and outdoor premium plants, designer pots, and custom planters supplied across the UAE.');
+  : (isDv ? 'SIRA-compliant intelligent CCTV, biometric access, gate barriers, and future-ready network infrastructure across the UAE.' : 'Indoor and outdoor premium plants, designer pots, and custom planters supplied across the UAE.');
 
 let categories: any[] = [];
 let featuredProducts: any[] = [];
@@ -52,7 +54,7 @@ try {
     `SELECT * FROM trusted_partners
      WHERE status = 'active' AND (division = $1 OR division = 'both')
      ORDER BY created_at DESC`,
-    [isDtl ? 'dtl' : 'dgs']
+    [isDtl ? 'dtl' : (isDv ? 'dv' : 'dgs')]
   );
   partners = partnersRes.rows;
 } catch (err: any) {
@@ -60,22 +62,38 @@ try {
   dbConnected = false;
 }
 
+// Fetch categories for the division
+try {
+  const catRes = await query(
+    `SELECT c.id, c.name, c.slug, c.image_url, c.seo_description, c.display_order,
+            (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.status = 'active') as product_count
+     FROM categories c
+     JOIN divisions d ON d.id = c.division_id
+     WHERE d.slug = $1 OR d.slug = $2
+     ORDER BY c.display_order ASC`,
+    [dbDivisionFullName, dbDivSlug]
+  );
+  categories = catRes.rows;
+} catch (err: any) {
+  console.warn('Unable to load categories:', err.message);
+}
+
 // Fetch featured products (for Trending section — products marked Featured in Products dashboard)
 try {
   const prodRes = await query(
-    `SELECT p.id, p.name, p.sku, p.slug as product_slug, p.description, pi.url as image_url, c.slug as category_slug
+    `SELECT p.id, p.name, p.sku, p.slug as product_slug, p.description, p.image_url as direct_image, pi.url as image_url, c.slug as category_slug
      FROM products p
      JOIN divisions d ON d.id = p.division_id
      JOIN categories c ON c.id = p.category_id
      LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = TRUE
-     WHERE d.slug = $1 AND p.featured = TRUE
+     WHERE (d.slug = $1 OR d.slug = $2) AND p.featured = TRUE
      ORDER BY p.created_at DESC
-     LIMIT 6`,
-    [dbDivSlug]
+     LIMIT 8`,
+    [dbDivisionFullName, dbDivSlug]
   );
-  featuredProducts = prodRes.rows;
+  featuredProducts = prodRes.rows.map(r => ({ ...r, image_url: r.image_url || r.direct_image }));
 } catch (err: any) {
-  console.warn(`Database offline for featured products:`, err.message);
+  console.warn('Database offline for featured products:', err.message);
 }
 
 // ─── Load ALL settings in one query ──────────────────────────────────────────
@@ -310,68 +328,12 @@ const discoverRoomItems = isDtl && rooms.length > 0
       </div>
     </div>
   ) : isDv ? (
-    <div class="min-h-[85vh] bg-slate-950 text-white flex flex-col items-center justify-center px-4 py-20 relative overflow-hidden">
-      <!-- Ambient Glow Effects -->
-      <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-violet-600/20 rounded-full blur-[140px] pointer-events-none"></div>
-      <div class="absolute bottom-0 right-10 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-
-      <div class="relative z-10 max-w-2xl mx-auto text-center space-y-8">
-        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 text-xs font-mono font-bold uppercase tracking-widest backdrop-blur-sm">
-          <Sparkles class="w-3.5 h-3.5" />
-          <span>New Division Launching</span>
-        </div>
-
-        <div class="space-y-4">
-          <h1 class="text-5xl md:text-7xl font-black font-display tracking-tight text-white">
-            Delight <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-300 to-indigo-400">Vision</span>
-          </h1>
-          <p class="text-base md:text-lg text-slate-400 max-w-xl mx-auto leading-relaxed">
-            AI-powered surveillance, next-generation intelligent monitoring, visual security infrastructure, and smart IoT vision systems.
-          </p>
-        </div>
-
-        <div class="p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md shadow-2xl space-y-4 max-w-md mx-auto">
-          <div class="flex items-center justify-center gap-2 text-violet-400 font-bold text-xs uppercase tracking-wider">
-            <Zap class="w-4 h-4" />
-            <span>Currently Under Construction</span>
-          </div>
-          <p class="text-xs text-slate-400">
-            Our comprehensive visual tech catalog and product line are being finalized. Meanwhile, feel free to explore technical specification sheets and documents.
-          </p>
-          <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a 
-              href="/downloads" 
-              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-violet-600/30"
-            >
-              <span>Browse Downloads</span>
-              <ArrowRight class="w-3.5 h-3.5" />
-            </a>
-            <a 
-              href="/" 
-              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-xs uppercase tracking-wider transition"
-            >
-              <span>Back Home</span>
-            </a>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-3 gap-4 pt-6 border-t border-white/10 text-center max-w-md mx-auto">
-          <div>
-            <div class="text-2xl font-black text-white font-mono">4K/8K</div>
-            <div class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">Surveillance</div>
-          </div>
-          <div>
-            <div class="text-2xl font-black text-white font-mono">AI</div>
-            <div class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">Smart Analytics</div>
-          </div>
-          <div>
-            <div class="text-2xl font-black text-white font-mono">UAE</div>
-            <div class="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">Wide Supply</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : (
+    <DelightVisionSection 
+      categories={categories}
+      featuredProducts={featuredProducts}
+      partners={partners}
+    />
+  ) : isDtl ? (
     <>
       {/* Hero Section with Image Overlay */}
       <section class="relative h-96 md:h-screen bg-slate-900 overflow-hidden">
@@ -849,7 +811,7 @@ const discoverRoomItems = isDtl && rooms.length > 0
         </section>
       ) : null}
     </>
-  )}
+  ) : null}
 
   {/* ==========================================
       DELIGHT GREENSCAPES (DGS) PREMIUM HOMEPAGE
