@@ -70,6 +70,23 @@ const gridCols = enabledCount === 1 ? 'md:grid-cols-1 max-w-sm mx-auto' : enable
 
 // Custom emails list
 const customEmails: any[] = setup.emails?.custom || [];
+// Compute robust Google Maps Embed URL
+const getEmbedUrl = (rawUrl: string, rawAddress: string) => {
+  const trimmed = (rawUrl || '').trim();
+  if (trimmed.includes('output=embed') || trimmed.includes('/maps/embed')) return trimmed;
+  if (trimmed.includes('google.com/maps') || trimmed.includes('maps.google.com')) {
+    const qMatch = trimmed.match(/[?&]q=([^&]+)/);
+    if (qMatch) return `https://maps.google.com/maps?q=${qMatch[1]}&output=embed`;
+    const placeMatch = trimmed.match(/\/place\/([^/@]+)/);
+    if (placeMatch) return `https://maps.google.com/maps?q=${placeMatch[1]}&output=embed`;
+  }
+  const queryParam = encodeURIComponent(rawAddress || 'Delight Group LLC, Dubai, UAE');
+  return `https://maps.google.com/maps?q=${queryParam}&output=embed`;
+};
+
+const mapEmbedSrc = getEmbedUrl(setup.mapUrl, setup.address);
+const mapExternalUrl = setup.mapUrl && setup.mapUrl.startsWith('http') ? setup.mapUrl : `https://maps.google.com/?q=${encodeURIComponent(setup.address || 'Delight Group Dubai')}`;
+const websiteHref = setup.socialLinks?.websiteUrl ? (setup.socialLinks.websiteUrl.startsWith('http') ? setup.socialLinks.websiteUrl : `https://${setup.socialLinks.websiteUrl}`) : '/';
 ---
 
 <Layout title="Contact Us" description="Start a conversation with Delight Group LLC">
@@ -109,7 +126,7 @@ const customEmails: any[] = setup.emails?.custom || [];
       </div>
 
       <!-- ── Bottom Cards ──────────────────────────────────── -->
-      <div class={`grid grid-cols-1 ${gridCols} gap-6 sm:gap-8 animate-on-scroll`}>
+      <div class={`grid grid-cols-1 ${gridCols} gap-6 sm:gap-8 items-stretch animate-on-scroll`}>
 
         <!-- Card 1: Headquarters -->
         {setup.cards.headquarters.enabled && (
@@ -127,24 +144,40 @@ const customEmails: any[] = setup.emails?.custom || [];
             </div>
 
             <!-- Map display: embed or link -->
-            {setup.mapMode === 'embed' && setup.mapUrl ? (
-              <div class="pt-6">
-                <div class="w-full h-40 rounded-xl overflow-hidden border border-slate-200">
+            {setup.mapMode === 'embed' ? (
+              <div class="pt-6 mt-auto">
+                <div class="w-full h-48 rounded-xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 relative group">
                   <iframe
-                    src={setup.mapUrl}
-                    width="100%" height="100%"
+                    src={mapEmbedSrc}
+                    width="100%" 
+                    height="100%"
                     style="border:0;"
                     allowfullscreen
                     loading="lazy"
                     referrerpolicy="no-referrer-when-downgrade"
+                    class="w-full h-full block"
                   ></iframe>
+                  <a 
+                    href={mapExternalUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    class="absolute bottom-2 right-2 bg-white/95 hover:bg-white text-slate-800 border border-slate-200/80 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-md transition-all flex items-center gap-1.5 opacity-90 group-hover:opacity-100"
+                  >
+                    <span>Expand</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                  </a>
                 </div>
               </div>
             ) : (
-              <div class="pt-8">
-                <a href={setup.mapUrl} target="_blank"
-                  class="text-[10px] font-black uppercase tracking-widest text-[#b45309] hover:text-amber-800 transition-colors border-b border-[#b45309]/30 hover:border-amber-700 pb-0.5">
-                  {setup.cards.headquarters.mapLinkLabel}
+              <div class="pt-8 mt-auto flex items-center justify-between">
+                <a 
+                  href={mapExternalUrl} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#b45309] hover:text-amber-800 transition-colors border-b border-[#b45309]/30 hover:border-amber-700 pb-0.5"
+                >
+                  <span>{setup.cards.headquarters.mapLinkLabel || 'View On Map'}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </a>
               </div>
             )}
@@ -198,15 +231,47 @@ const customEmails: any[] = setup.emails?.custom || [];
                   class="text-slate-800 text-base sm:text-lg font-extrabold hover:text-slate-950 transition-colors block mt-2">{setup.phone}</a>
               </div>
             </div>
-            <div class="pt-8 flex items-center gap-2">
-              {setup.socialLinks.websiteUrl && (
-                <a href={setup.socialLinks.websiteUrl} target="_blank"
-                  class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all">
-                  <Globe class="w-3.5 h-3.5" />
-                </a>
-              )}
-              <button class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all"><Share2 class="w-3.5 h-3.5" /></button>
-              <button class="w-8 h-8 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-all"><Grid class="w-3.5 h-3.5" /></button>
+            <div class="pt-8 flex items-center gap-2 relative">
+              <!-- Button 1: Official Website / Portal -->
+              <a 
+                href={websiteHref} 
+                target={websiteHref.startsWith('http') ? '_blank' : '_self'}
+                rel="noopener noreferrer"
+                title="Visit Website"
+                aria-label="Visit Website"
+                class="w-9 h-9 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs"
+              >
+                <Globe class="w-4 h-4" />
+              </a>
+
+              <!-- Button 2: Share Contact Details -->
+              <button 
+                type="button"
+                id="btn-share-contact"
+                title="Share Contact Info"
+                aria-label="Share Contact Details"
+                data-title="Delight Group LLC Contact"
+                data-text={`Delight Group LLC\nPhone: ${setup.phone}\nEmail: ${setup.email}\nAddress: ${setup.address}`}
+                data-url={websiteHref}
+                class="w-9 h-9 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs cursor-pointer"
+              >
+                <Share2 class="w-4 h-4" />
+              </button>
+
+              <!-- Button 3: Divisions & Portfolios Directory -->
+              <a 
+                href="/projects" 
+                title="Explore Divisions & Portfolio Projects"
+                aria-label="Explore Divisions & Projects"
+                class="w-9 h-9 rounded-lg border border-slate-200 hover:border-slate-300 flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs"
+              >
+                <Grid class="w-4 h-4" />
+              </a>
+
+              <!-- Copy toast alert -->
+              <div id="share-toast" class="absolute bottom-full left-0 mb-2 hidden bg-slate-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-md shadow-lg pointer-events-none transition-opacity">
+                Copied to clipboard!
+              </div>
             </div>
           </div>
         )}
@@ -215,27 +280,60 @@ const customEmails: any[] = setup.emails?.custom || [];
     </div>
   </div>
 
-  <!-- Slideshow script -->
+  <!-- Slideshow & Interactions script -->
   <script define:vars={{ isMulti, intervalMs, effect }}>
     document.addEventListener('DOMContentLoaded', () => {
+      // Slideshow logic
       const imgs = Array.from(document.querySelectorAll('.slideshow-img'));
-      if (!isMulti || imgs.length < 2) return;
-      let cur = 0;
-      const goTo = (next) => {
-        const prev = cur;
-        cur = next % imgs.length;
-        if (effect === 'slide') {
-          imgs[prev].classList.remove('translate-x-0','opacity-100'); imgs[prev].classList.add('-translate-x-full','opacity-0');
-          imgs[cur].classList.remove('translate-x-full','opacity-0'); imgs[cur].classList.add('translate-x-0','opacity-100');
-        } else if (effect === 'zoom') {
-          imgs[prev].classList.remove('opacity-100','scale-100'); imgs[prev].classList.add('opacity-0','scale-110');
-          imgs[cur].classList.remove('opacity-0','scale-110'); imgs[cur].classList.add('opacity-100','scale-100');
-        } else {
-          imgs[prev].classList.remove('opacity-100'); imgs[prev].classList.add('opacity-0');
-          imgs[cur].classList.remove('opacity-0');   imgs[cur].classList.add('opacity-100');
+      if (isMulti && imgs.length >= 2) {
+        let cur = 0;
+        const goTo = (next) => {
+          const prev = cur;
+          cur = next % imgs.length;
+          if (effect === 'slide') {
+            imgs[prev].classList.remove('translate-x-0','opacity-100'); imgs[prev].classList.add('-translate-x-full','opacity-0');
+            imgs[cur].classList.remove('translate-x-full','opacity-0'); imgs[cur].classList.add('translate-x-0','opacity-100');
+          } else if (effect === 'zoom') {
+            imgs[prev].classList.remove('opacity-100','scale-100'); imgs[prev].classList.add('opacity-0','scale-110');
+            imgs[cur].classList.remove('opacity-0','scale-110'); imgs[cur].classList.add('opacity-100','scale-100');
+          } else {
+            imgs[prev].classList.remove('opacity-100'); imgs[prev].classList.add('opacity-0');
+            imgs[cur].classList.remove('opacity-0');   imgs[cur].classList.add('opacity-100');
+          }
+        };
+        setInterval(() => goTo(cur + 1), intervalMs);
+      }
+
+      // Share button interaction
+      const shareBtn = document.getElementById('btn-share-contact');
+      const shareToast = document.getElementById('share-toast');
+
+      shareBtn?.addEventListener('click', async () => {
+        const title = shareBtn.getAttribute('data-title') || 'Delight Group LLC';
+        const text = shareBtn.getAttribute('data-text') || '';
+        const url = window.location.href;
+
+        if (navigator.share) {
+          try {
+            await navigator.share({ title, text, url });
+            return;
+          } catch (err) {
+            // User cancelled or share failed, fallback to clipboard
+          }
         }
-      };
-      setInterval(() => goTo(cur + 1), intervalMs);
+
+        // Clipboard fallback
+        try {
+          const shareContent = `${text}\n${url}`.trim();
+          await navigator.clipboard.writeText(shareContent);
+          if (shareToast) {
+            shareToast.classList.remove('hidden');
+            setTimeout(() => shareToast.classList.add('hidden'), 2500);
+          }
+        } catch (err) {
+          alert('Contact info:\n' + text);
+        }
+      });
     });
   </script>
 
