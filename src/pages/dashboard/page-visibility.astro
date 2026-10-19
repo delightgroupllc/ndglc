@@ -1,7 +1,7 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
-import { Eye, EyeOff, ShieldAlert, Sparkles, CheckCircle2, Sliders, Globe, Layers, AlertTriangle, Camera } from '@lucide/astro';
+import { Eye, EyeOff, ShieldAlert, Sparkles, CheckCircle2, Sliders, Globe, Layers, AlertTriangle, Camera, Wrench, Clock, Ban, Lock, HelpCircle } from '@lucide/astro';
 
 // Fetch current site visibility settings
 let settingsMap: Record<string, string> = {
@@ -286,6 +286,73 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
             </div>
           </div>
 
+        </div>
+
+        <!-- Mode Legend: What Each Mode Does Simply -->
+        <div class="mx-6 mb-6 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+          <div class="flex items-center gap-2 mb-3">
+            <HelpCircle class="w-4 h-4 text-indigo-600" />
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Mode Legend &mdash; What Each Setting Does Simply</h3>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            
+            <!-- Do Not Show -->
+            <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-3xs space-y-1">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <Ban class="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span>Do Not Show</span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">
+                <strong>Silent Redirect:</strong> Hides page from navigation and instantly redirects visitors back to homepage (<code>/</code>).
+              </p>
+            </div>
+
+            <!-- Access Restricted -->
+            <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-3xs space-y-1">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <Lock class="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span>Restricted</span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">
+                <strong>Lock Screen:</strong> Shows a formal "Access Restricted" security screen with authorized sales contact links.
+              </p>
+            </div>
+
+            <!-- Maintenance Mode -->
+            <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-3xs space-y-1">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <Wrench class="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>Maintenance</span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">
+                <strong>Scheduled Work:</strong> Displays maintenance notice advising visitors that systems will be back shortly.
+              </p>
+            </div>
+
+            <!-- Coming Soon -->
+            <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-3xs space-y-1">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <Sparkles class="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span>Coming Soon</span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">
+                <strong>Launch Teaser:</strong> Shows a preview teaser announcing that a brand-new experience is coming soon.
+              </p>
+            </div>
+
+            <!-- Under Update -->
+            <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-3xs space-y-1">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <Clock class="w-3.5 h-3.5 text-cyan-600 shrink-0" />
+                <span>Under Update</span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">
+                <strong>Catalog Refresh:</strong> Informs clients that technical specifications and commercial pricing are refreshing.
+              </p>
+            </div>
+
+          </div>
         </div>
       </div>
 
