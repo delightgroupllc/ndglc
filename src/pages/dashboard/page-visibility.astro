@@ -582,13 +582,13 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
 
         saveToast?.classList.remove('hidden');
         saveToast?.classList.add('flex');
+        
+        // Refresh page after a brief moment so sidebar and page components re-render with the latest visibility state
         setTimeout(() => {
-          saveToast?.classList.add('hidden');
-          saveToast?.classList.remove('flex');
-        }, 4500);
+          window.location.reload();
+        }, 600);
       } catch (err: any) {
         alert('Error saving visibility settings: ' + err.message);
-      } finally {
         saveBtn.removeAttribute('disabled');
         saveBtn.classList.remove('opacity-75', 'cursor-wait');
         saveBtn.innerHTML = `
