@@ -8,7 +8,7 @@ const projectSchema = z.object({
   description: z.string().min(1),
   completion_date: z.string().optional(),
   featured_image: z.string().url().optional().or(z.literal('')),
-  division: z.enum(['dtl', 'dgs']).default('dtl'),
+  division: z.enum(['dtl', 'dgs', 'dv']).default('dtl'),
   status: z.enum(['active', 'archived']).default('active'),
   featured: z.boolean().default(false),
   gallery_images: z.array(z.string().url()).optional().default([])
