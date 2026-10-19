@@ -48,7 +48,8 @@ let connectionStatuses = {
   vercel: { status: 'CONNECTED', environment: 'production' }
 };
 
-let dbConnected = true;
+let recentInvoices: any[] = [];
+let recentInquiries: any[] = [];
 
 try {
   // 1. Get Project/Categories count
@@ -96,7 +97,13 @@ try {
   metrics.invoicesByStatus = invRes.rows.reduce((acc: any, row: any) => {
     acc[row.payment_status] = { count: parseInt(row.count), value: parseFloat(row.value) };
     return acc;
-  }, { paid: { count: 0, value: 0 }, unpaid: { count: 0, value: 0 }, overdue: { count: 0, value: 0 }, cancelled: { count: 0, value: 0 }, draft: { count: 0, value: 0 } });
+  }, { 
+    paid: { count: 0, value: 0 }, 
+    unpaid: { count: 0, value: 0 }, 
+    overdue: { count: 0, value: 0 }, 
+    cancelled: { count: 0, value: 0 }, 
+    draft: { count: 0, value: 0 } 
+  });
 
   // 9. Products Breakdown
   const prodRes = await query("SELECT COUNT(*) as count, status FROM products GROUP BY status");
@@ -113,17 +120,19 @@ try {
   }, { active: 0, archived: 0 });
 
   // 11. Recent activity for rich operational stream
-  let recentInvoices: any[] = [];
   try {
     const rInv = await query("SELECT invoice_number, customer_name, total_amount, payment_status, created_at FROM invoices ORDER BY created_at DESC LIMIT 5");
     recentInvoices = rInv.rows;
-  } catch {}
+  } catch (err: any) {
+    console.warn('Recent invoices fetch failed:', err?.message);
+  }
 
-  let recentInquiries: any[] = [];
   try {
-    const rInq = await query("SELECT name, email, division, subject, created_at, is_resolved FROM contacts ORDER BY created_at DESC LIMIT 5");
+    const rInq = await query("SELECT name, email, inquiry_type, message, created_at, is_resolved FROM contacts ORDER BY created_at DESC LIMIT 5");
     recentInquiries = rInq.rows;
-  } catch {}
+  } catch (err: any) {
+    console.warn('Recent inquiries fetch failed:', err?.message);
+  }
 
   // 12. Load connection status checks
   connectionStatuses.db.status = 'ONLINE';
@@ -496,11 +505,11 @@ connectionStatuses.vercel.environment = process.env.NODE_ENV === 'production' ? 
                     <div class="py-3 flex items-center justify-between hover:bg-slate-50/80 px-2 rounded-lg transition-colors">
                       <div class="min-w-0 pr-3">
                         <p class="text-xs font-bold text-slate-900 truncate">{inq.name || 'Anonymous User'}</p>
-                        <p class="text-[11px] text-slate-500 truncate mt-0.5">{inq.subject || inq.email}</p>
+                        <p class="text-[11px] text-slate-500 truncate mt-0.5">{inq.message || inq.email}</p>
                       </div>
                       <div class="text-right shrink-0">
                         <span class="text-[10px] font-bold uppercase text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                          {inq.division || 'General'}
+                          {inq.inquiry_type || 'General'}
                         </span>
                         <p class="text-[9px] text-slate-400 mt-1">
                           {inq.is_resolved ? '✓ Resolved' : '● Open'}
