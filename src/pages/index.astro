@@ -227,110 +227,140 @@ activeHero.imageUrl = formatImgUrl(activeHero.imageUrl);
   <!-- Division Feature Rows (Displayed for active divisions) -->
   {(enableDtl || enableDgs || enableDv) && (
     <section id="divisions" class="w-full">
-      <!-- DTL Division Row (Subdivided into Lighting & CCTV Camera Departments if CCTV is active) -->
+      <!-- DTL Division Row: When CCTV is enabled, show dual department architecture. When CCTV is disabled, show matching full-width split row like DGS and DV -->
       {enableDtl && (
-        <div class="bg-[#1a3c34] text-white py-20 px-6 sm:px-16 border-b border-white/10">
-          <div class="max-w-7xl mx-auto">
-            
-            <!-- Division Header -->
-            <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6 text-left animate-on-scroll">
-              <div>
-                <span class="text-xs font-black text-[#aacec3] uppercase tracking-[0.3em] mb-3 block">Division Architecture</span>
-                <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl text-white font-semibold tracking-tight">Delight Technical Lighting</h2>
-              </div>
-              <p class="text-xs sm:text-sm text-white/80 max-w-xl leading-relaxed font-sans">
-                {enableCctv 
-                  ? <>Precision engineering for high-profile architectural volumes. Our division is gracefully organized into two specialized branches: <strong class="text-[#aacec3]">Architectural Lighting</strong> and our <strong class="text-amber-400">CCTV & Surveillance Camera Department</strong>.</>
-                  : <>Precision engineering for high-profile architectural volumes, museum-grade technical lighting, and circadian-aligned systems across demanding luxury environments.</>
-                }
-              </p>
-            </div>
-
-          <!-- Dual Department Subdivision Grid -->
-          <div class={`grid ${enableCctv ? 'grid-cols-1 lg:grid-cols-2 gap-8' : 'grid-cols-1 max-w-3xl mx-auto'}`}>
-            
-            <!-- Department 1: Architectural Technical Lighting -->
-            <div class="group relative bg-[#132c26] border border-white/15 rounded-3xl overflow-hidden hover:border-[#aacec3]/60 transition-all duration-500 flex flex-col justify-between text-left shadow-2xl animate-on-scroll">
-              <div class="relative h-64 sm:h-72 overflow-hidden">
-                <img 
-                  alt="High-end architectural lighting showroom" 
-                  class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-108" 
-                  src={formatImgUrl(setup.dtl_banner.imageUrl)}
-                />
-                <div class="absolute inset-0 bg-gradient-to-t from-[#132c26] via-transparent to-transparent"></div>
-                <div class="absolute top-4 left-4 bg-[#1a3c34]/95 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider text-[#aacec3] border border-white/15 flex items-center gap-2 shadow-lg">
-                  <Lightbulb class="w-3.5 h-3.5 text-amber-400" />
-                  <span>Lighting Department</span>
-                </div>
-              </div>
+        enableCctv ? (
+          <div class="bg-[#1a3c34] text-white py-20 px-6 sm:px-16 border-b border-white/10">
+            <div class="max-w-7xl mx-auto">
               
-              <div class="p-8 flex-1 flex flex-col justify-between space-y-6">
+              <!-- Division Header -->
+              <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6 text-left animate-on-scroll">
                 <div>
-                  <span class="text-[10px] font-black uppercase tracking-widest text-[#aacec3] block mb-2">{setup.dtl_banner.subtitle || 'Architectural Precision'}</span>
-                  <h3 class="font-serif text-2xl sm:text-3xl text-white font-bold mb-3">{setup.dtl_banner.title || 'Technical Lighting'}</h3>
-                  <p class="font-sans text-xs sm:text-sm text-white/85 leading-relaxed">
-                    {setup.dtl_banner.description}
-                  </p>
+                  <span class="text-xs font-black text-[#aacec3] uppercase tracking-[0.3em] mb-3 block">Division Architecture</span>
+                  <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl text-white font-semibold tracking-tight">Delight Technical Lighting</h2>
                 </div>
+                <p class="text-xs sm:text-sm text-white/80 max-w-xl leading-relaxed font-sans">
+                  Precision engineering for high-profile architectural volumes. Our division is gracefully organized into two specialized branches: <strong class="text-[#aacec3]">Architectural Lighting</strong> and our <strong class="text-amber-400">CCTV & Surveillance Camera Department</strong>.
+                </p>
+              </div>
+
+              <!-- Dual Department Subdivision Grid -->
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 
-                <div class="pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <span class="text-[11px] font-bold text-[#aacec3] uppercase tracking-wider">Indoor • Outdoor • Facade • Smart Controls</span>
+                <!-- Department 1: Architectural Technical Lighting -->
+                <div class="group relative bg-[#132c26] border border-white/15 rounded-3xl overflow-hidden hover:border-[#aacec3]/60 transition-all duration-500 flex flex-col justify-between text-left shadow-2xl animate-on-scroll">
+                  <div class="relative h-64 sm:h-72 overflow-hidden">
+                    <img 
+                      alt="High-end architectural lighting showroom" 
+                      class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-108" 
+                      src={formatImgUrl(setup.dtl_banner.imageUrl)}
+                    />
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#132c26] via-transparent to-transparent"></div>
+                    <div class="absolute top-4 left-4 bg-[#1a3c34]/95 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider text-[#aacec3] border border-white/15 flex items-center gap-2 shadow-lg">
+                      <Lightbulb class="w-3.5 h-3.5 text-amber-400" />
+                      <span>Lighting Department</span>
+                    </div>
+                  </div>
+                  
+                  <div class="p-8 flex-1 flex flex-col justify-between space-y-6">
+                    <div>
+                      <span class="text-[10px] font-black uppercase tracking-widest text-[#aacec3] block mb-2">{setup.dtl_banner.subtitle || 'Architectural Precision'}</span>
+                      <h3 class="font-serif text-2xl sm:text-3xl text-white font-bold mb-3">{setup.dtl_banner.title || 'Technical Lighting'}</h3>
+                      <p class="font-sans text-xs sm:text-sm text-white/85 leading-relaxed">
+                        {setup.dtl_banner.description}
+                      </p>
+                    </div>
+                    
+                    <div class="pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <span class="text-[11px] font-bold text-[#aacec3] uppercase tracking-wider">Indoor • Outdoor • Facade • Smart Controls</span>
+                      <a 
+                        href={setup.dtl_banner.ctaUrl} 
+                        class="inline-flex items-center justify-center gap-2 bg-white text-[#01261f] hover:bg-[#c5eadf] px-6 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300 shadow-md shrink-0"
+                      >
+                        <span>Explore Lighting</span>
+                        <ArrowRight class="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Department 2: CCTV & Security Cameras Department -->
+                <div class="group relative bg-[#132c26] border border-amber-500/40 rounded-3xl overflow-hidden hover:border-amber-400 transition-all duration-500 flex flex-col justify-between text-left shadow-2xl animate-on-scroll">
+                  <div class="relative h-64 sm:h-72 overflow-hidden">
+                    <img 
+                      alt="High-performance commercial CCTV surveillance system" 
+                      class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-108" 
+                      src="https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&q=80&w=900"
+                    />
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#132c26] via-transparent to-transparent"></div>
+                    <div class="absolute top-4 left-4 bg-amber-500 text-slate-950 px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-2 shadow-lg">
+                      <Video class="w-3.5 h-3.5 text-slate-950" />
+                      <span>CCTV & Camera Department</span>
+                    </div>
+                    <div class="absolute top-4 right-4 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md">
+                      New Expansion
+                    </div>
+                  </div>
+
+                  <div class="p-8 flex-1 flex flex-col justify-between space-y-6">
+                    <div>
+                      <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block mb-2">Security & Surveillance</span>
+                      <h3 class="font-serif text-2xl sm:text-3xl text-white font-bold mb-3">Commercial CCTV & Surveillance Systems</h3>
+                      <p class="font-sans text-xs sm:text-sm text-white/85 leading-relaxed">
+                        Commercial-grade surveillance engineered for high-security commercial developments, luxury estates, and public venues across the UAE. Featuring Ultra HD 4K Sony sensors, deep-learning AI detection, vandal-proof IK10 housings, and SIRA-certified recording architectures.
+                      </p>
+                    </div>
+
+                    <div class="pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <span class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Dome • PTZ • Bullet • NVR • SIRA Ready</span>
+                      <a 
+                        href="/delighttechnicallighting/cctv" 
+                        class="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 px-6 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300 shadow-lg shadow-amber-500/20 shrink-0"
+                      >
+                        <span>Explore CCTV Department</span>
+                        <ArrowRight class="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        ) : (
+          <!-- Full-Width Split Row (Identical architecture to DGS and DV) -->
+          <div class="flex flex-col lg:flex-row min-h-[600px] bg-[#1a3c34] text-white border-b border-white/10">
+            <div class="flex-1 flex flex-col justify-center px-6 sm:px-16 py-20 text-left animate-on-scroll">
+              <div class="max-w-xl mx-auto lg:ml-auto lg:mr-12 space-y-6">
+                <div>
+                  <span class="text-xs font-black text-[#aacec3] uppercase tracking-[0.3em] mb-4 block">{setup.dtl_banner.subtitle || 'Division Architecture'}</span>
+                  <h2 class="font-serif text-4xl sm:text-5xl text-white leading-tight tracking-tight mb-4">{setup.dtl_banner.title || 'Delight Technical Lighting'}</h2>
+                </div>
+                <p class="font-sans text-md sm:text-lg text-white/85 leading-relaxed font-light">
+                  {setup.dtl_banner.description}
+                </p>
+                <div class="pt-2">
+                  <span class="text-xs font-bold text-[#aacec3] uppercase tracking-wider block mb-4">Indoor • Outdoor • Facade • Architectural Specs</span>
                   <a 
                     href={setup.dtl_banner.ctaUrl} 
-                    class="inline-flex items-center justify-center gap-2 bg-white text-[#01261f] hover:bg-[#c5eadf] px-6 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300 shadow-md shrink-0"
+                    class="inline-flex items-center justify-center gap-2 bg-white text-[#01261f] hover:bg-[#c5eadf] px-10 py-4 text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300 shadow-xl shrink-0"
                   >
-                    <span>Explore Lighting</span>
-                    <ArrowRight class="w-3.5 h-3.5" />
+                    <span>{setup.dtl_banner.ctaText || 'Explore Lighting'}</span>
+                    <ArrowRight class="w-4 h-4" />
                   </a>
                 </div>
               </div>
             </div>
-
-            <!-- Department 2: CCTV & Security Cameras Department (NEW EXPANSION) -->
-            {enableCctv && (
-              <div class="group relative bg-[#132c26] border border-amber-500/40 rounded-3xl overflow-hidden hover:border-amber-400 transition-all duration-500 flex flex-col justify-between text-left shadow-2xl animate-on-scroll">
-                <div class="relative h-64 sm:h-72 overflow-hidden">
-                  <img 
-                    alt="High-performance commercial CCTV surveillance system" 
-                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-108" 
-                    src="https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&q=80&w=900"
-                  />
-                  <div class="absolute inset-0 bg-gradient-to-t from-[#132c26] via-transparent to-transparent"></div>
-                  <div class="absolute top-4 left-4 bg-amber-500 text-slate-950 px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-2 shadow-lg">
-                    <Video class="w-3.5 h-3.5 text-slate-950" />
-                    <span>CCTV & Camera Department</span>
-                  </div>
-                  <div class="absolute top-4 right-4 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md">
-                    New Expansion
-                  </div>
-                </div>
-
-                <div class="p-8 flex-1 flex flex-col justify-between space-y-6">
-                  <div>
-                    <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block mb-2">Security & Surveillance</span>
-                    <h3 class="font-serif text-2xl sm:text-3xl text-white font-bold mb-3">Commercial CCTV & Surveillance Systems</h3>
-                    <p class="font-sans text-xs sm:text-sm text-white/85 leading-relaxed">
-                      Commercial-grade surveillance engineered for high-security commercial developments, luxury estates, and public venues across the UAE. Featuring Ultra HD 4K Sony sensors, deep-learning AI detection, vandal-proof IK10 housings, and SIRA-certified recording architectures.
-                    </p>
-                  </div>
-
-                  <div class="pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <span class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Dome • PTZ • Bullet • NVR • SIRA Ready</span>
-                    <a 
-                      href="/delighttechnicallighting/cctv" 
-                      class="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 px-6 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300 shadow-lg shadow-amber-500/20 shrink-0"
-                    >
-                      <span>Explore CCTV Department</span>
-                      <ArrowRight class="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
-
+            <div class="flex-1 min-h-[400px] lg:min-h-0 relative overflow-hidden bg-[#132c26]">
+              <img 
+                alt="Delight Technical Lighting architectural showcase" 
+                class="w-full h-full object-cover hover:scale-105 transition-transform duration-700" 
+                src={formatImgUrl(setup.dtl_banner.imageUrl)}
+              />
+              <div class="absolute inset-0 bg-gradient-to-r from-[#1a3c34] via-transparent to-transparent lg:block hidden"></div>
+            </div>
           </div>
-        </div>
-        </div>
+        )
       )}
 
       <!-- DGS Division Row (Image Left / Text Right) -->
