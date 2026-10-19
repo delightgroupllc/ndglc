@@ -125,10 +125,11 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
               <div class="mt-4 pt-3 border-t border-slate-200/60">
                 <label class="block text-[10px] font-bold text-slate-650 uppercase tracking-wider mb-1">When Disabled Show Page:</label>
                 <select name="dtl_state" class="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500">
-                  <option value="maintenance" selected={settingsMap['dtl_state'] === 'maintenance'}>🛠️ Maintenance Mode</option>
+                  <option value="none" selected={settingsMap['dtl_state'] === 'none'}>🚫 Do Not Show (Redirect to Home)</option>
+                  <option value="restricted" selected={settingsMap['dtl_state'] === 'restricted'}>🔒 Access Restricted Notice</option>
+                  <option value="maintenance" selected={settingsMap['dtl_state'] === 'maintenance' || !settingsMap['dtl_state']}>🛠️ Maintenance Mode</option>
                   <option value="coming_soon" selected={settingsMap['dtl_state'] === 'coming_soon'}>✨ Coming Soon Page</option>
                   <option value="under_update" selected={settingsMap['dtl_state'] === 'under_update'}>⏳ Under Update Notice</option>
-                  <option value="restricted" selected={settingsMap['dtl_state'] === 'restricted'}>🔒 Access Restricted</option>
                 </select>
               </div>
             </div>
@@ -172,10 +173,11 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
               <div class="mt-4 pt-3 border-t border-slate-200/60">
                 <label class="block text-[10px] font-bold text-slate-650 uppercase tracking-wider mb-1">When Disabled Show Page:</label>
                 <select name="dgs_state" class="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                  <option value="maintenance" selected={settingsMap['dgs_state'] === 'maintenance'}>🛠️ Maintenance Mode</option>
+                  <option value="none" selected={settingsMap['dgs_state'] === 'none'}>🚫 Do Not Show (Redirect to Home)</option>
+                  <option value="restricted" selected={settingsMap['dgs_state'] === 'restricted'}>🔒 Access Restricted Notice</option>
+                  <option value="maintenance" selected={settingsMap['dgs_state'] === 'maintenance' || !settingsMap['dgs_state']}>🛠️ Maintenance Mode</option>
                   <option value="coming_soon" selected={settingsMap['dgs_state'] === 'coming_soon'}>✨ Coming Soon Page</option>
                   <option value="under_update" selected={settingsMap['dgs_state'] === 'under_update'}>⏳ Under Update Notice</option>
-                  <option value="restricted" selected={settingsMap['dgs_state'] === 'restricted'}>🔒 Access Restricted</option>
                 </select>
               </div>
             </div>
@@ -219,10 +221,11 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
               <div class="mt-4 pt-3 border-t border-slate-200/60">
                 <label class="block text-[10px] font-bold text-slate-650 uppercase tracking-wider mb-1">When Disabled Show Page:</label>
                 <select name="dv_state" class="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-violet-500">
-                  <option value="maintenance" selected={settingsMap['dv_state'] === 'maintenance'}>🛠️ Maintenance Mode</option>
+                  <option value="none" selected={settingsMap['dv_state'] === 'none'}>🚫 Do Not Show (Redirect to Home)</option>
+                  <option value="restricted" selected={settingsMap['dv_state'] === 'restricted'}>🔒 Access Restricted Notice</option>
+                  <option value="maintenance" selected={settingsMap['dv_state'] === 'maintenance' || !settingsMap['dv_state']}>🛠️ Maintenance Mode</option>
                   <option value="coming_soon" selected={settingsMap['dv_state'] === 'coming_soon'}>✨ Coming Soon Page</option>
                   <option value="under_update" selected={settingsMap['dv_state'] === 'under_update'}>⏳ Under Update Notice</option>
-                  <option value="restricted" selected={settingsMap['dv_state'] === 'restricted'}>🔒 Access Restricted</option>
                 </select>
               </div>
             </div>
@@ -266,10 +269,11 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
               <div class="mt-4 pt-3 border-t border-slate-200/60">
                 <label class="block text-[10px] font-bold text-slate-650 uppercase tracking-wider mb-1">When Disabled Show Page:</label>
                 <select name="cctv_state" class="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500">
-                  <option value="maintenance" selected={settingsMap['cctv_state'] === 'maintenance'}>🛠️ Maintenance Mode</option>
+                  <option value="none" selected={settingsMap['cctv_state'] === 'none'}>🚫 Do Not Show (Redirect to Home)</option>
+                  <option value="restricted" selected={settingsMap['cctv_state'] === 'restricted'}>🔒 Access Restricted Notice</option>
+                  <option value="maintenance" selected={settingsMap['cctv_state'] === 'maintenance' || !settingsMap['cctv_state']}>🛠️ Maintenance Mode</option>
                   <option value="coming_soon" selected={settingsMap['cctv_state'] === 'coming_soon'}>✨ Coming Soon Page</option>
                   <option value="under_update" selected={settingsMap['cctv_state'] === 'under_update'}>⏳ Under Update Notice</option>
-                  <option value="restricted" selected={settingsMap['cctv_state'] === 'restricted'}>🔒 Access Restricted</option>
                 </select>
               </div>
             </div>

@@ -123,6 +123,9 @@ try {
   if (!enableCctv || !enableDtl) {
     isCctvDisabled = true;
   }
+  if (isCctvDisabled && cctvState === 'none') {
+    return Astro.redirect('/');
+  }
 } catch (e) {}
 
 try {

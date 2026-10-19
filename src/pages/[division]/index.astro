@@ -33,6 +33,11 @@ try {
       divisionStateMode = r.value;
     }
   });
+
+  // If division is disabled and mode is "none" (Do Not Show), redirect immediately to home
+  if (isDivisionDisabled && divisionStateMode === 'none') {
+    return Astro.redirect('/');
+  }
 } catch (e) {}
 
 const divSlug = division!.toLowerCase();

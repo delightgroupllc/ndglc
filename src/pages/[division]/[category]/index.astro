@@ -34,6 +34,10 @@ try {
       divisionStateMode = r.value;
     }
   });
+
+  if (isDivisionDisabled && divisionStateMode === 'none') {
+    return Astro.redirect('/');
+  }
 } catch (e) {}
 
 const dbDivSlug = isDtl ? 'delighttechnicallighting' : (isDv ? 'delightvision' : 'delightgreenscapes');
