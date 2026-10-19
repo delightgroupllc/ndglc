@@ -191,19 +191,8 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
 
       /* Secondary nav transition on scroll */
       #secondary-nav-container {
-        transition: opacity 0.25s ease, transform 0.25s ease, max-height 0.25s ease;
-        max-height: 60px;
-        opacity: 1;
-        transform: translateY(0);
-        will-change: transform, opacity, max-height;
-        overflow: visible; /* MUST be visible so dropdown panels aren't clipped */
-      }
-      header.hide-secondary:not(:hover) #secondary-nav-container {
-        max-height: 0;
-        opacity: 0;
-        transform: translateY(-8px);
-        pointer-events: none;
-        overflow: hidden; /* Only clip during collapsed state */
+        border-top: 1px solid rgba(241, 245, 249, 0.8);
+        background-color: #ffffff;
       }
     </style>
   </head>
@@ -895,36 +884,16 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
         });
       });
 
-      // Header scroll shrinking logo badge and direction sensing with flicker prevention
+      // Header scroll shrinking logo badge
       const headerEl = document.querySelector('header');
-      let lastScrollY = window.scrollY;
       let isTicking = false;
-      const SCROLL_THRESHOLD = 15; // Minimum delta to prevent micro-jitter flickering
 
       const updateHeaderScroll = () => {
-        const currentScrollY = window.scrollY;
-        const delta = currentScrollY - lastScrollY;
-        
-        if (currentScrollY > 40) {
+        if (window.scrollY > 30) {
           headerEl?.classList.add('scrolled');
-          
-          // Require significant scroll delta to avoid micro-movement toggling
-          if (Math.abs(delta) > SCROLL_THRESHOLD) {
-            if (delta > 0 && currentScrollY > 120) {
-              // Scrolling down firmly past header
-              headerEl?.classList.add('hide-secondary');
-            } else if (delta < 0) {
-              // Scrolling up
-              headerEl?.classList.remove('hide-secondary');
-            }
-            lastScrollY = currentScrollY;
-          }
         } else {
           headerEl?.classList.remove('scrolled');
-          headerEl?.classList.remove('hide-secondary');
-          lastScrollY = currentScrollY;
         }
-        
         isTicking = false;
       };
 
