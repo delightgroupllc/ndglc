@@ -79,8 +79,7 @@ const navGroups = [
   {
     label: 'Operations',
     items: [
-
-      { id: 'portfolio', name: 'Portfolio', href: '/dashboard/projects', icon: FolderGit2, show: isAdmin && sidebarVisibility.enable_portfolio },
+      { id: 'projects', name: 'Projects', href: '/dashboard/projects', icon: FolderGit2, show: isAdmin || isModerator },
       { id: 'articles', name: 'Articles / Press', href: '/dashboard/articles', icon: ScrollText, show: (isAdmin || isModerator) && sidebarVisibility.enable_articles },
       { id: 'resources', name: 'Resources', href: '/dashboard/resources', icon: Image, show: isAdmin || isModerator },
       { id: 'library', name: 'Downloads', href: '/dashboard/downloads', icon: DownloadCloud, show: hasDashboardAccess && sidebarVisibility.enable_downloads },
@@ -252,7 +251,7 @@ const navItems = navGroups.flatMap(g => g.items);
           const visibleItems = group.items.filter(item => item.show);
           if (visibleItems.length === 0) return null;
           
-          const hasActiveItem = visibleItems.some(item => item.id === activeItem);
+          const hasActiveItem = visibleItems.some(item => item.id === activeItem || (['portfolio', 'projects'].includes(item.id) && ['portfolio', 'projects'].includes(activeItem)));
 
           if (!group.label) {
             return visibleItems.map(item => {
@@ -284,7 +283,7 @@ const navItems = navGroups.flatMap(g => g.items);
               </summary>
               <div class="mt-0.5 space-y-0.5">
                 {visibleItems.map(item => {
-                  const isActive = activeItem === item.id;
+                  const isActive = activeItem === item.id || (['portfolio', 'projects'].includes(item.id) && ['portfolio', 'projects'].includes(activeItem));
                   return (
                     <a
                       href={item.href}

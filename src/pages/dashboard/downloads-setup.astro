@@ -176,6 +176,49 @@ const fv = downloadsSetup.fileView;
           </div>
         </div>
 
+        <!-- GOOGLE DRIVE LINK CONFIGURATOR -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-1.5 h-5 bg-blue-600 rounded-full"></div>
+              <div>
+                <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Google Drive Link</h2>
+                <p class="text-[10px] text-slate-400">Configures the "Open Google Drive" button on the downloads page</p>
+              </div>
+            </div>
+            {downloadsSetup.googleDriveLink && (
+              <a 
+                href={downloadsSetup.googleDriveLink} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                id="preview-drive-btn"
+                class="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-md transition"
+              >
+                <span>Test Link</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              </a>
+            )}
+          </div>
+          <div class="p-4 space-y-3">
+            <div>
+              <label class="text-[10px] font-semibold text-slate-500 block mb-1">Google Drive Folder / Asset URL</label>
+              <div class="relative">
+                <input 
+                  type="url" 
+                  name="googleDriveLink" 
+                  id="setup-drive-link-input"
+                  value={downloadsSetup.googleDriveLink || ''} 
+                  placeholder="https://drive.google.com/drive/folders/..." 
+                  class="w-full rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors" 
+                />
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+                When provided (and enabled in the Visibility Configurator), visitors will see the <strong class="text-slate-700">Open Google Drive</strong> button in the Downloads hero header.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <!-- CTA REQUIREMENT BANNER -->
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
           <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
@@ -283,7 +326,7 @@ const fv = downloadsSetup.fileView;
         ctaDescription: data.get('ctaDescription') || '',
         ctaBtnText: data.get('ctaBtnText') || '',
         ctaBtnLink: data.get('ctaBtnLink') || '',
-        googleDriveLink: (window as any).googleDriveLinkPreserved || '',
+        googleDriveLink: (data.get('googleDriveLink') as string || '').trim(),
         fileView: {
           layout:    data.get('fileLayout')    || 'grid',
           division:  data.get('fileDivision')  || 'all',
