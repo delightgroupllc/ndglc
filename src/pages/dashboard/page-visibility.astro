@@ -1,18 +1,24 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { query } from '../../lib/db';
-import { Eye, EyeOff, ShieldAlert, Sparkles, CheckCircle2, Sliders, Globe, Layers, AlertTriangle } from '@lucide/astro';
+import { Eye, EyeOff, ShieldAlert, Sparkles, CheckCircle2, Sliders, Globe, Layers, AlertTriangle, Camera } from '@lucide/astro';
 
 // Fetch current site visibility settings
 let settingsMap: Record<string, string> = {
   enable_dtl: 'true',
   enable_dgs: 'true',
+  enable_dvision: 'true',
+  enable_cctv: 'true',
   enable_downloads: 'true',
+  enable_downloads_drive: 'true',
   enable_about: 'true',
   enable_contact: 'true',
   enable_portfolio: 'true',
   enable_articles: 'true',
-  enable_dvision: 'true'
+  dtl_state: 'maintenance',
+  dgs_state: 'maintenance',
+  dv_state: 'maintenance',
+  cctv_state: 'maintenance'
 };
 
 try {
@@ -67,7 +73,7 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
     <div class="bg-amber-50/70 border border-amber-200/80 rounded-xl p-4 flex items-start gap-3 text-amber-800 text-xs">
       <AlertTriangle class="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
       <div class="leading-relaxed">
-        <strong class="font-bold">Public Experience Note:</strong> Turning off a division (like DTL or DGS) removes all public entry points (Navigation, Footer, Catalogs) and displays a graceful "Unavailable" notice if accessed directly via URL. Internal dashboard setup options remain accessible to administrators.
+        <strong class="font-bold">Visibility & Setup Synchronized:</strong> Toggling any division (DTL, DGS, Delight Vision) or DTL Camera Setup to hidden removes it from the public header/footer/homepage cards, hides its corresponding setup item from the dashboard sidebar navigation, and serves your selected offline state page (<span class="font-semibold text-amber-900">Maintenance Mode</span>, <span class="font-semibold text-amber-900">Coming Soon</span>, or <span class="font-semibold text-amber-900">Under Update</span>) on direct URL access.
       </div>
     </div>
 
@@ -83,109 +89,195 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
               <p class="text-[11px] text-slate-500">Global enable/disable switches for primary divisions (DTL & DGS)</p>
             </div>
           </div>
-          <span class="text-[11px] font-semibold text-slate-400">3 Divisions</span>
+          <span class="text-[11px] font-semibold text-slate-400">4 Core Entities</span>
         </div>
 
-        <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           
           <!-- DTL Toggle Card -->
-          <div id="card-dtl" class={`p-5 rounded-xl border transition-all ${isEnabled('enable_dtl') ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex items-start gap-3">
-                <div class="h-10 w-10 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 font-black text-sm shrink-0">
-                  DTL
+          <div id="card-dtl" class={`p-5 rounded-xl border flex flex-col justify-between transition-all ${isEnabled('enable_dtl') ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+            <div>
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3">
+                  <div class="h-10 w-10 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 font-black text-sm shrink-0">
+                    DTL
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-slate-900 text-sm">Delight Technical Lighting</h3>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Lighting fixtures, catalogs & specs.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 class="font-bold text-slate-900 text-sm">Delight Technical Lighting</h3>
-                  <p class="text-xs text-slate-500 mt-0.5">Indoor, outdoor & commercial lighting products and catalogs.</p>
-                </div>
+                
+                <!-- Toggle Switch -->
+                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input 
+                    type="checkbox" 
+                    name="enable_dtl" 
+                    id="input-enable_dtl"
+                    class="sr-only peer" 
+                    checked={isEnabled('enable_dtl')} 
+                  />
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                </label>
               </div>
-              
-              <!-- Toggle Switch -->
-              <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                <input 
-                  type="checkbox" 
-                  name="enable_dtl" 
-                  id="input-enable_dtl"
-                  class="sr-only peer" 
-                  checked={isEnabled('enable_dtl')} 
-                />
-                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
-              </label>
+
+              <!-- Offline State Mode Selector -->
+              <div class="mt-4 pt-3 border-t border-slate-200/60">
+                <label class="block text-[10px] font-bold text-slate-650 uppercase tracking-wider mb-1">When Disabled Show Page:</label>
+                <select name="dtl_state" class="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                  <option value="maintenance" selected={settingsMap['dtl_state'] === 'maintenance'}>🛠️ Maintenance Mode</option>
+                  <option value="coming_soon" selected={settingsMap['dtl_state'] === 'coming_soon'}>✨ Coming Soon Page</option>
+                  <option value="under_update" selected={settingsMap['dtl_state'] === 'under_update'}>⏳ Under Update Notice</option>
+                  <option value="restricted" selected={settingsMap['dtl_state'] === 'restricted'}>🔒 Access Restricted</option>
+                </select>
+              </div>
             </div>
 
             <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
-              <span class="text-slate-500 font-medium">Status in Navigation & Footer</span>
+              <span class="text-slate-500 font-medium">Public Status</span>
               <span id="badge-enable_dtl" class={`font-bold px-2 py-0.5 rounded-md ${isEnabled('enable_dtl') ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'}`}>
-                {isEnabled('enable_dtl') ? 'Active (Public)' : 'Disabled'}
+                {isEnabled('enable_dtl') ? 'Active (Public)' : 'Hidden / Paused'}
               </span>
             </div>
           </div>
 
           <!-- DGS Toggle Card -->
-          <div id="card-dgs" class={`p-5 rounded-xl border transition-all ${isEnabled('enable_dgs') ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex items-start gap-3">
-                <div class="h-10 w-10 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-black text-sm shrink-0">
-                  DGS
+          <div id="card-dgs" class={`p-5 rounded-xl border flex flex-col justify-between transition-all ${isEnabled('enable_dgs') ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+            <div>
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3">
+                  <div class="h-10 w-10 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-black text-sm shrink-0">
+                    DGS
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-slate-900 text-sm">Delight Greenscapes</h3>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Biophilic plants, nursery & landscape.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 class="font-bold text-slate-900 text-sm">Delight Greenscapes</h3>
-                  <p class="text-xs text-slate-500 mt-0.5">Landscape, biophilic plants, pots, planters & green solutions.</p>
-                </div>
+                
+                <!-- Toggle Switch -->
+                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input 
+                    type="checkbox" 
+                    name="enable_dgs" 
+                    id="input-enable_dgs"
+                    class="sr-only peer" 
+                    checked={isEnabled('enable_dgs')} 
+                  />
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
               </div>
-              
-              <!-- Toggle Switch -->
-              <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                <input 
-                  type="checkbox" 
-                  name="enable_dgs" 
-                  id="input-enable_dgs"
-                  class="sr-only peer" 
-                  checked={isEnabled('enable_dgs')} 
-                />
-                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-              </label>
+
+              <!-- Offline State Mode Selector -->
+              <div class="mt-4 pt-3 border-t border-slate-200/60">
+                <label class="block text-[10px] font-bold text-slate-650 uppercase tracking-wider mb-1">When Disabled Show Page:</label>
+                <select name="dgs_state" class="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                  <option value="maintenance" selected={settingsMap['dgs_state'] === 'maintenance'}>🛠️ Maintenance Mode</option>
+                  <option value="coming_soon" selected={settingsMap['dgs_state'] === 'coming_soon'}>✨ Coming Soon Page</option>
+                  <option value="under_update" selected={settingsMap['dgs_state'] === 'under_update'}>⏳ Under Update Notice</option>
+                  <option value="restricted" selected={settingsMap['dgs_state'] === 'restricted'}>🔒 Access Restricted</option>
+                </select>
+              </div>
             </div>
 
             <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
-              <span class="text-slate-500 font-medium">Status in Navigation & Footer</span>
+              <span class="text-slate-500 font-medium">Public Status</span>
               <span id="badge-enable_dgs" class={`font-bold px-2 py-0.5 rounded-md ${isEnabled('enable_dgs') ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
-                {isEnabled('enable_dgs') ? 'Active (Public)' : 'Disabled'}
+                {isEnabled('enable_dgs') ? 'Active (Public)' : 'Hidden / Paused'}
               </span>
             </div>
           </div>
 
           <!-- DV Toggle Card -->
-          <div id="card-dvision" class={`p-5 rounded-xl border transition-all ${isEnabled('enable_dvision') ? 'border-violet-200 bg-violet-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex items-start gap-3">
-                <div class="h-10 w-10 rounded-lg bg-violet-100 border border-violet-200 flex items-center justify-center text-violet-800 font-black text-sm shrink-0">
-                  DV
+          <div id="card-dvision" class={`p-5 rounded-xl border flex flex-col justify-between transition-all ${isEnabled('enable_dvision') ? 'border-violet-200 bg-violet-50/30' : 'border-slate-200 bg-slate-50/50'}`}>
+            <div>
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3">
+                  <div class="h-10 w-10 rounded-lg bg-violet-100 border border-violet-200 flex items-center justify-center text-violet-800 font-black text-sm shrink-0">
+                    DV
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-slate-900 text-sm">Delight Vision</h3>
+                    <p class="text-[11px] text-slate-500 mt-0.5">SIRA CCTV, biometrics & ELV systems.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 class="font-bold text-slate-900 text-sm">Delight Vision</h3>
-                  <p class="text-xs text-slate-500 mt-0.5">SIRA-compliant CCTV, biometric access, and smart ELV systems.</p>
-                </div>
+
+                <!-- Toggle Switch -->
+                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    name="enable_dvision"
+                    id="input-enable_dvision"
+                    class="sr-only peer"
+                    checked={isEnabled('enable_dvision')}
+                  />
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                </label>
               </div>
 
-              <!-- Toggle Switch -->
-              <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  name="enable_dvision"
-                  id="input-enable_dvision"
-                  class="sr-only peer"
-                  checked={isEnabled('enable_dvision')}
-                />
-                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
-              </label>
+              <!-- Offline State Mode Selector -->
+              <div class="mt-4 pt-3 border-t border-slate-200/60">
+                <label class="block text-[10px] font-bold text-slate-650 uppercase tracking-wider mb-1">When Disabled Show Page:</label>
+                <select name="dv_state" class="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-violet-500">
+                  <option value="maintenance" selected={settingsMap['dv_state'] === 'maintenance'}>🛠️ Maintenance Mode</option>
+                  <option value="coming_soon" selected={settingsMap['dv_state'] === 'coming_soon'}>✨ Coming Soon Page</option>
+                  <option value="under_update" selected={settingsMap['dv_state'] === 'under_update'}>⏳ Under Update Notice</option>
+                  <option value="restricted" selected={settingsMap['dv_state'] === 'restricted'}>🔒 Access Restricted</option>
+                </select>
+              </div>
             </div>
 
             <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
-              <span class="text-slate-500 font-medium">Status in Navigation & Footer</span>
+              <span class="text-slate-500 font-medium">Public Status</span>
               <span id="badge-enable_dvision" class={`font-bold px-2 py-0.5 rounded-md ${isEnabled('enable_dvision') ? 'bg-violet-100 text-violet-800' : 'bg-slate-200 text-slate-600'}`}>
-                {isEnabled('enable_dvision') ? 'Active (Public)' : 'Disabled'}
+                {isEnabled('enable_dvision') ? 'Active (Public)' : 'Hidden / Paused'}
+              </span>
+            </div>
+          </div>
+
+          <!-- DTL Camera / CCTV Department Toggle Card -->
+          <div id="card-cctv" class={`p-5 rounded-xl border flex flex-col justify-between transition-all ${isEnabled('enable_cctv') ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'}`}>
+            <div>
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-3">
+                  <div class="h-10 w-10 rounded-lg bg-amber-500 border border-amber-600 flex items-center justify-center text-slate-950 font-black text-sm shrink-0">
+                    <Camera class="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-slate-900 text-sm">DTL Camera Setup</h3>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Commercial 4K CCTV, PTZ optics & NVRs.</p>
+                  </div>
+                </div>
+
+                <!-- Toggle Switch -->
+                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    name="enable_cctv"
+                    id="input-enable_cctv"
+                    class="sr-only peer"
+                    checked={isEnabled('enable_cctv')}
+                  />
+                  <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                </label>
+              </div>
+
+              <!-- Offline State Mode Selector -->
+              <div class="mt-4 pt-3 border-t border-slate-200/60">
+                <label class="block text-[10px] font-bold text-slate-650 uppercase tracking-wider mb-1">When Disabled Show Page:</label>
+                <select name="cctv_state" class="w-full text-xs font-semibold rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                  <option value="maintenance" selected={settingsMap['cctv_state'] === 'maintenance'}>🛠️ Maintenance Mode</option>
+                  <option value="coming_soon" selected={settingsMap['cctv_state'] === 'coming_soon'}>✨ Coming Soon Page</option>
+                  <option value="under_update" selected={settingsMap['cctv_state'] === 'under_update'}>⏳ Under Update Notice</option>
+                  <option value="restricted" selected={settingsMap['cctv_state'] === 'restricted'}>🔒 Access Restricted</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500 font-medium">Public Status</span>
+              <span id="badge-enable_cctv" class={`font-bold px-2 py-0.5 rounded-md ${isEnabled('enable_cctv') ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'}`}>
+                {isEnabled('enable_cctv') ? 'Active (Public)' : 'Hidden / Paused'}
               </span>
             </div>
           </div>
@@ -217,6 +309,21 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" name="enable_downloads" class="sr-only peer" checked={isEnabled('enable_downloads')} />
               <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <!-- Downloads Open Google Drive Button -->
+          <div class="p-4 rounded-xl border border-emerald-200/70 bg-emerald-50/20 flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <h4 class="font-bold text-slate-900 text-xs">Downloads Google Drive Button</h4>
+                <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Button</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5">Show "Open Google Drive" on /downloads</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" name="enable_downloads_drive" class="sr-only peer" checked={isEnabled('enable_downloads_drive')} />
+              <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
             </label>
           </div>
 
@@ -282,71 +389,71 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
     const dtlInput = document.querySelector('input[name="enable_dtl"]') as HTMLInputElement;
     const dgsInput = document.querySelector('input[name="enable_dgs"]') as HTMLInputElement;
     const dvInput = document.querySelector('input[name="enable_dvision"]') as HTMLInputElement;
+    const cctvInput = document.querySelector('input[name="enable_cctv"]') as HTMLInputElement;
     const cardDtl = document.getElementById('card-dtl');
     const badgeDtl = document.getElementById('badge-enable_dtl');
     const cardDgs = document.getElementById('card-dgs');
     const badgeDgs = document.getElementById('badge-enable_dgs');
     const cardDv = document.getElementById('card-dvision');
     const badgeDv = document.getElementById('badge-enable_dvision');
+    const cardCctv = document.getElementById('card-cctv');
+    const badgeCctv = document.getElementById('badge-enable_cctv');
 
     const updateCardUI = () => {
       if (dtlInput && cardDtl && badgeDtl) {
         if (dtlInput.checked) {
-          cardDtl.className = 'p-5 rounded-xl border transition-all border-amber-200 bg-amber-50/30';
+          cardDtl.className = 'p-5 rounded-xl border flex flex-col justify-between transition-all border-amber-200 bg-amber-50/30';
           badgeDtl.className = 'font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800';
           badgeDtl.textContent = 'Active (Public)';
         } else {
-          cardDtl.className = 'p-5 rounded-xl border transition-all border-slate-200 bg-slate-50/50';
+          cardDtl.className = 'p-5 rounded-xl border flex flex-col justify-between transition-all border-slate-200 bg-slate-50/50';
           badgeDtl.className = 'font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600';
-          badgeDtl.textContent = 'Disabled';
+          badgeDtl.textContent = 'Hidden / Paused';
         }
       }
 
       if (dgsInput && cardDgs && badgeDgs) {
         if (dgsInput.checked) {
-          cardDgs.className = 'p-5 rounded-xl border transition-all border-emerald-200 bg-emerald-50/30';
+          cardDgs.className = 'p-5 rounded-xl border flex flex-col justify-between transition-all border-emerald-200 bg-emerald-50/30';
           badgeDgs.className = 'font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800';
           badgeDgs.textContent = 'Active (Public)';
         } else {
-          cardDgs.className = 'p-5 rounded-xl border transition-all border-slate-200 bg-slate-50/50';
+          cardDgs.className = 'p-5 rounded-xl border flex flex-col justify-between transition-all border-slate-200 bg-slate-50/50';
           badgeDgs.className = 'font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600';
-          badgeDgs.textContent = 'Disabled';
+          badgeDgs.textContent = 'Hidden / Paused';
         }
       }
 
       if (dvInput && cardDv && badgeDv) {
         if (dvInput.checked) {
-          cardDv.className = 'p-5 rounded-xl border transition-all border-violet-200 bg-violet-50/30';
+          cardDv.className = 'p-5 rounded-xl border flex flex-col justify-between transition-all border-violet-200 bg-violet-50/30';
           badgeDv.className = 'font-bold px-2 py-0.5 rounded-md bg-violet-100 text-violet-800';
           badgeDv.textContent = 'Active (Public)';
         } else {
-          cardDv.className = 'p-5 rounded-xl border transition-all border-slate-200 bg-slate-50/50';
+          cardDv.className = 'p-5 rounded-xl border flex flex-col justify-between transition-all border-slate-200 bg-slate-50/50';
           badgeDv.className = 'font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600';
-          badgeDv.textContent = 'Disabled';
+          badgeDv.textContent = 'Hidden / Paused';
+        }
+      }
+
+      if (cctvInput && cardCctv && badgeCctv) {
+        if (cctvInput.checked) {
+          cardCctv.className = 'p-5 rounded-xl border flex flex-col justify-between transition-all border-amber-300 bg-amber-50/40';
+          badgeCctv.className = 'font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800';
+          badgeCctv.textContent = 'Active (Public)';
+        } else {
+          cardCctv.className = 'p-5 rounded-xl border flex flex-col justify-between transition-all border-slate-200 bg-slate-50/50';
+          badgeCctv.className = 'font-bold px-2 py-0.5 rounded-md bg-slate-200 text-slate-600';
+          badgeCctv.textContent = 'Hidden / Paused';
         }
       }
     };
 
-    // Enforce at least one division active rule and update UI
-    dtlInput?.addEventListener('change', () => {
-      if (!dtlInput.checked && dgsInput && !dgsInput.checked) {
-        alert('At least one division (DTL or DGS) must remain enabled for the public website.');
-        dgsInput.checked = true;
-      }
-      updateCardUI();
-    });
-
-    dgsInput?.addEventListener('change', () => {
-      if (!dgsInput.checked && dtlInput && !dtlInput.checked) {
-        alert('At least one division (DTL or DGS) must remain enabled for the public website.');
-        dtlInput.checked = true;
-      }
-      updateCardUI();
-    });
-
-    dvInput?.addEventListener('change', () => {
-      updateCardUI();
-    });
+    // Listeners for UI state update
+    dtlInput?.addEventListener('change', updateCardUI);
+    dgsInput?.addEventListener('change', updateCardUI);
+    dvInput?.addEventListener('change', updateCardUI);
+    cctvInput?.addEventListener('change', updateCardUI);
 
     // Run initial sync on page load
     updateCardUI();
@@ -356,18 +463,30 @@ const isEnabled = (key: string) => settingsMap[key] === 'true' || settingsMap[ke
       if (!form) return;
 
       const formData = new FormData(form);
-      const keys = ['enable_dtl', 'enable_dgs', 'enable_dvision', 'enable_downloads', 'enable_about', 'enable_contact', 'enable_portfolio', 'enable_articles'];
+      const booleanKeys = [
+        'enable_dtl', 
+        'enable_dgs', 
+        'enable_dvision', 
+        'enable_cctv',
+        'enable_downloads', 
+        'enable_downloads_drive',
+        'enable_about', 
+        'enable_contact', 
+        'enable_portfolio', 
+        'enable_articles'
+      ];
       
       const payload: Record<string, string> = {};
-      keys.forEach(k => {
+      booleanKeys.forEach(k => {
         payload[k] = formData.has(k) ? 'true' : 'false';
       });
 
-      if (payload['enable_dtl'] === 'false' && payload['enable_dgs'] === 'false') {
-        alert('Cannot disable both DTL and DGS. At least one division must remain active.');
-        if (dtlInput) dtlInput.checked = true;
-        payload['enable_dtl'] = 'true';
-      }
+      // Save offline state selections (maintenance / coming_soon / under_update / restricted)
+      const stateKeys = ['dtl_state', 'dgs_state', 'dv_state', 'cctv_state'];
+      stateKeys.forEach(k => {
+        const val = formData.get(k);
+        if (val) payload[k] = String(val);
+      });
 
       saveBtn.setAttribute('disabled', 'true');
       saveBtn.classList.add('opacity-75', 'cursor-wait');

@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import DivisionStateNotice from '../../components/ui/DivisionStateNotice.astro';
 import { query } from '../../lib/db';
 import { 
   ShieldCheck, 
@@ -107,6 +108,23 @@ let cctvSetup: any = {
   }
 };
 
+let isCctvDisabled = false;
+let cctvState = 'maintenance';
+
+try {
+  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_cctv', 'enable_dtl', 'cctv_state')");
+  let enableCctv = true;
+  let enableDtl = true;
+  visRes.rows.forEach((r: any) => {
+    if (r.key === 'enable_cctv') enableCctv = r.value === 'true' || r.value === '1';
+    if (r.key === 'enable_dtl') enableDtl = r.value === 'true' || r.value === '1';
+    if (r.key === 'cctv_state') cctvState = r.value || 'maintenance';
+  });
+  if (!enableCctv || !enableDtl) {
+    isCctvDisabled = true;
+  }
+} catch (e) {}
+
 try {
   const settingsRes = await query("SELECT value FROM settings WHERE key = 'cctv_setup' LIMIT 1");
   if (settingsRes.rows.length > 0 && settingsRes.rows[0].value) {
@@ -137,10 +155,17 @@ const parseSpecs = (specsRaw: any) => {
 ---
 
 <Layout 
-  title="CCTV & Security Surveillance Cameras | Delight Technical Lighting UAE"
+  title={isCctvDisabled ? "DTL Camera Department Unavailable" : "CCTV & Security Surveillance Cameras | Delight Technical Lighting UAE"}
   description="Delight Technical Lighting (DTL) supplies enterprise 4K CCTV surveillance cameras, AI vandal-proof dome cameras, 360° PTZ systems, long-range bullet cameras, and SIRA-compliant NVR systems across Dubai and the UAE."
 >
-  <!-- Main Page Wrapper -->
+  {isCctvDisabled ? (
+    <div class="py-12">
+      <DivisionStateNotice 
+        divisionName="DTL Camera & CCTV Department"
+        mode={cctvState as any}
+      />
+    </div>
+  ) : (
   <main class="min-h-screen bg-slate-900 text-white selection:bg-amber-500 selection:text-slate-950">
 
     <!-- Hero Section with Surveillance Ambient Background -->
@@ -512,4 +537,5 @@ const parseSpecs = (specsRaw: any) => {
       });
     });
   </script>
+  )}
 </Layout>

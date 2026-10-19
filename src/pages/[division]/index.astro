@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import DivisionStateNotice from '../../components/ui/DivisionStateNotice.astro';
 import { query } from '../../lib/db';
 import { ArrowRight, Activity, Cpu, Shield, Database, LayoutGrid, ChevronRight, AlertTriangle, Zap, Sparkles, Users, Trophy, Calendar, Video, Camera, ShieldCheck } from '@lucide/astro';
 import DelightVisionSection from '../../components/division/DelightVisionSection.astro';
@@ -16,15 +17,22 @@ if (!isDtl && !isDgs && !isDv) {
 }
 
 let isDivisionDisabled = false;
+let divisionStateMode = 'maintenance';
 
 // Check if division is globally enabled in settings
 try {
   const checkKey = isDtl ? 'enable_dtl' : (isDv ? 'enable_dvision' : 'enable_dgs');
-  const visRes = await query('SELECT value FROM settings WHERE key = $1', [checkKey]);
-  if (visRes.rows.length > 0 && (visRes.rows[0].value === 'false' || visRes.rows[0].value === '0')) {
-    isDivisionDisabled = true;
-    Astro.response.status = 403;
-  }
+  const stateKey = isDtl ? 'dtl_state' : (isDv ? 'dv_state' : 'dgs_state');
+  const visRes = await query('SELECT key, value FROM settings WHERE key IN ($1, $2)', [checkKey, stateKey]);
+  visRes.rows.forEach((r: any) => {
+    if (r.key === checkKey && (r.value === 'false' || r.value === '0')) {
+      isDivisionDisabled = true;
+      Astro.response.status = 503;
+    }
+    if (r.key === stateKey && r.value) {
+      divisionStateMode = r.value;
+    }
+  });
 } catch (e) {}
 
 const divSlug = division!.toLowerCase();
@@ -356,26 +364,14 @@ const discoverRoomItems = isDtl && rooms.length > 0
     }));
 ---
 
-<Layout title={isDivisionDisabled ? "Permission Denied" : `${divName} | Catalog & Solutions`} description={divDescription}>
+<Layout title={isDivisionDisabled ? `${divName} Unavailable` : `${divName} | Catalog & Solutions`} description={divDescription}>
   {isDivisionDisabled ? (
-    <div class="min-h-[70vh] bg-[#fbfaf7] flex items-center justify-center p-6 text-center">
-      <div class="max-w-md w-full bg-white rounded-2xl p-8 border border-slate-200 shadow-xl space-y-6">
-        <div class="h-16 w-16 bg-red-50 text-red-600 rounded-2xl border border-red-100 flex items-center justify-center mx-auto shadow-sm">
-          <Shield class="w-8 h-8" />
-        </div>
-        <div class="space-y-2">
-          <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-700">Access Restricted</span>
-          <h1 class="text-2xl font-serif font-semibold text-slate-900">Permission Denied</h1>
-          <p class="text-xs text-slate-500 leading-relaxed font-medium">
-            Access to {divName} division pages has been disabled by site administrators.
-          </p>
-        </div>
-        <div class="pt-4 border-t border-slate-100">
-          <a href="/" class="inline-flex items-center justify-center w-full py-3.5 px-6 bg-[#0f2d1d] hover:bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition shadow-sm">
-            Return to Homepage
-          </a>
-        </div>
-      </div>
+    <div class="py-12">
+      <DivisionStateNotice 
+        divisionName={divName}
+        divisionSlug={divSlug}
+        mode={divisionStateMode as any}
+      />
     </div>
   ) : isDv ? (
     <DelightVisionSection 

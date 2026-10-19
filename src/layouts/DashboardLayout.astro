@@ -9,6 +9,7 @@ import {
 } from '@lucide/astro';
 import ResourcePicker from '../components/ui/ResourcePicker.astro';
 import ThemeSelector from '../components/ui/ThemeSelector.astro';
+import { query } from '../lib/db';
 
 interface Props {
   title: string;
@@ -27,7 +28,30 @@ const isModerator = roles.includes('moderator');
 const isFinance = roles.includes('finance');
 const isSecurity = roles.includes('security');
 
-// Build Sidebar Navigation items dynamically based on roles/permissions
+// Fetch division and page visibility settings to dynamically hide sidebar links
+let sidebarVisibility: Record<string, boolean> = {
+  enable_dtl: true,
+  enable_dgs: true,
+  enable_dvision: true,
+  enable_cctv: true,
+  enable_downloads: true,
+  enable_about: true,
+  enable_contact: true,
+  enable_portfolio: true,
+  enable_articles: true
+};
+
+try {
+  const visKeys = Object.keys(sidebarVisibility);
+  const visRes = await query('SELECT key, value FROM settings WHERE key = ANY($1)', [visKeys]);
+  visRes.rows.forEach((r: any) => {
+    sidebarVisibility[r.key] = r.value === 'true' || r.value === '1';
+  });
+} catch (e) {
+  // Database offline or settings table missing
+}
+
+// Build Sidebar Navigation items dynamically based on roles/permissions and visibility configurator
 const hasDashboardAccess = roles.includes('admin') || roles.includes('moderator') || roles.includes('user') || roles.includes('finance') || roles.includes('security');
 
 const navGroups = [
@@ -41,13 +65,13 @@ const navGroups = [
     label: 'Pages',
     items: [
       { id: 'home-setup', name: 'Home Setup', href: '/dashboard/home-setup', icon: Image, show: isAdmin },
-      { id: 'about-setup', name: 'About Us Setup', href: '/dashboard/about-setup', icon: Image, show: isAdmin },
-      { id: 'contact-setup', name: 'Contact Us Setup', href: '/dashboard/contact-setup', icon: Image, show: isAdmin },
-      { id: 'downloads-setup', name: 'Downloads Setup', href: '/dashboard/downloads-setup', icon: Image, show: isAdmin },
-      { id: 'dtl-setup', name: 'DTL Lighting Setup', href: '/dashboard/dtl-setup', icon: Image, show: isAdmin },
-      { id: 'cctv-setup', name: 'DTL Camera Setup', href: '/dashboard/cctv-setup', icon: Camera, show: isAdmin },
-      { id: 'dgs-setup', name: 'DGS Setup', href: '/dashboard/dgs-setup', icon: Image, show: isAdmin },
-      { id: 'dv-setup', name: 'Delight Vision Setup', href: '/dashboard/dv-setup', icon: Video, show: isAdmin },
+      { id: 'about-setup', name: 'About Us Setup', href: '/dashboard/about-setup', icon: Image, show: isAdmin && sidebarVisibility.enable_about },
+      { id: 'contact-setup', name: 'Contact Us Setup', href: '/dashboard/contact-setup', icon: Image, show: isAdmin && sidebarVisibility.enable_contact },
+      { id: 'downloads-setup', name: 'Downloads Setup', href: '/dashboard/downloads-setup', icon: Image, show: isAdmin && sidebarVisibility.enable_downloads },
+      { id: 'dtl-setup', name: 'DTL Lighting Setup', href: '/dashboard/dtl-setup', icon: Image, show: isAdmin && sidebarVisibility.enable_dtl },
+      { id: 'cctv-setup', name: 'DTL Camera Setup', href: '/dashboard/cctv-setup', icon: Camera, show: isAdmin && sidebarVisibility.enable_dtl && sidebarVisibility.enable_cctv },
+      { id: 'dgs-setup', name: 'DGS Setup', href: '/dashboard/dgs-setup', icon: Image, show: isAdmin && sidebarVisibility.enable_dgs },
+      { id: 'dv-setup', name: 'Delight Vision Setup', href: '/dashboard/dv-setup', icon: Video, show: isAdmin && sidebarVisibility.enable_dvision },
       { id: 'site-disclaimers', name: 'Site Disclaimers', href: '/dashboard/site-disclaimers', icon: ScrollText, show: isAdmin },
       { id: 'page-visibility', name: 'Visibility Configurator', href: '/dashboard/page-visibility', icon: Settings2, show: isAdmin },
     ]
@@ -56,10 +80,10 @@ const navGroups = [
     label: 'Operations',
     items: [
 
-      { id: 'portfolio', name: 'Portfolio', href: '/dashboard/projects', icon: FolderGit2, show: isAdmin },
-      { id: 'articles', name: 'Articles / Press', href: '/dashboard/articles', icon: ScrollText, show: isAdmin || isModerator },
+      { id: 'portfolio', name: 'Portfolio', href: '/dashboard/projects', icon: FolderGit2, show: isAdmin && sidebarVisibility.enable_portfolio },
+      { id: 'articles', name: 'Articles / Press', href: '/dashboard/articles', icon: ScrollText, show: (isAdmin || isModerator) && sidebarVisibility.enable_articles },
       { id: 'resources', name: 'Resources', href: '/dashboard/resources', icon: Image, show: isAdmin || isModerator },
-      { id: 'library', name: 'Downloads', href: '/dashboard/downloads', icon: DownloadCloud, show: hasDashboardAccess },
+      { id: 'library', name: 'Downloads', href: '/dashboard/downloads', icon: DownloadCloud, show: hasDashboardAccess && sidebarVisibility.enable_downloads },
       { id: 'partners', name: 'Trusted Partners', href: '/dashboard/partners', icon: Handshake, show: isAdmin || isModerator },
     ]
   },

@@ -1,0 +1,129 @@
+---
+import { ShieldAlert, Clock, Sparkles, Wrench, ArrowLeft, Home, Mail, Phone } from '@lucide/astro';
+
+interface Props {
+  divisionName?: string;
+  divisionSlug?: string;
+  badge?: string;
+  mode?: 'maintenance' | 'coming_soon' | 'under_update' | 'restricted';
+  title?: string;
+  message?: string;
+}
+
+const {
+  divisionName = 'This Division',
+  divisionSlug,
+  badge,
+  mode = 'maintenance',
+  title,
+  message
+} = Astro.props;
+
+// Default copy per mode
+const modeConfigs = {
+  maintenance: {
+    defaultBadge: 'Scheduled Maintenance',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    iconColor: 'bg-amber-50 text-amber-600 border-amber-200',
+    defaultTitle: 'Platform Under Scheduled Maintenance',
+    defaultMsg: `${divisionName} catalog, engineering datasheets, and portals are temporarily undergoing performance and system optimizations. We will be back online shortly.`,
+    accentColor: 'from-amber-500 to-amber-700'
+  },
+  coming_soon: {
+    defaultBadge: 'Launching Soon',
+    badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    iconColor: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+    defaultTitle: 'Something Extraordinary Is In The Works',
+    defaultMsg: `We are preparing the next-generation experience for ${divisionName}. Stay tuned as we finalize our architectural portfolio and brand-new product line.`,
+    accentColor: 'from-indigo-600 to-violet-700'
+  },
+  under_update: {
+    defaultBadge: 'Catalog & Specs Updating',
+    badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    iconColor: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+    defaultTitle: 'Content & Specifications Under Update',
+    defaultMsg: `Our technical specifications, commercial pricing, and regulatory compliance data for ${divisionName} are currently being refreshed for the current quarter.`,
+    accentColor: 'from-cyan-600 to-blue-700'
+  },
+  restricted: {
+    defaultBadge: 'Access Restricted',
+    badgeColor: 'bg-rose-100 text-rose-800 border-rose-200',
+    iconColor: 'bg-rose-50 text-rose-600 border-rose-200',
+    defaultTitle: 'Division Access Restricted',
+    defaultMsg: `Public access to ${divisionName} has been temporarily paused by site administrators.`,
+    accentColor: 'from-rose-600 to-rose-800'
+  }
+};
+
+const current = modeConfigs[mode] || modeConfigs.maintenance;
+const displayBadge = badge || current.defaultBadge;
+const displayTitle = title || current.defaultTitle;
+const displayMsg = message || current.defaultMsg;
+---
+
+<div class="min-h-[75vh] bg-[#fbfaf8] flex items-center justify-center p-6 text-center select-none">
+  <div class="max-w-xl w-full bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/90 shadow-2xl shadow-slate-200/50 space-y-7 relative overflow-hidden text-center">
+    
+    <!-- Top accent gradient bar -->
+    <div class={`absolute top-0 inset-x-0 h-2 bg-gradient-to-r ${current.accentColor}`}></div>
+
+    <!-- Icon Badge -->
+    <div class="flex justify-center">
+      <div class={`h-20 w-20 rounded-2xl border flex items-center justify-center shadow-inner ${current.iconColor}`}>
+        {mode === 'maintenance' && <Wrench class="w-10 h-10 animate-pulse" />}
+        {mode === 'coming_soon' && <Sparkles class="w-10 h-10 animate-bounce" />}
+        {mode === 'under_update' && <Clock class="w-10 h-10 animate-spin" />}
+        {mode === 'restricted' && <ShieldAlert class="w-10 h-10" />}
+      </div>
+    </div>
+
+    <!-- Headers & Content -->
+    <div class="space-y-3">
+      <div class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest border shadow-3xs" class:list={[current.badgeColor]}>
+        <span class="w-2 h-2 rounded-full bg-current animate-ping"></span>
+        <span>{displayBadge}</span>
+      </div>
+
+      <h1 class="text-2xl sm:text-3xl font-serif font-bold text-slate-900 tracking-tight leading-snug">
+        {displayTitle}
+      </h1>
+
+      <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal max-w-md mx-auto">
+        {displayMsg}
+      </p>
+    </div>
+
+    <!-- Direct Contact Options -->
+    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-150 text-left space-y-2">
+      <p class="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Urgent inquiries or procurement orders:</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        <a href="mailto:sales@delightgroupllc.com" class="flex items-center gap-2 text-slate-650 hover:text-slate-900 font-medium p-2 rounded-lg bg-white border border-slate-200/70 transition">
+          <Mail class="w-4 h-4 text-slate-400 shrink-0" />
+          <span class="truncate">sales@delightgroupllc.com</span>
+        </a>
+        <a href="tel:+97143472022" class="flex items-center gap-2 text-slate-650 hover:text-slate-900 font-medium p-2 rounded-lg bg-white border border-slate-200/70 transition">
+          <Phone class="w-4 h-4 text-slate-400 shrink-0" />
+          <span>+971 4 347 2022</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+      <a 
+        href="/" 
+        class="inline-flex items-center justify-center gap-2 w-full sm:w-auto py-3 px-6 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition shadow-md"
+      >
+        <Home class="w-4 h-4" />
+        <span>Return to Homepage</span>
+      </a>
+      <a 
+        href="/contact" 
+        class="inline-flex items-center justify-center gap-2 w-full sm:w-auto py-3 px-6 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold text-xs uppercase tracking-widest rounded-xl transition"
+      >
+        <span>Contact Delight Group</span>
+      </a>
+    </div>
+
+  </div>
+</div>

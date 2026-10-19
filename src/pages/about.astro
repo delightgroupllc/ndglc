@@ -18,11 +18,13 @@ try {
 
 let enableDtl = true;
 let enableDgs = true;
+let enableDv = true;
 try {
-  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs')");
+  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs', 'enable_dvision')");
   visRes.rows.forEach((r: any) => {
     if (r.key === 'enable_dtl') enableDtl = r.value === 'true' || r.value === '1';
     if (r.key === 'enable_dgs') enableDgs = r.value === 'true' || r.value === '1';
+    if (r.key === 'enable_dvision') enableDv = r.value === 'true' || r.value === '1';
   });
 } catch (e) {}
 
@@ -35,7 +37,7 @@ const defaultAboutSetup = {
   },
   definition: {
     title: "Redefining the supply experience in the UAE.",
-    description1: "We are not engineers or contractors. We are passionate resellers who believe great products — beautiful lighting and thriving plants — should be straightforward to source.",
+    description1: "We are not engineers or contractors. We are passionate resellers who believe great products — beautiful lighting, thriving plants, and dependable surveillance systems — should be straightforward to source.",
     description2: "We work with homeowners, interior designers, fitout contractors, hotel developers, and facility managers who want a dependable supply partner they can count on. As a new company entering the UAE market, our commitment is simple: honest pricing, genuine products, and service that makes you want to come back."
   },
   division_dtl: {
@@ -46,9 +48,13 @@ const defaultAboutSetup = {
     title: "Delight Greenscapes",
     desc: "We supply curated indoor and outdoor plants, decorative pots, and planters to residences, offices, hotels, and commercial developments. Whether you need a single statement palm for your living room or bulk greenery for a hotel lobby fitout, Greenscapes is your UAE source."
   },
+  division_dv: {
+    title: "Delight Vision",
+    desc: "We supply cutting-edge SIRA-compliant CCTV security systems, AI-powered IP cameras, Network Video Recorders (NVR), and extra-low voltage (ELV) solutions. Engineered to deliver rock-solid visual surveillance and asset protection for residences, hospitality hubs, and commercial estates across the UAE."
+  },
   vision: {
     title: "Our Vision",
-    content: "To become the UAE's most trusted supplier of premium lighting and plants — valued for quality, transparency, and dependable service."
+    content: "To become the UAE's most trusted supplier of premium lighting, plants, and security systems — valued for quality, transparency, and dependable service."
   },
   mission: {
     title: "Our Mission",
@@ -175,7 +181,7 @@ const setup = aboutSetup || defaultAboutSetup;
       </section>
 
       <!-- Section 3: Our Specialist Divisions - Rich Warm Linen Background -->
-      {(enableDtl || enableDgs) && (
+      {(enableDtl || enableDgs || enableDv) && (
         <section class="bg-[#f5f3eb] border-b border-slate-200/50 py-20 sm:py-24 animate-on-scroll">
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
             <!-- Main header -->
@@ -248,7 +254,7 @@ const setup = aboutSetup || defaultAboutSetup;
 
               <!-- Division Row 2: Delight Greenscapes -->
               {enableDgs && (
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-6">
+                <div class={`grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-6 ${enableDv ? 'border-b border-slate-200/40 pb-12' : ''}`}>
                   <!-- Left: Logo showing standardized white box styling -->
                   <div class="lg:col-span-4 flex justify-start lg:justify-center">
                     <div class="w-full max-w-[240px] aspect-square rounded-2xl bg-white border border-slate-200/60 shadow-sm flex items-center justify-center p-6 transition-transform duration-500 hover:scale-105">
@@ -295,6 +301,65 @@ const setup = aboutSetup || defaultAboutSetup;
                         class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#0f2d1d] hover:text-emerald-800 transition-colors border-b border-[#0f2d1d]/20 hover:border-[#0f2d1d]/85 pb-0.5"
                       >
                         <span>Explore Greenscapes</span>
+                        <ArrowRight class="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <!-- Division Row 3: Delight Vision -->
+              {enableDv && (
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center py-6">
+                  <!-- Left: Logo showing standardized white box styling -->
+                  <div class="lg:col-span-4 flex justify-start lg:justify-center">
+                    <div class="w-full max-w-[240px] aspect-square rounded-2xl bg-white border border-slate-200/60 shadow-sm flex items-center justify-center p-6 transition-transform duration-500 hover:scale-105">
+                      <img 
+                        src="/dvs.png" 
+                        alt="Delight Vision Division Logo" 
+                        class="w-full h-auto max-h-[80%] object-contain"
+                      />
+                    </div>
+                  </div>
+                  <!-- Right details -->
+                  <div class="lg:col-span-8 text-left space-y-6">
+                    <div class="flex items-start gap-4">
+                      <span class="text-4xl font-serif text-slate-300 font-extrabold leading-none">{[enableDtl, enableDgs].filter(Boolean).length === 2 ? '03' : [enableDtl, enableDgs].filter(Boolean).length === 1 ? '02' : '01'}</span>
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <h3 class="text-2xl font-serif text-violet-900 font-medium leading-none">{setup.division_dv?.title || 'Delight Vision'}</h3>
+                          <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-violet-100 text-violet-800">New Division</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="text-slate-555 font-semibold text-xs sm:text-sm leading-relaxed">
+                      {setup.division_dv?.desc || 'Cutting-edge SIRA-compliant CCTV security systems, AI-powered IP cameras, Network Video Recorders (NVR), and extra-low voltage (ELV) solutions.'}
+                    </p>
+                    <!-- Bullets grid -->
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-wider text-slate-800">
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-violet-700"></span>
+                        <span>SIRA-Certified CCTV</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-violet-700"></span>
+                        <span>AI Dome & PTZ Optics</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-violet-700"></span>
+                        <span>NVR & Cloud Storage</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-violet-700"></span>
+                        <span>Biometrics & ELV Systems</span>
+                      </div>
+                    </div>
+                    <div class="pt-2">
+                      <a 
+                        href="/delightvision" 
+                        class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-violet-900 hover:text-violet-950 transition-colors border-b border-violet-900/20 hover:border-violet-900/85 pb-0.5"
+                      >
+                        <span>Explore Delight Vision</span>
                         <ArrowRight class="w-3.5 h-3.5" />
                       </a>
                     </div>

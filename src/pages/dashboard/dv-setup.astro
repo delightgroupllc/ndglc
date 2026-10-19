@@ -1,10 +1,11 @@
 ---
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import ProjectForm from '../../components/forms/ProjectForm.astro';
 import { query } from '../../lib/db';
 import { 
   ShieldCheck, Video, Monitor, Tablet, Smartphone, 
   ExternalLink, RotateCcw, Save, CheckCircle2, Sparkles, 
-  Layers, Lock, Cpu, Image, FolderGit2, Phone, Mail, MapPin
+  Layers, Lock, Cpu, Image, FolderGit2, Phone, Mail, MapPin, PlusCircle
 } from '@lucide/astro';
 
 let dvSetup: any = {
@@ -69,6 +70,7 @@ const selectedProjects = homepageProjectIds
 ---
 
 <DashboardLayout title="Delight Vision Setup | Delight Group LLC" activeItem="dv-setup">
+  <ProjectForm />
 
   <!-- Mobile Viewport Tabs Switcher -->
   <div class="flex border-b border-slate-200 bg-white p-1 rounded-xl shadow-3xs lg:hidden shrink-0 mb-4 select-none">
@@ -265,7 +267,17 @@ const selectedProjects = homepageProjectIds
               <FolderGit2 class="w-4 h-4" />
               <span>Delight Vision Homepage Projects</span>
             </div>
-            <span class="text-[10px] text-slate-400 font-bold">{selectedProjects.length} Selected</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] text-slate-400 font-bold">{selectedProjects.length} Selected</span>
+              <button
+                type="button"
+                onclick="document.dispatchEvent(new CustomEvent('open-project-modal', { detail: { project: { division: 'dv' } } }))"
+                class="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors shadow-2xs"
+              >
+                <PlusCircle class="w-3.5 h-3.5" />
+                <span>Add Project</span>
+              </button>
+            </div>
           </div>
 
           <p class="text-xs text-slate-500">

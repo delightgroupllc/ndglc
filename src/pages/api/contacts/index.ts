@@ -21,7 +21,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Schema: name, email, phone, message, inquiry_type ('sales', 'support', 'partnership', 'general')
     // We map 'division' or context to inquiry_type for simplicity, defaulting to 'sales'
     let inquiryType = 'general';
-    if (parsed.division === 'Technical Lighting' || parsed.division === 'Greenscapes') {
+    if (parsed.division === 'Technical Lighting' || parsed.division === 'Greenscapes' || parsed.division === 'Delight Vision') {
       inquiryType = 'sales';
     }
 

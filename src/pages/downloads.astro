@@ -59,12 +59,14 @@ try {
 let enableDtl = true;
 let enableDgs = true;
 let enableDv = true;
+let enableDownloadsDrive = true;
 try {
-  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs', 'enable_dvision')");
+  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs', 'enable_dvision', 'enable_downloads_drive')");
   visRes.rows.forEach((r: any) => {
     if (r.key === 'enable_dtl') enableDtl = r.value === 'true' || r.value === '1';
     if (r.key === 'enable_dgs') enableDgs = r.value === 'true' || r.value === '1';
     if (r.key === 'enable_dvision') enableDv = r.value === 'true' || r.value === '1';
+    if (r.key === 'enable_downloads_drive') enableDownloadsDrive = r.value === 'true' || r.value === '1';
   });
 } catch (e) {}
 
@@ -100,7 +102,7 @@ const setup = downloadsSetup || defaultDownloadsSetup;
           <p class="text-slate-600 font-semibold text-sm sm:text-base leading-relaxed max-w-2xl">
             {setup.description}
           </p>
-          {setup.googleDriveLink && (
+          {enableDownloadsDrive && setup.googleDriveLink && (
             <div class="pt-4">
               <a href={setup.googleDriveLink} target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-8 py-4 bg-[#0f2d1d] hover:bg-[#071b11] text-white font-extrabold text-xs uppercase tracking-widest rounded-md transition-colors shadow-md">
                 Open Google Drive

@@ -48,7 +48,8 @@ let pageVisibility = {
   enable_contact: true,
   enable_portfolio: true,
   enable_articles: true,
-  enable_dvision: true
+  enable_dvision: true,
+  enable_cctv: true
 };
 
 try {
@@ -190,18 +191,19 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
 
       /* Secondary nav transition on scroll */
       #secondary-nav-container {
-        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: opacity 0.25s ease, transform 0.25s ease, max-height 0.25s ease;
         max-height: 60px;
         opacity: 1;
         transform: translateY(0);
+        will-change: transform, opacity, max-height;
         overflow: visible; /* MUST be visible so dropdown panels aren't clipped */
       }
       header.hide-secondary:not(:hover) #secondary-nav-container {
-        max-height: 0 !important;
-        opacity: 0 !important;
-        transform: translateY(-10px) !important;
-        pointer-events: none !important;
-        overflow: hidden !important; /* Only clip during collapse animation */
+        max-height: 0;
+        opacity: 0;
+        transform: translateY(-8px);
+        pointer-events: none;
+        overflow: hidden; /* Only clip during collapsed state */
       }
     </style>
   </head>
@@ -318,13 +320,15 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
                   </span>
                   <ChevronDown class="h-4 w-4 text-slate-450" />
                 </a>
-                <a href="/delighttechnicallighting/cctv" class="flex items-center justify-between p-2 pl-6 rounded-lg text-xs font-bold text-amber-600 hover:bg-amber-50 transition">
-                  <span class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                    <span>CCTV & Camera Department</span>
-                  </span>
-                  <span class="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-black">NEW</span>
-                </a>
+                {pageVisibility.enable_cctv && (
+                  <a href="/delighttechnicallighting/cctv" class="flex items-center justify-between p-2 pl-6 rounded-lg text-xs font-bold text-amber-600 hover:bg-amber-50 transition">
+                    <span class="flex items-center gap-2">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      <span>CCTV & Camera Department</span>
+                    </span>
+                    <span class="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-black">NEW</span>
+                  </a>
+                )}
               </>
             )}
 
@@ -448,19 +452,21 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
                             <li><a href="/delighttechnicallighting/commercial-lighting" class="hover:text-amber-600 hover:font-bold transition">Chandeliers</a></li>
                           </ul>
                         </div>
-                        <div>
-                          <h4 class="font-black text-amber-600 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-amber-200 flex items-center justify-between">
-                            <span>CCTV & Cameras</span>
-                            <span class="bg-amber-100 text-amber-800 text-[8px] font-black px-1.5 py-0.5 rounded">NEW</span>
-                          </h4>
-                          <ul class="space-y-2 text-xs text-slate-650 text-left">
-                            <li><a href="/delighttechnicallighting/cctv-ip-dome" class="hover:text-amber-600 hover:font-bold transition">IP & Dome Cameras</a></li>
-                            <li><a href="/delighttechnicallighting/cctv-ptz-smart" class="hover:text-amber-600 hover:font-bold transition">PTZ 360° Cameras</a></li>
-                            <li><a href="/delighttechnicallighting/cctv-bullet-outdoor" class="hover:text-amber-600 hover:font-bold transition">Outdoor Bullet</a></li>
-                            <li><a href="/delighttechnicallighting/cctv-nvr-storage" class="hover:text-amber-600 hover:font-bold transition">NVR & Storage</a></li>
-                            <li><a href="/delighttechnicallighting/cctv" class="hover:text-amber-600 font-bold text-amber-600 transition flex items-center gap-1">All CCTV Systems →</a></li>
-                          </ul>
-                        </div>
+                        {pageVisibility.enable_cctv && (
+                          <div>
+                            <h4 class="font-black text-amber-600 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-amber-200 flex items-center justify-between">
+                              <span>CCTV & Cameras</span>
+                              <span class="bg-amber-100 text-amber-800 text-[8px] font-black px-1.5 py-0.5 rounded">NEW</span>
+                            </h4>
+                            <ul class="space-y-2 text-xs text-slate-650 text-left">
+                              <li><a href="/delighttechnicallighting/cctv-ip-dome" class="hover:text-amber-600 hover:font-bold transition">IP & Dome Cameras</a></li>
+                              <li><a href="/delighttechnicallighting/cctv-ptz-smart" class="hover:text-amber-600 hover:font-bold transition">PTZ 360° Cameras</a></li>
+                              <li><a href="/delighttechnicallighting/cctv-bullet-outdoor" class="hover:text-amber-600 hover:font-bold transition">Outdoor Bullet</a></li>
+                              <li><a href="/delighttechnicallighting/cctv-nvr-storage" class="hover:text-amber-600 hover:font-bold transition">NVR & Storage</a></li>
+                              <li><a href="/delighttechnicallighting/cctv" class="hover:text-amber-600 font-bold text-amber-600 transition flex items-center gap-1">All CCTV Systems →</a></li>
+                            </ul>
+                          </div>
+                        )}
                         <div>
                           <h4 class="font-black text-slate-900 mb-3 text-[11px] uppercase tracking-wider border-b pb-1 border-slate-100">Smart solutions</h4>
                           <ul class="space-y-2 text-xs text-slate-650 text-left">
@@ -889,33 +895,48 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://www.delightgroupllc.co
         });
       });
 
-      // Header scroll shrinking logo badge and direction sensing
+      // Header scroll shrinking logo badge and direction sensing with flicker prevention
       const headerEl = document.querySelector('header');
       let lastScrollY = window.scrollY;
+      let isTicking = false;
+      const SCROLL_THRESHOLD = 15; // Minimum delta to prevent micro-jitter flickering
 
-      const handleScroll = () => {
+      const updateHeaderScroll = () => {
         const currentScrollY = window.scrollY;
+        const delta = currentScrollY - lastScrollY;
         
-        if (currentScrollY > 25) {
+        if (currentScrollY > 40) {
           headerEl?.classList.add('scrolled');
           
-          if (currentScrollY > 60 && currentScrollY > lastScrollY) {
-            // Scrolling down - hide secondary nav
-            headerEl?.classList.add('hide-secondary');
-          } else {
-            // Scrolling up - show secondary nav
-            headerEl?.classList.remove('hide-secondary');
+          // Require significant scroll delta to avoid micro-movement toggling
+          if (Math.abs(delta) > SCROLL_THRESHOLD) {
+            if (delta > 0 && currentScrollY > 120) {
+              // Scrolling down firmly past header
+              headerEl?.classList.add('hide-secondary');
+            } else if (delta < 0) {
+              // Scrolling up
+              headerEl?.classList.remove('hide-secondary');
+            }
+            lastScrollY = currentScrollY;
           }
         } else {
           headerEl?.classList.remove('scrolled');
           headerEl?.classList.remove('hide-secondary');
+          lastScrollY = currentScrollY;
         }
         
-        lastScrollY = currentScrollY;
+        isTicking = false;
+      };
+
+      const handleScroll = () => {
+        if (!isTicking) {
+          window.requestAnimationFrame(updateHeaderScroll);
+          isTicking = true;
+        }
       };
       
       window.addEventListener('scroll', handleScroll, { passive: true });
-      handleScroll(); // Initial check
+      updateHeaderScroll(); // Initial check
 
       // Live side-by-side preview event listener
       window.addEventListener('message', (event) => {

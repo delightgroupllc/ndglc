@@ -3,11 +3,13 @@ import { query } from '../../lib/db';
 
 let enableDtl = true;
 let enableDgs = true;
+let enableDv = true;
 try {
-  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs')");
+  const visRes = await query("SELECT key, value FROM settings WHERE key IN ('enable_dtl', 'enable_dgs', 'enable_dvision')");
   visRes.rows.forEach((r: any) => {
     if (r.key === 'enable_dtl') enableDtl = r.value === 'true' || r.value === '1';
     if (r.key === 'enable_dgs') enableDgs = r.value === 'true' || r.value === '1';
+    if (r.key === 'enable_dvision') enableDv = r.value === 'true' || r.value === '1';
   });
 } catch (e) {}
 ---
@@ -46,6 +48,7 @@ try {
           <option value="" disabled selected>Select Project Type</option>
           {enableDtl && <option value="Technical Lighting">Technical Lighting</option>}
           {enableDgs && <option value="Greenscapes">Greenscapes</option>}
+          {enableDv && <option value="Delight Vision">Delight Vision (CCTV & ELV Systems)</option>}
           <option value="General Corporate">General Corporate Supply</option>
         </select>
         <div class="absolute inset-y-0 right-0 flex items-center pointer-events-none text-slate-400">

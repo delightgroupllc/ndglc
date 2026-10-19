@@ -1,5 +1,6 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
+import DivisionStateNotice from '../../../components/ui/DivisionStateNotice.astro';
 import { query } from '../../../lib/db';
 import { ArrowRight, ChevronRight, Search, Settings, AlertTriangle, Cpu, Activity } from '@lucide/astro';
 
@@ -15,6 +16,25 @@ const isDv = divSlug === 'dv' || divSlug === 'delightvision';
 if (!isDtl && !isDgs && !isDv) {
   return Astro.redirect('/');
 }
+
+let isDivisionDisabled = false;
+let divisionStateMode = 'maintenance';
+const divName = isDtl ? 'Delight Technical Lighting' : (isDv ? 'Delight Vision' : 'Delight Greenscapes');
+
+try {
+  const checkKey = isDtl ? 'enable_dtl' : (isDv ? 'enable_dvision' : 'enable_dgs');
+  const stateKey = isDtl ? 'dtl_state' : (isDv ? 'dv_state' : 'dgs_state');
+  const visRes = await query('SELECT key, value FROM settings WHERE key IN ($1, $2)', [checkKey, stateKey]);
+  visRes.rows.forEach((r: any) => {
+    if (r.key === checkKey && (r.value === 'false' || r.value === '0')) {
+      isDivisionDisabled = true;
+      Astro.response.status = 503;
+    }
+    if (r.key === stateKey && r.value) {
+      divisionStateMode = r.value;
+    }
+  });
+} catch (e) {}
 
 const dbDivSlug = isDtl ? 'delighttechnicallighting' : (isDv ? 'delightvision' : 'delightgreenscapes');
 
@@ -57,7 +77,16 @@ if (!categoryDetails) {
 }
 ---
 
-<Layout title={categoryDetails.name} description={`${categoryDetails.name} listings under ${categoryDetails.division_name}.`}>
+<Layout title={isDivisionDisabled ? `${divName} Unavailable` : categoryDetails.name} description={`${categoryDetails.name} listings under ${categoryDetails.division_name}.`}>
+  {isDivisionDisabled ? (
+    <div class="py-12">
+      <DivisionStateNotice 
+        divisionName={divName}
+        divisionSlug={divSlug}
+        mode={divisionStateMode as any}
+      />
+    </div>
+  ) : (
   <!-- Header Banner -->
   <section class="relative overflow-hidden pt-32 pb-12 bg-white border-b border-slate-200">
     <div class={`absolute top-0 right-1/4 -z-10 h-96 w-96 rounded-full blur-[120px] ${
@@ -339,4 +368,5 @@ if (!categoryDetails) {
     // Initial load
     updateView(true);
   </script>
+  )}
 </Layout>
