@@ -7,11 +7,11 @@ const projectSchema = z.object({
   client_name: z.string().min(1),
   description: z.string().min(1),
   completion_date: z.string().optional(),
-  featured_image: z.string().url().optional().or(z.literal('')),
+  featured_image: z.string().optional().nullable().or(z.literal('')),
   division: z.enum(['dtl', 'dgs', 'dv']).default('dtl'),
   status: z.enum(['active', 'archived']).default('active'),
   featured: z.boolean().default(false),
-  gallery_images: z.array(z.string().url()).optional().default([])
+  gallery_images: z.array(z.string()).optional().default([])
 });
 
 export const PUT: APIRoute = async ({ params, request }) => {
